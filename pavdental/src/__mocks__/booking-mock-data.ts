@@ -1,4 +1,4 @@
-import { DentalService, ClinicLocation, Clinician, TimeSlot } from "./booking-types";
+import { DentalService, ClinicLocation, Clinician, TimeSlot } from "../features/booking/booking-types";
 
 // ─── Dental Catalog Seed Data ────────────────────────────────────────────────
 export const mockServices: DentalService[] = [

@@ -12,6 +12,22 @@ import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
 
 const router = Router();
 
+// ─── POST /api/auth/check-email ────────────────────────────────────────────────
+router.post("/check-email", async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true, role: true },
+  });
+
+  return res.json({ exists: !!user, email: normalizedEmail, role: user?.role ?? null });
+});
+
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 router.post("/register", validateBody(registerSchema), async (req: Request, res: Response) => {
   const { email, password, firstName, lastName, phone } = req.body;
@@ -554,6 +570,7 @@ function hashIp(ip: string): string {
 type UserWithProfiles = {
   id: string;
   email: string;
+  phone?: string | null;
   role: string;
   emailVerified: boolean;
   phoneVerified: boolean;

@@ -48,10 +48,19 @@ export default function PatientTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="account"
         options={{
           title: "Account",
           tabBarLabel: "Account",
+          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>👤</ThemedText>,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile & Settings",
+          tabBarLabel: "Profile",
+          headerShown: false,
           tabBarIcon: ({ color }) => <ThemedText style={{ color }}>👤</ThemedText>,
         }}
       />

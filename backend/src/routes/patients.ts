@@ -59,25 +59,33 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
   const {
     firstName, lastName, dob, gender,
     addressLine1, addressLine2, city, postcode,
+    phone,
     emergencyContactName, emergencyContactPhone,
     medicalHistory, consents,
   } = req.body;
 
-  const updated = await prisma.patientProfile.update({
-    where: { id: profile.id },
-    data: {
-      firstName, lastName,
-      dob: dob ? new Date(dob) : undefined,
-      gender,
-      addressLine1, addressLine2, city, postcode,
-      emergencyContactName, emergencyContactPhone,
-      medicalHistory: medicalHistory ?? undefined,
-      consents: consents ?? undefined,
-    },
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.patientProfile.update({
+      where: { id: profile.id },
+      data: {
+        firstName, lastName,
+        dob: dob ? new Date(dob) : undefined,
+        gender,
+        addressLine1, addressLine2: addressLine2 ?? null, city, postcode,
+        emergencyContactName, emergencyContactPhone,
+        medicalHistory: medicalHistory ?? undefined,
+        consents: consents ?? undefined,
+      },
+    }),
+    ...(phone !== undefined ? [prisma.user.update({
+      where: { id: profile.userId },
+      data: { phone },
+    })] : []),
+  ]);
 
   return res.json({ id: updated.id, updatedAt: updated.updatedAt });
 });
+
 
 // ─── GET /api/patients/:id/odontogram ────────────────────────────────────────
 router.get("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema), async (req: AuthRequest, res: Response) => {

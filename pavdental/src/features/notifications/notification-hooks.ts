@@ -1,8 +1,16 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { useAccessToken } from "../auth/auth-store";
+
+// Conditionally import expo-notifications to prevent crash in Expo Go
+let Notifications: any;
+try {
+  Notifications = require("expo-notifications");
+} catch (error) {
+  console.warn("expo-notifications not available (likely running in Expo Go)");
+  Notifications = null;
+}
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -49,6 +57,11 @@ export function useNotificationPermissions() {
   });
 
   const requestPermissions = async () => {
+    if (!Notifications) {
+      setPermissions({ granted: false, canAskAgain: false });
+      return false;
+    }
+
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -72,6 +85,10 @@ export function useNotificationPermissions() {
   };
 
   const checkPermissions = async () => {
+    if (!Notifications) {
+      return false;
+    }
+
     try {
       const { status } = await Notifications.getPermissionsAsync();
       setPermissions({
@@ -87,8 +104,8 @@ export function useNotificationPermissions() {
 
   return {
     permissions,
-    requestPermissions,
-    checkPermissions,
+    requestPermissions: Notifications ? requestPermissions : undefined,
+    checkPermissions: Notifications ? checkPermissions : undefined,
   };
 }
 
@@ -286,8 +303,13 @@ export function useNotificationManager() {
   const sendReceipt = useSendReceipt();
 
   const setupNotifications = async () => {
+    if (!Notifications) {
+      console.warn("Notifications not available in Expo Go");
+      return false;
+    }
+
     // Request permissions
-    const granted = await permissions.requestPermissions();
+    const granted = await permissions.requestPermissions?.();
     if (!granted) {
       console.warn("Notification permissions not granted");
       return false;

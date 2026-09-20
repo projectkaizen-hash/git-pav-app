@@ -1,7 +1,7 @@
-import { ToothRecord, TreatmentPlan, VaultDocument } from "./records-types";
+import { ToothRecord, TreatmentPlan, VaultDocument } from "../features/records/records-types";
 
 // ─── Default 32-Tooth Universal Baseline ─────────────────────────────────────
-export const mockOdontogram: ToothRecord[] = [
+export const mockOdontogram: any[] = [
   // Upper Right (UR: 1 to 8)
   { number: 1, name: "UR Wisdom (18)", arch: "upper", quadrant: "UR", condition: "missing" },
   { number: 2, name: "UR Second Molar (17)", arch: "upper", quadrant: "UR", condition: "healthy" },

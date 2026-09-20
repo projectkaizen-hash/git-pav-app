@@ -125,24 +125,124 @@ async function main() {
   });
 
   await prisma.vanServicePolygon.deleteMany({ where: { vanId: van1.id } });
-  await prisma.vanServicePolygon.create({
-    data: {
-      vanId: van1.id,
-      sectorName: "Westminster & Central London",
+  
+  // Create multiple service polygons covering different London areas
+  const serviceAreas = [
+    {
+      sectorName: "SW - South West London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.25, 51.45],
+            [-0.10, 51.45],
+            [-0.10, 51.52],
+            [-0.25, 51.52],
+            [-0.25, 51.45],
+          ],
+        ],
+      },
+    },
+    {
+      sectorName: "W - West London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.25, 51.48],
+            [-0.15, 51.48],
+            [-0.15, 51.55],
+            [-0.25, 51.55],
+            [-0.25, 51.48],
+          ],
+        ],
+      },
+    },
+    {
+      sectorName: "EC - East Central London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.10, 51.50],
+            [-0.05, 51.50],
+            [-0.05, 51.52],
+            [-0.10, 51.52],
+            [-0.10, 51.50],
+          ],
+        ],
+      },
+    },
+    {
+      sectorName: "WC - West Central London",
       polygonGeoJson: {
         type: "Polygon",
         coordinates: [
           [
             [-0.15, 51.50],
-            [-0.11, 51.50],
-            [-0.11, 51.52],
+            [-0.10, 51.50],
+            [-0.10, 51.52],
             [-0.15, 51.52],
             [-0.15, 51.50],
           ],
         ],
       },
     },
-  });
+    {
+      sectorName: "SE - South East London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.10, 51.45],
+            [0.05, 51.45],
+            [0.05, 51.52],
+            [-0.10, 51.52],
+            [-0.10, 51.45],
+          ],
+        ],
+      },
+    },
+    {
+      sectorName: "NW - North West London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.25, 51.52],
+            [-0.15, 51.52],
+            [-0.15, 51.58],
+            [-0.25, 51.58],
+            [-0.25, 51.52],
+          ],
+        ],
+      },
+    },
+    {
+      sectorName: "E - East London",
+      polygonGeoJson: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.05, 51.48],
+            [0.10, 51.48],
+            [0.10, 51.55],
+            [-0.05, 51.55],
+            [-0.05, 51.48],
+          ],
+        ],
+      },
+    },
+  ];
+
+  for (const area of serviceAreas) {
+    await prisma.vanServicePolygon.create({
+      data: {
+        vanId: van1.id,
+        ...area,
+      },
+    });
+  }
 
   // ─── 4. Known User Accounts (Password123!) ───────────────────────────────────
 

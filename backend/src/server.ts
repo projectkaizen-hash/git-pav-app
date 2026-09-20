@@ -9,6 +9,7 @@ import patientRoutes from "./routes/patients";
 import serviceRoutes from "./routes/services";
 import bookingRoutes from "./routes/booking";
 import vanRoutes from "./routes/van";
+import publicVanRoutes from "./routes/public-van";
 import auditRoutes from "./routes/audit";
 import paymentRoutes from "./routes/payments";
 import { stripeWebhookHandler } from "./routes/payments";
@@ -114,6 +115,7 @@ app.get("/health/audit-integrity", requireAuth, requireRole("admin"), async (_re
 // ─── API Routes ───────────────────────────────────────────────────────────────
 // Public catalog endpoints (no auth required, no audit)
 app.use("/api/services", serviceRoutes);
+app.use("/api/public/van", publicVanRoutes);
 
 // Protected routes with audit logging
 app.use("/api/auth", authLimiter, auditMiddleware, authRoutes);

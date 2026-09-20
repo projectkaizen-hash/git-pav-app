@@ -26,7 +26,7 @@ export function ToggleSwitch({
     <Pressable
       testID={testID}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
+      onPress={() => !disabled && onValueChange(!value)}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       accessibilityLabel={label}

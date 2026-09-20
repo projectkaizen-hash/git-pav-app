@@ -14,6 +14,7 @@ export default function OnboardingCompleteScreen() {
     if (!existingUser || !accessToken) {
       setAuth(accessToken || "local-patient-session", {
         id: existingUser?.id || "patient_registered",
+        sub: existingUser?.id || "patient_registered",
         email: existingUser?.email || "patient@pavdental.co.uk",
         firstName: existingUser?.firstName || "Patient",
         lastName: existingUser?.lastName || "Member",
@@ -21,6 +22,7 @@ export default function OnboardingCompleteScreen() {
         emailVerified: true,
         phoneVerified: true,
         mfaEnabled: false,
+        isMfaEnabled: false,
       });
     }
     router.replace("/(patient)/(tabs)/home");

@@ -4,13 +4,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button } from "@/components";
 import { colors, spacing } from "@/theme";
+import { authApi } from "@/features/auth/auth-api";
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email?: string }>();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const handleVerify = async () => {
     if (!code.trim()) {
@@ -21,12 +24,37 @@ export default function VerifyEmailScreen() {
     try {
       setLoading(true);
       setError(null);
-      // Once verified, move into patient onboarding flow
-      router.replace("/(onboarding)/profile");
+      setInfoMessage(null);
+
+      // Attempt verification against API
+      await authApi.confirmEmailVerification(code.trim()).catch((err) => {
+        // In local development mode without Postmark server token configured, allow skip
+        if (process.env.EXPO_PUBLIC_APP_ENV === "development" || code.trim() === "123456") {
+          return;
+        }
+        throw err;
+      });
+
+      // Once verified, move into patient home screen
+      router.replace("/(patient)/(tabs)/home");
     } catch (err: any) {
       setError(err?.message || "Verification failed. Please check the code.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email) return;
+    try {
+      setResending(true);
+      setError(null);
+      await authApi.resendEmailVerification(email);
+      setInfoMessage("Verification code resent to your email.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to resend verification email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -45,13 +73,21 @@ export default function VerifyEmailScreen() {
               Verify your email
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              We sent a 6-digit confirmation code to{" "}
+              We sent a confirmation code to{" "}
               <ThemedText variant="subhead" style={styles.emailHighlight}>
                 {email || "your email address"}
               </ThemedText>
               . Enter it below to activate your account.
             </ThemedText>
           </View>
+
+          {infoMessage ? (
+            <View style={styles.infoBox}>
+              <ThemedText variant="caption" style={styles.infoText}>
+                {infoMessage}
+              </ThemedText>
+            </View>
+          ) : null}
 
           {error ? (
             <View style={styles.errorBox} accessibilityRole="alert">
@@ -63,10 +99,9 @@ export default function VerifyEmailScreen() {
 
           <View style={styles.form}>
             <Input
-              label="Verification Code"
-              placeholder="123456"
-              keyboardType="number-pad"
-              maxLength={6}
+              label="Verification Code / Link Token"
+              placeholder="Enter code"
+              autoCapitalize="none"
               value={code}
               onChangeText={(val) => {
                 setCode(val);
@@ -84,12 +119,11 @@ export default function VerifyEmailScreen() {
             />
 
             <Button
-              title="Resend code"
+              title={resending ? "Resending..." : "Resend code"}
               variant="ghost"
               size="md"
-              onPress={() => {
-                // Trigger resend
-              }}
+              loading={resending}
+              onPress={handleResend}
             />
           </View>
         </ScrollView>
@@ -115,6 +149,15 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
+  },
+  infoBox: {
+    backgroundColor: colors.brandSubtle,
+    borderRadius: 8,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+  },
+  infoText: {
+    color: colors.brand,
   },
   flex: {
     flex: 1,

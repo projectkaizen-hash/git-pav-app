@@ -25,7 +25,7 @@ export default function NotificationsScreen() {
 
   const handleTogglePush = async (value: boolean) => {
     if (value && !permissions.granted) {
-      const granted = await requestPermissions();
+      const granted = await requestPermissions?.();
       if (!granted) {
         Alert.alert(
           "Permission Required",
@@ -37,6 +37,13 @@ export default function NotificationsScreen() {
     setPushEnabled(value);
     savePreference({ pushEnabled: value });
   };
+
+  const handleTogglePushStub = (_value: boolean) => {
+    // No-op for disabled toggle
+  };
+
+  // Disable push toggle if notifications are not available (Expo Go)
+  const isPushAvailable = requestPermissions !== undefined;
 
   const savePreference = (updated: Record<string, boolean>) => {
     try {
@@ -65,9 +72,10 @@ export default function NotificationsScreen() {
 
         <ToggleSwitch
           label="Push Notifications"
-          description="Instant alerts for booking changes and arrival updates"
+          description={!isPushAvailable ? "Not available in Expo Go - requires development build" : "Instant alerts for booking changes and arrival updates"}
           value={pushEnabled}
-          onValueChange={handleTogglePush}
+          onValueChange={isPushAvailable ? handleTogglePush : handleTogglePushStub}
+          disabled={!isPushAvailable}
           icon={<ThemedText>📲</ThemedText>}
         />
 

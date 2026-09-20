@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function SignInScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const params = useLocalSearchParams<{ email?: string }>();
+  const [email, setEmail] = useState(params.email || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,11 @@ export default function SignInScreen() {
               Welcome back
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              Sign in to manage your appointments, records, and treatments.
+              Enter your password to sign in as{" "}
+              <ThemedText variant="subhead" style={styles.emailHighlight}>
+                {email || "your account"}
+              </ThemedText>
+              .
             </ThemedText>
           </View>
 
@@ -154,6 +159,10 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+  },
+  emailHighlight: {
+    color: colors.label,
+    fontWeight: "600",
   },
   demoLabel: {
     color: colors.secondaryLabel,

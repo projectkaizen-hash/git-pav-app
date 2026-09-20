@@ -80,6 +80,19 @@ async function doRefresh(): Promise<string> {
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 export const authApi = {
+  checkEmail: async (email: string): Promise<{ exists: boolean; email: string; role?: string | null }> => {
+    const res = await fetch(`${BASE_URL}/api/auth/check-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error ?? "Could not check email");
+    }
+    return res.json();
+  },
+
   register: async (
     email: string,
     password: string,
@@ -166,6 +179,32 @@ export const authApi = {
       body: JSON.stringify({ token, newPassword: password }),
     });
     if (!res.ok) throw new Error("Reset link expired or invalid");
+    return res.json();
+  },
+
+  confirmEmailVerification: async (token: string) => {
+    const res = await fetch(`${BASE_URL}/api/auth/verify-email/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error ?? "Invalid or expired verification code");
+    }
+    return res.json();
+  },
+
+  resendEmailVerification: async (email: string) => {
+    const res = await fetch(`${BASE_URL}/api/auth/verify-email/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error ?? "Could not resend verification email");
+    }
     return res.json();
   },
 

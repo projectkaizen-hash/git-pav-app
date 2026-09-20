@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button } from "@/components";
 import { colors, spacing } from "@/theme";
+import { authApi } from "@/features/auth/auth-api";
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string }>();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(params.email || "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,15 +23,36 @@ export default function SignUpScreen() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number.");
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      // Proceed to email verification or onboarding flow
+
+      // Call backend API to create account
+      await authApi.register(
+        email.trim(),
+        password,
+        firstName.trim(),
+        lastName.trim(),
+        phone.trim() || undefined
+      );
+
+      // Navigate to email verification screen
       router.push({
         pathname: "/(auth)/verify-email",
         params: { email: email.trim() },
@@ -56,7 +79,11 @@ export default function SignUpScreen() {
               Create Account
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              Start your journey to flexible, stress-free dental care.
+              Complete registration details for{" "}
+              <ThemedText variant="subhead" style={styles.emailHighlight}>
+                {email || "your account"}
+              </ThemedText>
+              .
             </ThemedText>
           </View>
 
@@ -161,6 +188,10 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+  },
+  emailHighlight: {
+    color: colors.label,
+    fontWeight: "600",
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,

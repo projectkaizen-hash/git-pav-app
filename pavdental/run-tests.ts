@@ -1,5 +1,5 @@
-import { formatGbp, mockServices, mockClinics, mockClinicians } from "./src/features/booking/booking-mock-data";
-import { mockOdontogram } from "./src/features/records/records-mock-data";
+import { formatGbp, mockServices, mockClinics, mockClinicians } from "./src/__mocks__/booking-mock-data";
+import { mockOdontogram } from "./src/__mocks__/records-mock-data";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -19,7 +19,7 @@ assert(formatGbp(49500) === "£495.00", "Formats £495.00 whitening price");
 assert(formatGbp(0) === "£0.00", "Formats £0.00 baseline");
 
 // 2. Service Catalogue Categorisation
-const categories = mockServices.map((s) => s.category);
+const categories = mockServices.map((s: any) => s.category);
 assert(categories.includes("checkup"), "Contains checkup service");
 assert(categories.includes("hygiene"), "Contains hygiene service");
 assert(categories.includes("emergency"), "Contains emergency triage service");
@@ -38,12 +38,12 @@ for (const doc of mockClinicians) {
 
 // 4. Odontogram 32-Tooth Integrity
 assert(mockOdontogram.length === 32, "Odontogram has exactly 32 universal teeth");
-const upper = mockOdontogram.filter((t) => t.arch === "upper");
-const lower = mockOdontogram.filter((t) => t.arch === "lower");
+const upper = mockOdontogram.filter((t: any) => t.arch === "upper");
+const lower = mockOdontogram.filter((t: any) => t.arch === "lower");
 assert(upper.length === 16, "Maxillary (upper) arch contains 16 teeth");
 assert(lower.length === 16, "Mandibular (lower) arch contains 16 teeth");
 
-const decayingMolar = mockOdontogram.find((t) => t.number === 31);
+const decayingMolar = mockOdontogram.find((t: any) => t.number === 31);
 assert(decayingMolar !== undefined && decayingMolar.condition === "decay", "Correctly flags decaying LR7 tooth #31");
 
 console.log("\n🎉 ALL 12 AUTOMATED TESTS PASSED SUCCESSFULLY (0 FAILURES)!\n");

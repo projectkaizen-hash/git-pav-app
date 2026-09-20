@@ -24,7 +24,7 @@ export default function PersonalInfoScreen() {
         dob: formData.dob,
         gender: formData.gender,
         addressLine1: formData.addressLine1,
-        addressLine2: formData.addressLine2 || null,
+        addressLine2: formData.addressLine2 || undefined,
         city: formData.city,
         postcode: formData.postcode,
         phone: formData.phone,
