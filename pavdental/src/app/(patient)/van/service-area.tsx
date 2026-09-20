@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
+import * as Location from "expo-location";
 import { ThemedText, Input, Button, Card, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 import { checkVanCoverage } from "@/features/booking/booking-api";
@@ -11,16 +12,61 @@ export default function VanServiceAreaScreen() {
   const [checked, setChecked] = useState(false);
   const [coverageResult, setCoverageResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [usingGPS, setUsingGPS] = useState(false);
 
-  const handleCheckCoverage = async () => {
-    if (!postcode.trim()) {
-      Alert.alert("Missing Postcode", "Please enter a UK postcode to check coverage.");
+  useEffect(() => {
+    requestLocationPermission();
+  }, []);
+
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'web') {
+      // Web doesn't support expo-location permission requests
+      setLocationPermission('granted');
       return;
     }
+
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    setLocationPermission(status);
+    
+    if (status === 'granted') {
+      getCurrentLocation();
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      setCurrentLocation({
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      });
+      
+      // Auto-check coverage with GPS
+      checkCoverageWithGPS();
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert(
+        "Location Error",
+        "Unable to get your current location. Please enter your postcode manually."
+      );
+    }
+  };
+
+  const checkCoverageWithGPS = async () => {
+    if (!currentLocation) return;
     
     setLoading(true);
+    setUsingGPS(true);
     try {
-      const result = await checkVanCoverage(postcode);
+      const result = await checkVanCoverage({
+        lat: currentLocation.lat,
+        lng: currentLocation.lng,
+      });
       setCoverageResult(result);
       setChecked(true);
     } catch (error) {
@@ -29,6 +75,43 @@ export default function VanServiceAreaScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCheckCoverage = async () => {
+    if (!postcode.trim()) {
+      Alert.alert("Missing Postcode", "Please enter a UK postcode to check coverage.");
+      return;
+    }
+    
+    setLoading(true);
+    setUsingGPS(false);
+    try {
+      const result = await checkVanCoverage({ postcode });
+      setCoverageResult(result);
+      setChecked(true);
+    } catch (error) {
+      Alert.alert("Coverage Check Failed", "Unable to verify coverage. Please try again.");
+      setChecked(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUseGPS = () => {
+    if (locationPermission === 'granted') {
+      getCurrentLocation();
+    } else {
+      requestLocationPermission();
+    }
+  };
+
+  const handleChangeLocation = () => {
+    // Reset to manual postcode entry
+    setCurrentLocation(null);
+    setUsingGPS(false);
+    setChecked(false);
+    setCoverageResult(null);
+    setPostcode("");
   };
 
   const handleProceed = () => {
@@ -45,12 +128,35 @@ export default function VanServiceAreaScreen() {
             Mobile Van Service Area
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            Enter your UK postcode to check if our mobile dental surgery van operates in your neighbourhood.
+            {usingGPS 
+              ? "Using your current GPS location to check van service availability."
+              : "Enter your UK postcode to check if our mobile dental surgery van operates in your neighbourhood."
+            }
           </ThemedText>
         </View>
 
-        {/* Postcode Search Box */}
+        {/* GPS Option */}
+        {Platform.OS !== 'web' && (
+          <View style={styles.gpsSection}>
+            <Button
+              title={currentLocation ? "📍 Use Current Location" : "📍 Enable GPS Location"}
+              variant="secondary"
+              onPress={handleUseGPS}
+              disabled={loading}
+            />
+            {currentLocation && (
+              <ThemedText variant="caption" style={styles.locationText}>
+                Location: {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
+              </ThemedText>
+            )}
+          </View>
+        )}
+
+        {/* Manual Postcode Option */}
         <View style={styles.searchBox}>
+          <ThemedText variant="subhead" style={styles.orText}>
+            {Platform.OS !== 'web' ? "Or enter postcode manually:" : "Enter UK postcode:"}
+          </ThemedText>
           <Input
             label="Enter UK Postcode"
             placeholder="e.g. SW1A 1AA or W1G 9PQ"
@@ -60,6 +166,7 @@ export default function VanServiceAreaScreen() {
               setPostcode(val);
               setChecked(false);
               setCoverageResult(null);
+              setUsingGPS(false);
             }}
           />
           <Button
@@ -82,12 +189,18 @@ export default function VanServiceAreaScreen() {
               </View>
 
               <ThemedText variant="headline" style={styles.coveredTitle}>
-                Great news! Van visits are available for {postcode.toUpperCase()}.
+                Great news! Van visits are available for your location.
               </ThemedText>
 
               <ThemedText variant="subhead" style={styles.coveredBody}>
                 {coverageResult?.message || "Our dental van can visit your private driveway, curb parking, or designated corporate visitor bay."}
               </ThemedText>
+
+              {coverageResult?.distanceKm && (
+                <ThemedText variant="caption" style={styles.distanceText}>
+                  Distance to service center: {coverageResult.distanceKm.toFixed(1)} km
+                </ThemedText>
+              )}
 
               <View style={styles.features}>
                 <ThemedText variant="caption" style={styles.featItem}>
@@ -100,6 +213,15 @@ export default function VanServiceAreaScreen() {
                   ✓ AirFlow hygiene & gentle fillings
                 </ThemedText>
               </View>
+
+              {usingGPS && (
+                <Button
+                  title="Change Location"
+                  variant="ghost"
+                  size="sm"
+                  onPress={handleChangeLocation}
+                />
+              )}
             </Card>
           ) : (
             <Card style={styles.outOfAreaCard}>
@@ -107,11 +229,17 @@ export default function VanServiceAreaScreen() {
                 Outside Van Territory
               </ThemedText>
               <ThemedText variant="caption" style={styles.outBody}>
-                {coverageResult?.message || `Our mobile surgery van does not currently cover ${postcode.toUpperCase()}. You can still book an instant Video Consultation or visit our central clinic practice.`}
+                {coverageResult?.message || "Our mobile surgery van does not currently cover your location. You can still book an instant Video Consultation or visit our central clinic practice."}
               </ThemedText>
               <Button
-                title="View Central Clinics Instead"
+                title="Change Location"
                 variant="secondary"
+                size="sm"
+                onPress={() => router.push("/(patient)/van/change-location" as any)}
+              />
+              <Button
+                title="View Central Clinics Instead"
+                variant="ghost"
                 size="sm"
                 onPress={() => router.push("/(patient)/booking/clinic-picker" as any)}
               />
@@ -164,6 +292,11 @@ const styles = StyleSheet.create({
     color: colors.label,
     marginTop: 2,
   },
+  distanceText: {
+    color: colors.brand,
+    fontWeight: "600",
+    marginTop: spacing.xs,
+  },
   featItem: {
     color: colors.brand,
     fontWeight: "600",
@@ -181,8 +314,19 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
   },
+  gpsSection: {
+    gap: spacing.xs,
+  },
   header: {
     gap: spacing.xxs,
+  },
+  locationText: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+  },
+  orText: {
+    color: colors.secondaryLabel,
+    marginTop: spacing.xs,
   },
   outBody: {
     color: colors.secondaryLabel,

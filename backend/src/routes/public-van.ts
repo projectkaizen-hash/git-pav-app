@@ -2,64 +2,132 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validate";
 import { vanCoverageCheckSchema } from "../schemas/van";
+import { pointInPolygon, calculateDistance, getPolygonCentroid, Point, Polygon } from "../lib/geo";
 
 const router = Router();
 
 // ─── POST /api/public/van/coverage-check ───────────────────────────────────────
 // Public endpoint - no auth required for coverage checking
+// Accepts either GPS coordinates (lat/lng) or postcode
 router.post("/coverage-check", validateBody(vanCoverageCheckSchema), async (req: Request, res: Response) => {
-  const { postcode } = req.body;
+  const { lat, lng, postcode } = req.body;
 
-  const clean = String(postcode).toUpperCase().replace(/\s/g, "");
+  let checkPoint: Point | null = null;
+  let inputType: string;
+  let processedPostcode: string | null = null;
+
+  // Determine input type and get coordinates
+  if (lat !== undefined && lng !== undefined) {
+    // GPS coordinates provided (preferred)
+    checkPoint = { lat, lng };
+    inputType = "gps";
+  } else if (postcode) {
+    // Postcode provided (fallback)
+    const clean = String(postcode).toUpperCase().replace(/\s/g, "");
+    processedPostcode = clean;
+    inputType = "postcode";
+    
+    // Convert postcode to approximate coordinates using centroid of matching area
+    checkPoint = await postcodeToCoordinates(clean);
+    
+    if (!checkPoint) {
+      return res.json({
+        postcode: clean,
+        isCovered: false,
+        assignedVan: null,
+        vehicleType: null,
+        activeSector: null,
+        message: "This postcode is outside our current service area. Please try a London postcode or use GPS location.",
+        inputType: "postcode"
+      });
+    }
+  } else {
+    return res.status(400).json({
+      error: "Either lat/lng coordinates or postcode must be provided"
+    });
+  }
 
   // Fetch all active van polygons from DB
   const polygons = await prisma.vanServicePolygon.findMany({
     include: { van: { select: { name: true, registrationPlate: true, vehicleModel: true } } },
   });
 
-  // Check if any polygon GeoJSON contains this postcode area
-  // In production, this would use PostGIS ST_Contains with geocoded coordinates
-  // For now, we use a more sophisticated prefix matching system
-  const UK_POSTCODE_PATTERNS = [
-    // London areas (common van service areas)
-    { prefix: "SW", areas: ["SW1", "SW3", "SW5", "SW6", "SW7", "SW10", "SW11", "SW15", "SW18", "SW19", "SW20"] },
-    { prefix: "W", areas: ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12", "W14"] },
-    { prefix: "EC", areas: ["EC1", "EC2", "EC3", "EC4"] },
-    { prefix: "WC", areas: ["WC1", "WC2"] },
-    { prefix: "SE", areas: ["SE1", "SE3", "SE5", "SE7", "SE8", "SE9", "SE10", "SE11", "SE14", "SE15", "SE16", "SE17", "SE18", "SE19", "SE20", "SE21", "SE22", "SE23", "SE24", "SE25", "SE26", "SE27", "SE28"] },
-    { prefix: "NW", areas: ["NW1", "NW2", "NW3", "NW5", "NW6", "NW7", "NW8", "NW10", "NW11"] },
-    { prefix: "E", areas: ["E1", "E2", "E3", "E5", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "E17", "E18", "E20"] },
-  ];
-
-  // Find matching polygon based on postcode
-  let match = null;
-  for (const pattern of UK_POSTCODE_PATTERNS) {
-    if (clean.startsWith(pattern.prefix)) {
-      // Check if the specific area is in our covered areas
-      const areaCode = clean.substring(0, 3); // e.g., "SW1"
-      if (pattern.areas.includes(areaCode)) {
-        match = polygons.find(p => p.sectorName.startsWith(pattern.prefix));
-        break;
+  // Check coverage using spatial point-in-polygon
+  const coverageResults = polygons
+    .map(polygon => {
+      const geoJson = polygon.polygonGeoJson as unknown as Polygon;
+      const isCovered = checkPoint && pointInPolygon(checkPoint, geoJson);
+      
+      if (isCovered && checkPoint) {
+        const centroid = getPolygonCentroid(geoJson);
+        const distance = calculateDistance(checkPoint, centroid);
+        
+        return {
+          polygon,
+          isCovered: true,
+          distance
+        };
       }
-    }
-  }
+      
+      return { polygon, isCovered: false, distance: null };
+    })
+    .filter(result => result.isCovered)
+    .sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
-  // If no specific match found, try broader prefix match
-  if (!match && polygons.length > 0) {
-    const mainPrefix = clean.substring(0, 2); // e.g., "SW"
-    match = polygons.find(p => p.sectorName.startsWith(mainPrefix));
-  }
+  const bestMatch = coverageResults[0] || null;
 
   return res.json({
-    postcode: clean,
-    isCovered: !!match,
-    assignedVan: match?.van.name ?? null,
-    vehicleType: match?.van.vehicleModel ?? null,
-    activeSector: match?.sectorName ?? null,
-    message: match 
-      ? "Your postcode is within our mobile van service area" 
-      : "Your postcode is currently outside our mobile van service area. Please try our clinic services instead."
+    postcode: processedPostcode,
+    coordinates: checkPoint,
+    isCovered: !!bestMatch,
+    assignedVan: bestMatch?.polygon.van.name ?? null,
+    vehicleType: bestMatch?.polygon.van.vehicleModel ?? null,
+    activeSector: bestMatch?.polygon.sectorName ?? null,
+    distanceKm: bestMatch?.distance ?? null,
+    message: bestMatch 
+      ? `Your location is within our mobile van service area (${bestMatch.distance?.toFixed(1)} km from service center)` 
+      : "Your location is currently outside our mobile van service area. Please try our clinic services instead.",
+    inputType
   });
 });
+
+/**
+ * Convert UK postcode to approximate coordinates
+ * This is a simplified implementation - in production, use a proper geocoding service
+ */
+async function postcodeToCoordinates(postcode: string): Promise<Point | null> {
+  // Simple postcode prefix to coordinate mapping for London areas
+  // In production, replace with proper geocoding service (Google Maps, Nominatim, etc.)
+  
+  // Extract the prefix (first 1-2 letters before the number)
+  const match = postcode.match(/^([A-Z]{1,2})/i);
+  const postcodePrefix = match ? match[1].toUpperCase() : "";
+  
+  // London area centroids (approximate)
+  const londonCentroids: Record<string, Point> = {
+    "SW": { lat: 51.49, lng: -0.18 },  // South West London
+    "W":  { lat: 51.51, lng: -0.19 },  // West London
+    "EC": { lat: 51.51, lng: -0.09 },  // East Central London
+    "WC": { lat: 51.51, lng: -0.13 },  // West Central London
+    "SE": { lat: 51.48, lng: -0.05 },  // South East London
+    "NW": { lat: 51.55, lng: -0.18 },  // North West London
+    "E":  { lat: 51.52, lng: -0.03 },  // East London
+  };
+  
+  const centroid = londonCentroids[postcodePrefix];
+  
+  if (centroid) {
+    // Add some randomness to simulate different postcodes within the same area
+    const offset = 0.01;
+    return {
+      lat: centroid.lat + (Math.random() - 0.5) * offset,
+      lng: centroid.lng + (Math.random() - 0.5) * offset
+    };
+  }
+  
+  // For non-London postcodes, return a point that will definitely be outside coverage
+  // Aberdeen coordinates (definitely outside London service area)
+  return { lat: 57.1497, lng: -2.0943 };
+}
 
 export default router;

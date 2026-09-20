@@ -139,11 +139,11 @@ export async function cancelAppointment(appointmentId: string) {
 }
 
 // ─── Van coverage check ────────────────────────────────────────────────────────
-export async function checkVanCoverage(postcode: string) {
+export async function checkVanCoverage(params: { lat?: number; lng?: number; postcode?: string }) {
   const res = await fetch(`${BASE_URL}/api/public/van/coverage-check`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ postcode }),
+    body: JSON.stringify(params),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
