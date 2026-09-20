@@ -1,0 +1,52 @@
+{
+  "name": "pavdental-backend",
+  "version": "1.0.0",
+  "description": "Pav Dental Production API Gateway with PostGIS, Redis Locks, and DSPT Compliance",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test": "tsx src/e2e-suite.ts",
+    "test:auth": "jest src/__tests__/auth-integration.test.ts",
+    "test:all": "npm run test && npm run test:auth"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.709.0",
+    "@prisma/client": "^6.4.1",
+    "@types/multer": "^2.2.0",
+    "argon2": "^0.41.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
+    "stripe": "^17.7.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.9",
+    "jest": "^30.5.2",
+    "prisma": "^6.4.1",
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.23.13",
+    "typescript": "^5.8.2"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "argon2@0.41.1": true,
+    "esbuild@0.28.2": true
+  }
+}

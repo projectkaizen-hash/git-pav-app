@@ -1,0 +1,24 @@
+# Node dependencies
+node_modules/
+.npm
+
+# Build outputs & caches
+dist/
+.expo/
+web-build/
+*.log
+
+
+
+# Database & Docker data
+pgdata/
+redisdata/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Server environment secrets
+/backend/.env
+/backend/.env.*
+!/backend/.env.example

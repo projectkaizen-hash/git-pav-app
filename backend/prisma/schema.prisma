@@ -1,0 +1,522 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  patient
+  clinician
+  operator
+  admin
+}
+
+enum CareChannel {
+  clinic
+  van
+  video
+}
+
+enum ServiceCategory {
+  checkup
+  hygiene
+  emergency
+  restorative
+  cosmetic
+}
+
+enum AppointmentStatus {
+  draft_hold
+  confirmed
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+enum ToothCondition {
+  healthy
+  decay
+  filled
+  missing
+  crown
+  implant
+  root_canal
+}
+
+model User {
+  id               String            @id @default(uuid()) @db.Uuid
+  email            String            @unique
+  phone            String?           @unique
+  passwordHash     String            @map("password_hash")
+  role             UserRole          @default(patient)
+  emailVerified    Boolean           @default(false) @map("email_verified")
+  phoneVerified    Boolean           @default(false) @map("phone_verified")
+  mfaEnabled       Boolean           @default(false) @map("mfa_enabled")
+  mfaSecret        String?           @map("mfa_secret")
+  isActive         Boolean           @default(true) @map("is_active")
+  failedLoginAttempts Int              @default(0) @map("failed_login_attempts")
+  lockedUntil      DateTime?         @map("locked_until")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  sessions                AuthSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  mfaCodes                MfaCode[]
+  mfaVerifications        MfaVerification[]
+  patientProfile          PatientProfile?
+  clinicianProfile        ClinicianProfile?
+  auditLogs               AuditLog[]
+  pushTokens              PushToken[]
+  notificationPreferences NotificationPreference?
+  scheduledNotifications  ScheduledNotification[]
+  notificationHistory     NotificationHistory[]
+  savedPaymentMethods     SavedPaymentMethod[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash")
+  deviceInfo       String?   @map("device_info")
+  ipAddressHash    String?   @map("ip_address_hash")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @db.Text
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @db.Text
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model MfaCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  code      String   @db.Text
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("mfa_codes")
+}
+
+model MfaVerification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  verifiedAt DateTime @map("verified_at")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@map("mfa_verifications")
+}
+
+model PatientProfile {
+  id                    String           @id @default(uuid()) @db.Uuid
+  userId                String           @unique @map("user_id") @db.Uuid
+  firstName             String           @map("first_name") @db.VarChar(100)
+  lastName              String           @map("last_name") @db.VarChar(100)
+  dob                   DateTime?        @db.Date
+  gender                String?          @db.VarChar(20)
+  emergencyContactName  String?          @map("emergency_contact_name") @db.VarChar(100)
+  emergencyContactPhone String?          @map("emergency_contact_phone") @db.VarChar(20)
+  addressLine1          String?          @map("address_line1") @db.VarChar(255)
+  addressLine2          String?          @map("address_line2") @db.VarChar(255)
+  city                  String?          @db.VarChar(100)
+  postcode              String?          @db.VarChar(10)
+  medicalHistory        Json?            @map("medical_history")
+  consents              Json?
+  stripeCustomerId      String?          @unique @map("stripe_customer_id") @db.VarChar(100)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments          Appointment[]
+  odontogramTeeth       ToothRecord[]
+  treatmentPlans        TreatmentPlan[]
+  documents             DocumentVault[]
+  consentRecords        ConsentRecord[]
+
+  @@index([userId])
+  @@index([postcode])
+  @@index([createdAt])
+  @@map("patient_profiles")
+}
+
+model ClinicianProfile {
+  id                  String          @id @default(uuid()) @db.Uuid
+  userId              String          @unique @map("user_id") @db.Uuid
+  fullName            String          @map("full_name") @db.VarChar(100)
+  gdcNumber           String          @unique @map("gdc_number") @db.VarChar(6)
+  roleTitle           String          @map("role_title") @db.VarChar(100)
+  specialisms         String[]
+  bio                 String?         @db.Text
+  photoUrl            String?         @map("photo_url") @db.VarChar(500)
+  isTelehealthActive  Boolean         @default(true) @map("is_telehealth_active")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments        Appointment[]
+  prescriptions       Prescription[]
+  treatmentPlans      TreatmentPlan[]
+
+  @@index([gdcNumber])
+  @@index([isTelehealthActive])
+  @@map("clinician_profiles")
+}
+
+model Clinic {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String
+  address        String
+  postcode       String
+  city           String
+  phone          String
+  operatingHours String        @map("operating_hours")
+  isActive       Boolean       @default(true) @map("is_active")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  appointments   Appointment[]
+
+  @@map("clinics")
+}
+
+model Van {
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String
+  registrationPlate String             @unique @map("registration_plate")
+  vehicleModel      String             @map("vehicle_model")
+  isActive          Boolean            @default(true) @map("is_active")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  appointments      Appointment[]
+  servicePolygons   VanServicePolygon[]
+
+  @@index([isActive])
+  @@index([registrationPlate])
+  @@map("vans")
+}
+
+model VanServicePolygon {
+  id             String    @id @default(uuid()) @db.Uuid
+  vanId          String    @map("van_id") @db.Uuid
+  sectorName     String    @map("sector_name")
+  // GeoJSON Polygon representation for spatial queries
+  polygonGeoJson Json      @map("polygon_geojson")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  van            Van       @relation(fields: [vanId], references: [id], onDelete: Cascade)
+
+  @@index([vanId])
+  @@index([sectorName])
+  @@map("van_service_polygons")
+}
+
+model Service {
+  id                   String          @id // e.g. "srv_checkup"
+  name                 String
+  category             ServiceCategory
+  description          String
+  durationMinutes      Int             @map("duration_minutes")
+  pricePence           Int             @map("price_pence")
+  depositPence         Int             @map("deposit_pence")
+  supportedChannels    CareChannel[]   @map("supported_channels")
+  prepInstructions     String[]        @map("prep_instructions")
+  requiresPriorConsult Boolean         @default(false) @map("requires_prior_consult")
+  isActive             Boolean         @default(true) @map("is_active")
+
+  appointments         Appointment[]
+
+  @@map("services")
+}
+
+model Appointment {
+  id               String            @id @default(uuid()) @db.Uuid
+  patientId        String            @map("patient_id") @db.Uuid
+  clinicianId      String?           @map("clinician_id") @db.Uuid
+  serviceId        String            @map("service_id")
+  channel          CareChannel
+  clinicId         String?           @map("clinic_id") @db.Uuid
+  vanId            String?           @map("van_id") @db.Uuid
+  startTimeUtc     DateTime          @map("start_time_utc")
+  endTimeUtc       DateTime          @map("end_time_utc")
+  status           AppointmentStatus @default(draft_hold)
+  holdExpiresAt    DateTime?         @map("hold_expires_at")
+  accessDetails    Json?             @map("access_details")
+  triageData       Json?             @map("triage_data")
+  intraoralPhotos  String[]          @map("intraoral_photos")
+  totalPricePence  Int               @map("total_price_pence")
+  depositPaidPence Int               @default(0) @map("deposit_paid_pence")
+  stripePaymentId  String?           @map("stripe_payment_id")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  patient          PatientProfile    @relation(fields: [patientId], references: [id])
+  clinician        ClinicianProfile? @relation(fields: [clinicianId], references: [id])
+  service          Service           @relation(fields: [serviceId], references: [id])
+  clinic           Clinic?           @relation(fields: [clinicId], references: [id])
+  van              Van?              @relation(fields: [vanId], references: [id])
+  prescriptions    Prescription[]
+
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([serviceId])
+  @@index([startTimeUtc])
+  @@index([status])
+  @@index([holdExpiresAt])
+  @@index([stripePaymentId])
+  @@map("appointments")
+}
+
+model ToothRecord {
+  id          String         @id @default(uuid()) @db.Uuid
+  patientId   String         @map("patient_id") @db.Uuid
+  toothNumber Int            @map("tooth_number") // 1 to 32
+  arch        String         // "upper" | "lower"
+  quadrant    String         // "UR" | "UL" | "LL" | "LR"
+  condition   ToothCondition @default(healthy)
+  notes       String?
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, toothNumber])
+  @@map("tooth_records")
+}
+
+model TreatmentPlan {
+  id                 String              @id @default(uuid()) @db.Uuid
+  patientId          String              @map("patient_id") @db.Uuid
+  clinicianId        String              @map("clinician_id") @db.Uuid
+  title              String
+  status             String              @default("pending_acceptance")
+  totalCostPence     Int                 @map("total_cost_pence")
+  patientSignature   String?             @map("patient_signature")
+  patientSignedAt    DateTime?           @map("patient_signed_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  patient            PatientProfile      @relation(fields: [patientId], references: [id])
+  clinician          ClinicianProfile    @relation(fields: [clinicianId], references: [id])
+  items              TreatmentPlanItem[]
+
+  @@map("treatment_plans")
+}
+
+model TreatmentPlanItem {
+  id              String        @id @default(uuid()) @db.Uuid
+  treatmentPlanId String        @map("treatment_plan_id") @db.Uuid
+  code            String
+  description     String
+  toothNumber     Int?          @map("tooth_number")
+  costPence       Int           @map("cost_pence")
+  isAccepted      Boolean       @default(true) @map("is_accepted")
+
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+
+  @@map("treatment_plan_items")
+}
+
+model Prescription {
+  id                   String           @id @default(uuid()) @db.Uuid
+  appointmentId        String?          @map("appointment_id") @db.Uuid
+  clinicianId          String           @map("clinician_id") @db.Uuid
+  medicationName       String           @map("medication_name")
+  dosageInstructions   String           @map("dosage_instructions")
+  dispensingPharmacy   String           @map("dispensing_pharmacy")
+  epsTransactionRef    String?          @map("eps_transaction_ref")
+  dispatchedAt         DateTime         @default(now()) @map("dispatched_at")
+
+  appointment          Appointment?     @relation(fields: [appointmentId], references: [id])
+  clinician            ClinicianProfile @relation(fields: [clinicianId], references: [id])
+
+  @@index([appointmentId])
+  @@index([clinicianId])
+  @@index([dispatchedAt])
+  @@index([epsTransactionRef])
+  @@map("prescriptions")
+}
+
+model DocumentVault {
+  id            String         @id @default(uuid()) @db.Uuid
+  patientId     String         @map("patient_id") @db.Uuid
+  docType       String         @map("doc_type") // "xray" | "prescription" | "invoice"
+  title         String
+  fileKey       String         @map("file_key")
+  fileSizeBytes String         @map("file_size_bytes")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("document_vault")
+}
+
+model AuditLog {
+  id            BigInt   @id @default(autoincrement())
+  action        String
+  actorId       String?  @map("actor_id") @db.Uuid
+  resourceId    String?  @map("resource_id")
+  sessionId     String?  @map("session_id")
+  ipHash        String?  @map("ip_hash")
+  metadata      Json?
+  integrityHash String?  @map("integrity_hash")
+  timestampUtc  DateTime @default(now()) @map("timestamp_utc")
+  archived      Boolean  @default(false)
+  archivedAt    DateTime? @map("archived_at")
+
+  actor         User?    @relation(fields: [actorId], references: [id])
+
+  @@index([timestampUtc])
+  @@index([actorId])
+  @@index([action])
+  @@index([archived])
+  @@map("audit_logs")
+}
+
+model PushToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  platform  String   // "ios" | "android" | "web"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_tokens")
+}
+
+model NotificationPreference {
+  userId                    String   @unique @map("user_id") @db.Uuid
+  pushEnabled               Boolean  @default(true) @map("push_enabled")
+  emailEnabled              Boolean  @default(true) @map("email_enabled")
+  smsEnabled                Boolean  @default(false) @map("sms_enabled")
+  appointmentReminders      Boolean  @default(true) @map("appointment_reminders")
+  appointmentConfirmations  Boolean  @default(true) @map("appointment_confirmations")
+  marketingUpdates          Boolean  @default(false) @map("marketing_updates")
+  quietHoursStart           String   @default("22:00") @map("quiet_hours_start")
+  quietHoursEnd             String   @default("08:00") @map("quiet_hours_end")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model ConsentRecord {
+  id                String    @id @default(uuid()) @db.Uuid
+  patientProfileId  String    @map("patient_profile_id") @db.Uuid
+  consentType       String    @map("consent_type")
+  version           Int       @default(1)
+  lawfulBasis       String    @map("lawful_basis")
+  isGranted         Boolean   @default(true) @map("is_granted")
+  grantedAt         DateTime  @default(now()) @map("granted_at")
+  withdrawnAt       DateTime? @map("withdrawn_at")
+  ipAddress         String?   @map("ip_address")
+  metadata          Json?
+
+  patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([patientProfileId, consentType, version])
+  @@index([patientProfileId])
+  @@index([consentType])
+  @@map("consent_records")
+}
+
+model ScheduledNotification {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  title       String
+  body        String
+  data        Json?
+  scheduledFor DateTime @map("scheduled_for")
+  status      String   @default("pending") // "pending" | "sent" | "cancelled"
+  createdAt   DateTime @default(now()) @map("created_at")
+  sentAt      DateTime? @map("sent_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("scheduled_notifications")
+}
+
+model NotificationHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   // "push" | "email" | "sms" | "receipt" | "reminder"
+  title     String
+  body      String
+  data      Json?
+  sentAt    DateTime @default(now()) @map("sent_at")
+  status    String   @default("sent") // "sent" | "failed" | "delivered"
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_history")
+}
+
+model SavedPaymentMethod {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  stripePaymentMethodId String   @unique @map("stripe_payment_method_id") @db.VarChar(100)
+  brand                 String   @db.VarChar(30)
+  last4                 String   @db.VarChar(4)
+  expMonth              Int      @map("exp_month")
+  expYear               Int      @map("exp_year")
+  isDefault             Boolean  @default(false) @map("is_default")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_payment_methods")
+}
