@@ -1,4 +1,4 @@
-import { formatGbp, mockServices, mockClinics, mockClinicians } from "../features/booking/booking-mock-data";
+import { formatGbp, mockServices, mockClinics, mockClinicians } from "../__mocks__/booking-mock-data";
 
 describe("Booking Domain & Currency Formatting", () => {
   test("formats pence to GBP correctly", () => {

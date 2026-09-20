@@ -10,7 +10,7 @@ import { formatGbp, createAppointment, createPaymentIntent } from "@/features/bo
 export default function BookingSummaryScreen() {
   const router = useRouter();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { service, clinic, clinician, slot, holdExpiresAt } = useBookingStore();
+  const { service, clinic, clinician, slot, holdExpiresAt, resetDraft } = useBookingStore();
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -21,6 +21,17 @@ export default function BookingSummaryScreen() {
       setSecondsRemaining(remaining);
       if (remaining === 0) {
         clearInterval(interval);
+        // Handle expired hold
+        Alert.alert(
+          "Slot Reservation Expired",
+          "Your slot reservation has expired. Please select a new time slot.",
+          [
+            { text: "OK", onPress: () => {
+              resetDraft();
+              router.replace("/(patient)/booking/slot-picker" as any);
+            }}
+          ]
+        );
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -96,7 +107,7 @@ export default function BookingSummaryScreen() {
 
       // 6. Payment collected — Stripe webhook will confirm the appointment server-side
       setIsProcessing(false);
-      router.replace("/(patient)/booking/confirmed" as any);
+      router.push(`/(patient)/booking/confirmed?appointmentId=${appt.id}` as any);
     } catch (err: any) {
       Alert.alert("Something went wrong", err?.message ?? "Could not process payment.");
       setIsProcessing(false);
@@ -199,10 +210,14 @@ export default function BookingSummaryScreen() {
       {/* Stripe Payment CTA */}
       <View style={styles.footerBar}>
         <Button
-          title={isProcessing ? "Processing Stripe..." : `Pay ${formatGbp(service?.depositPence || 2000)} Deposit`}
+          title={secondsRemaining === 0 ? "Slot Expired - Select New Time" : (isProcessing ? "Processing Stripe..." : `Pay ${formatGbp(service?.depositPence || 2000)} Deposit`)}
           size="lg"
           loading={isProcessing}
-          onPress={handlePayDeposit}
+          disabled={secondsRemaining === 0}
+          onPress={secondsRemaining === 0 ? () => {
+            resetDraft();
+            router.replace("/(patient)/booking/slot-picker" as any);
+          } : handlePayDeposit}
         />
       </View>
     </View>

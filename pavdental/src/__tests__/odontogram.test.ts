@@ -1,4 +1,4 @@
-import { mockOdontogram } from "../features/records/records-mock-data";
+import { mockOdontogram } from "../__mocks__/records-mock-data";
 
 describe("Dental Odontogram Records Integrity", () => {
   test("contains exactly 32 universal teeth", () => {

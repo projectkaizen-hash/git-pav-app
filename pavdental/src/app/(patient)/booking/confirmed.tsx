@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
@@ -9,39 +9,51 @@ import { fetchMyAppointments } from "@/features/booking/booking-api";
 
 export default function BookingConfirmedScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ appointmentId?: string }>();
   const { service, clinic, slot, resetDraft } = useBookingStore();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const appointmentId = params.appointmentId;
 
   // Poll for appointment confirmation status
   useEffect(() => {
     const checkConfirmation = async () => {
       try {
         const appointments = await fetchMyAppointments();
-        // Check if the most recent appointment matches our booking and is confirmed
-        const recentAppointment = appointments[0];
-        if (recentAppointment && recentAppointment.status === "confirmed") {
-          setIsConfirmed(true);
-          setIsChecking(false);
+        
+        // If we have a specific appointmentId, check that one specifically
+        if (appointmentId) {
+          const targetAppointment = appointments.find((apt: any) => apt.id === appointmentId);
+          if (targetAppointment && targetAppointment.status === "confirmed") {
+            setIsConfirmed(true);
+            setIsChecking(false);
+          }
+        } else {
+          // Fallback: check if the most recent appointment is confirmed
+          const recentAppointment = appointments[0];
+          if (recentAppointment && recentAppointment.status === "confirmed") {
+            setIsConfirmed(true);
+            setIsChecking(false);
+          }
         }
       } catch (error) {
         console.error("Error checking appointment status:", error);
       }
     };
 
-    // Check immediately, then poll every 3 seconds for up to 30 seconds
+    // Check immediately, then poll every 2 seconds for up to 45 seconds
     checkConfirmation();
-    const interval = setInterval(checkConfirmation, 3000);
+    const interval = setInterval(checkConfirmation, 2000);
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setIsChecking(false);
-    }, 30000);
+    }, 45000);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, []);
+  }, [appointmentId]);
 
   const handleFinish = () => {
     resetDraft();
@@ -124,6 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warningSubtle,
   },
   container: {
+    backgroundColor: colors.systemBackground,
     flex: 1,
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
