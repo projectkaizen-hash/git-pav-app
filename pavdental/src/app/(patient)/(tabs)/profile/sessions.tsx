@@ -1,0 +1,176 @@
+import React from "react";
+import { View, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
+import * as Haptics from "expo-haptics";
+import { ThemedText, Button } from "@/components";
+import { SessionItem, SessionData } from "@/components/settings/SessionItem";
+import {
+  useSessionsQuery,
+  useRevokeSessionMutation,
+  useRevokeAllOtherSessionsMutation,
+} from "@/features/security/security-hooks";
+import { colors, spacing } from "@/theme";
+
+export default function SessionsScreen() {
+  const { data: sessions = [], isLoading, refetch } = useSessionsQuery();
+  const revokeSession = useRevokeSessionMutation();
+  const revokeAllOthers = useRevokeAllOtherSessionsMutation();
+
+  // If sessions are empty, mock current session for demonstration
+  const displaySessions: SessionData[] =
+    sessions.length > 0
+      ? sessions.map((s, idx) => ({ ...s, isCurrent: idx === 0 }))
+      : [
+          {
+            id: "current-session-app",
+            deviceInfo: "Pav Dental iOS / Android Client",
+            ipAddressHash: "a9482f3b14e245a9",
+            createdAt: new Date().toISOString(),
+            isCurrent: true,
+          },
+          {
+            id: "web-session-safari",
+            deviceInfo: "Safari on macOS (Web Portal)",
+            ipAddressHash: "f420cb887a12b890",
+            createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+            isCurrent: false,
+          },
+        ];
+
+  const hasOtherSessions = displaySessions.filter((s) => !s.isCurrent).length > 0;
+
+  const handleRevokeSingle = (sessionId: string) => {
+    Alert.alert(
+      "Revoke Session?",
+      "The selected device will be immediately signed out and must log in again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Revoke",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await revokeSession.mutateAsync(sessionId);
+              try {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch {
+                // optional
+              }
+              refetch();
+            } catch {
+              Alert.alert("Error", "Could not revoke session.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRevokeAllOthers = () => {
+    Alert.alert(
+      "Sign Out All Other Devices?",
+      "This will revoke all active login tokens except for this current device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out Other Devices",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await revokeAllOthers.mutateAsync(displaySessions);
+              try {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch {
+                // optional
+              }
+              Alert.alert("Success", "All other active sessions have been signed out.");
+              refetch();
+            } catch {
+              Alert.alert("Error", "Could not sign out other devices.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={colors.brand} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.headerBox}>
+        <ThemedText variant="subhead" style={styles.headerSub}>
+          ACTIVE AUTHORISED SESSIONS
+        </ThemedText>
+        <ThemedText variant="caption" style={styles.headerDesc}>
+          These are devices and browsers that currently have an active refresh session to your Pav Dental health record.
+        </ThemedText>
+      </View>
+
+      <View style={styles.sessionList}>
+        {displaySessions.map((session) => (
+          <SessionItem
+            key={session.id}
+            session={session}
+            onRevoke={handleRevokeSingle}
+            isRevoking={revokeSession.isPending}
+          />
+        ))}
+      </View>
+
+      {hasOtherSessions && (
+        <View style={styles.actionWrap}>
+          <Button
+            title={revokeAllOthers.isPending ? "Signing out others..." : "Sign Out All Other Devices"}
+            variant="destructive"
+            onPress={handleRevokeAllOthers}
+            disabled={revokeAllOthers.isPending}
+          />
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  actionWrap: {
+    marginTop: spacing.md,
+  },
+  centerContainer: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+    justifyContent: "center",
+  },
+  container: {
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+  },
+  content: {
+    gap: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  headerBox: {
+    gap: spacing.xs,
+  },
+  headerDesc: {
+    color: colors.secondaryLabel,
+    lineHeight: 18,
+  },
+  headerSub: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  sessionList: {
+    gap: spacing.sm,
+  },
+});
+
