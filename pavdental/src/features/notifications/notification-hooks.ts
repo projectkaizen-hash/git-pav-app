@@ -4,7 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { useAccessToken } from "../auth/auth-store";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3002";
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 interface NotificationPreferences {
   pushEnabled: boolean;

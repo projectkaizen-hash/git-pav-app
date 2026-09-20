@@ -66,6 +66,7 @@ export async function fetchSlots(params: {
 export async function holdSlot(slotId: string): Promise<{ holdExpiresAt: number }> {
   const res = await authFetch("/api/booking/hold-slot", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slotId }),
   });
   if (!res.ok) {
@@ -90,6 +91,7 @@ export async function createAppointment(data: {
 }) {
   const res = await authFetch("/api/booking/appointments", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -112,6 +114,7 @@ export async function fetchMyAppointments() {
 export async function createPaymentIntent(appointmentId: string) {
   const res = await authFetch("/api/payments/create-intent", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ appointmentId }),
   });
   if (!res.ok) {
@@ -142,7 +145,10 @@ export async function checkVanCoverage(postcode: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ postcode }),
   });
-  if (!res.ok) throw new Error("Coverage check failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Coverage check failed");
+  }
   return res.json();
 }
 

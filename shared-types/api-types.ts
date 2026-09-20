@@ -14,11 +14,17 @@
 // ============================================================================
 
 export interface AuthUser {
+  id: string;
   sub: string;
   role: 'patient' | 'clinician' | 'operator' | 'admin';
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   emailVerified: boolean;
+  phoneVerified: boolean;
   isMfaEnabled: boolean;
+  mfaEnabled: boolean;
   profileId?: string;
 }
 

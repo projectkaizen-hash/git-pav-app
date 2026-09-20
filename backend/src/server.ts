@@ -114,7 +114,6 @@ app.get("/health/audit-integrity", requireAuth, requireRole("admin"), async (_re
 // ─── API Routes ───────────────────────────────────────────────────────────────
 // Public catalog endpoints (no auth required, no audit)
 app.use("/api/services", serviceRoutes);
-app.use("/api/clinicians", serviceRoutes);
 
 // Protected routes with audit logging
 app.use("/api/auth", authLimiter, auditMiddleware, authRoutes);

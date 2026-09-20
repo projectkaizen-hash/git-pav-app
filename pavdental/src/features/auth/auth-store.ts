@@ -7,14 +7,17 @@ export type UserRole = "patient" | "clinician" | "operator" | "admin";
 
 export interface AuthUser {
   id: string;
+  sub: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
-  firstName: string;
-  lastName: string;
   role: UserRole;
   emailVerified: boolean;
   phoneVerified: boolean;
+  isMfaEnabled: boolean;
   mfaEnabled: boolean;
+  profileId?: string;
 }
 
 interface AuthState {

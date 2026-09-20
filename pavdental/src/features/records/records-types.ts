@@ -1,20 +1,24 @@
 export type ToothCondition =
   | "healthy"
   | "decay"
-  | "filled"
-  | "missing"
+  | "filling"
   | "crown"
-  | "implant"
-  | "root_canal";
+  | "missing";
 
 export interface ToothRecord {
-  number: number; // 1 to 32 (FDI / Universal numbering)
-  name: string;   // e.g., "Upper Right Third Molar", "Upper Central Incisor"
-  arch: "upper" | "lower";
-  quadrant: "UR" | "UL" | "LL" | "LR";
-  condition: ToothCondition;
+  id: string;
+  patientId: string;
+  toothNumber: number; // 1 to 32 (FDI / Universal numbering)
+  quadrant: string;
+  surfaces: {
+    mesial?: ToothCondition;
+    distal?: ToothCondition;
+    occlusal?: ToothCondition;
+    buccal?: ToothCondition;
+    lingual?: ToothCondition;
+  };
   notes?: string;
-  treatmentDate?: string;
+  updatedAt: string;
 }
 
 export interface TreatmentEstimateItem {

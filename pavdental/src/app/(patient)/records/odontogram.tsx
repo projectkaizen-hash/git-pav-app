@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { ThemedText, Card, Badge, Button } from "@/components";
 import { colors, spacing } from "@/theme";
-import { mockOdontogram } from "@/features/records/records-mock-data";
 import { ToothRecord, ToothCondition } from "@/features/records/records-types";
 
 import { useOdontogram } from "@/features/hooks/use-dental-api";
@@ -11,38 +10,86 @@ import { useCurrentUser } from "@/features/auth/auth-store";
 
 export default function OdontogramScreen() {
   const user = useCurrentUser();
-  const userId = user?.id || "00000000-0000-0000-0000-000000000000";
-  const { data: apiTeeth } = useOdontogram(userId);
-  const teeth = (apiTeeth && apiTeeth.length > 0) ? (apiTeeth as ToothRecord[]) : mockOdontogram;
+  const userId = user?.id;
+  const { data: apiTeeth, isLoading, isError } = useOdontogram(userId || "");
+  const teeth = (apiTeeth && apiTeeth.length > 0) ? (apiTeeth as ToothRecord[]) : [];
 
-  const [selectedTooth, setSelectedTooth] = useState<ToothRecord>(teeth[0] || mockOdontogram[0]);
+  const [selectedTooth, setSelectedTooth] = useState<ToothRecord | null>(teeth[0] || null);
 
-  const upperTeeth = teeth.filter((t) => t.arch === "upper");
-  const lowerTeeth = teeth.filter((t) => t.arch === "lower");
+  // Group teeth by arch based on quadrant
+  const upperTeeth = teeth.filter((t) => t.quadrant.includes("U"));
+  const lowerTeeth = teeth.filter((t) => t.quadrant.includes("L"));
 
-  const getConditionBadgeVariant = (cond: ToothCondition): any => {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.brand} />
+          <ThemedText variant="caption" style={styles.loadingText}>
+            Loading dental records...
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (isError) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerContent}>
+          <ThemedText variant="largeTitle">📋</ThemedText>
+          <ThemedText variant="headline" style={styles.errorTitle}>
+            Unable to Load Dental Records
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.errorMessage}>
+            There was a problem loading your odontogram. Please try again later.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  // Show empty state
+  if (teeth.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerContent}>
+          <ThemedText variant="largeTitle">🦷</ThemedText>
+          <ThemedText variant="headline" style={styles.errorTitle}>
+            No Dental Records Yet
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.errorMessage}>
+            Your dental chart will be populated after your first examination with our clinicians.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  const getConditionBadgeVariant = (cond: string): any => {
     switch (cond) {
       case "healthy":
         return "success";
       case "decay":
         return "danger";
-      case "filled":
+      case "filling":
         return "default";
       case "crown":
-      case "implant":
         return "info";
       default:
         return "warning";
     }
   };
 
-  const getToothColor = (cond: ToothCondition): any => {
+  const getToothColor = (cond: string): any => {
     switch (cond) {
       case "healthy":
         return "#E2E8F0"; // Clean enamel
       case "decay":
         return colors.dangerSubtle;
-      case "filled":
+      case "filling":
         return colors.infoSubtle;
       case "crown":
         return "#FEF3C7"; // Gold/zirconia tint
@@ -92,19 +139,20 @@ export default function OdontogramScreen() {
           </ThemedText>
           <View style={styles.teethRow}>
             {upperTeeth.map((t) => {
-              const isSelected = selectedTooth.number === t.number;
+              const isSelected = selectedTooth?.toothNumber === t.toothNumber;
+              const condition = (t.surfaces?.mesial || t.surfaces?.occlusal || "healthy") as string;
               return (
                 <Pressable
-                  key={t.number}
+                  key={t.toothNumber}
                   onPress={() => setSelectedTooth(t)}
                   style={[
                     styles.toothPill,
-                    { backgroundColor: getToothColor(t.condition) },
+                    { backgroundColor: getToothColor(condition) },
                     isSelected && styles.toothPillSelected,
                   ]}
                 >
                   <ThemedText variant="caption" style={styles.toothNum}>
-                    {t.number}
+                    {t.toothNumber}
                   </ThemedText>
                 </Pressable>
               );
@@ -119,19 +167,20 @@ export default function OdontogramScreen() {
           </ThemedText>
           <View style={styles.teethRow}>
             {lowerTeeth.map((t) => {
-              const isSelected = selectedTooth.number === t.number;
+              const isSelected = selectedTooth?.toothNumber === t.toothNumber;
+              const condition = (t.surfaces?.mesial || t.surfaces?.occlusal || "healthy") as string;
               return (
                 <Pressable
-                  key={t.number}
+                  key={t.toothNumber}
                   onPress={() => setSelectedTooth(t)}
                   style={[
                     styles.toothPill,
-                    { backgroundColor: getToothColor(t.condition) },
+                    { backgroundColor: getToothColor(condition) },
                     isSelected && styles.toothPillSelected,
                   ]}
                 >
                   <ThemedText variant="caption" style={styles.toothNum}>
-                    {t.number}
+                    {t.toothNumber}
                   </ThemedText>
                 </Pressable>
               );
@@ -145,15 +194,15 @@ export default function OdontogramScreen() {
             <View style={styles.inspectorTop}>
               <View style={styles.toothTitleGroup}>
                 <ThemedText variant="headline" style={styles.toothName}>
-                  Tooth #{selectedTooth.number}
+                  Tooth #{selectedTooth.toothNumber}
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.toothSub}>
-                  {selectedTooth.name} ({selectedTooth.quadrant} Quadrant)
+                  {selectedTooth.quadrant} Quadrant
                 </ThemedText>
               </View>
               <Badge
-                label={selectedTooth.condition.toUpperCase()}
-                variant={getConditionBadgeVariant(selectedTooth.condition)}
+                label={(selectedTooth.surfaces?.mesial || "HEALTHY").toUpperCase()}
+                variant={getConditionBadgeVariant(selectedTooth.surfaces?.mesial || "healthy")}
               />
             </View>
 
@@ -166,7 +215,7 @@ export default function OdontogramScreen() {
               </ThemedText>
             </View>
 
-            {selectedTooth.condition === "decay" ? (
+            {(selectedTooth.surfaces?.mesial === "decay" || selectedTooth.surfaces?.occlusal === "decay") ? (
               <Button
                 title="Book Restorative Filling for This Tooth"
                 size="sm"
@@ -187,16 +236,35 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
   },
+  centerContent: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    gap: spacing.md,
+  },
+  container: {
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+  },
+  loadingText: {
+    color: colors.secondaryLabel,
+    marginTop: spacing.sm,
+  },
+  errorTitle: {
+    color: colors.label,
+    textAlign: "center",
+  },
+  errorMessage: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
+  },
   archLabel: {
     color: colors.secondaryLabel,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.5,
     textAlign: "center",
-  },
-  container: {
-    backgroundColor: colors.systemBackground,
-    flex: 1,
   },
   content: {
     gap: spacing.md,

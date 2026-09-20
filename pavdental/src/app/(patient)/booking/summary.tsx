@@ -52,11 +52,9 @@ export default function BookingSummaryScreen() {
       // 2. Create PaymentIntent on the server — amount is server-authoritative
       const intent = await createPaymentIntent(appt.id);
 
-      // 3. In mock/dev mode skip the sheet — backend will confirm via mock webhook
-      if (intent.isMock || !intent.clientSecret) {
-        setIsProcessing(false);
-        router.replace("/(patient)/booking/confirmed" as any);
-        return;
+      // 3. Validate that we have a real payment intent
+      if (!intent.clientSecret) {
+        throw new Error("Payment setup failed - no client secret received");
       }
 
       // 4. Initialise the PaymentSheet with the client secret
@@ -64,6 +62,8 @@ export default function BookingSummaryScreen() {
         merchantDisplayName: "Pav Dental",
         paymentIntentClientSecret: intent.clientSecret,
         returnURL: "pavdental://stripe-return",
+        // Allow customers to pay within your app
+        allowsDelayedPaymentMethods: true,
         // Appearance tweaks to match app theme
         appearance: {
           colors: {

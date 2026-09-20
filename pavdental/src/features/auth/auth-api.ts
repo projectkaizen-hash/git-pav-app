@@ -152,7 +152,7 @@ export const authApi = {
 
   forgotPassword: async (email: string) => {
     // Fire-and-forget — always 200 to prevent email enumeration
-    await fetch(`${BASE_URL}/api/auth/forgot-password`, {
+    await fetch(`${BASE_URL}/api/auth/password-reset/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -160,10 +160,10 @@ export const authApi = {
   },
 
   resetPassword: async (token: string, password: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/reset-password`, {
+    const res = await fetch(`${BASE_URL}/api/auth/password-reset/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, password }),
+      body: JSON.stringify({ token, newPassword: password }),
     });
     if (!res.ok) throw new Error("Reset link expired or invalid");
     return res.json();

@@ -34,14 +34,10 @@ router.post("/rooms", requireAuth, validateBody(createVideoRoomSchema), async (r
   try {
     const roomName = `pav-consult-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-    // If API key is dev placeholder, return instant mock room for smooth local testing
-    if (DAILY_API_KEY === "daily_dev_placeholder") {
-      return res.status(201).json({
-        roomName,
-        url: `https://pavdental.daily.co/${roomName}`,
-        token: `mock_daily_token_${req.user!.sub}`,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        isMock: true,
+    // Validate API key is configured
+    if (DAILY_API_KEY === "daily_dev_placeholder" || !DAILY_API_KEY) {
+      return res.status(503).json({ 
+        error: "Daily.co API is not configured. Please set DAILY_API_KEY environment variable." 
       });
     }
 
@@ -69,13 +65,8 @@ router.post("/rooms", requireAuth, validateBody(createVideoRoomSchema), async (r
     });
   } catch (err: any) {
     console.error("[VIDEO ROOM ERROR]", err.message);
-    const fallbackName = `pav-fallback-${Date.now()}`;
-    return res.status(201).json({
-      roomName: fallbackName,
-      url: `https://pavdental.daily.co/${fallbackName}`,
-      token: `fallback_token_${req.user!.sub}`,
-      expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      isMock: true,
+    return res.status(500).json({ 
+      error: "Failed to create video room. Please check Daily.co API configuration." 
     });
   }
 });

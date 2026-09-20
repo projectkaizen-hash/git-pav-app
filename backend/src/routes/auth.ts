@@ -585,6 +585,7 @@ function toAuthUser(
     email: user.email,
     firstName: firstName || undefined,
     lastName: lastName || undefined,
+    phone: user.phone || undefined,
     emailVerified: user.emailVerified,
     phoneVerified: user.phoneVerified ?? false,
     isMfaEnabled: user.mfaEnabled,

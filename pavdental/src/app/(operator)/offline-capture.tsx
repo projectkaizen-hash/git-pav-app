@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, Card, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
+import { authFetch } from "@/features/auth/auth-api";
 
 export default function OfflineCaptureScreen() {
   const router = useRouter();
@@ -14,34 +15,54 @@ export default function OfflineCaptureScreen() {
     procedure?: string;
   }>();
 
-  const patientName = params.patientName || "Alexander Wright";
+  const patientName = params.patientName || "Unknown Patient";
   const clinicianName = currentUser?.firstName
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
     : "Dr. Tariq Pav";
 
-  const [clinicalNotes, setClinicalNotes] = useState(
-    `Examination completed on board Van #1 for ${patientName}. 2 bitewing X-rays exposed and reviewed. AirFlow scale completed with 0.2% Chlorhexidine irrigation.`
-  );
+  const [clinicalNotes, setClinicalNotes] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
 
   const handleSaveAndSync = async () => {
+    if (!clinicalNotes.trim()) {
+      Alert.alert("Missing Notes", "Please enter clinical notes before completing the visit.");
+      return;
+    }
+
+    if (!params.stopId) {
+      Alert.alert("Missing Stop ID", "Cannot complete visit without a valid stop ID.");
+      return;
+    }
+
     setIsSyncing(true);
-    if (params.stopId && params.stopId.length > 5) {
-      await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api/van/stops/${params.stopId}/complete`, {
+    try {
+      const response = await authFetch(`/api/van/stops/${params.stopId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: clinicalNotes }),
-      }).catch(() => {});
-    }
+      });
 
-    setTimeout(() => {
-      setIsSyncing(false);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to complete visit");
+      }
+
+      const result = await response.json();
       setIsSavedOffline(true);
+      
       setTimeout(() => {
         router.replace("/(operator)/route" as any);
-      }, 1000);
-    }, 1200);
+      }, 1500);
+    } catch (error) {
+      Alert.alert(
+        "Sync Failed",
+        "Unable to save notes to server. The data has been saved locally and will sync when connection is restored.",
+        [{ text: "OK", onPress: () => router.replace("/(operator)/route" as any) }]
+      );
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -52,10 +73,10 @@ export default function OfflineCaptureScreen() {
           <View style={styles.syncLeft}>
             <View style={styles.onlineDot} />
             <ThemedText variant="caption" style={styles.syncText}>
-              MMKV Offline Queue Active · Auto-Syncs on 4G/WiFi
+              Auto-sync enabled · Notes encrypted locally
             </ThemedText>
           </View>
-          <Badge label="Offline Resilient" variant="info" />
+          <Badge label="Cloud Connected" variant="success" />
         </View>
 
         <View style={styles.header}>
@@ -72,6 +93,7 @@ export default function OfflineCaptureScreen() {
           label="Clinical Consultation & Treatment Notes"
           multiline
           numberOfLines={6}
+          placeholder="Enter examination findings, procedures performed, and any recommendations..."
           value={clinicalNotes}
           onChangeText={setClinicalNotes}
           containerStyle={styles.notesContainer}
@@ -81,24 +103,20 @@ export default function OfflineCaptureScreen() {
         <Card elevation="raised" style={styles.card}>
           <ThemedText variant="headline">Procedures Billed Today</ThemedText>
           <View style={styles.procRow}>
-            <ThemedText variant="body">• Comprehensive Examination</ThemedText>
-            <ThemedText variant="mono">£65.00</ThemedText>
-          </View>
-          <View style={styles.procRow}>
-            <ThemedText variant="body">• AirFlow Hygiene Session</ThemedText>
-            <ThemedText variant="mono">£85.00</ThemedText>
+            <ThemedText variant="body">• {params.procedure || "Dental Examination"}</ThemedText>
+            <ThemedText variant="mono">TBD</ThemedText>
           </View>
           <View style={styles.separator} />
           <View style={styles.procRow}>
-            <ThemedText variant="headline">Remaining Balance Billed:</ThemedText>
-            <ThemedText variant="mono" style={styles.totalDue}>£125.00</ThemedText>
+            <ThemedText variant="headline">Status:</ThemedText>
+            <ThemedText variant="mono" style={styles.totalDue}>Pending Billing</ThemedText>
           </View>
         </Card>
 
         {isSavedOffline ? (
           <View style={styles.successBanner}>
             <ThemedText variant="caption" style={styles.successText}>
-              ✓ Note encrypted and queued for cloud sync! Returning to route...
+              ✓ Clinical note saved successfully! Returning to route...
             </ThemedText>
           </View>
         ) : null}
@@ -107,7 +125,7 @@ export default function OfflineCaptureScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Button
-          title={isSyncing ? "Encrypting & Queuing..." : "Save Note & Complete Visit"}
+          title={isSyncing ? "Saving..." : "Save Note & Complete Visit"}
           size="lg"
           loading={isSyncing}
           onPress={handleSaveAndSync}

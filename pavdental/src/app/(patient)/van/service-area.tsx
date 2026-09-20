@@ -1,33 +1,41 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, Card, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
+import { checkVanCoverage } from "@/features/booking/booking-api";
 
 export default function VanServiceAreaScreen() {
   const router = useRouter();
-  const [postcode, setPostcode] = useState("SW1A 1AA");
-  const [checked, setChecked] = useState(true);
-  const [isCovered, setIsCovered] = useState(true);
+  const [postcode, setPostcode] = useState("");
+  const [checked, setChecked] = useState(false);
+  const [coverageResult, setCoverageResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleCheckCoverage = () => {
-    if (!postcode.trim()) return;
+  const handleCheckCoverage = async () => {
+    if (!postcode.trim()) {
+      Alert.alert("Missing Postcode", "Please enter a UK postcode to check coverage.");
+      return;
+    }
+    
     setLoading(true);
-    // Simulating PostGIS polygon radius validation
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const result = await checkVanCoverage(postcode);
+      setCoverageResult(result);
       setChecked(true);
-      const clean = postcode.toUpperCase().trim();
-      const coveredPrefixes = ["SW", "W", "EC", "WC", "SE", "NW", "E14"];
-      const match = coveredPrefixes.some((p) => clean.startsWith(p));
-      setIsCovered(match);
-    }, 600);
+    } catch (error) {
+      Alert.alert("Coverage Check Failed", "Unable to verify coverage. Please try again.");
+      setChecked(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProceed = () => {
     router.push("/(patient)/van/access-details" as any);
   };
+
+  const isCovered = coverageResult?.isCovered ?? false;
 
   return (
     <View style={styles.container}>
@@ -51,6 +59,7 @@ export default function VanServiceAreaScreen() {
             onChangeText={(val) => {
               setPostcode(val);
               setChecked(false);
+              setCoverageResult(null);
             }}
           />
           <Button
@@ -68,7 +77,7 @@ export default function VanServiceAreaScreen() {
               <View style={styles.badgeRow}>
                 <Badge label="Van Service Active" variant="success" />
                 <ThemedText variant="caption" style={styles.vanUnit}>
-                  🚐 Van Unit #1 (Central London Sector)
+                  🚐 {coverageResult?.assignedVan || "Pav Dental Van #1"} ({coverageResult?.activeSector || "Central London Sector"})
                 </ThemedText>
               </View>
 
@@ -77,7 +86,7 @@ export default function VanServiceAreaScreen() {
               </ThemedText>
 
               <ThemedText variant="subhead" style={styles.coveredBody}>
-                Our dental van can visit your private driveway, curb parking, or designated corporate visitor bay.
+                {coverageResult?.message || "Our dental van can visit your private driveway, curb parking, or designated corporate visitor bay."}
               </ThemedText>
 
               <View style={styles.features}>
@@ -98,7 +107,7 @@ export default function VanServiceAreaScreen() {
                 Outside Van Territory
               </ThemedText>
               <ThemedText variant="caption" style={styles.outBody}>
-                Our mobile surgery van does not currently cover {postcode.toUpperCase()}. You can still book an instant Video Consultation or visit our central clinic practice.
+                {coverageResult?.message || `Our mobile surgery van does not currently cover ${postcode.toUpperCase()}. You can still book an instant Video Consultation or visit our central clinic practice.`}
               </ThemedText>
               <Button
                 title="View Central Clinics Instead"
