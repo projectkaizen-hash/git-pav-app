@@ -329,6 +329,31 @@ async function main() {
     });
   }
 
+  // C2. Operator Profile & Van Assignment
+  let opProfile = await prisma.operatorProfile.findUnique({ where: { userId: vanUser.id } });
+  if (!opProfile) {
+    opProfile = await prisma.operatorProfile.create({
+      data: {
+        userId: vanUser.id,
+        fullName: "Pav Dental Van Operator",
+        phone: "+447700900003",
+      },
+    });
+  }
+
+  const existingAssignment = await prisma.vanOperatorAssignment.findFirst({
+    where: { operatorId: opProfile.id, vanId: van1.id },
+  });
+  if (!existingAssignment) {
+    await prisma.vanOperatorAssignment.create({
+      data: {
+        operatorId: opProfile.id,
+        vanId: van1.id,
+        startsAt: new Date(Date.now() - 30 * 24 * 3600 * 1000), // 30 days ago
+      },
+    });
+  }
+
   // D. Administrator Account
   let adminUser = await prisma.user.findUnique({ where: { email: "admin@pavdental.com" } });
   if (!adminUser) {

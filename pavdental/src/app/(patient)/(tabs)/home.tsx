@@ -1,13 +1,21 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge } from "@/components";
+import { useQuery } from "@tanstack/react-query";
+import { ThemedText, Card, Badge, Button } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
+import { fetchActiveVanRequest } from "@/features/van/van-api";
 
 export default function PatientHomeScreen() {
   const router = useRouter();
   const user = useCurrentUser();
+
+  const { data: activeVanRequest } = useQuery({
+    queryKey: ["active-van-request"],
+    queryFn: fetchActiveVanRequest,
+    refetchInterval: 10000,
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -20,6 +28,41 @@ export default function PatientHomeScreen() {
           How would you like to receive care today?
         </ThemedText>
       </View>
+
+      {/* Active Van Dispatch Tracker Banner */}
+      {activeVanRequest && (
+        <Card elevation="raised" style={styles.activeDispatchCard}>
+          <View style={styles.activeDispatchHeader}>
+            <View style={styles.activeDispatchPulseRow}>
+              <View style={styles.activeGreenDot} />
+              <ThemedText variant="headline" style={styles.activeDispatchTitle}>
+                Active Van Dispatch
+              </ThemedText>
+            </View>
+            <Badge
+              label={
+                activeVanRequest.status === "pending"
+                  ? "⏳ Awaiting Review"
+                  : activeVanRequest.phase.replace("_", " ").toUpperCase()
+              }
+              variant={activeVanRequest.status === "accepted" ? "success" : "warning"}
+            />
+          </View>
+          <ThemedText variant="caption" style={styles.activeDispatchSub}>
+            Destination: {activeVanRequest.accessDetails?.addressLine1} · {activeVanRequest.service?.name}
+          </ThemedText>
+          <Button
+            title="Open Live Van Map & ETA Tracker ›"
+            size="sm"
+            onPress={() =>
+              router.push({
+                pathname: "/(patient)/van/live-track" as any,
+                params: { requestId: activeVanRequest.id },
+              })
+            }
+          />
+        </Card>
+      )}
 
       {/* 3 Channels Quick-Book */}
       <View style={styles.section}>
@@ -123,6 +166,36 @@ const styles = StyleSheet.create({
   },
   channelGrid: {
     gap: spacing.sm,
+  },
+  activeDispatchCard: {
+    backgroundColor: colors.brandSubtle,
+    borderColor: colors.brand,
+    borderWidth: 1.5,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  activeDispatchHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  activeDispatchPulseRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  activeDispatchSub: {
+    color: colors.secondaryLabel,
+    marginVertical: 2,
+  },
+  activeDispatchTitle: {
+    color: colors.brand,
+  },
+  activeGreenDot: {
+    backgroundColor: colors.success,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
   },
   channelIconBox: {
     alignItems: "center",

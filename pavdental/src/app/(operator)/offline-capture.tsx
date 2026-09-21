@@ -37,20 +37,21 @@ export default function OfflineCaptureScreen() {
 
     setIsSyncing(true);
     try {
-      const response = await authFetch(`/api/van/stops/${params.stopId}/complete`, {
+      // Try live dispatch phase API first, fall back to legacy appointment complete
+      const phaseRes = await authFetch(`/api/van/requests/${params.stopId}/phase`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: clinicalNotes }),
+        body: JSON.stringify({ phase: "completed", notes: clinicalNotes }),
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "Failed to complete visit");
+      if (!phaseRes.ok) {
+        // Fall back to legacy /api/van/stops/:id/complete
+        await authFetch(`/api/van/stops/${params.stopId}/complete`, {
+          method: "POST",
+          body: JSON.stringify({ notes: clinicalNotes }),
+        });
       }
 
-      const result = await response.json();
       setIsSavedOffline(true);
-      
       setTimeout(() => {
         router.replace("/(operator)/route" as any);
       }, 1500);

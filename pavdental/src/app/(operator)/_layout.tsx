@@ -18,9 +18,11 @@ export default function OperatorLayout() {
         headerBackTitle: "Back",
       }}
     >
-      <Stack.Screen name="route" options={{ title: "Today's Van Route" }} />
+      <Stack.Screen name="shift" options={{ title: "Van Dispatch Console" }} />
+      <Stack.Screen name="incoming" options={{ title: "Incoming Requests" }} />
+      <Stack.Screen name="route" options={{ title: "Live Van Queue" }} />
       <Stack.Screen name="check-in" options={{ title: "Patient Arrival Check-In" }} />
-      <Stack.Screen name="offline-capture" options={{ title: "Clinical Note & Offline Sync" }} />
+      <Stack.Screen name="offline-capture" options={{ title: "Clinical Note & Complete Stop" }} />
     </Stack>
   );
 }

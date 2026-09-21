@@ -1,102 +1,156 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import React from "react";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Button } from "@/components";
+import { useMutation } from "@tanstack/react-query";
+import { ThemedText, Card, Button, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
+import { createVanRequest } from "@/features/van/van-api";
+import { useVanStore } from "@/features/van/van-store";
 
 export default function VanConfirmScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const store = useVanStore();
 
-  const handleConfirmAndPay = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.replace("/(patient)/van/live-track" as any);
-    }, 1200);
+  const accessPayload = store.getAccessDetailsPayload();
+  const etaLabel = store.availability?.etaLabel || "~20–30 min";
+
+  const requestMutation = useMutation({
+    mutationFn: () =>
+      createVanRequest({
+        serviceId: store.serviceId || "srv_checkup",
+        accessDetails: accessPayload,
+      }),
+    onSuccess: (request) => {
+      store.setActiveRequestId(request.id);
+      router.replace({
+        pathname: "/(patient)/van/live-track" as any,
+        params: { requestId: request.id },
+      });
+    },
+    onError: (err: any) => {
+      Alert.alert(
+        "Request Failed",
+        err.message || "Could not dispatch van. Check that a van is online in your area."
+      );
+    },
+  });
+
+  const fullAddress = [
+    accessPayload.addressLine1,
+    accessPayload.addressLine2,
+    accessPayload.city,
+    accessPayload.postcode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const parkingLabelMap: Record<string, string> = {
+    private_driveway: "🏠 Private Driveway",
+    permit_bay: "🛣 Kerbside Permit Bay",
+    visitor: "🏢 Corporate / Visitor Parking",
+    other: "🅿️ Safe Loading / Kerb Area",
   };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Banner */}
         <View style={styles.holdBanner}>
           <ThemedText variant="caption" style={styles.holdText}>
-            ⏱ 10-Minute Dispatch Hold Active
+            ⚡ Live Dispatch · Operator Accepts Within 4 Minutes
           </ThemedText>
         </View>
 
-        {/* Van Visit Review */}
+        {/* Visit Breakdown */}
         <Card elevation="raised" style={styles.card}>
-          <ThemedText variant="headline" style={styles.title}>
-            Mobile Van Visit Breakdown
-          </ThemedText>
+          <View style={styles.cardHeaderRow}>
+            <ThemedText variant="headline" style={styles.title}>
+              Mobile Van Visit Summary
+            </ThemedText>
+            <Badge label="Live Dispatch" variant="info" />
+          </View>
 
           <View style={styles.item}>
             <ThemedText variant="caption" style={styles.label}>
               Destination:
             </ThemedText>
             <ThemedText variant="headline" style={styles.val}>
-              10 Downing Street, SW1A 2AA
+              {fullAddress}
             </ThemedText>
             <ThemedText variant="caption" style={styles.subVal}>
-              Private Driveway · Gate Code: #4812
+              Parking: {parkingLabelMap[accessPayload.parkingType] || "Private Driveway"}
+              {accessPayload.gateCode ? ` · Gate: ${accessPayload.gateCode}` : ""}
             </ThemedText>
           </View>
 
           <View style={styles.item}>
             <ThemedText variant="caption" style={styles.label}>
-              Arrival Window:
+              Estimated Arrival Window:
             </ThemedText>
             <ThemedText variant="headline" style={styles.brandVal}>
-              Tue 23 Sep (09:30 – 11:00 AM)
+              {etaLabel} from operator accept
             </ThemedText>
           </View>
 
           <View style={styles.item}>
             <ThemedText variant="caption" style={styles.label}>
-              Assigned Vehicle:
+              Clinical Procedure:
             </ThemedText>
             <ThemedText variant="body" style={styles.val}>
-              🚐 Pav Dental Van #1 (Mercedes Sprinter)
+              🦷 {store.serviceName || "Routine Dental Examination"} ({store.serviceDurationMinutes || 45} min clinical block)
+            </ThemedText>
+          </View>
+
+          <View style={styles.item}>
+            <ThemedText variant="caption" style={styles.label}>
+              Vehicle & Unit:
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.subVal}>
+              🚐 Mercedes Sprinter Mobile Surgical Suite (Low-dose X-Ray on board)
             </ThemedText>
           </View>
         </Card>
 
-        {/* Financials */}
+        {/* Financials & Transparent Policy */}
         <Card elevation="raised" style={styles.card}>
           <ThemedText variant="headline" style={styles.title}>
-            Deposit & Payment
+            Pricing & Payment Terms
           </ThemedText>
 
           <View style={styles.rowBetween}>
             <ThemedText variant="body" style={styles.label}>
-              Clinical Call-Out & Treatment Fee:
+              Clinical Treatment & Call-Out:
             </ThemedText>
-            <ThemedText variant="mono">£85.00</ThemedText>
+            <ThemedText variant="mono">
+              £{((store.servicePricePence || 8500) / 100).toFixed(2)}
+            </ThemedText>
           </View>
 
           <View style={styles.rowBetween}>
-            <ThemedText variant="headline">
-              Deposit Due Today (Stripe):
-            </ThemedText>
-            <ThemedText variant="mono" style={styles.depositVal}>
+            <ThemedText variant="headline">Deposit Due on Accept:</ThemedText>
+            <ThemedText variant="title" style={styles.depositPrice}>
               £25.00
             </ThemedText>
           </View>
 
-          <ThemedText variant="caption" style={styles.policyNote}>
-            🛡 Free cancellation up to 24h prior. Live vehicle GPS tracking becomes active on your appointment morning.
-          </ThemedText>
+          <View style={styles.policyBox}>
+            <ThemedText variant="caption" style={styles.policyNote}>
+              ✓ No charge right now. You will be prompted to confirm your deposit only after the mobile clinical team accepts your request.
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.policyNote}>
+              ✓ If the request times out or is declined, you pay nothing.
+            </ThemedText>
+          </View>
         </Card>
       </ScrollView>
 
-      {/* Footer */}
+      {/* Action Footer */}
       <View style={styles.footer}>
         <Button
-          title={loading ? "Securing Van Dispatch..." : "Pay £25.00 Deposit & Confirm"}
+          title={requestMutation.isPending ? "Dispatching..." : "Confirm & Request Van Visit ›"}
           size="lg"
-          loading={loading}
-          onPress={handleConfirmAndPay}
+          loading={requestMutation.isPending}
+          onPress={() => requestMutation.mutate()}
         />
       </View>
     </View>
@@ -106,11 +160,18 @@ export default function VanConfirmScreen() {
 const styles = StyleSheet.create({
   brandVal: {
     color: colors.brand,
+    fontWeight: "700",
+    marginTop: 2,
   },
   card: {
     backgroundColor: colors.systemBackground,
     gap: spacing.sm,
     padding: spacing.md,
+  },
+  cardHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   container: {
     backgroundColor: colors.systemBackground,
@@ -121,9 +182,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  depositVal: {
+  depositPrice: {
     color: colors.brand,
-    fontSize: 18,
     fontWeight: "700",
   },
   footer: {
@@ -134,13 +194,13 @@ const styles = StyleSheet.create({
   },
   holdBanner: {
     alignItems: "center",
-    backgroundColor: colors.warningSubtle,
+    backgroundColor: colors.brandSubtle,
     borderRadius: 8,
     padding: spacing.sm,
   },
   holdText: {
-    color: colors.warning,
-    fontWeight: "700",
+    color: colors.brand,
+    fontWeight: "600",
   },
   item: {
     gap: 2,
@@ -148,10 +208,16 @@ const styles = StyleSheet.create({
   label: {
     color: colors.secondaryLabel,
   },
+  policyBox: {
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 8,
+    gap: 4,
+    marginTop: spacing.xs,
+    padding: spacing.sm,
+  },
   policyNote: {
     color: colors.secondaryLabel,
     lineHeight: 16,
-    marginTop: spacing.xxs,
   },
   rowBetween: {
     alignItems: "center",
@@ -168,4 +234,3 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
 });
-

@@ -5,9 +5,11 @@ import { pseudonymiseIp } from "./audit-security";
 // Interval settings
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
 const NOTIFICATION_DISPATCH_INTERVAL_MS = 60 * 1000; // 1 minute
+const VAN_REQUEST_EXPIRY_INTERVAL_MS = 30 * 1000; // 30 seconds
 
 let slotExpiryTimer: NodeJS.Timeout | null = null;
 let notificationDispatchTimer: NodeJS.Timeout | null = null;
+let vanRequestExpiryTimer: NodeJS.Timeout | null = null;
 
 /**
  * Sweeps expired draft_hold appointments and transitions them to cancelled.
@@ -229,14 +231,35 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
 }
 
 /**
+ * Sweeps pending van service requests that have passed their expiresAt TTL and sets them to expired.
+ */
+export async function processExpiredVanRequests(): Promise<{ expiredCount: number }> {
+  const now = new Date();
+  try {
+    const result = await prisma.vanServiceRequest.updateMany({
+      where: {
+        status: "pending",
+        expiresAt: { lte: now },
+      },
+      data: { status: "expired" },
+    });
+    return { expiredCount: result.count };
+  } catch (error) {
+    console.error("[BACKGROUND JOBS] Error expiring van requests:", error);
+    return { expiredCount: 0 };
+  }
+}
+
+/**
  * Starts all background job workers.
  */
 export function startBackgroundJobs(): void {
-  console.log("[BACKGROUND JOBS] Starting background workers (slot expiry & notification dispatcher)");
+  console.log("[BACKGROUND JOBS] Starting background workers (slot expiry, notification dispatcher & van request expiry)");
 
   // Run immediately on boot
   processExpiredSlotHolds().catch(() => {});
   processDueScheduledNotifications().catch(() => {});
+  processExpiredVanRequests().catch(() => {});
 
   // Recurring timers
   slotExpiryTimer = setInterval(() => {
@@ -246,6 +269,10 @@ export function startBackgroundJobs(): void {
   notificationDispatchTimer = setInterval(() => {
     processDueScheduledNotifications().catch(() => {});
   }, NOTIFICATION_DISPATCH_INTERVAL_MS);
+
+  vanRequestExpiryTimer = setInterval(() => {
+    processExpiredVanRequests().catch(() => {});
+  }, VAN_REQUEST_EXPIRY_INTERVAL_MS);
 }
 
 /**
@@ -259,6 +286,10 @@ export function stopBackgroundJobs(): void {
   if (notificationDispatchTimer) {
     clearInterval(notificationDispatchTimer);
     notificationDispatchTimer = null;
+  }
+  if (vanRequestExpiryTimer) {
+    clearInterval(vanRequestExpiryTimer);
+    vanRequestExpiryTimer = null;
   }
   console.log("[BACKGROUND JOBS] Stopped background workers");
 }

@@ -47,6 +47,32 @@ enum ToothCondition {
   root_canal
 }
 
+enum VanShiftStatus {
+  offline
+  online
+  paused
+}
+
+enum VanRequestStatus {
+  pending
+  accepted
+  declined
+  expired
+  cancelled
+  in_progress
+  completed
+  no_show
+}
+
+enum VanStopPhase {
+  queued
+  en_route
+  on_site
+  in_treatment
+  completed
+  cancelled
+}
+
 model User {
   id               String            @id @default(uuid()) @db.Uuid
   email            String            @unique
@@ -70,6 +96,7 @@ model User {
   mfaVerifications        MfaVerification[]
   patientProfile          PatientProfile?
   clinicianProfile        ClinicianProfile?
+  operatorProfile         OperatorProfile?
   auditLogs               AuditLog[]
   pushTokens              PushToken[]
   notificationPreferences NotificationPreference?
@@ -184,6 +211,7 @@ model PatientProfile {
   treatmentPlans        TreatmentPlan[]
   documents             DocumentVault[]
   consentRecords        ConsentRecord[]
+  vanRequests           VanServiceRequest[]
 
   @@index([userId])
   @@index([postcode])
@@ -240,6 +268,9 @@ model Van {
 
   appointments      Appointment[]
   servicePolygons   VanServicePolygon[]
+  shifts            VanShift[]
+  vanRequests       VanServiceRequest[]
+  assignments       VanOperatorAssignment[]
 
   @@index([isActive])
   @@index([registrationPlate])
@@ -275,6 +306,7 @@ model Service {
   isActive             Boolean         @default(true) @map("is_active")
 
   appointments         Appointment[]
+  vanRequests          VanServiceRequest[]
 
   @@map("services")
 }
@@ -306,6 +338,7 @@ model Appointment {
   clinic           Clinic?           @relation(fields: [clinicId], references: [id])
   van              Van?              @relation(fields: [vanId], references: [id])
   prescriptions    Prescription[]
+  vanServiceRequest VanServiceRequest?
 
   @@index([patientId])
   @@index([clinicianId])
@@ -519,4 +552,112 @@ model SavedPaymentMethod {
 
   @@index([userId])
   @@map("saved_payment_methods")
+}
+
+// ─── Van Dispatch Models ───────────────────────────────────────────────────────
+
+model OperatorProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  fullName  String   @map("full_name") @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  photoUrl  String?  @map("photo_url") @db.VarChar(500)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments VanOperatorAssignment[]
+  shifts      VanShift[]
+
+  @@map("operator_profiles")
+}
+
+model VanOperatorAssignment {
+  id         String    @id @default(uuid()) @db.Uuid
+  operatorId String    @map("operator_id") @db.Uuid
+  vanId      String    @map("van_id") @db.Uuid
+  startsAt   DateTime  @map("starts_at")
+  endsAt     DateTime? @map("ends_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  operator OperatorProfile @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  van      Van             @relation(fields: [vanId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, startsAt])
+  @@index([vanId, startsAt])
+  @@map("van_operator_assignments")
+}
+
+/// One row per shift-on session
+model VanShift {
+  id             String         @id @default(uuid()) @db.Uuid
+  vanId          String         @map("van_id") @db.Uuid
+  operatorId     String         @map("operator_id") @db.Uuid
+  status         VanShiftStatus @default(online)
+  startedAt      DateTime       @default(now()) @map("started_at")
+  endedAt        DateTime?      @map("ended_at")
+  lastLat        Float?         @map("last_lat")
+  lastLng        Float?         @map("last_lng")
+  lastLocationAt DateTime?      @map("last_location_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  van       Van               @relation(fields: [vanId], references: [id])
+  operator  OperatorProfile   @relation(fields: [operatorId], references: [id])
+  requests  VanServiceRequest[]
+  locations VanLocationPing[]
+
+  @@index([vanId, status])
+  @@index([operatorId, status])
+  @@map("van_shifts")
+}
+
+model VanLocationPing {
+  id         String   @id @default(uuid()) @db.Uuid
+  shiftId    String   @map("shift_id") @db.Uuid
+  lat        Float
+  lng        Float
+  accuracyM  Float?   @map("accuracy_m")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  shift VanShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@index([shiftId, recordedAt])
+  @@map("van_location_pings")
+}
+
+/// Patient request + live queue item
+model VanServiceRequest {
+  id                 String           @id @default(uuid()) @db.Uuid
+  shiftId            String           @map("shift_id") @db.Uuid
+  vanId              String           @map("van_id") @db.Uuid
+  patientId          String           @map("patient_id") @db.Uuid
+  serviceId          String           @map("service_id")
+  status             VanRequestStatus @default(pending)
+  phase              VanStopPhase     @default(queued)
+  queuePosition      Int?             @map("queue_position")
+  patientLat         Float            @map("patient_lat")
+  patientLng         Float            @map("patient_lng")
+  accessDetails      Json             @map("access_details")
+  requestedAt        DateTime         @default(now()) @map("requested_at")
+  expiresAt          DateTime         @map("expires_at")
+  acceptedAt         DateTime?        @map("accepted_at")
+  treatmentStartedAt DateTime?        @map("treatment_started_at")
+  completedAt        DateTime?        @map("completed_at")
+  etaSecondsSnapshot Int?             @map("eta_seconds_snapshot")
+  appointmentId      String?          @unique @map("appointment_id") @db.Uuid
+  notes              String?          @db.Text
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  shift       VanShift       @relation(fields: [shiftId], references: [id])
+  van         Van            @relation(fields: [vanId], references: [id])
+  patient     PatientProfile @relation(fields: [patientId], references: [id])
+  service     Service        @relation(fields: [serviceId], references: [id])
+  appointment Appointment?   @relation(fields: [appointmentId], references: [id])
+
+  @@index([shiftId, status])
+  @@index([vanId, status])
+  @@index([patientId, status])
+  @@map("van_service_requests")
 }
