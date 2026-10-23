@@ -21,7 +21,7 @@ export default function DeleteAccountScreen() {
 
     Alert.alert(
       "Final Confirmation",
-      "Are you absolutely certain? This will immediately revoke your account access and sign you out.",
+      "Are you sure? You'll be signed out straight away and won't be able to sign in again.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -29,8 +29,8 @@ export default function DeleteAccountScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteAccount.mutateAsync({
-                reason: reason || "User requested account closure",
+              const result = await deleteAccount.mutateAsync({
+                reason: reason.trim() || undefined,
                 confirmPassword: password,
               });
 
@@ -40,7 +40,7 @@ export default function DeleteAccountScreen() {
                 // optional
               }
 
-              Alert.alert("Account Closed", "Your account has been deleted. You have been signed out.", [
+              Alert.alert("Account Closed", result.message ?? "Your account is closed and you have been signed out.", [
                 {
                   text: "OK",
                   onPress: () => {
@@ -49,6 +49,17 @@ export default function DeleteAccountScreen() {
                 },
               ]);
             } catch (err: any) {
+              if (err?.code === "UPCOMING_BOOKINGS") {
+                Alert.alert(
+                  "Cancel your appointments first",
+                  "You have upcoming appointments. Please cancel them before closing your account, as you won't be able to sign in afterwards. The usual deposit refund rules apply.",
+                  [
+                    { text: "Not now", style: "cancel" },
+                    { text: "View appointments", onPress: () => router.replace("/(patient)/(tabs)/appointments") },
+                  ]
+                );
+                return;
+              }
               Alert.alert("Error", err?.message || "Failed to delete account. Please try again.");
             }
           },
@@ -67,7 +78,7 @@ export default function DeleteAccountScreen() {
             Irreversible Account Closure
           </ThemedText>
           <ThemedText variant="caption" style={styles.warningSub}>
-            Deleting your account will immediately cancel any pending appointments, disable portal access, and revoke mobile authentication.
+            You'll be signed out on every device straight away. Please cancel any upcoming appointments first. We then erase your personal details within one month.
           </ThemedText>
         </View>
       </View>
@@ -82,7 +93,7 @@ export default function DeleteAccountScreen() {
             Under General Dental Council (GDC) standards and NHS/Private Dental legislation, clinical records (including radiographs, odontograms, prescription notes, and diagnostic images) must be securely retained for 11 years (or until age 25 for pediatric patients) from the date of last treatment.
           </ThemedText>
           <ThemedText variant="caption" style={styles.retentionText}>
-            Your digital login and marketing permissions will be terminated immediately. Clinical audit logs remain sealed.
+            Your login, contact details, saved cards, notifications and rewards are erased. Your dental records are kept, securely, until the retention period ends.
           </ThemedText>
         </Card>
       </View>

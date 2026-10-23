@@ -3,19 +3,23 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/middleware";
 import { pavApi } from "@/lib/pav-api.server";
 
-// Passes the dashboard's opening hours and rota screens through to the app
-// backend's /api/admin endpoints, as the signed-in staff member. Only the
+// Passes the dashboard's opening hours, rota and erasure screens through to
+// the app backend's /api/admin endpoints, as the signed-in staff member. Only the
 // routes below are forwarded; anything else is a 404.
 const SEG = "[A-Za-z0-9_-]{1,64}";
 const DATE = "\\d{4}-\\d{2}-\\d{2}";
 const ALLOWED: Record<string, RegExp[]> = {
-  GET: [/^clinics$/, /^clinicians$/, new RegExp(`^clinicians/${SEG}/overrides$`)],
+  GET: [/^clinics$/, /^clinicians$/, new RegExp(`^clinicians/${SEG}/overrides$`), /^erasure-requests$/],
   PUT: [
     new RegExp(`^clinics/${SEG}/hours$`),
     new RegExp(`^clinicians/${SEG}/rota$`),
     new RegExp(`^clinicians/${SEG}/overrides/${DATE}$`),
   ],
-  POST: [new RegExp(`^clinics/${SEG}/closures$`)],
+  POST: [
+    new RegExp(`^clinics/${SEG}/closures$`),
+    new RegExp(`^erasure-requests/${SEG}/complete$`),
+    new RegExp(`^erasure-requests/${SEG}/reject$`),
+  ],
   DELETE: [new RegExp(`^clinics/${SEG}/closures/${DATE}$`), new RegExp(`^clinicians/${SEG}/overrides/${DATE}$`)],
 };
 

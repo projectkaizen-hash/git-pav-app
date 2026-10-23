@@ -29,6 +29,7 @@ import {
   User,
   UserRound,
   Users,
+  UserX,
 } from "lucide-react";
 
 export type NavBadge = "new" | "soon";
@@ -97,6 +98,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Patients",
         url: "/dashboard/patients",
         icon: Users,
+      },
+      {
+        id: "pav-erasure",
+        title: "Erasure Requests",
+        url: "/dashboard/erasure-requests",
+        icon: UserX,
       },
       {
         id: "pav-users",

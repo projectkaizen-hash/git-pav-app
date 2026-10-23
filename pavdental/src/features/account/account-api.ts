@@ -43,14 +43,15 @@ export const accountApi = {
   deleteAccount: async (
     reason?: string,
     confirmPassword?: string
-  ): Promise<{ success: boolean }> => {
+  ): Promise<{ success: boolean; message?: string; dueBy?: string }> => {
     const res = await authFetch("/api/auth/account", {
       method: "DELETE",
       body: JSON.stringify({ reason, confirmPassword }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Failed to soft-delete account");
+      // code is "UPCOMING_BOOKINGS" when appointments must be cancelled first.
+      throw Object.assign(new Error(err.error || "Failed to close the account"), { code: err.code as string | undefined });
     }
     return res.json();
   },
