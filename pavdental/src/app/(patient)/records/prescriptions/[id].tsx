@@ -167,9 +167,14 @@ export default function PrescriptionDetailScreen() {
             title={openingPdf ? "Opening…" : "Open prescription PDF"}
             size="lg"
             loading={openingPdf}
-            accessibilityLabel="Open the signed prescription PDF"
+            accessibilityLabel="Open your prescription PDF"
             onPress={() => openPdf(rx.id)}
           />
+        ) : null}
+        {rx.hasPdf ? (
+          <ThemedText variant="caption" style={styles.muted}>
+            This copy is for your records. To collect your medicine, take the paper copy your dentist signed to the pharmacy.
+          </ThemedText>
         ) : null}
 
         <Button

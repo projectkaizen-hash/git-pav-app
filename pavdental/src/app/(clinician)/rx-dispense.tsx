@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, ActivityIndicator, Linking } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ThemedText, Input, Button, Card, ErrorState, ToggleSwitch } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
-import { authFetch } from "@/features/auth/auth-api";
+import { apiUrl, authFetch } from "@/features/auth/auth-api";
 import { summariseMedicalHistory, describeList } from "@/features/clinical/medical-summary";
 
 interface ClinicalContext {
@@ -93,9 +93,27 @@ export default function ClinicianRxDispenseScreen() {
         throw new Error(err.error || "The prescription wasn't saved");
       }
       const issued = await res.json().catch(() => ({}));
-      const where = "The signed PDF is in the patient's app under Prescriptions.";
-      Alert.alert("Prescription issued", issued.reference ? `Reference ${issued.reference}. ${where}` : where);
-      router.replace("/(clinician)/schedule");
+      // Decisions log #4: a pharmacy needs the prescriber's own signature, so
+      // the PDF is printed and signed in ink before it goes to the patient.
+      const next = "Print the PDF and sign it in ink before giving it to the patient. A copy is in their app for their records.";
+      Alert.alert("Prescription issued", issued.reference ? `Reference ${issued.reference}. ${next}` : next, [
+        { text: "Done", style: "cancel", onPress: () => router.replace("/(clinician)/schedule") },
+        {
+          text: "Open PDF to print",
+          onPress: async () => {
+            try {
+              const link = await authFetch(`/api/prescriptions/${issued.id}/pdf-link`, { method: "POST" });
+              const body = await link.json().catch(() => ({}));
+              if (!link.ok) throw new Error(body.error || "Couldn't open the prescription");
+              await Linking.openURL(apiUrl(body.path));
+            } catch (err: any) {
+              Alert.alert("Couldn't open the prescription", err?.message || "Open it from the patient's prescriptions instead.");
+            } finally {
+              router.replace("/(clinician)/schedule");
+            }
+          },
+        },
+      ]);
     } catch (err: any) {
       Alert.alert("Prescription not saved", err?.message || "The prescription wasn't saved");
     } finally {
