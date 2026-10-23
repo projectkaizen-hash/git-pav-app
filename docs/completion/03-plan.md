@@ -2,6 +2,8 @@
 
 **Status: draft for your approval. No code has been changed.**
 
+Linear: project [Pav Dental: completion](https://linear.app/pavdental/project/pav-dental-completion-dd6261f921c6) in team ZIS. CS-NN maps to issue ZIS-(NN+4), for example CS-01 is ZIS-5 and CS-47 is ZIS-51.
+
 The plan is in six tiers, in this order:
 1. Blockers and security
 2. Data integrity and payments
