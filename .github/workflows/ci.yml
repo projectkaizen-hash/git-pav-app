@@ -68,8 +68,22 @@ jobs:
 
       - name: Apply migrations
         run: |
-          echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin
+          echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin --url "$DATABASE_URL"
           npx prisma migrate deploy
+
+      # Fails if schema.prisma and the migration history disagree, so a
+      # `db push`-only change can never land again (see docs/completion/migrations.md).
+      - name: Migration drift check
+        env:
+          SHADOW_DATABASE_URL: postgresql://pavdental:pavdental_ci@localhost:5432/pav_shadow?schema=public
+        run: |
+          echo "CREATE DATABASE pav_shadow;" | npx prisma db execute --stdin --url "$DATABASE_URL"
+          echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin --url "$SHADOW_DATABASE_URL"
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
+            --exit-code
 
       - name: Seed baseline data
         run: npm run prisma:seed
@@ -77,8 +91,23 @@ jobs:
       - name: Unit tests (jest)
         run: PORT=3000 npx jest
 
-      - name: E2E suite (mock Stripe)
+      # postcodes.io and Daily are stubbed so the suite never depends on a
+      # third-party network call (test/stubs/external-fetch.mjs).
+      - name: E2E suite (mock Stripe, stubbed postcodes and Daily)
+        env:
+          NODE_OPTIONS: --import ./test/stubs/external-fetch.mjs
+          DAILY_API_KEY: stub
         run: npm test
+
+  docker:
+    name: Backend — Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --tag pavdental-api:ci ./backend
 
   mobile:
     name: Mobile — typecheck + tests

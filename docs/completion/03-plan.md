@@ -41,10 +41,11 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 
 ### CS-02 CI green and guarded
 - **Closes:** P0-2, CI-1, GE-1, PR-1
-- **Files:** `.github/workflows/ci.yml`; a test-only fetch stub for Daily and postcodes.io; a `docker build` job; mobile jest wiring (install jest and point the 3 test files at real modules)
+- **Files:** `.github/workflows/ci.yml`; a test-only fetch stub for Daily and postcodes.io (`backend/test/stubs/external-fetch.mjs`); a `docker build` job; `backend/.dockerignore`
 - **Skills:** `testing-with-discernment`
-- **Tests:** CI itself; the drift check fails on a deliberately drifted branch
-- **Acceptance:** CI is green on the PR, a drift or Docker failure turns it red, and lint runs warn-only
+- **Tests:** CI itself; the drift check fails on a deliberately drifted schema (verified locally: exit 2)
+- **Acceptance:** CI is green on the PR, and a drift or Docker failure turns it red
+- **Note:** mobile jest wiring and the lint step moved to CS-46, because the 3 mobile test files test inline copies and need rewriting before they can gate CI
 - **Depends on:** CS-01
 - **Size:** M
 
@@ -506,7 +507,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 
 ### CS-46 Code health
 - **Closes:** baseline lint (208 problems), mobile tests that test inline copies, `run-tests` banner, AC-3, BJ-6
-- **Files:** lint fixes in small batches, rewritten mobile tests, dead code removal
+- **Files:** lint fixes in small batches, rewritten mobile tests wired to jest and run in CI (moved from CS-02), a lint step in CI, dead code removal
 - **Skills:** `testing-with-discernment`
 - **Tests:** the rewritten tests fail when the real module breaks
 - **Acceptance:** lint is clean and moved to error level
