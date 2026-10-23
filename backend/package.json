@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
+    "db:check-orphans": "tsx scripts/check-orphans.ts",
     "hours:defaults": "tsx scripts/apply-default-opening-hours.ts",
     "test": "tsx src/e2e-suite.ts",
     "test:auth": "jest src/__tests__/auth-integration.test.ts",
