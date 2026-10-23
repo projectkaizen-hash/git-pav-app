@@ -347,7 +347,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
 
     const effectivePaymentId = stripePaymentId || appointment.stripePaymentId;
     if (
-      !env.stripeSecretKey.startsWith("sk_test_mock") &&
+      !env.isMockStripe &&
       effectivePaymentId &&
       !effectivePaymentId.startsWith("pi_mock_") &&
       !effectivePaymentId.startsWith("pi_e2e_")

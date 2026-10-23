@@ -8,7 +8,7 @@ import { appointmentIdParamsSchema } from "../schemas/booking";
 import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 
 const router = Router();
-const isMockStripe = env.stripeSecretKey.startsWith("sk_test_mock");
+const isMockStripe = env.isMockStripe;
 const stripe = new Stripe(env.stripeSecretKey, {
   apiVersion: "2025-02-24.acacia" as never,
 });
@@ -84,9 +84,11 @@ router.post("/:id/cancel-with-refund", requireAuth, validateParams(appointmentId
           { idempotencyKey: `refund:${appointment.id}` }
         );
         stripeRefundId = refund.id;
-      } else {
+      } else if (isMockStripe) {
         stripeRefundId = `re_mock_${Date.now()}`;
       }
+      // Otherwise there is no real Stripe payment to refund, so no refund id is
+      // reported (previously a fake re_mock_ id leaked into production responses).
     }
 
     const cancelledAppt = await prisma.appointment.update({
