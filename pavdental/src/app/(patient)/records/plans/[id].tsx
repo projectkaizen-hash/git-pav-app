@@ -344,11 +344,11 @@ export default function TreatmentPlanDetailScreen() {
               <View style={styles.financeLeft}>
                 <AppIcon name="creditCard" size={16} color={colors.ink} />
                 <ThemedText variant="caption" style={styles.financeText}>
-                  0% APR available — {formatGbp(Math.round(totalCostPence / 6))} / mo over 6 months
+                  Ask about payment plans
                 </ThemedText>
               </View>
               <ThemedText variant="caption" style={styles.financeLink}>
-                Calculate ›
+                Learn more ›
               </ThemedText>
             </Pressable>
           ) : null}
@@ -439,7 +439,7 @@ export default function TreatmentPlanDetailScreen() {
                 ))}
               </Card>
 
-              {/* 0% Financing CTA */}
+              {/* Payment plans: details live on the practice's finance page */}
               <Pressable
                 onPress={() => {
                   setShowSignSheet(false);
@@ -449,7 +449,7 @@ export default function TreatmentPlanDetailScreen() {
               >
                 <AppIcon name="creditCard" size={14} color={colors.ink} />
                 <ThemedText variant="caption" style={styles.modalFinanceText}>
-                  Want to spread this into 6 x {formatGbp(Math.round(totalCostPence / 6))}/mo? Explore 0% Finance ›
+                  Ask about payment plans ›
                 </ThemedText>
               </Pressable>
 

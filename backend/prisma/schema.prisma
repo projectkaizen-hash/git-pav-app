@@ -669,11 +669,12 @@ model RewardRedemption {
 model OralHealthMetric {
   id                  String   @id @default(uuid()) @db.Uuid
   userId              String   @unique @map("user_id") @db.Uuid
-  pointsBalance       Int      @default(1450) @map("points_balance")
-  streakDays          Int      @default(14) @map("streak_days")
-  plaqueIndexPercent  Int      @default(12) @map("plaque_index_percent")
-  bleedingPercent     Int      @default(4) @map("bleeding_percent")
-  recallDaysRemaining Int      @default(42) @map("recall_days_remaining")
+  pointsBalance       Int      @default(0) @map("points_balance")
+  streakDays          Int      @default(0) @map("streak_days")
+  // Clinical measures are null until a clinician records them.
+  plaqueIndexPercent  Int?     @map("plaque_index_percent")
+  bleedingPercent     Int?     @map("bleeding_percent")
+  recallDaysRemaining Int?     @map("recall_days_remaining")
   practitionerAdvice  String?  @map("practitioner_advice")
   weeklyBrushing      Json?    @map("weekly_brushing")
   updatedAt           DateTime @updatedAt @map("updated_at")

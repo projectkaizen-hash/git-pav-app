@@ -40,8 +40,8 @@ const links: RecordLink[] = [
   },
   {
     icon: "creditCard",
-    title: "0% Treatment Financing",
-    subtitle: "Spread costs over 6–24 months (0% APR)",
+    title: "Payment plans",
+    subtitle: "How to spread the cost of treatment",
     route: "/(patient)/records/financing",
   },
   {

@@ -9,15 +9,9 @@ import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 
 const router = Router();
 
-const DEFAULT_WEEKLY_BRUSHING = [
-  { day: "Mon", am: true, pm: true, durationSec: 245 },
-  { day: "Tue", am: true, pm: true, durationSec: 250 },
-  { day: "Wed", am: true, pm: true, durationSec: 240 },
-  { day: "Thu", am: true, pm: true, durationSec: 260 },
-  { day: "Fri", am: true, pm: true, durationSec: 240 },
-  { day: "Sat", am: true, pm: true, durationSec: 240 },
-  { day: "Sun", am: true, pm: false, durationSec: 120 },
-];
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+// A new patient starts with nothing logged, not a pre-filled week.
+const EMPTY_WEEKLY_BRUSHING = WEEK_DAYS.map((day) => ({ day, am: false, pm: false, durationSec: 0 }));
 
 const REWARDS_CATALOG = [
   {
@@ -72,17 +66,9 @@ async function getOrCreateMetrics(userId: string) {
   let metric = await prisma.oralHealthMetric.findUnique({ where: { userId } });
   if (!metric) {
     metric = await prisma.oralHealthMetric.create({
-      data: {
-        userId,
-        pointsBalance: 1450,
-        streakDays: 14,
-        plaqueIndexPercent: 12,
-        bleedingPercent: 4,
-        recallDaysRemaining: 42,
-        practitionerAdvice:
-          "Focus gentle circular motions on the distal aspect of Tooth #31 (LR7) to prevent early enamel demineralisation from progressing into the dentine. Continue daily interdental brushing.",
-        weeklyBrushing: DEFAULT_WEEKLY_BRUSHING,
-      },
+      // Points and streak start at zero. Clinical measures and advice stay
+      // null until a clinician records them (CS-05).
+      data: { userId },
     });
   }
   return metric;
@@ -198,7 +184,7 @@ router.get("/insights", requireAuth, async (req: AuthRequest, res: Response) => 
     streakDays: metric.streakDays,
     pointsBalance: metric.pointsBalance,
     practitionerAdvice: metric.practitionerAdvice,
-    weeklyBrushing: metric.weeklyBrushing ?? DEFAULT_WEEKLY_BRUSHING,
+    weeklyBrushing: metric.weeklyBrushing ?? EMPTY_WEEKLY_BRUSHING,
     updatedAt: metric.updatedAt,
   });
 });
@@ -211,7 +197,7 @@ router.post("/brushing-log", requireAuth, validateBody(logBrushingSchema), async
 
   const currentWeekly = Array.isArray(metric.weeklyBrushing)
     ? (metric.weeklyBrushing as Array<{ day: string; am: boolean; pm: boolean; durationSec: number }>)
-    : DEFAULT_WEEKLY_BRUSHING;
+    : EMPTY_WEEKLY_BRUSHING;
 
   const updatedWeekly = currentWeekly.map((entry) =>
     entry.day === day
@@ -225,8 +211,9 @@ router.post("/brushing-log", requireAuth, validateBody(logBrushingSchema), async
 
   const updated = await prisma.oralHealthMetric.update({
     where: { userId },
+    // Self-reported brushing earns no points (decisions log #14): points
+    // come only from completed appointments.
     data: {
-      pointsBalance: { increment: 25 },
       streakDays: { increment: 1 },
       weeklyBrushing: updatedWeekly,
     },

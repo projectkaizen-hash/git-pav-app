@@ -1,22 +1,18 @@
-import crypto from "crypto";
 import { Router, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
-import { validateBody, validateParams } from "../middleware/validate";
-import { pseudonymiseIp } from "../lib/audit-security";
-import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { validateParams } from "../middleware/validate";
+import { env } from "../config/env";
 
 const router = Router();
 
 const financingIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
-const applyFinancingSchema = z.object({
-  treatmentCostPence: z.number().int().min(30000).max(600000),
-  durationMonths: z.union([z.literal(6), z.literal(12), z.literal(24)]),
-}).strict();
-
 // ─── GET /api/financing ───────────────────────────────────────────────────────
+// Payment plans are arranged through the practice's finance provider. This
+// returns where to find them, plus any records from the old in-app flow so a
+// patient can still see and remove them.
 router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.sub;
 
@@ -25,53 +21,17 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return res.json({
-    preApprovedLimitPence: 400000,
-    aprPercent: 0,
-    applications,
-  });
+  return res.json({ financeInfoUrl: env.financeInfoUrl, applications });
 });
 
 // ─── POST /api/financing/apply ────────────────────────────────────────────────
-// Executes soft-search eligibility check and persists FCA-compliant 0% APR
-// financing pre-approval agreement in PostgreSQL.
-router.post("/apply", requireAuth, validateBody(applyFinancingSchema), async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.sub;
-  const { treatmentCostPence, durationMonths } = req.body;
-
-  const monthlyPence = Math.round(treatmentCostPence / durationMonths);
-  const agreementRef = `PAV-FIN-${Date.now().toString(36).toUpperCase()}-${crypto
-    .randomBytes(2)
-    .toString("hex")
-    .toUpperCase()}`;
-
-  const application = await prisma.financingApplication.create({
-    data: {
-      userId,
-      treatmentCostPence,
-      durationMonths,
-      monthlyPence,
-      approvedLimitPence: 400000,
-      status: "pre_approved",
-      agreementRef,
-    },
+// Retired: it recorded an instant "pre-approval" with no lender or credit
+// check behind it (CS-05). Older app builds get a pointer to the finance page.
+router.post("/apply", requireAuth, (_req: AuthRequest, res: Response) => {
+  return res.status(410).json({
+    error: "Payment plans are arranged through our finance partner. See the finance page for options.",
+    financeInfoUrl: env.financeInfoUrl,
   });
-
-  await createAuditLogWithIntegrity({
-    action: "financing.soft_check_approved",
-    actorId: userId,
-    resourceId: application.id,
-    sessionId: req.user!.sessionId,
-    ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: {
-      agreementRef,
-      treatmentCostPence,
-      durationMonths,
-      monthlyPence,
-    },
-  });
-
-  return res.status(201).json(application);
 });
 
 // ─── DELETE /api/financing/:id ────────────────────────────────────────────────

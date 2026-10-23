@@ -142,22 +142,11 @@ export async function markMessageThreadRead(threadId: string) {
   return res.json();
 }
 
-// ─── 0% APR Financing ─────────────────────────────────────────────────────────
-export async function fetchFinancing() {
+// ─── Payment plans ───────────────────────────────────────────────────────────
+// The app links to the practice's finance page; it makes no credit decisions.
+export async function fetchFinancing(): Promise<{ financeInfoUrl: string }> {
   const res = await authFetch("/api/financing");
-  if (!res.ok) throw new Error("Could not load financing applications");
-  return res.json();
-}
-
-export async function applyForFinancing(payload: {
-  treatmentCostPence: number;
-  durationMonths: 6 | 12 | 24;
-}) {
-  const res = await authFetch("/api/financing/apply", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Could not submit financing application");
+  if (!res.ok) throw new Error("Could not load payment plan details");
   return res.json();
 }
 

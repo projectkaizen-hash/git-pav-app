@@ -22,12 +22,12 @@ const replyMessageSchema = z.object({
 
 // ─── GET /api/messages ────────────────────────────────────────────────────────
 // Returns persistent message threads for the authenticated user.
-// Seeds initial care-team threads in PostgreSQL on first inbox access.
+// A new inbox is empty: no care-team threads are invented (CS-05).
 router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.sub;
   const isStaff = ["clinician", "admin"].includes(req.user!.role);
 
-  let threads = await prisma.messageThread.findMany({
+  const threads = await prisma.messageThread.findMany({
     where: isStaff ? {} : { patientUserId: userId },
     include: {
       messages: {
@@ -36,79 +36,6 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
     },
     orderBy: { updatedAt: "desc" },
   });
-
-  if (threads.length === 0) {
-    const initialThreads = [
-      {
-        patientUserId: userId,
-        senderName: "Dr. Tariq Pav · Clinical Lead",
-        subject: "Post-examination odontogram & treatment plan ready",
-        preview:
-          "Hi! Following your recent checkup, I have uploaded your 32-tooth chart and restorative plan for #31 (LR7). Please review and e-sign when convenient.",
-        isRead: false,
-        hasAttachment: true,
-        messages: {
-          create: [
-            {
-              senderRole: "clinician",
-              senderName: "Dr. Tariq Pav · Clinical Lead",
-              body: "Hi! Following your recent checkup, I have uploaded your 32-tooth chart and restorative plan for #31 (LR7). Please review and e-sign when convenient.",
-            },
-          ],
-        },
-      },
-      {
-        patientUserId: userId,
-        senderName: "Elena Rostova · Dental Hygienist (RDH)",
-        subject: "AirFlow® aftercare & interdental brushing guide",
-        preview:
-          "Avoid staining foods (coffee, red wine, turmeric) for the next 4 hours while your enamel pellicle reforms.",
-        isRead: false,
-        hasAttachment: false,
-        messages: {
-          create: [
-            {
-              senderRole: "clinician",
-              senderName: "Elena Rostova · Dental Hygienist (RDH)",
-              body: "Avoid staining foods (coffee, red wine, turmeric) for the next 4 hours while your enamel pellicle reforms.",
-            },
-          ],
-        },
-      },
-      {
-        patientUserId: userId,
-        senderName: "Pav Dental Reception · Marylebone",
-        subject: "Deposit receipt & booking confirmation",
-        preview:
-          "Thank you — your £25.00 appointment deposit has been applied to your account balance.",
-        isRead: true,
-        hasAttachment: true,
-        messages: {
-          create: [
-            {
-              senderRole: "admin",
-              senderName: "Pav Dental Reception · Marylebone",
-              body: "Thank you — your £25.00 appointment deposit has been applied to your account balance.",
-            },
-          ],
-        },
-      },
-    ];
-
-    for (const t of initialThreads) {
-      await prisma.messageThread.create({ data: t });
-    }
-
-    threads = await prisma.messageThread.findMany({
-      where: { patientUserId: userId },
-      include: {
-        messages: {
-          orderBy: { sentAt: "asc" },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
-  }
 
   return res.json(
     threads.map((t) => ({

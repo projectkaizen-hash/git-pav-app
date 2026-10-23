@@ -25,7 +25,6 @@ import {
   replyToMessageThread,
   markMessageThreadRead,
   fetchFinancing,
-  applyForFinancing,
   fetchRewards,
   redeemReward,
   fetchOralHealthInsights,
@@ -251,16 +250,6 @@ export function useFinancing() {
   return useQuery({
     queryKey: ["financing"],
     queryFn: fetchFinancing,
-  });
-}
-
-export function useApplyFinancingMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: applyForFinancing,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financing"] });
-    },
   });
 }
 
