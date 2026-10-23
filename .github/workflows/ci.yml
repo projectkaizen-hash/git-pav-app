@@ -157,3 +157,30 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+
+  # The website's own typecheck and node tests aren't green yet (stray
+  # Next.js files under src/app and App Builder template tests), so CI holds
+  # it to a clean install and a production build until those are fixed.
+  website:
+    name: Website — install + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm run build` also runs db:migrate against a live database, so CI
+      # runs only the Vite build step.
+      - name: Build
+        run: npm exec -- node scripts/with-app-env.mjs vite build

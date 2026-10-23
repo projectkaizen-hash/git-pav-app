@@ -15,15 +15,17 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { rootUser } from "@/data/users";
+import type { SignedInStaff } from "@/lib/auth/staff.server";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
-import { SupportCard } from "./support-card";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  staff,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { staff: SignedInStaff | null }) {
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
     useShallow((s) => ({
       sidebarVariant: s.values.sidebar_variant,
@@ -52,10 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={sidebarItems} />
       </SidebarContent>
-      <SidebarFooter>
-        <SupportCard />
-        <NavUser user={rootUser} />
-      </SidebarFooter>
+      <SidebarFooter>{staff && <NavUser user={{ ...staff, avatar: "" }} />}</SidebarFooter>
     </Sidebar>
   );
 }
