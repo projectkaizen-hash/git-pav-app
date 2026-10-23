@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { pseudonymiseIp } from "../lib/audit-security";
+import { refundLateDeposit } from "../lib/late-deposit";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
@@ -268,12 +269,13 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
     const appointmentId = intent.metadata.appointmentId;
 
     if (appointmentId) {
-      // Idempotent: only the matching active hold can transition to confirmed.
+      // Idempotent: only the matching, unexpired hold can transition to confirmed.
       const result = await prisma.appointment.updateMany({
         where: {
           id: appointmentId,
           status: "draft_hold",
           stripePaymentId: intent.id,
+          OR: [{ holdExpiresAt: null }, { holdExpiresAt: { gt: new Date() } }],
         },
         data: {
           status: "confirmed",
@@ -286,6 +288,29 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
         await scheduleAppointmentReminderLadder(appointmentId).catch((err) => {
           console.error("[Stripe Webhook] Failed to schedule reminders:", err);
         });
+      } else {
+        // Not confirmed by this event. Fine if it is already confirmed with
+        // this payment (a duplicate event, or the confirm call won); otherwise
+        // the money arrived too late for its hold and goes back (CS-17).
+        const appointment = await prisma.appointment.findUnique({
+          where: { id: appointmentId },
+          select: { status: true, stripePaymentId: true, patientId: true },
+        });
+        const alreadyConfirmed = appointment?.status === "confirmed" && appointment.stripePaymentId === intent.id;
+        if (!alreadyConfirmed) {
+          try {
+            await refundLateDeposit({
+              appointmentId: appointment ? appointmentId : null,
+              patientId: appointment?.patientId ?? null,
+              paymentIntentId: intent.id,
+              amountPence: intent.amount_received,
+            });
+          } catch (err) {
+            console.error("[Stripe Webhook] Late deposit refund failed:", err instanceof Error ? err.name : "unknown error");
+            // A non-2xx makes Stripe retry the event, and with it the refund.
+            return res.status(500).json({ error: "Late deposit refund failed" });
+          }
+        }
       }
 
       await createAuditLogWithIntegrity({

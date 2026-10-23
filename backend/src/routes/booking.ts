@@ -6,6 +6,7 @@ import { redis } from "../lib/redis";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { pseudonymiseIp } from "../lib/audit-security";
+import { isLateForHold, refundLateDeposit } from "../lib/late-deposit";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import {
   appointmentCheckInSchema,
@@ -406,7 +407,10 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       };
     }
 
-    if (appointment.status !== "draft_hold") {
+    // A cancelled booking can still have a deposit in flight: verify it below
+    // and refund it rather than confirm (CS-17).
+    const late = isLateForHold(appointment);
+    if (appointment.status !== "draft_hold" && !late) {
       return { error: "Cannot confirm appointment in current status", status: 400 };
     }
 
@@ -450,6 +454,24 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       depositPaidPence = intent.amount_received;
     }
 
+    if (late) {
+      try {
+        await refundLateDeposit({
+          appointmentId: appointment.id,
+          patientId: appointment.patientId,
+          paymentIntentId,
+          amountPence: depositPaidPence,
+        });
+      } catch {
+        return { error: "Your booking hold expired and the automatic refund failed. Please contact the practice.", status: 502 };
+      }
+      return {
+        error: "Your booking hold ran out before payment went through, so your deposit has been refunded. Please choose a new time.",
+        status: 409,
+        depositRefunded: true,
+      };
+    }
+
     // Conditional update: if the webhook confirmed it in the meantime, this is
     // a no-op and the reminder ladder is not scheduled twice.
     const result = await prisma.appointment.updateMany({
@@ -480,7 +502,9 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
     };
   })().then((result: any) => {
     if (result.error) {
-      return res.status(result.httpStatus || result.status || 400).json({ error: result.error });
+      const body: Record<string, unknown> = { error: result.error };
+      if (result.depositRefunded) body.depositRefunded = true;
+      return res.status(result.httpStatus || result.status || 400).json(body);
     }
     const statusCode = result.httpStatus || result.status || 200;
     const { httpStatus, status, ...responseData } = result;
