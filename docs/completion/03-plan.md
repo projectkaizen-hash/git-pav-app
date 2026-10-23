@@ -168,6 +168,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Skills:** `performance-and-scaling`
 - **Tests:** a 15-minute operator polling simulation stays under the limit; the auth limiter is still per IP
 - **Acceptance:** no 429s in a realistic operator or patient session behind a proxy
+- **Note:** the budgets were sized from the current polling, so the mobile intervals didn't need to change. A small built-in Redis store replaced a new `rate-limit-redis` dependency. Moving live updates to push or SSE stays with the van tracking work.
 - **Depends on:** none
 - **Size:** S
 
