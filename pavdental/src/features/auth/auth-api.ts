@@ -83,7 +83,7 @@ async function doRefresh(): Promise<string> {
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 export const authApi = {
-  checkEmail: async (email: string): Promise<{ exists: boolean; email: string; role?: string | null }> => {
+  checkEmail: async (email: string): Promise<{ exists: boolean; email: string }> => {
     const res = await fetch(`${BASE_URL}/api/auth/check-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

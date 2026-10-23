@@ -28,6 +28,7 @@ import { createSession, toAuthUser } from "./auth";
 const router = Router();
 
 const PHONE_RE = /^\+?[1-9]\d{6,14}$/; // E.164-ish
+const OTP_SENT_MESSAGE = "If this number is registered, a verification code has been sent.";
 
 // ─── POST /api/auth/otp/request ──────────────────────────────────────────
 router.post("/request", async (req: Request, res: Response) => {
@@ -48,15 +49,11 @@ router.post("/request", async (req: Request, res: Response) => {
   const user = await prisma.user.findFirst({
     where: { phone: cleanPhone, isActive: true, role: "patient" },
   });
-  if (!user) {
-    // Anti-enumeration: same shape/status as the success path; no SMS is sent.
-    // The per-phone rate limit above has already consumed an attempt.
-    return res.json({ success: true, message: "If this number is registered, a verification code has been sent." });
-  }
-
-  if (user.lockedUntil && user.lockedUntil > new Date()) {
-    res.status(423).json({ error: "Account is temporarily locked. Try again later." });
-    return;
+  // Anti-enumeration: unknown, staff and locked numbers get the same reply as
+  // the success path, and no SMS (AT-7). The per-phone rate limit above has
+  // already consumed an attempt.
+  if (!user || (user.lockedUntil && user.lockedUntil > new Date())) {
+    return res.json({ success: true, message: OTP_SENT_MESSAGE });
   }
 
   const { delivered } = await otpService.createAndSendOTP({
@@ -69,7 +66,7 @@ router.post("/request", async (req: Request, res: Response) => {
     return res.status(502).json({ error: "Could not send the code. Please try again." });
   }
 
-  return res.json({ success: true, message: "Verification code sent" });
+  return res.json({ success: true, message: OTP_SENT_MESSAGE });
 });
 
 // ─── POST /api/auth/otp/verify ───────────────────────────────────────────
@@ -96,8 +93,7 @@ router.post("/verify", async (req: Request, res: Response) => {
   }
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
-    res.status(423).json({ error: "Account is temporarily locked. Try again later." });
-    return;
+    return res.status(401).json({ error: "Invalid or expired code" });
   }
 
   if (!(await otpService.verifyOTP(user.id, code, "phone_login"))) {

@@ -39,6 +39,8 @@ export const registerSchema = z.object({
   phone: phone.optional(),
 }).strict();
 
+export const checkEmailSchema = z.object({ email }).strict();
+
 export const loginSchema = z.object({
   email,
   password: z.string().min(1, "Password is required").max(128),
