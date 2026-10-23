@@ -6,6 +6,7 @@ import { validateBody, validateParams, validateQuery } from "../middleware/valid
 import { idParamsSchema } from "../schemas/admin";
 import { ErasureBlockedError, erasePatient, upcomingBookings } from "../lib/erasure";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { retentionReport } from "../lib/retention";
 
 // The DPO's queue of erasure requests (CS-23). Admin only, audited. Erasing
 // keeps the clinical record and removes everything else (lib/erasure.ts).
@@ -109,5 +110,10 @@ router.post(
     return res.json({ status: "rejected" });
   }
 );
+
+// What the retention sweep would delete or flag (counts only).
+router.get("/retention", async (_req: AuthRequest, res: Response) => {
+  return res.json(await retentionReport());
+});
 
 export default router;

@@ -5,6 +5,7 @@ import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { releaseVanDeposit } from "./van-payments";
 import { sendPatientNotification } from "./patient-push";
 import { awardMissedVisitPoints } from "./rewards";
+import { runRetentionSweep } from "./retention";
 
 // Interval settings
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
@@ -298,6 +299,9 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
 /**
  * Starts all background job workers.
  */
+const RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+let retentionSweepTimer: NodeJS.Timeout | null = null;
+
 export function startBackgroundJobs(): void {
   console.log("[BACKGROUND JOBS] Starting background workers (slot expiry, notification dispatcher & van request expiry)");
 
@@ -321,6 +325,12 @@ export function startBackgroundJobs(): void {
   vanRequestExpiryTimer = setInterval(() => {
     processExpiredVanRequests().catch(() => {});
   }, VAN_REQUEST_EXPIRY_INTERVAL_MS);
+
+  retentionSweepTimer = setInterval(() => {
+    runRetentionSweep().catch((err) => {
+      console.error("[BACKGROUND JOBS] Retention sweep failed:", err instanceof Error ? err.name : "unknown error");
+    });
+  }, RETENTION_SWEEP_INTERVAL_MS);
 }
 
 /**
@@ -338,6 +348,10 @@ export function stopBackgroundJobs(): void {
   if (vanRequestExpiryTimer) {
     clearInterval(vanRequestExpiryTimer);
     vanRequestExpiryTimer = null;
+  }
+  if (retentionSweepTimer) {
+    clearInterval(retentionSweepTimer);
+    retentionSweepTimer = null;
   }
   console.log("[BACKGROUND JOBS] Stopped background workers");
 }
