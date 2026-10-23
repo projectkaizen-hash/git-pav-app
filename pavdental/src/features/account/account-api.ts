@@ -9,14 +9,20 @@ export interface PaymentMethodItem {
   isDefault: boolean;
 }
 
+// A parent or guardian adds a child under 16 (decisions log #17).
+export type DependantRelationship = "Son" | "Daughter" | "Ward";
+
 export interface DependantItem {
   id: string;
   firstName: string;
   lastName: string;
   dob: string;
-  relationship: "Son" | "Daughter" | "Ward" | "Other";
+  // "Other" can still appear on profiles added before the rule.
+  relationship: DependantRelationship | "Other";
   consentSigned: boolean;
 }
+
+export type NewDependant = Omit<DependantItem, "id" | "relationship"> & { relationship: DependantRelationship };
 
 export const accountApi = {
   changePassword: async (
@@ -125,7 +131,7 @@ export const accountApi = {
     return res.json();
   },
 
-  addDependant: async (dependant: Omit<DependantItem, "id">): Promise<DependantItem> => {
+  addDependant: async (dependant: NewDependant): Promise<DependantItem> => {
     const res = await authFetch("/api/patients/dependants", {
       method: "POST",
       body: JSON.stringify(dependant),

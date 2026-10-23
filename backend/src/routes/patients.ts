@@ -3,6 +3,7 @@ import { Router, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { requirePatientRecordAccess, requireActiveAppointmentContext } from "../middleware/patient-access";
+import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { validateParams, validateBody } from "../middleware/validate";
 import {
   patientIdParamsSchema,
@@ -75,6 +76,19 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
     emergencyContactName, emergencyContactPhone,
     medicalHistory, consents,
   } = req.body;
+
+  if (dob) {
+    const parsed = parseIsoDate(dob);
+    if (!parsed || parsed.getTime() > Date.now()) {
+      return res.status(400).json({ error: "Enter a valid date of birth" });
+    }
+    // Under-16s are added by a parent or guardian (decisions log #17).
+    if (ageInYears(parsed) < DEPENDANT_MAX_AGE) {
+      return res.status(422).json({
+        error: "Patients under 16 need a parent or guardian to add them from the guardian's account.",
+      });
+    }
+  }
 
   const [updated] = await prisma.$transaction([
     prisma.patientProfile.update({

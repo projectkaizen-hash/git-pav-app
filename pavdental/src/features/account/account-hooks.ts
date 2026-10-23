@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { accountApi, PaymentMethodItem, DependantItem } from "./account-api";
+import { accountApi, PaymentMethodItem, NewDependant } from "./account-api";
 import { useAuthStore } from "../auth/auth-store";
 import { tokenStore } from "@/lib/token-store";
 
@@ -87,7 +87,7 @@ export function useDependants() {
 export function useAddDependantMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<DependantItem, "id">) => accountApi.addDependant(data),
+    mutationFn: (data: NewDependant) => accountApi.addDependant(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient-dependants"] });
     },
