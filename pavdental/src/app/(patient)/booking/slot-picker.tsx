@@ -7,25 +7,18 @@ import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { TimeSlot } from "@/features/booking/booking-types";
 import { useSlots, useHoldSlotMutation } from "@/features/hooks/use-dental-api";
+import { ukDayLabel, ukHour, upcomingUkDates } from "@/features/booking/uk-time";
 
 export default function SlotPickerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setSlot, setHoldExpiry, clinician, clinic, service } = useBookingStore();
+  const { setSlot, setHoldExpiry, clinician, clinic, service, channel } = useBookingStore();
 
-  const upcomingDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, idx) => {
-      const d = new Date();
-      d.setDate(d.getDate() + idx);
-      const iso = d.toISOString().split("T")[0];
-      const label = d.toLocaleDateString("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      });
-      return { label, iso };
-    });
-  }, []);
+  // Days and times are the clinic's, in UK time.
+  const upcomingDays = useMemo(
+    () => upcomingUkDates(7).map((iso) => ({ iso, label: ukDayLabel(iso) })),
+    []
+  );
 
   const [selectedDate, setSelectedDate] = useState<string>(upcomingDays[0].label);
   const [selectedSlot, setSelectedSlotState] = useState<TimeSlot | null>(null);
@@ -38,6 +31,8 @@ export default function SlotPickerScreen() {
 
   const { data: apiSlots } = useSlots({
     date: isoDate,
+    channel: channel ?? "clinic",
+    clinicId: clinic?.id,
     clinicianId: clinician?.id,
     serviceId: service?.id,
   });
@@ -53,7 +48,7 @@ export default function SlotPickerScreen() {
 
   const hourOf = (slot: TimeSlot) => {
     const iso = (slot as any).startTimeUtc || (slot as any).start_time_utc;
-    if (iso) return new Date(iso).getHours();
+    if (iso) return ukHour(new Date(iso));
     const [h] = String(slot.displayTime || "").split(":");
     return Number(h) || 0;
   };

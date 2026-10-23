@@ -21,63 +21,51 @@ import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
+import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
 
 const router = Router();
 
 const SLOT_HOLD_SECONDS = 600; // 10 minutes
+// Most appointments a list returns: the newest for a patient, the next for a
+// clinician (BK-8).
+const SCHEDULE_LIMIT = 200;
 
 function slotLockKey(slotId: string): string {
   return slotId.startsWith("slot:") ? slotId : `slot:${slotId}`;
 }
 
 // ─── GET /api/booking/slots ───────────────────────────────────────────────────
-// Query: ?clinicianId=<uuid>&serviceId=<id>&date=YYYY-MM-DD&channel=clinic|van|video
+// Query: ?date=YYYY-MM-DD (UK date)&channel=clinic|van|video&clinicId=<uuid>
+//        &clinicianId=<uuid>&serviceId=<id>
+// Times come from the clinic's opening hours and the clinicians' rota
+// (CS-30). Without a clinician, a time is free when any clinician is.
 router.get("/slots", requireAuth, validateQuery(slotsQuerySchema), async (req: AuthRequest, res: Response) => {
-  const { clinicianId, serviceId, date, channel } = req.query;
+  const { clinicianId, clinicId, serviceId, date } = req.query as Record<string, string | undefined>;
+  const channel = (req.query.channel as SlotChannel | undefined) ?? "clinic";
 
-  const dayStart = new Date(`${date}T00:00:00Z`);
-  const dayEnd = new Date(`${date}T23:59:59Z`);
-
-  // Fetch existing confirmed appointments to block booked slots (only unexpired holds block)
-  const existing = await prisma.appointment.findMany({
-    where: {
-      startTimeUtc: { gte: dayStart, lte: dayEnd },
-      OR: [
-        { status: { in: ["confirmed", "in_progress"] } },
-        { status: "draft_hold", holdExpiresAt: { gt: new Date() } },
-      ],
-      ...(clinicianId ? { clinicianId: String(clinicianId) } : {}),
-    },
-    select: { startTimeUtc: true, endTimeUtc: true, clinicianId: true },
-  });
-
-  const service = serviceId
-    ? await prisma.service.findUnique({ where: { id: String(serviceId) } })
-    : null;
-
+  const service = serviceId ? await prisma.service.findUnique({ where: { id: serviceId } }) : null;
   const duration = service?.durationMinutes || 30;
 
-  // Generate slots from 09:00–17:00 UTC in `duration`-minute increments
-  const rawSlots: Array<{
-    lockKey: string;
-    slotStart: Date;
-    slotEnd: Date;
-    isBooked: boolean;
-  }> = [];
-  const base = new Date(`${date}T09:00:00Z`);
-  const dayLimit = new Date(`${date}T17:00:00Z`).getTime();
-
-  for (let i = 0; base.getTime() + i * duration * 60000 < dayLimit; i++) {
-    const slotStart = new Date(base.getTime() + i * duration * 60000);
-    const slotEnd = new Date(slotStart.getTime() + duration * 60000);
-
-    const isBooked = existing.some(
-      (a) => a.startTimeUtc < slotEnd && a.endTimeUtc > slotStart
-    );
-
-    const lockKey = `slot:${date}:${clinicianId || "any"}:${slotStart.toISOString()}`;
-    rawSlots.push({ lockKey, slotStart, slotEnd, isBooked });
+  let daySlots;
+  try {
+    daySlots = await slotsForDay({ date: date!, channel, durationMinutes: duration, clinicianId, clinicId });
+  } catch (err) {
+    if (err instanceof AvailabilityError) return res.status(err.status).json({ error: err.message });
+    throw err;
   }
+
+  // One entry per start time: free if any matching clinician is free.
+  const byStart = new Map<number, { startTimeUtc: Date; endTimeUtc: Date; available: boolean }>();
+  for (const slot of daySlots) {
+    const key = slot.startTimeUtc.getTime();
+    const seen = byStart.get(key);
+    if (seen) seen.available ||= slot.available;
+    else byStart.set(key, { startTimeUtc: slot.startTimeUtc, endTimeUtc: slot.endTimeUtc, available: slot.available });
+  }
+  const rawSlots = [...byStart.values()].map((s) => ({
+    ...s,
+    lockKey: `slot:${date}:${clinicianId || "any"}:${s.startTimeUtc.toISOString()}`,
+  }));
 
   const lockKeys = rawSlots.map((s) => s.lockKey);
   const lockValues =
@@ -87,9 +75,9 @@ router.get("/slots", requireAuth, validateQuery(slotsQuerySchema), async (req: A
 
   const slots = rawSlots.map((s, idx) => ({
     id: s.lockKey,
-    startTimeUtc: s.slotStart.toISOString(),
-    endTimeUtc: s.slotEnd.toISOString(),
-    available: !s.isBooked && lockValues[idx] === null,
+    startTimeUtc: s.startTimeUtc.toISOString(),
+    endTimeUtc: s.endTimeUtc.toISOString(),
+    available: s.available && lockValues[idx] === null,
     durationMinutes: duration,
   }));
 
@@ -135,8 +123,11 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     startTimeUtc, endTimeUtc, slotId, accessDetails, triageData,
   } = req.body;
   const patientId = req.user!.sub;
+  // Where and with whom are part of the request: a retry that changes them is
+  // a different booking, not a replay of a refused one.
   const idempotencyKey = generateIdempotencyKey("create-appointment", {
     patientId, serviceId, startTimeUtc, endTimeUtc, dependantId: dependantId ?? null,
+    channel, clinicId: clinicId ?? null, clinicianId: clinicianId ?? null,
   });
 
   return withIdempotency(idempotencyKey, async () => {
@@ -206,10 +197,36 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       }
     }
 
-    if (clinicianId) {
+    // Only a real free slot can be booked: inside the clinic's hours and the
+    // clinician's rota (CS-30). Van visits are timed by the van dispatch flow.
+    let assignedClinicianId: string | undefined = clinicianId;
+    if (channel === "clinic" || channel === "video") {
+      if (channel === "clinic" && !clinicId) {
+        return { error: "Choose a clinic for this appointment", status: 400 };
+      }
+      let bookable: string | null;
+      try {
+        bookable = await bookableClinician({
+          channel,
+          durationMinutes: service.durationMinutes,
+          startTimeUtc: startDate,
+          clinicianId,
+          clinicId,
+        });
+      } catch (err) {
+        if (err instanceof AvailabilityError) return { error: err.message, status: err.status };
+        throw err;
+      }
+      if (!bookable) {
+        return { error: "That time isn't available. Please choose another slot.", status: 409 };
+      }
+      assignedClinicianId = bookable;
+    }
+
+    if (assignedClinicianId) {
       const overlapping = await prisma.appointment.findFirst({
         where: {
-          clinicianId,
+          clinicianId: assignedClinicianId,
           startTimeUtc: { lt: endDate },
           endTimeUtc: { gt: startDate },
           OR: [
@@ -231,7 +248,7 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       data: {
         patientId: profile.id,
         dependantId: dependantId || null,
-        clinicianId: clinicianId || null,
+        clinicianId: assignedClinicianId || null,
         serviceId,
         channel,
         clinicId: clinicId || null,
@@ -280,8 +297,8 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     });
     if (!clinician) return res.status(404).json({ error: "Clinician profile not found" });
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // "Today" is the UK day, whatever the server's time zone.
+    const startOfToday = startOfLondonDay(new Date());
 
     const schedule = await prisma.appointment.findMany({
       where: {
@@ -297,6 +314,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
         dependant: { select: { id: true, firstName: true, lastName: true, dob: true } },
       },
       orderBy: { startTimeUtc: "asc" },
+      take: SCHEDULE_LIMIT,
     });
 
     return res.json(
@@ -341,6 +359,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
       dependant: { select: { id: true, firstName: true, lastName: true } },
     },
     orderBy: { startTimeUtc: "desc" },
+    take: SCHEDULE_LIMIT,
   });
 
   return res.json(appointments);

@@ -1,3 +1,5 @@
+import type { OpeningHoursRow } from "./uk-time";
+
 // ─── Dental Service Catalogue Models ──────────────────────────────────────────
 export type CareChannel = "clinic" | "van" | "video";
 
@@ -22,7 +24,9 @@ export interface ClinicLocation {
   city: string;
   phone: string;
   imageUri?: string;
+  /** Free-text summary; openingHours is what slots are built from. */
   operatingHours: string;
+  openingHours?: OpeningHoursRow[];
 }
 
 export interface Clinician {

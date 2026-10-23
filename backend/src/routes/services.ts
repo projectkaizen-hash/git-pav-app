@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { dateOnly, londonDate } from "../lib/availability";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 
@@ -69,6 +70,17 @@ router.get("/clinics", async (_req: Request, res: Response) => {
   const clinics = await prisma.clinic.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
+    include: {
+      // Weekly hours (UK time, minutes after midnight, 0 = Sunday) and the
+      // closure days coming up, so the app shows what slots are built from.
+      openingHours: { select: { weekday: true, opensMinute: true, closesMinute: true }, orderBy: { weekday: "asc" } },
+      closures: {
+        where: { date: { gte: dateOnly(londonDate(new Date())) } },
+        select: { date: true, reason: true },
+        orderBy: { date: "asc" },
+        take: 30,
+      },
+    },
   });
   return res.json(clinics);
 });

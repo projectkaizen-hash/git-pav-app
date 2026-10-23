@@ -20,3 +20,13 @@ npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/
 # 2. Mark the migration as applied without running it
 npx prisma migrate resolve --applied 20261023180000_reconcile_schema_drift
 ```
+
+## After deploying `20261023230000_opening_hours_and_rota`
+
+The migration only creates the opening-hours and rota tables. Until a clinic has hours and a clinician has a rota, they offer no slots, so run this once after the deploy:
+
+```bash
+npm run hours:defaults   # from backend/; safe to run again
+```
+
+It gives each clinic without hours the default hours (decisions log #12) and each clinician without a rota the same weekly rota. Replace those with the real rota as soon as it's known.
