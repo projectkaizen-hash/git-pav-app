@@ -188,37 +188,7 @@ export async function logBrushingSession(payload: {
   return res.json();
 }
 
-// ─── Waitlist & Check-in & GDPR SAR ───────────────────────────────────────────
-export async function fetchWaitlistEntries() {
-  const res = await authFetch("/api/waitlist");
-  if (!res.ok) throw new Error("Could not load waitlist");
-  return res.json();
-}
-
-export async function joinWaitlistEntry(payload: {
-  serviceId: string;
-  preferredDates?: string[];
-  preferredChannels?: ("clinic" | "van" | "video")[];
-  preferredTimeSlots?: ("morning" | "afternoon" | "evening")[];
-  postcode?: string;
-  notes?: string;
-}) {
-  const res = await authFetch("/api/waitlist/join", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Could not join waitlist");
-  return res.json();
-}
-
-export async function leaveWaitlistEntry(id: string) {
-  const res = await authFetch(`/api/waitlist/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Could not leave waitlist");
-  return res.json();
-}
-
+// ─── Check-in & GDPR SAR ──────────────────────────────────────────────────────
 export type CheckInTask = "form" | "consent" | "insurance" | "balance";
 
 export async function completeAppointmentCheckIn(

@@ -19,7 +19,6 @@ export default function PatientLayout() {
       <Stack.Screen name="video" />
       <Stack.Screen name="check-in" options={{ headerShown: true, title: "Pre-Visit Check-In", headerBackTitle: "Back" }} />
       <Stack.Screen name="perks" />
-      <Stack.Screen name="waitlist" />
     </Stack>
   );
 }

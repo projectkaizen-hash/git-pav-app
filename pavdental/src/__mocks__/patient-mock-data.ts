@@ -1,5 +1,5 @@
 // ─── Patient-side demo data for screens without backend endpoints yet ─────────
-// Prototype-only: messages, prescriptions, waitlist, insurance, check-in tasks,
+// Prototype-only: messages, prescriptions, insurance, check-in tasks,
 // and provider reviews. Clearly labelled DEMO in the UI where used.
 // Mirrors the shape of existing __mocks__ modules (booking / records).
 
@@ -119,27 +119,6 @@ export const mockPrescriptions: DemoPrescription[] = [
     pharmacy: "Superdrug Pharmacy — Riverside",
     notes: "Take after food. Maximum 3 tablets in 24 hours.",
     refillsRemaining: 0,
-  },
-];
-
-// ─── Waitlist ──────────────────────────────────────────────────────────────────
-export interface DemoWaitlistEntry {
-  id: string;
-  serviceName: string;
-  clinicianName: string;
-  joinedIso: string;
-  peopleAhead: number;
-  status: "active" | "matched";
-}
-
-export const mockWaitlist: DemoWaitlistEntry[] = [
-  {
-    id: "wl_001",
-    serviceName: "Hygiene (30 min)",
-    clinicianName: "Any Practitioner",
-    joinedIso: "2026-09-28T08:00:00Z",
-    peopleAhead: 2,
-    status: "active",
   },
 ];
 

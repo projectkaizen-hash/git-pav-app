@@ -637,35 +637,23 @@ async function runE2ESuite() {
     assert(hasDataProcessing, "Granted consent not visible via /consents/current");
     console.log("✓ PASSED: Onboarding Consent Grant Persisted & Retrievable");
 
-    // Step 27: Waitlist Persistence (was previously an in-memory array)
+    // Step 27: The waitlist is removed (CS-32): joining is refused and nothing is stored
     const wlRes = await fetch(`${baseUrl}/api/waitlist/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ serviceId: testService.id, preferredDate: "2026-10-25" }),
     });
-    const wl = (await wlRes.json()) as any;
-    assert(wlRes.status === 201, `Waitlist join failed: ${JSON.stringify(wl)}`);
-    assert(typeof wl.position === "number", "Waitlist position missing");
+    assert(wlRes.status === 410, `Waitlist join should be retired, got ${wlRes.status}`);
+    const wlCount = await prisma.waitlistEntry.count({ where: { userId } });
+    assert(wlCount === 0, "Retired waitlist must not store entries");
+    console.log("✓ PASSED: Waitlist join retired (410, nothing stored)");
 
-    const wlRow = await prisma.waitlistEntry.findUnique({
-      where: {
-        serviceId_preferredDate_userId: {
-          serviceId: testService.id,
-          preferredDate: "2026-10-25",
-          userId,
-        },
-      },
-    });
-    assert(!!wlRow, "Waitlist entry not persisted to database");
-    console.log(`✓ PASSED: Waitlist Persisted to DB (position #${wl.position})`);
-
-    // Step 28: Waitlist Leave (DELETE /api/waitlist/:id)
-    const wlLeaveRes = await fetch(`${baseUrl}/api/waitlist/${wl.id}`, {
-      method: "DELETE",
+    // Step 28: Listing the retired waitlist also answers 410
+    const wlListRes = await fetch(`${baseUrl}/api/waitlist`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    assert(wlLeaveRes.status === 200, `Waitlist leave failed: ${await wlLeaveRes.text()}`);
-    console.log("✓ PASSED: Waitlist Leave Endpoint (DELETE /api/waitlist/:id)");
+    assert(wlListRes.status === 410, `Waitlist list should be retired, got ${wlListRes.status}`);
+    console.log("✓ PASSED: Waitlist list retired (410)");
 
     // Step 29: Clinical Messaging CRUD (GET / POST / REPLY / READ)
     const msgListRes = await fetch(`${baseUrl}/api/messages`, {
