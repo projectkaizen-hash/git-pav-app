@@ -256,21 +256,15 @@ async function runE2ESuite() {
     assert(pushRes.status === 201 || pushRes.status === 200, `Push token registration failed (${pushRes.status}): ${await pushRes.text()}`);
     console.log("✓ PASSED: Multi-Channel Expo Push Notification Token Registered");
 
-    // Step 11: Cancelled Slot Priority Waitlist Queue
-    const waitlistRes = await fetch(`${baseUrl}/api/waitlist/join`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        serviceId: testService.id,
-        preferredDate: "2026-09-25",
-      }),
+    // Step 11: The old cancel route that never refunded is retired (CS-18)
+    const oldCancelRes = await fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/cancel`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
     });
-    const waitlistData = (await waitlistRes.json()) as any;
-    assert(waitlistRes.status === 201, "Waitlist join failed");
-    console.log(`✓ PASSED: Priority Waitlist Joined (Position #${waitlistData.position})`);
+    assert(oldCancelRes.status === 410, `PATCH /cancel should be retired, got ${oldCancelRes.status}`);
+    const stillBooked = await prisma.appointment.findUniqueOrThrow({ where: { id: apptData.id } });
+    assert(stillBooked.status === "confirmed", `Retired cancel must not change the booking (status ${stillBooked.status})`);
+    console.log("✓ PASSED: No-refund cancel route retired (410, booking unchanged)");
 
     // Step 12: Cancellation Notice & Deposit Refund Evaluator
     const cancelRes = await fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/cancel-with-refund`, {
