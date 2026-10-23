@@ -8,9 +8,8 @@ import { env } from "../config/env";
 // record, so a later change to a profile never changes an issued prescription.
 //
 // The seal shows the PDF came from Pav Dental unchanged. It is not the
-// prescriber's own signature: the layout leaves a box for that, and whether a
-// PDF can be dispensed without a wet or advanced electronic signature is a
-// legal question that is still open.
+// prescriber's own signature: the prescriber prints the PDF and signs the box
+// in ink before it is dispensed (decisions log #4).
 
 export interface PrescriptionContent {
   version: 1;
@@ -207,7 +206,7 @@ export async function renderPrescriptionPdf(content: PrescriptionContent, signat
 
   text(`Reference ${content.reference}   Seal ${sealCode(signature)}`, { size: 9, font: bold });
   text(
-    "This document was issued and sealed electronically by the practice. Contact the practice to confirm the reference and seal before dispensing.",
+    "Valid for dispensing only when signed in ink by the prescriber above. Issued and sealed electronically by the practice; contact the practice to confirm the reference and seal.",
     { size: 8, color: muted }
   );
 
