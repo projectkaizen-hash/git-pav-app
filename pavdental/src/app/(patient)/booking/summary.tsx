@@ -7,6 +7,8 @@ import { ThemedText, Card, Button, AppIcon, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent } from "@/features/booking/booking-api";
+import { useRewards } from "@/features/hooks/use-dental-api";
+import { useDependants } from "@/features/account/account-hooks";
 
 export default function BookingSummaryScreen() {
   const router = useRouter();
@@ -15,6 +17,17 @@ export default function BookingSummaryScreen() {
   const { service, clinic, clinician, slot, holdExpiresAt, resetDraft } = useBookingStore();
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
   const [isProcessing, setIsProcessing] = useState(false);
+  // A rewards voucher off this deposit (decisions log #14). The server checks
+  // it and sets the amount; this only previews it.
+  const { data: rewardsData } = useRewards();
+  const voucher: { voucherCode: string; discountPence: number } | undefined = rewardsData?.vouchers?.[0];
+  const [useVoucher, setUseVoucher] = useState(false);
+  // A parent or guardian can book for their child (decisions log #17).
+  const { data: dependants = [] } = useDependants();
+  const [dependantId, setDependantId] = useState<string | null>(null);
+  const depositPence = service?.depositPence || 2000;
+  const voucherFits = !!voucher && voucher.discountPence < depositPence;
+  const depositDuePence = useVoucher && voucherFits ? depositPence - voucher!.discountPence : depositPence;
 
   useEffect(() => {
     if (!holdExpiresAt) return;
@@ -60,10 +73,11 @@ export default function BookingSummaryScreen() {
         startTimeUtc: startTime,
         endTimeUtc: endTime,
         slotId: slot?.id,
+        dependantId: dependantId ?? undefined,
       });
 
       // 2. Create PaymentIntent on the server — amount is server-authoritative
-      const intent = await createPaymentIntent(appt.id);
+      const intent = await createPaymentIntent(appt.id, useVoucher && voucherFits ? voucher!.voucherCode : undefined);
 
       // 3. Validate that we have a real payment intent
       if (!intent.clientSecret) {
@@ -131,6 +145,34 @@ export default function BookingSummaryScreen() {
             Slot reserved for {formatTimer(secondsRemaining)}. Complete payment to secure.
           </ThemedText>
         </View>
+
+        {dependants.length > 0 && (
+          <Card elevation="raised" style={styles.card}>
+            <ThemedText variant="headline" style={styles.sectionTitle}>
+              Who is this appointment for?
+            </ThemedText>
+            <View style={styles.whoRow}>
+              {[{ id: null as string | null, label: "Me" }, ...dependants.map((d) => ({ id: d.id as string | null, label: d.firstName }))].map(
+                (option) => {
+                  const selected = dependantId === option.id;
+                  return (
+                    <Pressable
+                      key={option.id ?? "me"}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => setDependantId(option.id)}
+                      style={[styles.whoPill, selected && styles.whoPillSelected]}
+                    >
+                      <ThemedText variant="caption" style={selected ? styles.whoTextSelected : styles.label}>
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                }
+              )}
+            </View>
+          </Card>
+        )}
 
         {/* Appointment Breakdown Card */}
         <Card elevation="raised" style={styles.card}>
@@ -206,12 +248,26 @@ export default function BookingSummaryScreen() {
             </ThemedText>
           </View>
 
+          {voucherFits && (
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: useVoucher }}
+              onPress={() => setUseVoucher((v) => !v)}
+              style={styles.priceRow}
+            >
+              <ThemedText variant="body" style={styles.label}>
+                {useVoucher ? "☑" : "☐"} Use rewards voucher ({formatGbp(voucher!.discountPence)} off)
+              </ThemedText>
+              {useVoucher && <ThemedText variant="mono">–{formatGbp(voucher!.discountPence)}</ThemedText>}
+            </Pressable>
+          )}
+
           <View style={styles.priceRow}>
             <ThemedText variant="headline" style={styles.depositLabel}>
               Deposit Due Today (Stripe):
             </ThemedText>
             <ThemedText variant="mono" style={styles.depositAmount}>
-              {formatGbp(service?.depositPence || 2000)}
+              {formatGbp(depositDuePence)}
             </ThemedText>
           </View>
 
@@ -226,7 +282,7 @@ export default function BookingSummaryScreen() {
             Cancellation & Reschedule Policy:
           </ThemedText>
           <ThemedText variant="caption" style={styles.policyText}>
-            You can reschedule or cancel free of charge up to 48 hours prior to your visit. Deposits are fully refunded automatically to your card for cancellations within this window.
+            Cancel 48 hours or more before your visit for a full deposit refund, or 24 to 48 hours before for half. Deposits aren't refunded for cancellations less than 24 hours before. Refunds go back to your card automatically.
           </ThemedText>
         </View>
       </ScrollView>
@@ -250,7 +306,7 @@ export default function BookingSummaryScreen() {
             {isProcessing ? "Processing…" : Platform.OS === "android" ? "Google Pay" : "Apple Pay"}
           </ThemedText>
           <ThemedText variant="headline" style={styles.walletText}>
-            {formatGbp(service?.depositPence || 2000)}
+            {formatGbp(depositDuePence)}
           </ThemedText>
         </Pressable>
         <Button
@@ -358,6 +414,26 @@ const styles = StyleSheet.create({
   timerText: {
     color: colors.warning,
     flex: 1,
+    fontWeight: "600",
+  },
+  whoPill: {
+    borderColor: colors.separator,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  whoPillSelected: {
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
+  },
+  whoRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  whoTextSelected: {
+    color: colors.ink,
     fontWeight: "600",
   },
   walletButton: {

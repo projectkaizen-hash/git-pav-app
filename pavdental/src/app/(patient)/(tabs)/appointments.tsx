@@ -16,6 +16,7 @@ interface Booking {
   clinician?: { fullName?: string };
   clinic?: { name?: string };
   van?: { name?: string };
+  dependant?: { firstName: string; lastName: string } | null;
 }
 
 function BookingCard({
@@ -73,6 +74,12 @@ function BookingCard({
           </View>
 
           <ChipPill label={`${time} · ${booking.channel.toUpperCase()}`} tone={past || cancelled ? "neutral" : "info"} />
+
+          {booking.dependant ? (
+            <ThemedText variant="caption" style={styles.metaText} numberOfLines={1}>
+              For {booking.dependant.firstName} {booking.dependant.lastName}
+            </ThemedText>
+          ) : null}
 
           <View style={styles.metaRow}>
             <AppIcon name="profile" size={13} color={colors.secondaryLabel} />

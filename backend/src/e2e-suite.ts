@@ -593,12 +593,28 @@ async function runE2ESuite() {
     assert(reloginRes.status === 200, "Login with rotated password failed");
     console.log("✓ PASSED: Change Password + Re-login with New Credentials");
 
-    // Step 25: Dependants CRUD
-    const depRes = await fetch(`${baseUrl}/api/patients/dependants`, {
-      method: "POST",
+    // Step 25: Dependants CRUD. Only an adult with a date of birth on file can
+    // add a child, and only a child under 16 (decisions log #17).
+    const addChild = (body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/api/patients/dependants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ firstName: "Leo", lastName: "Wright", relationship: "Son", consentSigned: true, ...body }),
+      });
+    const noDobRes = await addChild({ dob: "2018-06-15" });
+    assert(noDobRes.status === 422, `Dependant without guardian DOB should be 422, got ${noDobRes.status}`);
+
+    const dobRes = await fetch(`${baseUrl}/api/patients/${account.patientProfile.id}/profile`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ firstName: "Leo", lastName: "Wright", dob: "2018-06-15", relationship: "Son", consentSigned: true }),
+      body: JSON.stringify({ dob: "1985-03-02" }),
     });
+    assert(dobRes.status === 200, `Profile DOB update failed: ${await dobRes.text()}`);
+
+    const tooOldRes = await addChild({ dob: "2000-01-01" });
+    assert(tooOldRes.status === 422, `Dependant aged 16+ should be 422, got ${tooOldRes.status}`);
+
+    const depRes = await addChild({ dob: "2018-06-15" });
     const dependant = (await depRes.json()) as any;
     assert(depRes.status === 201, `Dependant create failed: ${JSON.stringify(dependant)}`);
 
@@ -613,7 +629,7 @@ async function runE2ESuite() {
       headers: { Authorization: `Bearer ${token}` },
     });
     assert(depDelRes.status === 200, "Dependant delete failed");
-    console.log("✓ PASSED: Dependants CRUD (create → list → delete)");
+    console.log("✓ PASSED: Dependants CRUD (guardian checks → create → list → delete)");
 
     // Step 26: Onboarding Consents Persist
     const consentRes = await fetch(`${baseUrl}/api/consents/grant`, {
@@ -697,15 +713,21 @@ async function runE2ESuite() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const rewardsData = (await rewardsRes.json()) as any;
-    // A new patient starts with no points, and self-reported brushing earns none.
-    assert(rewardsRes.status === 200 && rewardsData.pointsBalance === 0, `Rewards should start at 0: ${JSON.stringify(rewardsData)}`);
+    // Points come only from this patient's completed visits (10 each, once
+    // per visit); self-reported brushing earns none.
+    const visitAwards = await prisma.rewardPointsAward.count({ where: { userId } });
+    assert(
+      rewardsRes.status === 200 && rewardsData.pointsBalance === visitAwards * 10,
+      `Points should match completed visits only: ${JSON.stringify(rewardsData)}`
+    );
 
     const redeem = () =>
       fetch(`${baseUrl}/api/rewards/redeem`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ rewardId: "rw_1" }),
+        body: JSON.stringify({ rewardId: "deposit_5" }),
       });
+    await prisma.oralHealthMetric.update({ where: { userId }, data: { pointsBalance: 0 } });
     const brokeRes = await redeem();
     assert(brokeRes.status === 422, `Redeeming with no points should fail: ${brokeRes.status}`);
 
@@ -713,7 +735,7 @@ async function runE2ESuite() {
     await prisma.oralHealthMetric.update({ where: { userId }, data: { pointsBalance: 1000 } });
     const redeemRes = await redeem();
     const redeemData = (await redeemRes.json()) as any;
-    assert(redeemRes.status === 201 && redeemData.voucherCode && redeemData.pointsBalance === 200, `Reward redeem failed: ${JSON.stringify(redeemData)}`);
+    assert(redeemRes.status === 201 && redeemData.voucherCode && redeemData.pointsBalance === 900, `Reward redeem failed: ${JSON.stringify(redeemData)}`);
 
     const insightsRes = await fetch(`${baseUrl}/api/rewards/insights`, {
       headers: { Authorization: `Bearer ${token}` },

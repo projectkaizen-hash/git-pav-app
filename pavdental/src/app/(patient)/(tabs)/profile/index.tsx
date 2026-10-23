@@ -172,7 +172,7 @@ export default function ProfileScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "clinician",
-                    email: "doctor@pavdental.com",
+                    email: "clinician@example.test",
                     firstName: "Demo",
                     lastName: "Clinician",
                   });
@@ -192,9 +192,9 @@ export default function ProfileScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "operator",
-                    email: "van@pavdental.com",
-                    firstName: "Dave",
-                    lastName: "Miller",
+                    email: "operator@example.test",
+                    firstName: "Test",
+                    lastName: "Operator",
                   });
                   router.replace("/(operator)/route" as any);
                 }}

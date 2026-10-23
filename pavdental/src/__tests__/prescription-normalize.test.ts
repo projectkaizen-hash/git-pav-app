@@ -39,4 +39,10 @@ assert(real.status === "completed", "A course past its recorded length is comple
 const noGdc = normalizePrescription({ id: "rx-3", clinician: { fullName: "Test Clinician" } });
 assert(noGdc.prescriber === "Test Clinician", "No invented GDC number when none is recorded");
 
+const signed = normalizePrescription({ id: "rx-4", reference: "PAV-RX-ABCD-1234", hasPdf: true });
+assert(signed.reference === "PAV-RX-ABCD-1234" && signed.hasPdf, "A signed prescription shows its reference and PDF");
+
+const legacy = normalizePrescription({ id: "rx-5", epsTransactionRef: "NHS-EPS-TEST-000000" });
+assert(legacy.reference === undefined && !legacy.hasPdf, "An old invented NHS EPS reference is not shown");
+
 if (failures > 0) process.exit(1);

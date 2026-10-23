@@ -3,6 +3,9 @@ import { useAuthStore } from "./auth-store";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
+/** Full URL for an API path, for links opened outside the app (e.g. a PDF). */
+export const apiUrl = (path: string) => `${BASE_URL}${path}`;
+
 // ─── In-flight refresh de-duplication ────────────────────────────────────────
 let refreshPromise: Promise<string> | null = null;
 

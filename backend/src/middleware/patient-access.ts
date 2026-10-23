@@ -8,6 +8,50 @@ import { AuthRequest } from "./auth";
  * or treatment plan with the patient. Administrative and van operator roles do
  * not receive clinical-record access by default.
  */
+// Decisions log #10: a clinician may read a patient's record while they have
+// an upcoming or recent visit together, up to 12 months after the last one.
+export const CLINICIAN_ACCESS_WINDOW_MONTHS = 12;
+const CARE_STATUSES = ["confirmed", "in_progress", "completed", "no_show"] as const;
+
+export function clinicianAccessWindowStart(now = new Date()): Date {
+  const start = new Date(now);
+  start.setMonth(start.getMonth() - CLINICIAN_ACCESS_WINDOW_MONTHS);
+  return start;
+}
+
+/** True when the clinician has a booked or recent visit (or plan) with the patient. */
+export async function hasCareRelationship(clinicianId: string, patientId: string, now = new Date()): Promise<boolean> {
+  const since = clinicianAccessWindowStart(now);
+  const appointment = await prisma.appointment.findFirst({
+    where: { patientId, clinicianId, status: { in: [...CARE_STATUSES] }, startTimeUtc: { gte: since } },
+    select: { id: true },
+  });
+  if (appointment) return true;
+  const plan = await prisma.treatmentPlan.findFirst({
+    where: { patientId, clinicianId, createdAt: { gte: since } },
+    select: { id: true },
+  });
+  return plan !== null;
+}
+
+/** Patient profile ids the clinician may currently read. */
+export async function patientsInClinicianCare(clinicianId: string, now = new Date()): Promise<string[]> {
+  const since = clinicianAccessWindowStart(now);
+  const [appointments, plans] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { clinicianId, status: { in: [...CARE_STATUSES] }, startTimeUtc: { gte: since } },
+      select: { patientId: true },
+      distinct: ["patientId"],
+    }),
+    prisma.treatmentPlan.findMany({
+      where: { clinicianId, createdAt: { gte: since } },
+      select: { patientId: true },
+      distinct: ["patientId"],
+    }),
+  ]);
+  return [...new Set([...appointments, ...plans].map((r) => r.patientId))];
+}
+
 export async function requirePatientRecordAccess(
   req: AuthRequest,
   res: Response
@@ -39,16 +83,8 @@ export async function requirePatientRecordAccess(
     return null;
   }
 
-  const careRelationship = await prisma.appointment.findFirst({
-    where: { patientId: profile.id, clinicianId: clinician.id },
-    select: { id: true },
-  }) ?? await prisma.treatmentPlan.findFirst({
-    where: { patientId: profile.id, clinicianId: clinician.id },
-    select: { id: true },
-  });
-
-  if (!careRelationship) {
-    res.status(403).json({ error: "No care relationship with this patient" });
+  if (!(await hasCareRelationship(clinician.id, profile.id))) {
+    res.status(403).json({ error: "No current care relationship with this patient" });
     return null;
   }
 

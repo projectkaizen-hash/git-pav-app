@@ -30,6 +30,8 @@ export const createAppointmentSchema = z.object({
   clinicianId: uuid.optional(),
   clinicId: uuid.optional(),
   vanId: uuid.optional(),
+  // A guardian booking for their child (decisions log #17).
+  dependantId: uuid.optional(),
   startTimeUtc: isoDateTime,
   // Ignored: the server derives the end time from the service duration. Still
   // accepted so existing clients keep working.

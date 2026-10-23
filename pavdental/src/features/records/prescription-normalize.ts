@@ -18,7 +18,10 @@ export interface NormalizedPrescription {
   issuedIso: string | null;
   status: "active" | "completed";
   refillsRemaining: number;
-  epsReference?: string;
+  /** Practice reference printed on the signed PDF (decisions log #4). */
+  reference?: string;
+  /** False for prescriptions recorded before signed PDFs. */
+  hasPdf: boolean;
 }
 
 const text = (...values: unknown[]): string | undefined =>
@@ -50,6 +53,8 @@ export function normalizePrescription(raw: any): NormalizedPrescription {
     issuedIso,
     status: raw.status === "completed" || raw.status === "active" ? raw.status : isCompleted ? "completed" : "active",
     refillsRemaining: typeof raw.refillsRemaining === "number" ? raw.refillsRemaining : 0,
-    epsReference: text(raw.epsTransactionRef, raw.epsReference),
+    // Older records carry an invented "NHS-EPS" reference, which isn't shown.
+    reference: text(raw.reference),
+    hasPdf: raw.hasPdf === true,
   };
 }

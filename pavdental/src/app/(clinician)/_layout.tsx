@@ -20,7 +20,7 @@ export default function ClinicianLayout() {
     >
       <Stack.Screen name="schedule" options={{ title: "Clinician Daily Schedule" }} />
       <Stack.Screen name="consult-room" options={{ headerShown: false }} />
-      <Stack.Screen name="rx-dispense" options={{ title: "Electronic Prescription (EPS)" }} />
+      <Stack.Screen name="rx-dispense" options={{ title: "Private prescription" }} />
     </Stack>
   );
 }

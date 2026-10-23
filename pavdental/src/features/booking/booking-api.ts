@@ -83,6 +83,8 @@ export async function createAppointment(data: {
   clinicianId?: string;
   clinicId?: string;
   vanId?: string;
+  // Booking for the guardian's child (decisions log #17).
+  dependantId?: string;
   startTimeUtc: string;
   endTimeUtc: string;
   slotId?: string;
@@ -111,11 +113,11 @@ export async function fetchMyAppointments() {
 // ─── Payment intent ──────────────────────────────────────────────────────────
 // Amount and confirmation are server-controlled; a verified Stripe webhook is
 // the only path that changes an appointment to confirmed.
-export async function createPaymentIntent(appointmentId: string) {
+export async function createPaymentIntent(appointmentId: string, voucherCode?: string) {
   const res = await authFetch("/api/payments/create-intent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ appointmentId }),
+    body: JSON.stringify(voucherCode ? { appointmentId, voucherCode } : { appointmentId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -125,6 +127,8 @@ export async function createPaymentIntent(appointmentId: string) {
     clientSecret: string | null;
     paymentIntentId: string;
     publishableKey: string;
+    amountPence: number;
+    discountPence: number;
     isMock: boolean;
   }>;
 }

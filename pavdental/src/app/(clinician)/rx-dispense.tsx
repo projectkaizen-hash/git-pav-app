@@ -11,6 +11,8 @@ import { summariseMedicalHistory, describeList } from "@/features/clinical/medic
 interface ClinicalContext {
   appointmentId: string;
   patient: { id: string; firstName: string; lastName: string; dob: string | null; address: string | null };
+  // Set when a parent or guardian booked this visit for their child.
+  guardian?: { id: string; firstName: string; lastName: string } | null;
   medicalHistory: Record<string, unknown> | null;
 }
 
@@ -90,7 +92,9 @@ export default function ClinicianRxDispenseScreen() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "The prescription wasn't saved");
       }
-      Alert.alert("Prescription saved", "The prescription has been recorded against this appointment.");
+      const issued = await res.json().catch(() => ({}));
+      const where = "The signed PDF is in the patient's app under Prescriptions.";
+      Alert.alert("Prescription issued", issued.reference ? `Reference ${issued.reference}. ${where}` : where);
       router.replace("/(clinician)/schedule");
     } catch (err: any) {
       Alert.alert("Prescription not saved", err?.message || "The prescription wasn't saved");
@@ -118,6 +122,11 @@ export default function ClinicianRxDispenseScreen() {
           <ThemedText variant="body">
             {patient.firstName} {patient.lastName}
           </ThemedText>
+          {context.data.guardian ? (
+            <ThemedText variant="caption" style={styles.address}>
+              Child, booked by parent or guardian {context.data.guardian.firstName} {context.data.guardian.lastName}
+            </ThemedText>
+          ) : null}
           <ThemedText variant="caption" style={styles.address}>
             {patient.address ?? "Address not recorded"}
           </ThemedText>

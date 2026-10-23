@@ -7,7 +7,11 @@ import {
   useAddDependantMutation,
   useRemoveDependantMutation,
 } from "@/features/account/account-hooks";
+import type { DependantRelationship } from "@/features/account/account-api";
 import { colors, spacing, type } from "@/theme";
+
+// Only a parent or guardian adds a child under 16 (decisions log #17).
+const RELATIONSHIPS: DependantRelationship[] = ["Son", "Daughter", "Ward"];
 
 export default function DependantsScreen() {
   const { data: dependants = [] } = useDependants();
@@ -18,11 +22,16 @@ export default function DependantsScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState("");
-  const [relationship, setRelationship] = useState<"Son" | "Daughter" | "Ward" | "Other">("Son");
+  const [relationship, setRelationship] = useState<DependantRelationship>("Son");
+  const [isGuardian, setIsGuardian] = useState(false);
 
   const handleAdd = async () => {
     if (!firstName || !lastName || !dob) {
       Alert.alert("Missing Fields", "Please complete all required fields for your child/dependant.");
+      return;
+    }
+    if (!isGuardian) {
+      Alert.alert("Confirm parental responsibility", "Confirm you are this child's parent or legal guardian.");
       return;
     }
 
@@ -45,9 +54,11 @@ export default function DependantsScreen() {
       setFirstName("");
       setLastName("");
       setDob("");
+      setIsGuardian(false);
       Alert.alert("Child Profile Linked", `${firstName}'s profile has been linked to your account.`);
-    } catch {
-      Alert.alert("Error", "Could not link dependant profile.");
+    } catch (err: any) {
+      // The server explains age and guardian refusals in plain words.
+      Alert.alert("Could not add child", err?.message || "Could not link dependant profile.");
     }
   };
 
@@ -179,7 +190,7 @@ export default function DependantsScreen() {
                 Relationship *
               </ThemedText>
               <View style={styles.relPills}>
-                {(["Son", "Daughter", "Ward", "Other"] as const).map((r) => (
+                {RELATIONSHIPS.map((r) => (
                   <TouchableOpacity
                     key={r}
                     onPress={() => setRelationship(r)}
@@ -196,10 +207,25 @@ export default function DependantsScreen() {
               </View>
             </View>
 
+            <TouchableOpacity
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isGuardian }}
+              onPress={() => setIsGuardian((v) => !v)}
+              style={styles.guardianRow}
+            >
+              <View style={[styles.checkbox, isGuardian && styles.checkboxChecked]}>
+                {isGuardian && <ThemedText style={styles.checkmark}>✓</ThemedText>}
+              </View>
+              <ThemedText variant="caption" style={styles.guardianText}>
+                I am this child's parent or legal guardian. Children must be under 16; young people aged 16 or over
+                can create their own account.
+              </ThemedText>
+            </TouchableOpacity>
+
             <Button
               title={addDependant.isPending ? "Linking..." : "Link Profile"}
               onPress={handleAdd}
-              disabled={addDependant.isPending || !firstName || !lastName}
+              disabled={addDependant.isPending || !firstName || !lastName || !isGuardian}
               loading={addDependant.isPending}
             />
           </ScrollView>
@@ -321,6 +347,32 @@ const styles = StyleSheet.create({
   relPills: {
     flexDirection: "row",
     gap: spacing.xs,
+  },
+  checkbox: {
+    alignItems: "center",
+    borderColor: colors.separator,
+    borderRadius: 4,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  checkmark: {
+    color: colors.onInk,
+    fontSize: 14,
+  },
+  guardianRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  guardianText: {
+    color: colors.secondaryLabel,
+    flex: 1,
   },
   relSection: {
     gap: spacing.xs,
