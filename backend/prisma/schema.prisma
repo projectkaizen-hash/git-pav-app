@@ -334,8 +334,16 @@ model Prescription {
   medicationName     String           @map("medication_name")
   dosageInstructions String           @map("dosage_instructions")
   dispensingPharmacy String           @map("dispensing_pharmacy")
+  /// Legacy: invented "NHS-EPS" references from before signed PDFs. No longer written.
   epsTransactionRef  String?          @map("eps_transaction_ref")
   dispatchedAt       DateTime         @default(now()) @map("dispatched_at")
+  /// Practice reference printed on the signed PDF (decisions log #4).
+  reference          String?          @unique @db.VarChar(32)
+  /// What was prescribed, for whom and by whom, frozen and signed at issue.
+  content            Json?
+  /// Ed25519 signature over the canonical JSON of content, base64.
+  signature          String?
+  signingKeyId       String?          @map("signing_key_id") @db.VarChar(64)
   appointment        Appointment?     @relation(fields: [appointmentId], references: [id])
   clinician          ClinicianProfile @relation(fields: [clinicianId], references: [id])
 

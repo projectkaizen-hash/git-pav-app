@@ -1,19 +1,27 @@
 import { Router, Response } from "express";
-import crypto from "crypto";
+import { Prisma } from "@prisma/client";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody, validateParams } from "../middleware/validate";
-import { createPrescriptionSchema, userIdParamsSchema } from "../schemas/prescriptions";
+import { createPrescriptionSchema, prescriptionIdParamsSchema, userIdParamsSchema } from "../schemas/prescriptions";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { hasCareRelationship } from "../middleware/patient-access";
+import { ageInYears, parseIsoDate } from "../lib/age";
+import {
+  newPrescriptionReference,
+  prescriptionDownloadToken,
+  prescriptionSigningKey,
+  PrescriptionContent,
+  signPrescription,
+} from "../lib/prescription-document";
 
 const router = Router();
 
 // ─── POST /api/prescriptions ──────────────────────────────────────────────────
-// Issues a cryptographically signed NHS EPS FHIR prescription bundle with
-// verified GDC prescriber registration and audit logging.
+// Issues a private prescription as a signed PDF (decisions log #4). Nothing is
+// sent to NHS EPS or to a pharmacy: the patient downloads the PDF.
 router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req: AuthRequest, res: Response) => {
   if (req.user!.role !== "clinician") {
     return res.status(403).json({ error: "Only clinicians can issue prescriptions" });
@@ -23,7 +31,7 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
 
   const clinician = await prisma.clinicianProfile.findUnique({
     where: { userId: req.user!.sub },
-    select: { id: true, fullName: true, gdcNumber: true },
+    select: { id: true, fullName: true, gdcNumber: true, roleTitle: true },
   });
 
   if (!clinician) {
@@ -33,6 +41,11 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
   // Validate 6-digit General Dental Council (GDC) registration number
   if (!/^\d{6}$/.test(clinician.gdcNumber)) {
     return res.status(422).json({ error: "Invalid clinician GDC registration number" });
+  }
+
+  const practiceAddress = env.practiceAddress ?? (env.isDevelopment || env.isTest ? "Practice address not configured (development)" : null);
+  if (!practiceAddress || !prescriptionSigningKey()) {
+    return res.status(503).json({ error: "Prescriptions can't be issued until the practice address and signing key are configured." });
   }
 
   // A prescription belongs to one of this clinician's own appointments, so it
@@ -60,57 +73,116 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
   if (!appointment || !(await hasCareRelationship(clinician.id, appointment.patientId))) {
     return res.status(404).json({ error: "No current appointment with this patient" });
   }
-  const resolvedAppointmentId = appointment.id;
 
-  const issuedAtIso = new Date().toISOString();
-  const fhirDigest = crypto
-    .createHmac("sha256", env.encryptionKey)
-    .update(`${clinician.gdcNumber}:${medicationName}:${dosageInstructions}:${dispensingPharmacy}:${issuedAtIso}`)
-    .digest("hex")
-    .slice(0, 10)
-    .toUpperCase();
+  const visit = await prisma.appointment.findUniqueOrThrow({
+    where: { id: appointment.id },
+    select: {
+      patient: { select: { firstName: true, lastName: true, dob: true, addressLine1: true, addressLine2: true, city: true, postcode: true } },
+      dependant: { select: { firstName: true, lastName: true, dob: true } },
+    },
+  });
+  const guardian = visit.patient;
+  const address = [guardian.addressLine1, guardian.addressLine2, guardian.city, guardian.postcode].filter(Boolean).join(", ") || null;
+  // When a guardian booked for their child, the child is the patient.
+  const child = visit.dependant;
+  const dob = child ? child.dob : guardian.dob ? guardian.dob.toISOString().slice(0, 10) : null;
+  const parsedDob = dob ? parseIsoDate(dob) : null;
+  const age = parsedDob ? ageInYears(parsedDob) : null;
 
-  const epsRef = `NHS-EPS-${Date.now().toString(36).toUpperCase()}-${fhirDigest.slice(0, 6)}`;
+  const content: PrescriptionContent = {
+    version: 1,
+    reference: newPrescriptionReference(),
+    issuedAt: new Date().toISOString(),
+    patient: {
+      name: child ? `${child.firstName} ${child.lastName}` : `${guardian.firstName} ${guardian.lastName}`,
+      dob,
+      ageUnder12: age !== null && age < 12 ? age : null,
+      address,
+    },
+    guardian: child ? { name: `${guardian.firstName} ${guardian.lastName}` } : null,
+    prescriber: { name: clinician.fullName, roleTitle: clinician.roleTitle, gdcNumber: clinician.gdcNumber },
+    practice: { name: env.practiceName, address: practiceAddress, phone: env.practicePhone ?? null },
+    item: { medicine: medicationName, directions: dosageInstructions, pharmacy: dispensingPharmacy },
+  };
+  const signed = signPrescription(content)!;
 
   const rx = await prisma.prescription.create({
     data: {
-      appointmentId: resolvedAppointmentId,
+      appointmentId: appointment.id,
       clinicianId: clinician.id,
       medicationName,
       dosageInstructions,
       dispensingPharmacy,
-      epsTransactionRef: epsRef,
-    },
-    include: {
-      clinician: { select: { fullName: true, gdcNumber: true } },
+      reference: content.reference,
+      content: content as unknown as Prisma.InputJsonValue,
+      signature: signed.signature,
+      signingKeyId: signed.keyId,
+      dispatchedAt: new Date(content.issuedAt),
     },
   });
 
   await createAuditLogWithIntegrity({
-    action: "prescription.eps_dispatched",
+    action: "prescription.issued",
     actorId: req.user!.sub,
     resourceId: rx.id,
     sessionId: req.user!.sessionId,
     ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: {
-      epsTransactionRef: epsRef,
-      gdcNumber: clinician.gdcNumber,
-      dispensingPharmacy,
-    },
+    metadata: { reference: content.reference, signingKeyId: signed.keyId },
   });
 
   return res.status(201).json({
     id: rx.id,
+    reference: rx.reference,
     medicationName: rx.medicationName,
     dosageInstructions: rx.dosageInstructions,
     dispensingPharmacy: rx.dispensingPharmacy,
-    epsTransactionRef: rx.epsTransactionRef,
-    dispatchedAt: rx.dispatchedAt,
-    prescriber: rx.clinician.fullName,
-    gdcNumber: rx.clinician.gdcNumber,
-    status: "DISPATCHED_TO_PHARMACY",
-    qrBarcodeData: `NHS_EPS|${epsRef}|GDC:${rx.clinician.gdcNumber}|${rx.medicationName}|${rx.dispensingPharmacy}`,
+    issuedAt: content.issuedAt,
+    prescriber: clinician.fullName,
+    gdcNumber: clinician.gdcNumber,
+    status: "ISSUED",
+    hasPdf: true,
   });
+});
+
+// Who may open a prescription's PDF: the patient (or guardian) whose visit it
+// was, or a clinician with a current care relationship (CS-08).
+async function findReadablePrescription(req: AuthRequest, id: string) {
+  const rx = await prisma.prescription.findUnique({
+    where: { id },
+    include: { appointment: { select: { patientId: true, patient: { select: { userId: true } } } } },
+  });
+  if (!rx?.appointment) return null;
+  if (req.user!.role === "patient") {
+    return rx.appointment.patient.userId === req.user!.sub ? rx : null;
+  }
+  if (req.user!.role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
+    return clinician && (await hasCareRelationship(clinician.id, rx.appointment.patientId)) ? rx : null;
+  }
+  return null;
+}
+
+// ─── POST /api/prescriptions/:id/pdf-link ─────────────────────────────────────
+// A link to the signed PDF that works for five minutes, for opening in the
+// phone's browser (which can't send the app's bearer token).
+router.post("/:id/pdf-link", requireAuth, validateParams(prescriptionIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const rx = await findReadablePrescription(req, String(req.params.id));
+  if (!rx) return res.status(404).json({ error: "Prescription not found" });
+  if (!rx.content || !rx.signature) {
+    return res.status(404).json({ error: "This prescription was recorded before signed PDFs, so there's no PDF for it." });
+  }
+
+  await createAuditLogWithIntegrity({
+    action: "prescription.pdf_link_issued",
+    actorId: req.user!.sub,
+    resourceId: rx.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: {},
+  });
+
+  const token = prescriptionDownloadToken(rx.id);
+  return res.json({ path: `/api/prescription-files/${rx.id}.pdf?token=${encodeURIComponent(token)}`, expiresAt: Number(token.split(".")[0]) });
 });
 
 // ─── GET /api/prescriptions/patient/:userId ────────────────────────────────────
@@ -149,7 +221,8 @@ router.get("/patient/:userId", requireAuth, validateParams(userIdParamsSchema), 
     orderBy: { dispatchedAt: "desc" },
   });
 
-  return res.json(prescriptions);
+  // The signature and frozen content stay server-side; the app gets the PDF.
+  return res.json(prescriptions.map(({ signature, content, signingKeyId, ...rx }) => ({ ...rx, hasPdf: Boolean(signature && content) })));
 });
 
 export default router;

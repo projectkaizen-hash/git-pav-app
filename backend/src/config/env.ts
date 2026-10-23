@@ -232,4 +232,11 @@ export const env = Object.freeze({
   // Where patients read about payment plans. Credit decisions are made by the
   // practice's finance provider, never in the app (decisions log #5).
   financeInfoUrl: readOptional("FINANCE_INFO_URL") ?? "https://www.pavdental.com/services/finance",
+  // Signed private prescriptions (decisions log #4). Base64 PKCS#8 DER Ed25519
+  // key; without it, deployed environments refuse to issue prescriptions.
+  prescriptionSigningKey: readOptional("PRESCRIPTION_SIGNING_KEY"),
+  // Printed on prescriptions as the prescriber's practice address.
+  practiceName: readOptional("PRACTICE_NAME") ?? "Pav Dental",
+  practiceAddress: readOptional("PRACTICE_ADDRESS"),
+  practicePhone: readOptional("PRACTICE_PHONE") ?? "0800 728 336",
 });

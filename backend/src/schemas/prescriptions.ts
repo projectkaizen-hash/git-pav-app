@@ -11,3 +11,5 @@ export const createPrescriptionSchema = z.object({
 }).strict();
 
 export const userIdParamsSchema = z.object({ userId: uuid }).strict();
+
+export const prescriptionIdParamsSchema = z.object({ id: uuid }).strict();

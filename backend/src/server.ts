@@ -20,6 +20,7 @@ import paymentRoutes from "./routes/payments";
 import { stripeWebhookHandler } from "./routes/payments";
 import videoRoutes from "./routes/video";
 import prescriptionRoutes from "./routes/prescriptions";
+import prescriptionFileRoutes from "./routes/prescription-files";
 import notificationRoutes from "./routes/notifications";
 import cancellationRoutes from "./routes/cancellations";
 import waitlistRoutes from "./routes/waitlist";
@@ -187,6 +188,8 @@ app.use("/api/audit", requireAuth, auditMiddleware, auditRoutes);
 app.use("/api/payments", requireAuth, auditMiddleware, paymentRoutes);
 app.use("/api/video", requireAuth, auditMiddleware, videoRoutes);
 app.use("/api/prescriptions", requireAuth, auditMiddleware, prescriptionRoutes);
+// Short-lived signed links to prescription PDFs (no bearer token; see the route).
+app.use("/api/prescription-files", prescriptionFileRoutes);
 app.use("/api/notifications", requireAuth, auditMiddleware, notificationRoutes);
 app.use("/api/waitlist", requireAuth, auditMiddleware, waitlistRoutes);
 app.use("/api/dspt", requireAuth, auditMiddleware, dsptAuditRoutes);

@@ -92,7 +92,9 @@ export default function ClinicianRxDispenseScreen() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "The prescription wasn't saved");
       }
-      Alert.alert("Prescription saved", "The prescription has been recorded against this appointment.");
+      const issued = await res.json().catch(() => ({}));
+      const where = "The signed PDF is in the patient's app under Prescriptions.";
+      Alert.alert("Prescription issued", issued.reference ? `Reference ${issued.reference}. ${where}` : where);
       router.replace("/(clinician)/schedule");
     } catch (err: any) {
       Alert.alert("Prescription not saved", err?.message || "The prescription wasn't saved");

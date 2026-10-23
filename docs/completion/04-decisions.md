@@ -13,7 +13,7 @@ The owner's answers to the Phase 3 questions (23 Oct 2026), and the defaults cho
 | 1 | Plan and staging migration | Approved | Decided | all |
 | 2 | Hotfix first (CS-03, CS-04, CS-06) | Yes | Decided | CS-06 next |
 | 3 | Delete seeded fake rows in real environments; financing behind a flag | Yes | Decided | CS-05 |
-| 4 | NHS EPS scope | Signed private prescriptions sent as PDFs (owner confirmed); a paid e-prescribing service later if volume needs it; full NHS EPS only if the practice takes on NHS work | Decided | CS-35 |
+| 4 | NHS EPS scope | Signed private prescriptions sent as PDFs (owner confirmed); a paid e-prescribing service later if volume needs it; full NHS EPS only if the practice takes on NHS work. Built: the server freezes and seals each prescription with the practice key and the patient opens the PDF in the app. **Open legal point:** the seal is the practice's, not the prescriber's own signature, so a pharmacy may need the printed copy signed in ink, or an approved e-signature service, before dispensing. | Decided (signature route open) | CS-35 |
 | 5 | Financing | Owner pointed to pavdental.com/services/finance. The app stops making in-app "pre-approval" credit decisions and links patients to that page. The provider isn't recorded here because the page couldn't be loaded from the build environment. | Decided | CS-05, CS-33 |
 | 6 | Van refund after the van accepts | Before the van is en route: full refund. Once en route or on site: the deposit is kept to cover the call-out. One policy function, easy to change. | Default | CS-18 |
 | 7 | Deposit succeeds after its hold expired | Auto-refund and tell the patient | Decided | CS-17 |

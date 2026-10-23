@@ -1,10 +1,11 @@
-import React from "react";
-import { View, StyleSheet, ScrollView, Linking } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, ScrollView, Linking, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, EmptyState, Skeleton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
+import { apiUrl, authFetch } from "@/features/auth/auth-api";
 import { normalizePrescription } from "../prescriptions";
 
 export default function PrescriptionDetailScreen() {
@@ -13,6 +14,23 @@ export default function PrescriptionDetailScreen() {
   const user = useCurrentUser();
   const userId = user?.id || "";
   const { data: rawList, isLoading } = usePatientPrescriptions(userId);
+  const [openingPdf, setOpeningPdf] = useState(false);
+
+  // The PDF opens in the phone's browser through a link that works for five
+  // minutes, so it can be printed or shared with a pharmacy.
+  const openPdf = async (prescriptionId: string) => {
+    setOpeningPdf(true);
+    try {
+      const res = await authFetch(`/api/prescriptions/${prescriptionId}/pdf-link`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't open the prescription");
+      await Linking.openURL(apiUrl(body.path));
+    } catch (err: any) {
+      Alert.alert("Couldn't open the prescription", err?.message || "Please try again.");
+    } finally {
+      setOpeningPdf(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,13 +111,13 @@ export default function PrescriptionDetailScreen() {
               {rx.course}
             </ThemedText>
           </View>
-          {rx.epsReference ? (
+          {rx.reference ? (
             <View style={styles.detailRow}>
               <ThemedText variant="caption" style={styles.detailLabel}>
-                EPS Token
+                Reference
               </ThemedText>
               <ThemedText variant="mono" style={styles.detailValue}>
-                {rx.epsReference}
+                {rx.reference}
               </ThemedText>
             </View>
           ) : null}
@@ -144,12 +162,22 @@ export default function PrescriptionDetailScreen() {
           ) : null}
         </Card>
 
+        {rx.hasPdf ? (
+          <Button
+            title={openingPdf ? "Opening…" : "Open prescription PDF"}
+            size="lg"
+            loading={openingPdf}
+            accessibilityLabel="Open the signed prescription PDF"
+            onPress={() => openPdf(rx.id)}
+          />
+        ) : null}
+
         <Button
           title="Call the practice"
           variant="secondary"
           size="lg"
           accessibilityLabel="Call Pav Dental practice"
-          onPress={() => Linking.openURL("tel:+442070000000").catch(() => {})}
+          onPress={() => Linking.openURL("tel:0800728336").catch(() => {})}
         />
       </ScrollView>
     </View>
