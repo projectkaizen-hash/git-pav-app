@@ -43,6 +43,8 @@ import { redis } from "./lib/redis";
 import { env } from "./config/env";
 import { startAuditMonitoring } from "./lib/audit-monitoring";
 import { startBackgroundJobs } from "./lib/background-jobs";
+import { flushErrorTracking, initErrorTracking, reportError } from "./lib/error-tracking";
+import { safeError } from "./lib/log-safety";
 import { getCoverageBackend } from "./lib/van-coverage";
 
 const app = express();
@@ -209,21 +211,24 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ─── Process-level error handlers ─────────────────────────────────────────────
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // In production, you might want to use a proper error tracking service
-  // For now, we log it but don't crash the process
+// Logged with safeError: a raw Prisma error can quote patient data.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', safeError(reason));
+  reportError(reason, { source: "unhandledRejection" });
+  // Logged and reported, but the process keeps running.
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  // Uncaught exceptions can leave the application in an undefined state
-  // It's generally safer to exit and let the process manager restart
-  process.exit(1);
+  console.error('Uncaught Exception:', safeError(error));
+  reportError(error, { source: "uncaughtException" });
+  // Uncaught exceptions can leave the application in an undefined state, so
+  // exit (after sending the report) and let the process manager restart.
+  flushErrorTracking().finally(() => process.exit(1));
 });
 
 // ─── Startup ──────────────────────────────────────────────────────────────────
 if (require.main === module) {
+  initErrorTracking();
   app.listen(PORT, async () => {
     console.log(`🏥 Pav Dental API running on port ${PORT}`);
     try {
