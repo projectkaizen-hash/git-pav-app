@@ -66,3 +66,18 @@ SELECT patient_id FROM van_service_requests WHERE status IN ('pending', 'accepte
 If any rows come back, resolve them by hand (end the stale shift, or expire the older request after releasing its deposit) before deploying. If a migration fails part-way, Postgres leaves an invalid index behind: drop it with `DROP INDEX CONCURRENTLY "<name>";`, fix the duplicates, then mark the migration rolled back (`npx prisma migrate resolve --rolled-back <migration>`) and deploy again.
 
 Prisma can't declare partial indexes, so they aren't in `schema.prisma`; the drift check ignores them.
+
+## Before deploying `20261024040000_appointments_no_clinician_overlap` (CS-16)
+
+The migration adds an exclusion constraint: a clinician can't have two live appointments (held, confirmed or in progress) whose times overlap. An exclusion constraint can't be added `NOT VALID` or concurrently, so it takes a brief exclusive lock on `appointments` and fails if overlaps already exist. Check first; this should return no rows:
+
+```sql
+SELECT a.id, b.id
+FROM appointments a
+JOIN appointments b ON a.clinician_id = b.clinician_id AND a.id < b.id
+WHERE a.status IN ('draft_hold', 'confirmed', 'in_progress')
+  AND b.status IN ('draft_hold', 'confirmed', 'in_progress')
+  AND tsrange(a.start_time_utc, a.end_time_utc, '[)') && tsrange(b.start_time_utc, b.end_time_utc, '[)');
+```
+
+Expired holds count too, so let the hold sweeper run (or cancel holds whose `hold_expires_at` has passed) before deploying. Any real clash between confirmed appointments needs a person to rebook one of them. It also enables the `btree_gist` extension.

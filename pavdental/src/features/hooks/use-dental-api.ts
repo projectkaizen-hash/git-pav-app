@@ -88,7 +88,7 @@ export function useHoldSlotMutation() {
 export function useCreateAppointmentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createAppointment,
+    mutationFn: (data: Parameters<typeof createAppointment>[0]) => createAppointment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
       queryClient.invalidateQueries({ queryKey: ["slots"] });

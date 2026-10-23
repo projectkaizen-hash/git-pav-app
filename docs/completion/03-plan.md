@@ -195,6 +195,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Tests:** concurrent create on the same clinician and slot gives one booking; past slots aren't returned; rebooking after cancel works
 - **Acceptance:** overlap is impossible at the DB level
 - **Depends on:** CS-01, CS-04
+- **Note:** past slots were already marked unavailable by CS-30; `/slots` now leaves them out. Van appointments without a clinician aren't covered by the constraint, because their times are ETA estimates. The app sends one `Idempotency-Key` per visit to the booking summary, and a second tap without one carries on with the patient's own live hold.
 - **Size:** M
 
 ### CS-17 Webhook completeness
