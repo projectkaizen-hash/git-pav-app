@@ -29,6 +29,7 @@ import { broadcastEtaUpdates, isMaterialDrift } from "../lib/van-eta-broadcast";
 import { env } from "../config/env";
 import {
   releaseVanDeposit,
+  vanCancellationKeepsDeposit,
   isDepositAuthorized,
   VanDepositReleaseStatus,
 } from "../lib/van-payments";
@@ -1174,10 +1175,15 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
   // Release the deposit BEFORE marking the request cancelled: if Stripe fails
   // we return an error and leave the request in its current state, so the
   // patient can retry the cancel (and so we never strand a hold on a request
-  // we claim is already over). A captured deposit (cancel after accept) is
-  // fully refunded — flagged as a tunable cancellation-fee policy.
+  // we claim is already over). A captured deposit is refunded unless the van
+  // is already en route or on site (vanCancellationKeepsDeposit).
+  const keepsDeposit = vanCancellationKeepsDeposit(request.phase);
+  let depositOutcome: string | null = null;
   if (request.paymentIntentId) {
-    const release = await releaseVanDeposit(request.paymentIntentId, "patient_cancelled");
+    const release = await releaseVanDeposit(request.paymentIntentId, "patient_cancelled", {
+      retainCaptured: keepsDeposit,
+    });
+    depositOutcome = release.status;
     if (release.status === "failed") {
       return res.status(502).json({
         error: "Could not release deposit",
@@ -1218,7 +1224,7 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
     console.error("[VAN ETA PUSH] post-cancel broadcast failed:", err)
   );
 
-  return res.json(updated);
+  return res.json({ ...updated, depositOutcome, depositRetained: depositOutcome === "retained" });
 });
 
 export default router;

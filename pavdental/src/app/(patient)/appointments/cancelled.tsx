@@ -10,12 +10,17 @@ import { useMyAppointments } from "@/features/hooks/use-dental-api";
 
 export default function CancelledAppointmentScreen() {
   const router = useRouter();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { appointmentId, refundAmountPence, policyNotice } = useLocalSearchParams<{
+    appointmentId?: string;
+    refundAmountPence?: string;
+    policyNotice?: string;
+  }>();
   const { data: appointments } = useMyAppointments();
 
   const booking = (appointments as any[] | undefined)?.find((b) => b.id === appointmentId);
   const serviceName = booking?.service?.name || "Your appointment";
-  const depositPence = booking?.service?.depositPence;
+  // What the server actually refunded, not the service's list deposit.
+  const refundPence = Number(refundAmountPence) || 0;
 
   return (
     <View style={styles.container}>
@@ -32,7 +37,7 @@ export default function CancelledAppointmentScreen() {
           </ThemedText>
         </View>
 
-        {depositPence ? (
+        {refundPence > 0 ? (
           <Card elevation="raised" style={styles.refundCard}>
             <View style={styles.refundRow}>
               <AppIcon name="creditCard" size={16} color={colors.ink} />
@@ -41,8 +46,14 @@ export default function CancelledAppointmentScreen() {
               </ThemedText>
             </View>
             <ThemedText variant="caption" style={styles.muted}>
-              Your £{(depositPence / 100).toFixed(2)} deposit will be refunded by your bank
-              within 5 working days — no action needed.
+              £{(refundPence / 100).toFixed(2)} is being refunded to your card. Banks usually
+              take 5 to 10 working days to show it.
+            </ThemedText>
+          </Card>
+        ) : policyNotice ? (
+          <Card elevation="raised" style={styles.refundCard}>
+            <ThemedText variant="caption" style={styles.muted}>
+              {policyNotice}
             </ThemedText>
           </Card>
         ) : null}

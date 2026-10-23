@@ -489,20 +489,13 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
 });
 
 // ─── PATCH /api/booking/appointments/:id/cancel ──────────────────────────────
-router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
-  const apptId = String(req.params.id);
-  const profile = await prisma.patientProfile.findUnique({
-    where: { userId: req.user!.sub },
-    select: { id: true },
+// Retired (decisions log #8): it cancelled without refunding the deposit.
+// Older app builds are pointed at the one cancel path.
+router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointmentIdParamsSchema), (_req: AuthRequest, res: Response) => {
+  return res.status(410).json({
+    error: "Please update the app to cancel this appointment.",
+    use: "POST /api/booking/appointments/:id/cancel-with-refund",
   });
-  if (!profile) return res.status(404).json({ error: "Patient not found" });
-
-  await prisma.appointment.updateMany({
-    where: { id: apptId, patientId: profile.id },
-    data: { status: "cancelled" },
-  });
-
-  return res.json({ message: "Appointment cancelled" });
 });
 
 // ─── POST /api/booking/appointments/:id/check-in ─────────────────────────────

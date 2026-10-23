@@ -50,9 +50,12 @@ export default function VanLiveTrackScreen() {
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelVanRequest(id),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["van-request-live"] });
-      Alert.alert("Request Cancelled", "Your van visit request has been cancelled.", [
+      const depositLine = result.depositRetained
+        ? " The van was already on its way, so your deposit has been kept to cover the call-out."
+        : "";
+      Alert.alert("Request Cancelled", `Your van visit request has been cancelled.${depositLine}`, [
         { text: "OK", onPress: () => router.replace("/(patient)/(tabs)/home") },
       ]);
     },
@@ -65,7 +68,9 @@ export default function VanLiveTrackScreen() {
     if (!request) return;
     Alert.alert(
       "Cancel Van Request",
-      "Are you sure you want to cancel your mobile surgery request?",
+      request.phase === "en_route" || request.phase === "on_site"
+        ? "The van is already on its way, so your deposit will be kept to cover the call-out. Cancel anyway?"
+        : "Are you sure you want to cancel your mobile surgery request? Your deposit will be returned.",
       [
         { text: "Keep Visit", style: "cancel" },
         {

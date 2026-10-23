@@ -2,7 +2,7 @@
 // Stripe is injected via opts.stripe and prisma is mocked, so these run
 // hermetically — no database or network required.
 
-import { releaseVanDeposit, isDepositAuthorized } from "../lib/van-payments";
+import { releaseVanDeposit, isDepositAuthorized, vanCancellationKeepsDeposit } from "../lib/van-payments";
 
 jest.mock("../lib/prisma", () => ({
   prisma: {
@@ -42,6 +42,26 @@ beforeEach(() => {
 });
 
 describe("releaseVanDeposit", () => {
+  test("keeps a captured deposit when the policy says so", async () => {
+    const stripe = makeFakeStripe({ retrieveStatus: "succeeded" });
+
+    const result = await releaseVanDeposit("pi_test_1", "patient_cancelled", { stripe: stripe as any, retainCaptured: true });
+
+    expect(result.status).toBe("retained");
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(stripe.paymentIntents.cancel).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  test("still lifts an uncaptured hold when the policy keeps deposits", async () => {
+    const stripe = makeFakeStripe({ retrieveStatus: "requires_capture" });
+
+    const result = await releaseVanDeposit("pi_test_1", "patient_cancelled", { stripe: stripe as any, retainCaptured: true });
+
+    expect(result.status).toBe("released");
+    expect(stripe.paymentIntents.cancel).toHaveBeenCalled();
+  });
+
   test("cancels an authorized (requires_capture) hold", async () => {
     const stripe = makeFakeStripe({ retrieveStatus: "requires_capture" });
 
@@ -157,5 +177,14 @@ describe("isDepositAuthorized", () => {
 
   test("false when no intent exists", async () => {
     expect(await isDepositAuthorized(null, null)).toBe(false);
+  });
+});
+
+describe("vanCancellationKeepsDeposit", () => {
+  test("refunds before the van sets off and keeps the deposit once it has", () => {
+    expect(vanCancellationKeepsDeposit("queued")).toBe(false);
+    expect(vanCancellationKeepsDeposit(null)).toBe(false);
+    expect(vanCancellationKeepsDeposit("en_route")).toBe(true);
+    expect(vanCancellationKeepsDeposit("on_site")).toBe(true);
   });
 });
