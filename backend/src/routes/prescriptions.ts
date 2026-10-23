@@ -7,6 +7,7 @@ import { validateBody, validateParams } from "../middleware/validate";
 import { createPrescriptionSchema, userIdParamsSchema } from "../schemas/prescriptions";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { hasCareRelationship } from "../middleware/patient-access";
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
 // Issues a cryptographically signed NHS EPS FHIR prescription bundle with
 // verified GDC prescriber registration and audit logging.
 router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req: AuthRequest, res: Response) => {
-  if (!["clinician", "admin"].includes(req.user!.role)) {
+  if (req.user!.role !== "clinician") {
     return res.status(403).json({ error: "Only clinicians can issue prescriptions" });
   }
 
@@ -34,23 +35,32 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
     return res.status(422).json({ error: "Invalid clinician GDC registration number" });
   }
 
-  // Resolve appointmentId if not explicitly passed by linking to clinician's latest active appointment for this patient
-  let resolvedAppointmentId: string | null = appointmentId || null;
-  if (!resolvedAppointmentId && patientId) {
+  // A prescription belongs to one of this clinician's own appointments, so it
+  // always has a patient and a prescriber with a care relationship (CS-08).
+  // With only a patientId, use the clinician's latest visit with that patient.
+  let appointment: { id: string; patientId: string } | null = null;
+  if (appointmentId) {
+    appointment = await prisma.appointment.findFirst({
+      where: { id: appointmentId, clinicianId: clinician.id, status: { in: ["confirmed", "in_progress", "completed"] } },
+      select: { id: true, patientId: true },
+    });
+  } else if (patientId) {
     const patient = await prisma.patientProfile.findFirst({
       where: { OR: [{ id: patientId }, { userId: patientId }] },
       select: { id: true },
     });
-    if (!patient) {
-      return res.status(404).json({ error: "Patient profile not found" });
+    if (patient) {
+      appointment = await prisma.appointment.findFirst({
+        where: { clinicianId: clinician.id, patientId: patient.id, status: { in: ["confirmed", "in_progress", "completed"] } },
+        orderBy: { startTimeUtc: "desc" },
+        select: { id: true, patientId: true },
+      });
     }
-    const latestAppt = await prisma.appointment.findFirst({
-      where: { clinicianId: clinician.id, patientId: patient.id },
-      orderBy: { startTimeUtc: "desc" },
-      select: { id: true },
-    });
-    resolvedAppointmentId = latestAppt?.id ?? null;
   }
+  if (!appointment || !(await hasCareRelationship(clinician.id, appointment.patientId))) {
+    return res.status(404).json({ error: "No current appointment with this patient" });
+  }
+  const resolvedAppointmentId = appointment.id;
 
   const issuedAtIso = new Date().toISOString();
   const fhirDigest = crypto
@@ -107,7 +117,7 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
 router.get("/patient/:userId", requireAuth, validateParams(userIdParamsSchema), async (req: AuthRequest, res: Response) => {
   const requestedId = String(req.params.userId);
 
-  if (req.user!.role === "operator") {
+  if (req.user!.role !== "patient" && req.user!.role !== "clinician") {
     return res.status(403).json({ error: "Forbidden" });
   }
 
@@ -121,6 +131,13 @@ router.get("/patient/:userId", requireAuth, validateParams(userIdParamsSchema), 
   }
 
   if (!profile) return res.status(404).json({ error: "Patient profile not found" });
+
+  if (req.user!.role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
+    if (!clinician || !(await hasCareRelationship(clinician.id, profile.id))) {
+      return res.status(403).json({ error: "No current care relationship with this patient" });
+    }
+  }
 
   const prescriptions = await prisma.prescription.findMany({
     where: {

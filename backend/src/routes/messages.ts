@@ -1,4 +1,6 @@
 import { Router, Response } from "express";
+import type { Prisma } from "@prisma/client";
+import { patientsInClinicianCare } from "../middleware/patient-access";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
@@ -7,6 +9,22 @@ import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 
 const router = Router();
+
+// Patients see their own threads. Admins (the practice team) see all. A
+// clinician sees threads only for patients in their care in the last 12
+// months (decisions log #10, CS-08).
+async function visibleThreadsWhere(req: AuthRequest): Promise<Prisma.MessageThreadWhereInput> {
+  const { sub, role } = req.user!;
+  if (role === "admin") return {};
+  if (role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({ where: { userId: sub }, select: { id: true } });
+    if (!clinician) return { id: { in: [] } };
+    const patientIds = await patientsInClinicianCare(clinician.id);
+    const patients = await prisma.patientProfile.findMany({ where: { id: { in: patientIds } }, select: { userId: true } });
+    return { patientUserId: { in: patients.map((p) => p.userId) } };
+  }
+  return { patientUserId: sub };
+}
 
 const threadIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
@@ -24,11 +42,8 @@ const replyMessageSchema = z.object({
 // Returns persistent message threads for the authenticated user.
 // A new inbox is empty: no care-team threads are invented (CS-05).
 router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.sub;
-  const isStaff = ["clinician", "admin"].includes(req.user!.role);
-
   const threads = await prisma.messageThread.findMany({
-    where: isStaff ? {} : { patientUserId: userId },
+    where: await visibleThreadsWhere(req),
     include: {
       messages: {
         orderBy: { sentAt: "asc" },
@@ -105,10 +120,9 @@ router.post(
     const threadId = String(req.params.id);
     const userId = req.user!.sub;
     const { body } = req.body;
-    const isStaff = ["clinician", "admin"].includes(req.user!.role);
 
     const thread = await prisma.messageThread.findFirst({
-      where: isStaff ? { id: threadId } : { id: threadId, patientUserId: userId },
+      where: { AND: [{ id: threadId }, await visibleThreadsWhere(req)] },
     });
 
     if (!thread) {
@@ -169,11 +183,8 @@ router.post(
 // ─── PATCH /api/messages/:id/read ─────────────────────────────────────────────
 router.patch("/:id/read", requireAuth, validateParams(threadIdParamsSchema), async (req: AuthRequest, res: Response) => {
   const threadId = String(req.params.id);
-  const userId = req.user!.sub;
-  const isStaff = ["clinician", "admin"].includes(req.user!.role);
-
   const existing = await prisma.messageThread.findFirst({
-    where: isStaff ? { id: threadId } : { id: threadId, patientUserId: userId },
+    where: { AND: [{ id: threadId }, await visibleThreadsWhere(req)] },
   });
 
   if (!existing) {
