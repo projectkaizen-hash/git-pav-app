@@ -16,6 +16,7 @@
 import { Router, Request, Response } from "express";
 import argon2 from "argon2";
 import crypto from "crypto";
+import { openErasureRequest, upcomingBookings } from "../lib/erasure";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import {
@@ -118,9 +119,10 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── DELETE /api/auth/account ─────────────────────────────────────────────
-// GDPR Article 17 soft-delete: re-verifies the password, deactivates the
-// account, revokes every session, and audit-logs the request with the
-// user-supplied reason. Data retention then follows the DSPT policy.
+// GDPR Article 17: re-verifies the password, deactivates the account, revokes
+// every session and, for a patient, opens an erasure request for the DPO
+// (CS-23). Upcoming bookings must be cancelled first (decisions log #21), as
+// the patient can't sign in to cancel them afterwards.
 router.delete("/", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: "Unauthorised" });
 
@@ -134,6 +136,20 @@ router.delete("/", requireAuth, async (req: AuthRequest, res: Response) => {
 
   if (!confirmPassword || !(await argon2.verify(user.passwordHash, confirmPassword))) {
     return res.status(403).json({ error: "Password confirmation failed" });
+  }
+
+  const profile = user.role === "patient"
+    ? await prisma.patientProfile.findUnique({ where: { userId: user.id }, select: { id: true } })
+    : null;
+  if (profile) {
+    const upcoming = await upcomingBookings(profile.id);
+    if (upcoming.length > 0) {
+      return res.status(409).json({
+        error: "Please cancel your upcoming appointments before deleting your account.",
+        code: "UPCOMING_BOOKINGS",
+        upcoming,
+      });
+    }
   }
 
   await prisma.$transaction([
@@ -153,12 +169,22 @@ router.delete("/", requireAuth, async (req: AuthRequest, res: Response) => {
     resourceId: user.id,
     sessionId: req.user.sessionId,
     ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: { reason: reason ?? null },
+    // The reason is free text and may mention health; it goes to the DPO's
+    // request, not the audit log.
+    metadata: { hasReason: !!reason },
   });
 
+  if (!profile) {
+    return res.json({ success: true, message: "Account deactivated." });
+  }
+  const request = await openErasureRequest(user.id, "account_deletion", reason);
   return res.json({
     success: true,
-    message: "Account deactivated. Contact support to complete erasure.",
+    // Not "requestId": standardResponse overwrites that with the trace id.
+    erasureRequestId: request.id,
+    dueBy: request.dueAt.toISOString(),
+    message:
+      "Your account is closed. We'll erase your personal details within one month. Your dental records are kept for as long as the law requires.",
   });
 });
 

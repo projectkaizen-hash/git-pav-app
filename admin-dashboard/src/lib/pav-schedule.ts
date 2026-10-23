@@ -86,3 +86,18 @@ export async function appRequest<T>(path: string, init: RequestInit = {}): Promi
   if (!res.ok) throw new Error((body as { error?: string }).error ?? "Something went wrong");
   return body as T;
 }
+
+export interface ErasureRequest {
+  id: string;
+  source: "account_deletion" | "patient_request";
+  status: "pending" | "completed" | "rejected";
+  reason: string | null;
+  requestedAt: string;
+  dueAt: string;
+  daysLeft: number;
+  overdue: boolean;
+  completedAt: string | null;
+  outcomeNote: string | null;
+  patient: { userId: string; name: string | null; email: string | null; retainUntil: string | null };
+  upcomingBookings: number;
+}

@@ -20,6 +20,8 @@ model User {
   isActive                Boolean                  @default(true) @map("is_active")
   failedLoginAttempts     Int                      @default(0) @map("failed_login_attempts")
   lockedUntil             DateTime?                @map("locked_until")
+  /// Set when the account was erased (CS-23): login and contact details are gone.
+  erasedAt                DateTime?                @map("erased_at")
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
   auditLogs               AuditLog[]
@@ -36,6 +38,8 @@ model User {
   pushTokens              PushToken[]
   savedPaymentMethods     SavedPaymentMethod[]
   scheduledNotifications  ScheduledNotification[]
+  erasureRequests         ErasureRequest[]         @relation("ErasureRequestUser")
+  erasureRequestsHandled  ErasureRequest[]         @relation("ErasureRequestHandler")
 
   @@map("users")
 }
@@ -130,6 +134,9 @@ model PatientProfile {
   medicalHistory        Json?               @map("medical_history")
   consents              Json?
   stripeCustomerId      String?             @unique @map("stripe_customer_id") @db.VarChar(100)
+  /// Set when the patient was erased. The clinical record is kept until retainUntil.
+  erasedAt              DateTime?           @map("erased_at")
+  retainUntil           DateTime?           @map("retain_until") @db.Date
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
   appointments          Appointment[]
@@ -804,6 +811,33 @@ enum ServiceCategory {
   emergency
   restorative
   cosmetic
+}
+
+/// A patient's request to be erased (UK GDPR Art. 17), worked by the DPO.
+model ErasureRequest {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  source      String        @db.VarChar(30)
+  status      ErasureStatus @default(pending)
+  reason      String?       @db.VarChar(500)
+  requestedAt DateTime      @default(now()) @map("requested_at")
+  /// One calendar month after the request (Art. 12(3)).
+  dueAt       DateTime      @map("due_at")
+  completedAt DateTime?     @map("completed_at")
+  handledById String?       @map("handled_by_id") @db.Uuid
+  outcomeNote String?       @map("outcome_note") @db.VarChar(500)
+  user        User          @relation("ErasureRequestUser", fields: [userId], references: [id], onDelete: Restrict)
+  handledBy   User?         @relation("ErasureRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, dueAt])
+  @@map("erasure_requests")
+}
+
+enum ErasureStatus {
+  pending
+  completed
+  rejected
 }
 
 enum AppointmentStatus {

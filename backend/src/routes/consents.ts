@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import crypto from "crypto";
+import { openErasureRequest } from "../lib/erasure";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody, validateQuery } from "../middleware/validate";
@@ -360,7 +361,10 @@ router.post("/data-deletion-request", requireAuth, validateBody(dataDeletionRequ
     return res.status(404).json({ error: "Patient profile not found" });
   }
 
-  const requestId = crypto.randomUUID();
+  const request = await openErasureRequest(userId, "patient_request", reason);
+  // The reference given to the patient. Not returned as "requestId":
+  // standardResponse overwrites that key with the trace id.
+  const erasureRequestId = request.id;
 
   await createAuditLogWithIntegrity({
     action: "gdpr.data_deletion_requested",
@@ -368,19 +372,21 @@ router.post("/data-deletion-request", requireAuth, validateBody(dataDeletionRequ
     resourceId: profile.id,
     sessionId: req.user!.sessionId,
     ipHash: pseudonymiseIp(ipAddress || req.ip || ""),
-    metadata: { requestId, reason },
+    // The free-text reason stays on the request, out of the audit log.
+    metadata: { erasureRequestId, hasReason: !!reason },
   });
 
   await communicationService.sendEmail({
     to: profile.user.email,
     subject: "Pav Dental GDPR Erasure Request Confirmation",
-    html: `<p>Your GDPR Article 17 erasure request (Ref: <strong>${requestId}</strong>) has been logged with our Data Protection Officer.</p>`,
-    text: `Your GDPR Article 17 erasure request (Ref: ${requestId}) has been logged with our Data Protection Officer.`,
+    html: `<p>Your GDPR Article 17 erasure request (Ref: <strong>${erasureRequestId}</strong>) has been logged with our Data Protection Officer.</p>`,
+    text: `Your GDPR Article 17 erasure request (Ref: ${erasureRequestId}) has been logged with our Data Protection Officer.`,
   });
 
   return res.status(202).json({
     message: "Data deletion request received. This will be reviewed and processed in accordance with data protection regulations.",
-    requestId,
+    erasureRequestId,
+    dueBy: request.dueAt.toISOString(),
     note: "Clinical and financial records may need to be retained for legal and regulatory purposes.",
   });
 });
