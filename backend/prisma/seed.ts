@@ -312,9 +312,10 @@ async function main() {
     create: {
       userId: docUser.id,
       fullName: "Dr. Tariq Pav",
-      // Letters keep these outside the GDC's numeric register, so they can never
-      // match a real registrant (SD-2). Phone numbers use Ofcom drama ranges.
-      gdcNumber: "DEMO01",
+      // 99999x is far above any GDC number issued so far, so these can't match a
+      // real registrant (SD-2) while still passing the 6-digit format check that
+      // prescribing enforces. Phone numbers use Ofcom drama ranges.
+      gdcNumber: "999991",
       roleTitle: "Clinical Director & Implant Surgeon",
       specialisms: ["Implantology", "Invisalign", "Sedation"],
       bio: "Over 14 years clinical experience across London teaching hospitals and private surgeries.",
@@ -389,7 +390,7 @@ async function main() {
       data: {
         userId: sarahUser.id,
         fullName: "Dr. Sarah Jenkins",
-        gdcNumber: "DEMO02",
+        gdcNumber: "999992",
         roleTitle: "General Dental Practitioner",
         specialisms: ["Aesthetic Restorations", "Endodontics", "Anxious Patients"],
         bio: "Special interest in minimally invasive dentistry and nervous patient care.",
