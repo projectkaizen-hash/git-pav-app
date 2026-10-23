@@ -239,4 +239,7 @@ export const env = Object.freeze({
   practiceName: readOptional("PRACTICE_NAME") ?? "Pav Dental",
   practiceAddress: readOptional("PRACTICE_ADDRESS"),
   practicePhone: readOptional("PRACTICE_PHONE") ?? "0800 1938 786",
+  // Retention sweeps only report until this is "true" (CS-23); then van
+  // location history older than 30 days is deleted daily.
+  retentionEnforce: readOptional("RETENTION_ENFORCE") === "true",
 });
