@@ -48,16 +48,18 @@ export function useCreatePaymentIntent() {
   });
 }
 
-// Confirm appointment after successful payment
+// Ask the server to confirm the appointment after PaymentSheet succeeds. The
+// server verifies the PaymentIntent it created with Stripe and records the
+// amount itself; the client never sends an amount. The webhook confirms too,
+// so useAppointmentStatus remains the source of truth.
 export function useConfirmAppointment() {
   const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ appointmentId, stripePaymentId, depositPaidPence }: {
+    mutationFn: async ({ appointmentId, stripePaymentId }: {
       appointmentId: string;
-      stripePaymentId: string;
-      depositPaidPence: number;
+      stripePaymentId?: string;
     }) => {
       const response = await fetch(`${API_BASE}/api/booking/appointments/${appointmentId}/confirm`, {
         method: "PATCH",
@@ -65,10 +67,7 @@ export function useConfirmAppointment() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          stripePaymentId,
-          depositPaidPence,
-        }),
+        body: JSON.stringify(stripePaymentId ? { stripePaymentId } : {}),
       });
 
       if (!response.ok) {
@@ -139,16 +138,12 @@ export function usePaymentFlow() {
     }
   };
 
-  const completePayment = async (appointmentId: string, stripePaymentId: string, depositPaidPence: number) => {
+  const completePayment = async (appointmentId: string, stripePaymentId?: string) => {
     try {
       setPaymentStatus("processing");
       
       // Step 3: Confirm appointment with payment details
-      await confirmAppointment.mutateAsync({
-        appointmentId,
-        stripePaymentId,
-        depositPaidPence,
-      });
+      await confirmAppointment.mutateAsync({ appointmentId, stripePaymentId });
       
       setPaymentStatus("success");
     } catch (error) {
