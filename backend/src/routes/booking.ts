@@ -8,6 +8,7 @@ import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import {
+  appointmentCheckInSchema,
   appointmentIdParamsSchema,
   confirmAppointmentSchema,
   createAppointmentSchema,
@@ -505,9 +506,9 @@ router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointment
 });
 
 // ─── POST /api/booking/appointments/:id/check-in ─────────────────────────────
-router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmentIdParamsSchema), validateBody(appointmentCheckInSchema), async (req: AuthRequest, res: Response) => {
   const apptId = String(req.params.id);
-  const { completedTasks } = (req.body ?? {}) as { completedTasks?: string[] };
+  const { completedTasks } = req.body as { completedTasks: string[] };
 
   const profile = await prisma.patientProfile.findUnique({
     where: { userId: req.user!.sub },
@@ -519,6 +520,9 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
     where: { id: apptId, patientId: profile.id },
   });
   if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+  if (appointment.status !== "confirmed") {
+    return res.status(409).json({ error: "Only confirmed appointments can be checked in" });
+  }
 
   const checkedInAt = new Date().toISOString();
   const updated = await prisma.appointment.update({
@@ -528,7 +532,7 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
         ...((appointment.accessDetails as Record<string, unknown>) || {}),
         checkedIn: true,
         checkedInAt,
-        completedTasks: completedTasks || ["form", "consent", "insurance", "balance"],
+        completedTasks: [...new Set(completedTasks)],
       },
     },
   });

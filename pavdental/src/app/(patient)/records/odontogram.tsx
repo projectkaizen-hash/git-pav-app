@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ThemedText, Card, Badge, AppIcon, MetricRing, Button } from "@/components";
+import { ThemedText, Card, Badge, AppIcon, Button } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { ToothRecord, ToothCondition } from "@/features/records/records-types";
 import { useOdontogram } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
-import { useBookingStore } from "@/features/booking/booking-store";
 
 const STANDARD_TEETH: ToothRecord[] = Array.from({ length: 32 }, (_, idx) => {
   const num = idx + 1;
@@ -17,36 +16,29 @@ const STANDARD_TEETH: ToothRecord[] = Array.from({ length: 32 }, (_, idx) => {
     patientId: "",
     toothNumber: num,
     quadrant,
-    surfaces: { occlusal: "healthy" },
-    notes: "Sound",
+    surfaces: {},
     updatedAt: new Date(0).toISOString(),
   };
 });
 
-type ProgressTab = "coverage" | "pressure" | "scrubbing";
+// What the chart shows comes only from the recorded odontogram. A tooth with
+// no record says "Not recorded"; nothing is inferred, priced or annotated
+// (MC-4). Brushing metrics, radiograph previews and clinician notes that used
+// to be hardcoded here are gone until there is real data behind them.
+const CONDITION_LABEL: Record<ToothCondition, string> = {
+  healthy: "Sound",
+  decay: "Decay recorded",
+  filling: "Filling",
+  crown: "Crown",
+  missing: "Missing",
+};
 
-const METRIC_DETAILS: Record<
-  ProgressTab,
-  { title: string; score: string; summary: string }
-> = {
-  coverage: {
-    title: "Coverage Breakdown (85%)",
-    score: "85%",
-    summary:
-      "Upper and lower buccal surfaces reached consistently; focus extra time on posterior lingual surfaces (#31–#32).",
-  },
-  pressure: {
-    title: "Pressure Control (90%)",
-    score: "90%",
-    summary:
-      "Optimal 150g brushing force maintained across all four quadrants with zero gum-recession overpressure spikes.",
-  },
-  scrubbing: {
-    title: "Scrubbing Cadence (75%)",
-    score: "75%",
-    summary:
-      "Good Modified Bass circular motion on molars; reduce rapid horizontal scrubbing along lower premolars.",
-  },
+const SURFACE_LABEL: Record<string, string> = {
+  occlusal: "Occlusal (biting)",
+  mesial: "Mesial (front)",
+  distal: "Distal (rear)",
+  buccal: "Buccal (cheek)",
+  lingual: "Lingual (tongue)",
 };
 
 function getOverallCondition(t?: ToothRecord): ToothCondition {
@@ -103,10 +95,9 @@ function getToothAnatomy(toothNumber: number) {
 export default function OdontogramScreen() {
   const router = useRouter();
   const user = useCurrentUser();
-  const { setService } = useBookingStore();
   const userId = user?.id || "";
   const { data: apiTeeth } = useOdontogram(userId);
-  const teeth: ToothRecord[] = React.useMemo(() => {
+  const teeth: (ToothRecord & { recorded: boolean })[] = React.useMemo(() => {
     const rawList = Array.isArray(apiTeeth)
       ? apiTeeth
       : Array.isArray((apiTeeth as any)?.teeth)
@@ -116,7 +107,7 @@ export default function OdontogramScreen() {
       const match = rawList.find(
         (t: any) => Number(t.toothNumber ?? t.number) === base.toothNumber
       );
-      if (!match) return base;
+      if (!match) return { ...base, recorded: false };
       const mappedCond: ToothCondition =
         match.condition === "decay"
           ? "decay"
@@ -133,16 +124,16 @@ export default function OdontogramScreen() {
         toothNumber: base.toothNumber,
         quadrant: match.quadrant || base.quadrant,
         surfaces: match.surfaces || { occlusal: mappedCond },
-        notes: match.notes || base.notes,
+        notes: match.notes || undefined,
+        recorded: true,
       };
     });
   }, [apiTeeth]);
 
   const params = useLocalSearchParams<{ toothModal?: string; tooth?: string }>();
-  const [activeTab, setActiveTab] = useState<ProgressTab>("pressure");
   const [selectedToothNumber, setSelectedToothNumber] = useState<number>(
-    params.tooth ? parseInt(params.tooth, 10) || 31 : 31
-  ); // Lower Right molar
+    params.tooth ? parseInt(params.tooth, 10) || 1 : 1
+  );
   const [showToothModal, setShowToothModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -150,7 +141,7 @@ export default function OdontogramScreen() {
       setShowToothModal(true);
     }
     if (params.tooth) {
-      setSelectedToothNumber(parseInt(params.tooth, 10) || 31);
+      setSelectedToothNumber(parseInt(params.tooth, 10) || 1);
     }
   }, [params.toothModal, params.tooth]);
 
@@ -159,29 +150,21 @@ export default function OdontogramScreen() {
   const lowerTeeth = teeth.filter((t) => t.quadrant.includes("L"));
 
   const selectedTooth = teeth.find((t) => t.toothNumber === selectedToothNumber) || teeth[0];
-  const anatomy = selectedTooth ? getToothAnatomy(selectedTooth.toothNumber) : getToothAnatomy(31);
+  const anatomy = getToothAnatomy(selectedTooth.toothNumber);
   const selectedCondition = getOverallCondition(selectedTooth);
+  const selectedLabel = selectedTooth.recorded ? CONDITION_LABEL[selectedCondition] : "Not recorded";
+  const recordedSurfaces = Object.entries(selectedTooth.surfaces || {}).filter(
+    (entry): entry is [string, ToothCondition] => typeof entry[1] === "string"
+  );
 
   const handleSelectTooth = (toothNumber: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setSelectedToothNumber(toothNumber);
   };
 
-  const handleBookToothTreatment = () => {
+  const handleBookAppointment = () => {
     setShowToothModal(false);
-    setService({
-      id: "srv_restoration",
-      name: `Restoration: Tooth #${selectedTooth.toothNumber} (${anatomy.fullName})`,
-      category: "restorative",
-      pricePence: selectedCondition === "decay" ? 14000 : 9500,
-      depositPence: 2500,
-      durationMinutes: 45,
-      supportedChannels: ["clinic", "van"],
-      description: `Targeted clinical treatment for tooth #${selectedTooth.toothNumber}.`,
-      isActive: true,
-      requiresOdontogram: true,
-    } as any);
-    router.push("/(patient)/booking/clinic-picker" as never);
+    router.push("/(patient)/booking/service-catalog" as never);
   };
 
   return (
@@ -221,7 +204,7 @@ export default function OdontogramScreen() {
                     <Pressable
                       key={t.toothNumber}
                       accessibilityRole="button"
-                      accessibilityLabel={`Tooth ${t.toothNumber}: ${cond}`}
+                      accessibilityLabel={`Tooth ${t.toothNumber}: ${t.recorded ? CONDITION_LABEL[cond] : "not recorded"}`}
                       onPress={() => handleSelectTooth(t.toothNumber)}
                       style={[
                         styles.toothCapsule,
@@ -242,28 +225,6 @@ export default function OdontogramScreen() {
               </View>
             </View>
 
-            {/* Interactive Callout Pin: "Early Risk 15–25%" (Matches Reference 2) */}
-            <Pressable
-              onPress={() => {
-                handleSelectTooth(31);
-                setShowToothModal(true);
-              }}
-              style={styles.calloutWrapper}
-            >
-              <View style={styles.riskPin}>
-                <ThemedText variant="caption" style={styles.riskLabel}>
-                  Early Risk · Tooth #31
-                </ThemedText>
-                <View style={styles.riskPill}>
-                  <ThemedText variant="caption" style={styles.riskValue}>
-                    Tap to inspect
-                  </ThemedText>
-                </View>
-              </View>
-              <View style={styles.riskPointerLine} />
-              <View style={styles.riskTargetDot} />
-            </Pressable>
-
             {/* Lower Jaw Arch */}
             <View style={styles.archRow}>
               <View style={styles.gumRidgeLower}>
@@ -275,7 +236,7 @@ export default function OdontogramScreen() {
                     <Pressable
                       key={t.toothNumber}
                       accessibilityRole="button"
-                      accessibilityLabel={`Tooth ${t.toothNumber}: ${cond}`}
+                      accessibilityLabel={`Tooth ${t.toothNumber}: ${t.recorded ? CONDITION_LABEL[cond] : "not recorded"}`}
                       onPress={() => handleSelectTooth(t.toothNumber)}
                       style={[
                         styles.toothCapsule,
@@ -315,8 +276,8 @@ export default function OdontogramScreen() {
               </View>
               <View style={styles.selectedDetailRight}>
                 <Badge
-                  label={selectedCondition === "decay" ? "EARLY RISK" : selectedCondition.toUpperCase()}
-                  variant={selectedCondition === "decay" ? "danger" : "success"}
+                  label={selectedLabel.toUpperCase()}
+                  variant={!selectedTooth.recorded ? "info" : selectedCondition === "decay" ? "danger" : "success"}
                 />
                 <AppIcon name="chevronRight" size={16} color={colors.secondaryLabel} />
               </View>
@@ -324,67 +285,6 @@ export default function OdontogramScreen() {
           ) : null}
         </Card>
 
-        {/* Filter Chips: [Coverage], [Pressure], [Scrubbing] (Matches Reference 2) */}
-        <View style={styles.filterChipRow}>
-          {(["coverage", "pressure", "scrubbing"] as ProgressTab[]).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <Pressable
-                key={tab}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                  setActiveTab(tab);
-                }}
-                style={[
-                  styles.filterChip,
-                  isActive ? styles.filterChipActive : styles.filterChipInactive,
-                ]}
-              >
-                <ThemedText
-                  variant="subhead"
-                  style={[
-                    styles.filterChipText,
-                    isActive ? styles.filterChipTextActive : styles.filterChipTextInactive,
-                  ]}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* 3 Metric Ring Gauges in a Row (Matches Reference 2) */}
-        <View style={styles.metricRow}>
-          <MetricRing percentage={85} label="Coverage" color="#06B6D4" />
-          <MetricRing percentage={90} label="Pressure" color="#8B5CF6" />
-          <MetricRing percentage={75} label="Scrubbing" color="#EC4899" />
-        </View>
-
-        {/* Active Metric Breakdown Card */}
-        <Card elevation="flat" style={styles.selectedDetail}>
-          <View style={styles.selectedDetailLeft}>
-            <ThemedText variant="headline" style={styles.selectedToothTitle}>
-              {METRIC_DETAILS[activeTab].title}
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.selectedToothSub}>
-              {METRIC_DETAILS[activeTab].summary}
-            </ThemedText>
-          </View>
-        </Card>
-
-        {/* Session Timer Card (Matches Reference 2) */}
-        <Card elevation="raised" style={styles.timerCard}>
-          <AppIcon name="clock" size={16} color={colors.secondaryLabel} />
-          <ThemedText variant="largeTitle" style={styles.timerText}>
-            00:32
-          </ThemedText>
-          <ThemedText variant="caption" style={styles.timerSub}>
-            Recommended daily brushing time: 02:00
-          </ThemedText>
-        </Card>
       </ScrollView>
 
       {/* Frame 3: Interactive Tooth Deep-Dive Sheet Modal (Neo Financial Itemized Detail Pattern) */}
@@ -425,137 +325,64 @@ export default function OdontogramScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.sheetScroll}
             >
-              {/* Condition & Diagnostic Status Card */}
               <Card elevation="flat" style={styles.diagnosticCard}>
                 <View style={styles.diagnosticRow}>
                   <View style={styles.statusGroup}>
                     <ThemedText variant="caption" style={styles.cardSectionLabel}>
-                      CLINICAL STATUS
+                      RECORDED CONDITION
                     </ThemedText>
                     <ThemedText variant="headline" style={styles.statusHeading}>
-                      {selectedCondition === "decay" ? "Early Occlusal Demineralisation" : "Sound Enamel Structure"}
+                      {selectedLabel}
                     </ThemedText>
                   </View>
-                  <Badge
-                    label={selectedCondition === "decay" ? "EARLY RISK" : "HEALTHY"}
-                    variant={selectedCondition === "decay" ? "danger" : "success"}
-                  />
                 </View>
               </Card>
 
-              {/* 5 Anatomical Surfaces Breakdown */}
-              <View style={styles.surfaceSection}>
-                <ThemedText variant="caption" style={styles.sectionHeader}>
-                  ANATOMICAL SURFACES (MODBL)
-                </ThemedText>
-                <View style={styles.surfaceGrid}>
-                  {[
-                    { name: "Occlusal (Biting)", status: selectedCondition === "decay" ? "Demineralised" : "Sound", risk: selectedCondition === "decay" },
-                    { name: "Mesial (Front)", status: "Sound", risk: false },
-                    { name: "Distal (Rear)", status: "Sound", risk: false },
-                    { name: "Buccal (Cheek)", status: "Sound", risk: false },
-                    { name: "Lingual (Tongue)", status: "Sound", risk: false },
-                  ].map((s) => (
-                    <View key={s.name} style={styles.surfaceRow}>
-                      <View style={styles.surfaceIndicatorRow}>
-                        <View style={[styles.surfaceDot, s.risk && styles.surfaceDotRisk]} />
-                        <ThemedText variant="subhead" style={styles.surfaceName}>
-                          {s.name}
-                        </ThemedText>
-                      </View>
-                      <ThemedText
-                        variant="caption"
-                        style={[styles.surfaceStatus, s.risk && styles.surfaceStatusRisk]}
-                      >
-                        {s.status}
-                      </ThemedText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bitewing Radiograph & Digital Imaging Crop */}
-              <Card elevation="raised" style={styles.xrayCard}>
-                <View style={styles.xrayHeader}>
-                  <View style={styles.xrayHeaderLeft}>
-                    <AppIcon name="camera" size={14} color={colors.info} />
-                    <ThemedText variant="caption" style={styles.xrayTitle}>
-                      Digital Radiograph Crop (Bitewing #{anatomy.fdi.replace("#", "")})
-                    </ThemedText>
-                  </View>
-                  <ThemedText variant="mono" style={styles.xrayMeta}>
-                    70kV · 0.12s
+              {recordedSurfaces.length > 0 ? (
+                <View style={styles.surfaceSection}>
+                  <ThemedText variant="caption" style={styles.sectionHeader}>
+                    SURFACES
                   </ThemedText>
-                </View>
-
-                {/* Simulated High-Res Radiograph Viewer Screen */}
-                <View style={styles.radiographScreen}>
-                  <View style={styles.radiographGridLines} />
-                  <View style={styles.radiographToothShape}>
-                    <View style={styles.radiographCrown} />
-                    <View style={styles.radiographRootLeft} />
-                    <View style={styles.radiographRootRight} />
+                  <View style={styles.surfaceGrid}>
+                    {recordedSurfaces.map(([surface, condition]) => {
+                      const risk = condition === "decay";
+                      return (
+                        <View key={surface} style={styles.surfaceRow}>
+                          <View style={styles.surfaceIndicatorRow}>
+                            <View style={[styles.surfaceDot, risk && styles.surfaceDotRisk]} />
+                            <ThemedText variant="subhead" style={styles.surfaceName}>
+                              {SURFACE_LABEL[surface] ?? surface}
+                            </ThemedText>
+                          </View>
+                          <ThemedText variant="caption" style={[styles.surfaceStatus, risk && styles.surfaceStatusRisk]}>
+                            {CONDITION_LABEL[condition] ?? condition}
+                          </ThemedText>
+                        </View>
+                      );
+                    })}
                   </View>
-                  <View style={styles.radiographAnnotation}>
-                    <ThemedText variant="caption" style={styles.radiographAnnotationText}>
-                      Enamel Density: 98% · Bone Crest: Normal
-                    </ThemedText>
-                  </View>
                 </View>
-              </Card>
+              ) : null}
 
-              {/* Clinician Recommendation Note */}
-              <Card elevation="flat" style={styles.clinicianNoteCard}>
-                <View style={styles.clinicianNoteHeader}>
-                  <AppIcon name="userCheck" size={16} color={colors.ink} />
+              {selectedTooth.notes ? (
+                <Card elevation="flat" style={styles.clinicianNoteCard}>
                   <ThemedText variant="subhead" style={styles.clinicianName}>
-                    Dr. Tariq Pav · BDS (Lon), GDC #244910
+                    Notes from your dentist
                   </ThemedText>
-                </View>
-                <ThemedText variant="body" style={styles.clinicianNoteBody}>
-                  {selectedCondition === "decay"
-                    ? "“Mild demineralisation visible along the occlusal groove. We advise preventative fluoride sealing or a micro-composite restoration before deeper cavitation develops.”"
-                    : "“Enamel density is optimal. No active caries or apical pathology detected. Maintain 2-minute daily brushing with fluoridated paste.”"}
-                </ThemedText>
-              </Card>
+                  <ThemedText variant="body" style={styles.clinicianNoteBody}>
+                    {selectedTooth.notes}
+                  </ThemedText>
+                </Card>
+              ) : null}
 
-              {/* Financial Estimate & 0% Care Financing Link */}
-              <Card elevation="raised" style={styles.financeCard}>
-                <View style={styles.financeCardRow}>
-                  <View>
-                    <ThemedText variant="caption" style={styles.cardSectionLabel}>
-                      ESTIMATED TREATMENT
-                    </ThemedText>
-                    <ThemedText variant="headline" style={styles.priceHeading}>
-                      {selectedCondition === "decay" ? "£140.00" : "Included in Routine Check"}
-                    </ThemedText>
-                  </View>
-                  {selectedCondition === "decay" && (
-                    <Pressable
-                      onPress={() => {
-                        setShowToothModal(false);
-                        router.push("/(patient)/records/financing" as never);
-                      }}
-                      style={styles.financePill}
-                    >
-                      <AppIcon name="creditCard" size={13} color={colors.ink} />
-                      <ThemedText variant="caption" style={styles.financePillText}>
-                        0% from £23.33/mo ›
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              </Card>
+              <ThemedText variant="caption" style={styles.sheetSub}>
+                Questions about this tooth? Ask your dentist at your next visit or by message.
+              </ThemedText>
             </ScrollView>
 
             {/* Action Buttons */}
             <View style={styles.sheetFooter}>
-              <Button
-                title={selectedCondition === "decay" ? `Book Treatment for Tooth #${selectedTooth.toothNumber}` : "Book Hygiene Clean"}
-                variant="primary"
-                size="lg"
-                onPress={handleBookToothTreatment}
-              />
+              <Button title="Book an appointment" variant="primary" size="lg" onPress={handleBookAppointment} />
               <Button
                 title="Close"
                 variant="ghost"
@@ -596,11 +423,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  calloutWrapper: {
-    alignItems: "center",
-    marginVertical: 4,
-    position: "relative",
-  },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
@@ -621,37 +443,6 @@ const styles = StyleSheet.create({
   },
   enamelDotSelected: {
     backgroundColor: colors.ink,
-  },
-  filterChip: {
-    borderRadius: radius.full,
-    flex: 1,
-    paddingVertical: 10,
-  },
-  filterChipActive: {
-    alignItems: "center",
-    backgroundColor: colors.ink,
-    justifyContent: "center",
-  },
-  filterChipInactive: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
-    justifyContent: "center",
-  },
-  filterChipRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  filterChipTextActive: {
-    color: colors.alwaysWhite,
-  },
-  filterChipTextInactive: {
-    color: colors.label,
   },
   gumRidgeLower: {
     alignItems: "center",
@@ -699,49 +490,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  metricRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  riskLabel: {
-    color: colors.label,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  riskPill: {
-    backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  riskPin: {
-    alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    zIndex: 2,
-  },
-  riskPointerLine: {
-    backgroundColor: colors.secondaryLabel,
-    height: 14,
-    width: 1.5,
-  },
-  riskTargetDot: {
-    backgroundColor: colors.danger,
-    borderRadius: radius.full,
-    height: 8,
-    width: 8,
-  },
-  riskValue: {
-    color: colors.danger,
-    fontSize: 11,
-    fontWeight: "700",
-  },
   selectedDetail: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
@@ -765,22 +513,6 @@ const styles = StyleSheet.create({
   selectedToothTitle: {
     color: colors.label,
     fontSize: 15,
-  },
-  timerCard: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    gap: 4,
-    paddingVertical: spacing.lg,
-  },
-  timerSub: {
-    color: colors.secondaryLabel,
-  },
-  timerText: {
-    color: colors.label,
-    fontSize: 32,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   toothCapsule: {
     alignItems: "center",
@@ -925,103 +657,10 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: "600",
   },
-  xrayCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.sm,
-  },
-  xrayHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  xrayHeaderLeft: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  xrayTitle: {
-    color: "#94A3B8",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  xrayMeta: {
-    color: "#64748B",
-    fontSize: 10,
-  },
-  radiographScreen: {
-    alignItems: "center",
-    backgroundColor: "#020617",
-    borderColor: "#334155",
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 84,
-    justifyContent: "center",
-    overflow: "hidden",
-    position: "relative",
-  },
-  radiographGridLines: {
-    ...StyleSheet.absoluteFill,
-    borderColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1,
-  },
-  radiographToothShape: {
-    alignItems: "center",
-    gap: 2,
-  },
-  radiographCrown: {
-    backgroundColor: "#94A3B8",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    height: 22,
-    opacity: 0.8,
-    width: 28,
-  },
-  radiographRootLeft: {
-    backgroundColor: "#64748B",
-    borderBottomLeftRadius: 6,
-    height: 24,
-    opacity: 0.7,
-    position: "absolute",
-    right: 15,
-    top: 23,
-    width: 8,
-  },
-  radiographRootRight: {
-    backgroundColor: "#64748B",
-    borderBottomRightRadius: 6,
-    height: 24,
-    left: 15,
-    opacity: 0.7,
-    position: "absolute",
-    top: 23,
-    width: 8,
-  },
-  radiographAnnotation: {
-    backgroundColor: "rgba(15, 23, 42, 0.75)",
-    borderRadius: 4,
-    bottom: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    position: "absolute",
-  },
-  radiographAnnotationText: {
-    color: "#38BDF8",
-    fontSize: 10,
-    fontWeight: "500",
-  },
   clinicianNoteCard: {
     backgroundColor: colors.secondaryBackground,
     gap: spacing.xs,
     padding: spacing.sm,
-  },
-  clinicianNoteHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
   },
   clinicianName: {
     color: colors.label,
@@ -1033,37 +672,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: "italic",
     lineHeight: 18,
-  },
-  financeCard: {
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.sm,
-  },
-  financeCardRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  priceHeading: {
-    color: colors.label,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  financePill: {
-    alignItems: "center",
-    backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  financePillText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: "700",
   },
   sheetFooter: {
     gap: spacing.xs,

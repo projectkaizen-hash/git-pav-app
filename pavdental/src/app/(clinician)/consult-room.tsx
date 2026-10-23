@@ -16,25 +16,28 @@ export default function ClinicianConsultRoomScreen() {
     chiefComplaint?: string;
   }>();
 
-  const patientName = params.patientName || "Alexander Wright";
-  const appointmentId = params.appointmentId || "appt_video_active";
-  const chiefComplaint = params.chiefComplaint || "Severe LR7 throbbing pain upon cold liquids";
+  // No stand-in patient: the room only exists for a real appointment.
+  const patientName = params.patientName || "Patient";
+  const appointmentId = params.appointmentId;
+  const chiefComplaint = params.chiefComplaint?.trim() || null;
 
   const clinicianName = currentUser?.firstName
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
-    : "Dr. Tariq Pav";
+    : "You";
 
   const [activeTab, setActiveTab] = useState<"video" | "triage" | "chart">("video");
-  const [selectedTooth, setSelectedTooth] = useState<number>(31);
+  const [selectedTooth, setSelectedTooth] = useState<number>(1);
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [roomName, setRoomName] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
 
   // Initialize WebRTC room from backend
   useEffect(() => {
     async function initRoom() {
+      if (!appointmentId) return;
       try {
         const res = await authFetch("/api/video/rooms", {
           method: "POST",
@@ -44,9 +47,11 @@ export default function ClinicianConsultRoomScreen() {
           const data = await res.json();
           setRoomUrl(data.url);
           setRoomName(data.roomName);
+        } else {
+          setRoomError("Could not open the video room. Try again from your schedule.");
         }
-      } catch (err) {
-        console.warn("[WebRTC init fallback]", err);
+      } catch {
+        setRoomError("Could not open the video room. Check your connection and try again.");
       }
     }
     initRoom();
@@ -75,6 +80,19 @@ export default function ClinicianConsultRoomScreen() {
       },
     });
   };
+
+  if (!appointmentId) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.triageScroll}>
+          <ThemedText variant="body" style={styles.triageText}>
+            Open the consultation room from an appointment on your schedule.
+          </ThemedText>
+          <Button title="Back to schedule" onPress={() => router.replace("/(clinician)/schedule")} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -146,9 +164,11 @@ export default function ClinicianConsultRoomScreen() {
               <ThemedText variant="headline" style={styles.streamText}>
                 {patientName}
               </ThemedText>
-              <ThemedText variant="caption" style={styles.hdTag}>
-                HD 1080p · Daily.co WebRTC Encrypted
-              </ThemedText>
+              {roomError && (
+                <ThemedText variant="caption" style={styles.roomTag}>
+                  {roomError}
+                </ThemedText>
+              )}
               {roomName && (
                 <ThemedText variant="caption" style={styles.roomTag}>
                   Room: {roomName}
@@ -161,7 +181,7 @@ export default function ClinicianConsultRoomScreen() {
                   style={styles.openWebRtcBtn}
                 >
                   <ThemedText variant="caption" style={styles.openWebRtcText}>
-                    🌐 Launch Fullscreen Daily.co WebRTC Room
+                    Open video room
                   </ThemedText>
                 </Pressable>
               )}
@@ -210,43 +230,20 @@ export default function ClinicianConsultRoomScreen() {
         ) : activeTab === "triage" ? (
           <ScrollView contentContainerStyle={styles.triageScroll}>
             <Card elevation="raised" style={styles.triageCard}>
-              <ThemedText variant="headline">Patient Reported Symptoms</ThemedText>
+              <ThemedText variant="headline">Patient reported symptoms</ThemedText>
               <ThemedText variant="body" style={styles.triageText}>
-                "{chiefComplaint}"
+                {chiefComplaint ? `"${chiefComplaint}"` : "The patient has not submitted any symptoms for this appointment."}
               </ThemedText>
-              <View style={styles.metricRow}>
-                <ThemedText variant="caption">Pain Severity: 7 / 10</ThemedText>
-                <ThemedText variant="caption">Swelling: None visible</ThemedText>
-              </View>
-            </Card>
-
-            <Card elevation="raised" style={styles.triageCard}>
-              <ThemedText variant="headline">Submitted Intraoral Photos (4)</ThemedText>
-              <View style={styles.photoGrid}>
-                <View style={styles.photoThumb}>
-                  <ThemedText variant="caption">Front Bite</ThemedText>
-                </View>
-                <View style={[styles.photoThumb, styles.photoThumbFocus]}>
-                  <ThemedText variant="caption">LR7 Cavity</ThemedText>
-                </View>
-                <View style={styles.photoThumb}>
-                  <ThemedText variant="caption">Upper Arch</ThemedText>
-                </View>
-                <View style={styles.photoThumb}>
-                  <ThemedText variant="caption">Lower Arch</ThemedText>
-                </View>
-              </View>
             </Card>
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.triageScroll}>
             <Card elevation="raised" style={styles.triageCard}>
               <View style={styles.odontogramHeader}>
-                <ThemedText variant="headline">Interactive Odontogram (32 Teeth)</ThemedText>
-                <Badge label="Active Charting" variant="info" />
+                <ThemedText variant="headline">Tooth chart</ThemedText>
               </View>
               <ThemedText variant="caption" style={styles.chartSub}>
-                Tap any tooth to review condition or record clinical findings during consult.
+                Tap a tooth to see what is recorded for it.
               </ThemedText>
 
               {/* Upper Arch */}
@@ -286,14 +283,12 @@ export default function ClinicianConsultRoomScreen() {
               <View style={styles.archRow}>
                 {Array.from({ length: 16 }, (_, i) => i + 17).map((num) => {
                   const isSelected = selectedTooth === num;
-                  const isDecay = num === 31;
                   return (
                     <Pressable
                       key={num}
                       onPress={() => setSelectedTooth(num)}
                       style={[
                         styles.toothCapsule,
-                        isDecay && styles.toothCapsuleDecay,
                         isSelected && styles.toothCapsuleSelected,
                       ]}
                     >
@@ -301,7 +296,6 @@ export default function ClinicianConsultRoomScreen() {
                         variant="caption"
                         style={[
                           styles.toothNumText,
-                          isDecay && styles.toothNumTextDecay,
                           isSelected && styles.toothNumTextSelected,
                         ]}
                       >
@@ -316,23 +310,14 @@ export default function ClinicianConsultRoomScreen() {
             {/* Selected Tooth Detail */}
             <Card elevation="raised" style={styles.triageCard}>
               <View style={styles.odontogramHeader}>
-                <ThemedText variant="headline">
-                  Tooth #{selectedTooth} {selectedTooth === 31 ? "(LR7 / 47) · Decay" : "· Sound"}
-                </ThemedText>
-                {selectedTooth === 31 ? (
-                  <Badge label="Early Risk (15-25%)" variant="warning" />
-                ) : (
-                  <Badge label="Healthy" variant="success" />
-                )}
+                <ThemedText variant="headline">Tooth #{selectedTooth}</ThemedText>
               </View>
               <ThemedText variant="body" style={styles.triageText}>
-                {selectedTooth === 31
-                  ? "Distal-occlusal demineralisation with active dentinal sensitivity. Requires composite restoration and fluoride varnish application."
-                  : "No abnormal mobility, gingival pocketing < 3mm, sound margins."}
+                No findings recorded for this tooth.
               </ThemedText>
               <View style={styles.actionPillRow}>
                 <Button
-                  title="Prescribe Antibiotic (EPS)"
+                  title="Write prescription"
                   size="sm"
                   variant="secondary"
                   onPress={handleEndAndPrescribe}
@@ -345,7 +330,7 @@ export default function ClinicianConsultRoomScreen() {
         {/* Clinician Action Control Bar */}
         <View style={styles.controls}>
           <Button
-            title="Conclude Call & Write Prescription (EPS) ›"
+            title="End call and write prescription"
             size="lg"
             onPress={handleEndAndPrescribe}
           />
@@ -395,17 +380,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: "600",
   },
-  hdTag: {
-    color: colors.success,
-    fontWeight: "600",
-  },
-  metricRow: {
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: spacing.xs,
-  },
   openWebRtcBtn: {
     backgroundColor: colors.inkSubtle,
     borderRadius: 8,
@@ -424,24 +398,6 @@ const styles = StyleSheet.create({
   },
   patientName: {
     color: colors.label,
-  },
-  photoGrid: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  photoThumb: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    height: 72,
-    justifyContent: "center",
-  },
-  photoThumbFocus: {
-    backgroundColor: colors.inkSubtle,
-    borderColor: colors.ink,
   },
   pipLabel: {
     color: colors.label,
@@ -564,10 +520,6 @@ const styles = StyleSheet.create({
     minWidth: 20,
     paddingHorizontal: 2,
   },
-  toothCapsuleDecay: {
-    backgroundColor: colors.warningSubtle,
-    borderColor: colors.warning,
-  },
   toothCapsuleSelected: {
     backgroundColor: colors.ink,
     borderColor: colors.ink,
@@ -576,9 +528,6 @@ const styles = StyleSheet.create({
     color: colors.label,
     fontSize: 10,
     fontWeight: "700",
-  },
-  toothNumTextDecay: {
-    color: colors.warning,
   },
   toothNumTextSelected: {
     color: colors.alwaysWhite,

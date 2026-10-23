@@ -41,7 +41,7 @@ export default function WaitlistScreen() {
   const entry = {
     id: waitlistEntry?.id || joinedId || "wait_1",
     serviceName: waitlistEntry?.service?.name || service?.name || "Scale & Polish + Hygiene",
-    clinicianName: clinician?.fullName || "Dr. Tariq Pav",
+    clinicianName: clinician?.fullName || "Your clinician",
     clinicName: clinic?.name || "Central London Practice",
     joinedIso: waitlistEntry?.createdAt || new Date().toISOString(),
     peopleAhead: typeof waitlistEntry?.priority === "number" ? Math.max(0, waitlistEntry.priority - 1) : 1,

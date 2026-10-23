@@ -230,9 +230,11 @@ export async function leaveWaitlistEntry(id: string) {
   return res.json();
 }
 
+export type CheckInTask = "form" | "consent" | "insurance" | "balance";
+
 export async function completeAppointmentCheckIn(
   appointmentId: string,
-  payload: Record<string, boolean>
+  payload: { completedTasks: CheckInTask[] }
 ) {
   const res = await authFetch(`/api/booking/appointments/${appointmentId}/check-in`, {
     method: "POST",

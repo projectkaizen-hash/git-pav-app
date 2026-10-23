@@ -162,7 +162,7 @@ export default function ProfileScreen() {
             <Card padding="none">
               <ListRow
                 title="Clinician Portal (Dentist)"
-                subtitle="Dr. Tariq Pav · Schedule, EHR Odontogram & EPS Prescriptions"
+                subtitle="Schedule, tooth chart and prescriptions"
                 left={
                   <View style={styles.rowIcon}>
                     <AppIcon name="userCheck" size={18} color={colors.ink} />
@@ -173,8 +173,8 @@ export default function ProfileScreen() {
                   useAuthStore.getState().updateUser({
                     role: "clinician",
                     email: "doctor@pavdental.com",
-                    firstName: "Tariq",
-                    lastName: "Pav",
+                    firstName: "Demo",
+                    lastName: "Clinician",
                   });
                   router.replace("/(clinician)/schedule" as any);
                 }}

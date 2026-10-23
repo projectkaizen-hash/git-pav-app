@@ -58,7 +58,7 @@ export default function OfflineCaptureScreen() {
   const patientName = params.patientName || "Unknown Patient";
   const clinicianName = currentUser?.firstName
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
-    : "Dr. Tariq Pav";
+    : "Clinician";
 
   const [clinicalNotes, setClinicalNotes] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -152,7 +152,7 @@ export default function OfflineCaptureScreen() {
             <ThemedText variant="caption" style={styles.syncText}>
               {queuedCount > 0
                 ? `${queuedCount} note(s) queued offline · Will auto-sync`
-                : "Auto-sync enabled · Notes encrypted locally"}
+                : "Notes sync automatically when you are online"}
             </ThemedText>
           </View>
           <Badge

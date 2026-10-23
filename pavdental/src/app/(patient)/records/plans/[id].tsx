@@ -93,7 +93,12 @@ export default function TreatmentPlanDetailScreen() {
   const completedCount = decision === "accepted" ? items.length : 0;
   const progress = items.length ? completedCount / items.length : 0;
 
-  const clinicianName = plan.clinician?.fullName || "Dr. Tariq Pav";
+  const clinicianName = plan.clinician?.fullName || "Your clinician";
+  // Credentials come from the clinician's record, never a hardcoded number.
+  const clinicianCredentials = [plan.clinician?.roleTitle, plan.clinician?.gdcNumber && `GDC ${plan.clinician.gdcNumber}`]
+    .filter(Boolean)
+    .join(", ");
+  const prescribedBy = clinicianCredentials ? `${clinicianName} · ${clinicianCredentials}` : clinicianName;
   const created = new Date(plan.createdAt).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
@@ -223,7 +228,7 @@ export default function TreatmentPlanDetailScreen() {
             />
           </View>
           <ThemedText variant="caption" style={styles.muted}>
-            Prescribed by {clinicianName} · BDS (Lon), GDC #244910 · {created}
+            Prescribed by {prescribedBy} · {created}
           </ThemedText>
         </Card>
 
@@ -417,7 +422,7 @@ export default function TreatmentPlanDetailScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText variant="caption" style={styles.muted}>
-                  Prescribed by {clinicianName} · BDS (Lon), GDC #244910
+                  Prescribed by {prescribedBy}
                 </ThemedText>
 
                 <View style={styles.miniItemsDivider} />

@@ -36,7 +36,7 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
           <AppIcon name="profile" size={40} color={colors.alwaysWhite} />
         </View>
         <ThemedText variant="headline" style={styles.streamLabel}>
-          Dr. Tariq Pav (Clinical Consultation)
+          Clinical consultation
         </ThemedText>
         <View style={styles.liveBadge}>
           <View style={styles.redDot} />
@@ -123,10 +123,6 @@ const styles = StyleSheet.create({
   },
   endCallBtn: {
     backgroundColor: "#D93838",
-  },
-  endIcon: {
-    fontSize: 22,
-    transform: [{ rotate: "135deg" }],
   },
   endLabel: {
     color: "#FFFFFF",

@@ -85,7 +85,7 @@ export function SessionItem({ session, onRevoke, isRevoking = false }: SessionIt
       {session.ipAddressHash ? (
         <View style={styles.metaRow}>
           <ThemedText variant="caption" style={styles.metaLabel}>
-            Encrypted IP Fingerprint:
+            IP fingerprint (hashed):
           </ThemedText>
           <ThemedText variant="caption" style={styles.metaHash}>
             {session.ipAddressHash.slice(0, 16)}...

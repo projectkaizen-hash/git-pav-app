@@ -45,7 +45,7 @@ export default function MessagesScreen() {
     ? rawThreads.map((t: any) => ({
         id: t.id,
         subject: t.subject || "Care Team Message",
-        from: t.from || `${t.clinicianName || "Dr. Tariq Pav"} (${t.clinicianRole || "Lead Dentist"})`,
+        from: t.from || (t.clinicianName ? `${t.clinicianName}${t.clinicianRole ? ` (${t.clinicianRole})` : ""}` : "Pav Dental care team"),
         preview: t.preview || (t.messages?.[t.messages.length - 1]?.body ?? ""),
         sentAtIso: t.sentAtIso || t.updatedAt || new Date().toISOString(),
         isRead: Boolean(t.isRead),
@@ -96,10 +96,10 @@ export default function MessagesScreen() {
           {unreadCount > 0 ? <Badge label={`${unreadCount} NEW`} variant="info" /> : null}
         </View>
 
-        {/* 24/7 AI Dental Emergency Triage Card */}
+        {/* Dental emergency symptom check */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Start AI Dental Emergency Triage"
+          accessibilityLabel="Check urgent dental symptoms"
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
             setShowTriage(true);
@@ -114,10 +114,9 @@ export default function MessagesScreen() {
               <ThemedText variant="subhead" style={styles.triageTitle}>
                 Dental Emergency?
               </ThemedText>
-              <Badge label="24/7 AI" variant="danger" />
             </View>
             <ThemedText variant="caption" style={styles.triageSubtitle}>
-              Check pain, broken teeth, or swelling for instant triage advice.
+              Pain, a broken tooth or swelling? See where to get help.
             </ThemedText>
           </View>
           <AppIcon name="chevronRight" size={16} color={colors.secondaryLabel} />
@@ -228,7 +227,7 @@ export default function MessagesScreen() {
         </View>
       ) : null}
 
-      {/* Frame 6: Emergency AI Triage Modal */}
+      {/* Frame 6: emergency triage modal */}
       <EmergencyTriageModal visible={showTriage} onClose={() => setShowTriage(false)} />
     </View>
   );
