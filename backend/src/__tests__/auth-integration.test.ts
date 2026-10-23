@@ -361,7 +361,8 @@ describe("Auth API Integration Tests", () => {
         expect(challengeRes.status).toBe(200);
         const challengeData: any = await challengeRes.json();
         expect(challengeData.mfaRequired).toBe(true);
-        expect(challengeData.userId).toBe(userId);
+        // The challenge doesn't reveal the account id before the code is checked.
+        expect(challengeData).not.toHaveProperty("userId");
 
         // 2. Login with invalid mfaCode returns 401
         const badMfaRes = await fetch(`${baseUrl}/api/auth/login`, {

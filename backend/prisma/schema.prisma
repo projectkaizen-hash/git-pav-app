@@ -97,6 +97,10 @@ model MfaCode {
   id        String    @id @default(uuid()) @db.Uuid
   userId    String    @map("user_id") @db.Uuid
   code      String
+  /// What the code is for (login, phone_login, mfa_step_up). A code only verifies its own purpose.
+  purpose   String?
+  /// Wrong guesses against this code; it's burned at the limit (CS-08, OT-2).
+  attempts  Int       @default(0)
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime  @default(now()) @map("created_at")

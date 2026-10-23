@@ -6,11 +6,14 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jw
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { loginSchema, refreshSchema, registerSchema, authResponseSchema } from "../schemas/auth";
-import { emailVerificationService, passwordResetService, twoFactorService, rateLimiter, otpService } from "../lib/otp-service";
+import { emailVerificationService, passwordResetService, rateLimiter, otpService } from "../lib/otp-service";
 import { communicationService } from "../lib/communication-service";
 import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
 
 const router = Router();
+
+// Roles that always sign in with a one-time code as well as a password (CS-08).
+export const MFA_REQUIRED_ROLES: string[] = ["clinician", "admin"];
 
 // ─── POST /api/auth/check-email ────────────────────────────────────────────────
 router.post("/check-email", async (req: Request, res: Response) => {
@@ -147,31 +150,35 @@ router.post("/login", validateBody(loginSchema), async (req: Request, res: Respo
     },
   });
 
-  if (user.mfaEnabled) {
-    if (req.body.mfaCode) {
-      const mfaValid = await otpService.verifyOTP(user.id, String(req.body.mfaCode), "mfa");
-      if (!mfaValid) {
-        return res.status(401).json({ error: "Invalid or expired MFA code" });
-      }
-    } else {
-      await otpService.createAndSendOTP({
-        userId: user.id,
-        email: user.email,
-        phone: user.phone || undefined,
-        purpose: "mfa",
-        deliveryMethod: user.phone ? "sms" : "email",
-      });
-      return res.status(200).json({
-        mfaRequired: true,
-        userId: user.id,
-        message: "MFA verification code sent",
-      });
+  // Staff always need a second factor; patients only if they turned it on
+  // (CS-08, MF-1). The session is created only once the code is checked.
+  const needsCode = user.mfaEnabled || MFA_REQUIRED_ROLES.includes(user.role);
+  if (needsCode && !req.body.mfaCode) {
+    if (await rateLimiter.isRateLimited(`login-code:${user.id}`, 5, 900)) {
+      return res.status(429).json({ error: "Too many codes requested. Please try again later." });
     }
+    const { delivered } = await otpService.createAndSendOTP({
+      userId: user.id,
+      email: user.email,
+      phone: user.phone || undefined,
+      purpose: "mfa",
+      deliveryMethod: user.phone ? "sms" : "email",
+    });
+    if (!delivered) {
+      return res.status(502).json({ error: "Could not send your security code. Please try again." });
+    }
+    return res.status(200).json({
+      mfaRequired: true,
+      message: "Security code sent",
+    });
+  }
+  if (needsCode && !(await otpService.verifyOTP(user.id, String(req.body.mfaCode), "mfa"))) {
+    return res.status(401).json({ error: "Invalid or expired MFA code" });
   }
 
   const { accessToken, refreshToken, session } = await createSession(user.id, req);
 
-  if (user.mfaEnabled && req.body.mfaCode) {
+  if (needsCode) {
     const now = new Date();
     await prisma.mfaVerification.create({
       data: {
@@ -506,20 +513,16 @@ router.post("/mfa/request", requireAuth, async (req: AuthRequest, res: Response)
     return res.status(404).json({ error: "User not found" });
   }
 
-  // Generate OTP
-  const { code, hashedCode, expiresAt } = twoFactorService.generateOTP();
-
-  // Store OTP
-  await prisma.mfaCode.create({
-    data: {
-      userId: user.id,
-      code: hashedCode,
-      expiresAt,
-    },
+  const { delivered } = await otpService.createAndSendOTP({
+    userId: user.id,
+    email: user.email,
+    phone: user.phone || undefined,
+    purpose: "mfa_step_up",
+    deliveryMethod: user.phone ? "sms" : "email",
   });
-
-  // Send OTP via SMS or email
-  await communicationService.sendMfaCode(user.phone || user.email, code);
+  if (!delivered) {
+    return res.status(502).json({ error: "Could not send your security code. Please try again." });
+  }
 
   return res.json({ message: "MFA code sent" });
 });
@@ -534,27 +537,9 @@ router.post("/mfa/verify", requireAuth, async (req: AuthRequest, res: Response) 
     return res.status(400).json({ error: "Code is required" });
   }
 
-  const hashedCode = hashToken(code);
-
-  // Find valid code
-  const mfaCode = await prisma.mfaCode.findFirst({
-    where: {
-      userId: req.user.sub,
-      code: hashedCode,
-      expiresAt: { gt: new Date() },
-      usedAt: null,
-    },
-  });
-
-  if (!mfaCode) {
+  if (!(await otpService.verifyOTP(req.user.sub, String(code), "mfa_step_up"))) {
     return res.status(400).json({ error: "Invalid or expired code" });
   }
-
-  // Mark code as used
-  await prisma.mfaCode.update({
-    where: { id: mfaCode.id },
-    data: { usedAt: new Date() },
-  });
 
   // Enable MFA for user
   await prisma.user.update({

@@ -118,17 +118,20 @@ export const authApi = {
     return data;
   },
 
-  signIn: async (email: string, password: string) => {
+  // Staff (and patients who turned it on) get { mfaRequired: true } first and
+  // a security code by SMS or email; calling again with the code signs in.
+  signIn: async (email: string, password: string, mfaCode?: string) => {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(mfaCode ? { mfaCode } : {}) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error ?? "Sign-in failed");
     }
     const data = await res.json();
+    if (data.mfaRequired) return { mfaRequired: true as const };
     await tokenStore.setRefreshToken(data.refreshToken);
     useAuthStore.getState().setAuth(data.accessToken, data.user);
     return data;

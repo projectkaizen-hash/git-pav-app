@@ -12,6 +12,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "db:check-orphans": "tsx scripts/check-orphans.ts",
     "hours:defaults": "tsx scripts/apply-default-opening-hours.ts",
+    "dev:login-code": "tsx scripts/dev-login-code.ts",
     "test": "tsx src/e2e-suite.ts",
     "test:auth": "jest src/__tests__/auth-integration.test.ts",
     "test:all": "npm run test && npm run test:auth"
