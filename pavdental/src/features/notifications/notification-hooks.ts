@@ -25,15 +25,6 @@ interface NotificationPreferences {
   quietHoursEnd: string;
 }
 
-interface ScheduledNotification {
-  id: string;
-  userId: string;
-  title: string;
-  body: string;
-  data: any;
-  scheduledFor: Date;
-  status: "pending" | "sent" | "cancelled";
-}
 
 interface NotificationHistory {
   id: string;
@@ -191,45 +182,6 @@ export function useUpdateNotificationPreferences() {
   });
 }
 
-// Schedule notification
-export function useScheduleNotification() {
-  const accessToken = useAccessToken();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ title, body, data, scheduledFor }: {
-      title: string;
-      body: string;
-      data?: any;
-      scheduledFor: Date;
-    }) => {
-      const response = await fetch(`${API_BASE}/api/notifications/schedule`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          title,
-          body,
-          data,
-          scheduledFor: scheduledFor.toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to schedule notification");
-      }
-
-      return response.json() as Promise<ScheduledNotification>;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notification-history"] });
-    },
-  });
-}
-
 // Get notification history
 export function useNotificationHistory(limit: number = 20, offset: number = 0) {
   const accessToken = useAccessToken();
@@ -255,52 +207,13 @@ export function useNotificationHistory(limit: number = 20, offset: number = 0) {
   });
 }
 
-// Send payment receipt
-export function useSendReceipt() {
-  const accessToken = useAccessToken();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ appointmentId, amountPence, paymentMethod }: {
-      appointmentId: string;
-      amountPence: number;
-      paymentMethod: string;
-    }) => {
-      const response = await fetch(`${API_BASE}/api/notifications/send-receipt`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          appointmentId,
-          amountPence,
-          paymentMethod,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to send receipt");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notification-history"] });
-    },
-  });
-}
-
 // Combined notification management hook
 export function useNotificationManager() {
   const permissions = useNotificationPermissions();
   const registerToken = useRegisterPushToken();
   const preferences = useNotificationPreferences();
   const updatePreferences = useUpdateNotificationPreferences();
-  const scheduleNotification = useScheduleNotification();
   const history = useNotificationHistory();
-  const sendReceipt = useSendReceipt();
 
   const setupNotifications = async () => {
     if (!Notifications) {
@@ -335,37 +248,12 @@ export function useNotificationManager() {
     return true;
   };
 
-  const sendAppointmentReminder = async (appointmentId: string, appointmentTime: Date) => {
-    // Schedule reminder 24 hours before appointment
-    const reminderTime = new Date(appointmentTime.getTime() - 24 * 60 * 60 * 1000);
-    
-    return scheduleNotification.mutateAsync({
-      title: "Appointment Reminder",
-      body: "You have a dental appointment tomorrow",
-      data: { appointmentId, type: "appointment_reminder" },
-      scheduledFor: reminderTime,
-    });
-  };
-
-  const sendAppointmentConfirmation = async (appointmentId: string, appointmentTime: Date) => {
-    return scheduleNotification.mutateAsync({
-      title: "Appointment Confirmed",
-      body: `Your appointment is confirmed for ${appointmentTime.toLocaleString()}`,
-      data: { appointmentId, type: "appointment_confirmation" },
-      scheduledFor: new Date(), // Send immediately
-    });
-  };
-
   return {
     permissions,
     registerToken,
     preferences,
     updatePreferences,
-    scheduleNotification,
     history,
-    sendReceipt,
     setupNotifications,
-    sendAppointmentReminder,
-    sendAppointmentConfirmation,
   };
 }

@@ -6,15 +6,27 @@ import { prisma } from "../lib/prisma";
 
 const router = Router();
 
+const MIN_ARCHIVE_DAYS = 365;
+
 // ─── POST /api/audit/log ──────────────────────────────────────────────────────
 // Used by the mobile app DSPT audit logger for client-side events
+// Client events go into the chain under a "client." prefix, so the app can't
+// write an entry that reads like a server event (for example a fake
+// UNAUTHORIZED_ACCESS_ATTEMPT) (CS-09, AR-1).
+const CLIENT_ACTION = /^[A-Za-z0-9_.-]{1,64}$/;
+
 router.post("/log", requireAuth, async (req: AuthRequest, res: Response) => {
   const { action, resourceId } = req.body;
 
-  if (!action) return res.status(400).json({ error: "action required" });
+  if (typeof action !== "string" || !CLIENT_ACTION.test(action)) {
+    return res.status(400).json({ error: "action must be 1-64 letters, digits, '.', '_' or '-'" });
+  }
+  if (resourceId !== undefined && resourceId !== null && (typeof resourceId !== "string" || resourceId.length > 128)) {
+    return res.status(400).json({ error: "resourceId must be a string of up to 128 characters" });
+  }
 
   await createAuditLogWithIntegrity({
-    action,
+    action: `client.${action}`,
     actorId: req.user!.sub,
     resourceId: resourceId || null,
     sessionId: req.user!.sessionId,
@@ -76,8 +88,11 @@ router.post("/retention", requireAuth, async (req: AuthRequest, res: Response) =
     return res.status(403).json({ error: "Admin access required" });
   }
 
+  // Archiving moves entries out of the live chain, so it never reaches back
+  // less than a year (AR-1). Deleting audit logs (8 years, decisions log #9)
+  // isn't done from here.
   const { retentionDays = "365" } = req.body;
-  const parsedDays = Math.max(1, parseInt(String(retentionDays), 10) || 365);
+  const parsedDays = Math.max(MIN_ARCHIVE_DAYS, parseInt(String(retentionDays), 10) || MIN_ARCHIVE_DAYS);
   const result = await applyAuditRetentionPolicy(parsedDays);
 
   return res.json(result);

@@ -61,21 +61,48 @@ function requireRole(role: string) {
   };
 }
 
+/** "SW1A 1AA" -> "SW1A 1": the postcode sector, a few thousand addresses. */
+export function postcodeSector(postcode: unknown): string | null {
+  if (typeof postcode !== "string") return null;
+  const compact = postcode.replace(/\s+/g, "").toUpperCase();
+  if (compact.length < 5) return null;
+  return `${compact.slice(0, -3)} ${compact.slice(-3, -2)}`;
+}
+
+/** Two decimal places: roughly a kilometre, enough to judge the drive. */
+const roundCoordinate = (value: unknown) => (typeof value === "number" ? Math.round(value * 100) / 100 : value);
+
 /**
- * Sanitize request data for operator viewing before acceptance
- * Removes sensitive fields like full address, gate code, and notes
+ * What an operator sees of a request before accepting it: the area, never
+ * the address (VR-5). Coordinates are rounded to about 1 km and the
+ * postcode cut to its sector; parking type stays because it decides
+ * whether the van can take the job. Gate codes and notes are left out.
  */
-function sanitizeIncomingRequest(request: any) {
+export function sanitizeIncomingRequest(request: any) {
   const { accessDetails, ...sanitized } = request;
+  sanitized.patientLat = roundCoordinate(sanitized.patientLat);
+  sanitized.patientLng = roundCoordinate(sanitized.patientLng);
   if (accessDetails) {
     sanitized.accessDetails = {
       parkingType: accessDetails.parkingType,
-      // Only return area/sector info, not full address
       city: accessDetails.city,
-      postcode: accessDetails.postcode,
+      postcode: postcodeSector(accessDetails.postcode),
     };
   }
   return sanitized;
+}
+
+/**
+ * Hides the van's position from a patient who isn't next in the queue. The
+ * ETA is worked out from the real position first, so a patient further back
+ * still gets one (VR-4).
+ */
+function hideVanUnlessNext(request: { queuePosition: number | null; shift: { lastLat: number | null; lastLng: number | null; lastLocationAt: Date | null } | null }) {
+  if (request.queuePosition !== 1 && request.shift?.lastLat != null) {
+    request.shift.lastLat = null;
+    request.shift.lastLng = null;
+    request.shift.lastLocationAt = null;
+  }
 }
 
 /**
@@ -1007,15 +1034,8 @@ router.get("/requests/mine/active", requireAuth, async (req: AuthRequest, res: R
     request.accessDetails = await decryptAccessDetails(request.accessDetails);
   }
 
-  // Only return van coordinates if this patient is next in queue (queuePosition === 1)
-  // For pending requests or when not next, hide van location for privacy
-  if (request.queuePosition !== 1 && request.shift?.lastLat) {
-    request.shift.lastLat = null;
-    request.shift.lastLng = null;
-    request.shift.lastLocationAt = null;
-  }
-
-  // Compute live ETA
+  // Compute live ETA from the van's real position, then hide it below
+  // unless this patient is next (VR-4).
   let etaSeconds: number | null = null;
   let etaLabel: string | null = null;
   if (request.shift && request.shift.lastLat != null && request.shift.lastLng != null) {
@@ -1030,6 +1050,7 @@ router.get("/requests/mine/active", requireAuth, async (req: AuthRequest, res: R
     });
     etaLabel = formatEtaLabel(etaSeconds);
   }
+  hideVanUnlessNext(request);
 
   const depositAuthorized = await isDepositAuthorized(
     request.paymentIntentId,
@@ -1076,13 +1097,6 @@ router.get("/requests/:id", requireAuth, validateParams(vanRequestIdParamsSchema
       request.accessDetails = await decryptAccessDetails(request.accessDetails);
     }
 
-    // Only return van coordinates if this patient is next in queue (queuePosition === 1)
-    // For pending requests or when not next, hide van location for privacy
-    if (request.queuePosition !== 1 && request.shift?.lastLat) {
-      request.shift.lastLat = null;
-      request.shift.lastLng = null;
-      request.shift.lastLocationAt = null;
-    }
   }
 
   let etaSeconds: number | null = null;
@@ -1100,6 +1114,7 @@ router.get("/requests/:id", requireAuth, validateParams(vanRequestIdParamsSchema
       etaLabel = formatEtaLabel(etaSeconds);
     }
   }
+  if (req.user!.role !== "operator") hideVanUnlessNext(request);
 
   const depositAuthorized = await isDepositAuthorized(
     request.paymentIntentId,

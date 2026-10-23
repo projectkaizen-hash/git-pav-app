@@ -6,12 +6,8 @@ import { validateBody, validateQuery } from "../middleware/validate";
 import {
   registerPushTokenSchema,
   updateNotificationPreferencesSchema,
-  sendNotificationSchema,
-  scheduleNotificationSchema,
   notificationHistoryQuerySchema,
-  sendReceiptSchema,
 } from "../schemas/notifications";
-import { communicationService } from "../lib/communication-service";
 
 const router = Router();
 
@@ -133,102 +129,10 @@ router.put("/preferences", requireAuth, validateBody(updateNotificationPreferenc
   return res.json(preferences);
 });
 
-// ─── POST /api/notifications/send ────────────────────────────────────────────
-router.post("/send", requireAuth, validateBody(sendNotificationSchema), async (req: AuthRequest, res: Response) => {
-  const { title, body, data, scheduledFor } = req.body;
-  const userId = req.user!.sub;
-
-  // Get user's notification preferences
-  const preferences = await prisma.notificationPreference.findUnique({
-    where: { userId },
-  });
-
-  if (!preferences || !preferences.pushEnabled) {
-    return res.json({ status: "skipped", reason: "Push notifications disabled" });
-  }
-
-  // Get user's push tokens
-  const tokens = await prisma.pushToken.findMany({
-    where: { userId, active: true },
-  });
-
-  if (tokens.length === 0) {
-    return res.json({ status: "skipped", reason: "No active push tokens" });
-  }
-
-  // Check quiet hours
-  if (preferences?.quietHoursStart && preferences?.quietHoursEnd) {
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-
-    const [startHour, startMin] = preferences.quietHoursStart.split(":").map(Number);
-    const [endHour, endMin] = preferences.quietHoursEnd.split(":").map(Number);
-
-    const startTime = startHour * 60 + startMin;
-    const endTime = endHour * 60 + endMin;
-
-    if (currentTime >= startTime || currentTime <= endTime) {
-      return res.json({ status: "skipped", reason: "Quiet hours" });
-    }
-  }
-
-  // Push notification payload via Expo Push API
-  const messages = tokens.map((token) => ({
-    to: token.token,
-    sound: "default" as const,
-    title: title || "Pav Dental Notification",
-    body: body || "You have an update regarding your dental appointment.",
-    data: (data as Record<string, unknown>) || {},
-  }));
-
-  const pushResult = await communicationService.sendExpoPushNotifications(messages);
-
-  await prisma.notificationHistory.create({
-    data: {
-      userId,
-      type: "push",
-      title: title || "Pav Dental Notification",
-      body: body || "You have an update regarding your dental appointment.",
-      data: (data as any) || {},
-      sentAt: new Date(),
-      status: pushResult.sentCount > 0 ? "delivered" : "failed",
-    },
-  });
-
-  return res.json({
-    status: pushResult.sentCount > 0 ? "delivered" : "failed",
-    recipientsCount: tokens.length,
-    sentCount: pushResult.sentCount,
-    failedCount: pushResult.failedCount,
-    messages,
-    sentAt: new Date().toISOString(),
-  });
-});
-
-// ─── POST /api/notifications/schedule ────────────────────────────────────────
-router.post("/schedule", requireAuth, validateBody(scheduleNotificationSchema), async (req: AuthRequest, res: Response) => {
-  const { title, body, data, scheduledFor } = req.body;
-  const userId = req.user!.sub;
-
-  const scheduledDate = new Date(scheduledFor);
-  if (scheduledDate <= new Date()) {
-    return res.status(400).json({ error: "scheduledFor must be in the future" });
-  }
-
-  // Store scheduled notification
-  const scheduled = await prisma.scheduledNotification.create({
-    data: {
-      userId,
-      title,
-      body,
-      data: data || {},
-      scheduledFor: scheduledDate,
-      status: "pending",
-    },
-  });
-
-  return res.status(201).json(scheduled);
-});
+// Notifications are sent by the server only: reminders and receipts come
+// from bookings and payments. The app used to be able to send itself pushes,
+// schedule its own notifications and email itself a "payment received"
+// receipt for any amount; those routes are gone (CS-09, NT-1).
 
 // ─── GET /api/notifications/history ────────────────────────────────────────
 router.get("/history", requireAuth, validateQuery(notificationHistoryQuerySchema), async (req: AuthRequest, res: Response) => {
@@ -243,89 +147,6 @@ router.get("/history", requireAuth, validateQuery(notificationHistoryQuerySchema
   });
 
   return res.json(notifications);
-});
-
-// ─── POST /api/notifications/send-receipt ────────────────────────────────────
-router.post("/send-receipt", requireAuth, validateBody(sendReceiptSchema), async (req: AuthRequest, res: Response) => {
-  const { appointmentId, amountPence, paymentMethod } = req.body;
-  const userId = req.user!.sub;
-
-  // Get user preferences for receipt delivery
-  const preferences = await prisma.notificationPreference.findUnique({
-    where: { userId },
-  });
-
-  const receiptData = {
-    appointmentId,
-    amountPence,
-    paymentMethod,
-    sentAt: new Date().toISOString(),
-  };
-
-  // Send push notification if enabled
-  if (preferences?.pushEnabled) {
-    const tokens = await prisma.pushToken.findMany({
-      where: { userId, active: true },
-    });
-
-    if (tokens.length > 0) {
-      await communicationService.sendExpoPushNotifications(
-        tokens.map((t) => ({
-          to: t.token,
-          sound: "default",
-          title: "Payment Receipt",
-          body: `Payment of £${(amountPence / 100).toFixed(2)} received`,
-          data: receiptData,
-        }))
-      );
-
-      // Queue push notification
-      await prisma.notificationHistory.create({
-        data: {
-          userId,
-          type: "receipt",
-          title: "Payment Receipt",
-          body: `Payment of £${(amountPence / 100).toFixed(2)} received`,
-          data: receiptData,
-          sentAt: new Date(),
-          status: "sent",
-        },
-      });
-    }
-  }
-
-  // Send email if enabled
-  if (preferences?.emailEnabled) {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    if (user?.email) {
-      await communicationService.sendEmail({
-        to: user.email,
-        subject: "Pav Dental Payment Receipt",
-        html: `<h2>Pav Dental Receipt</h2><p>Payment of <strong>£${(amountPence / 100).toFixed(2)}</strong> received via ${paymentMethod} for appointment ${appointmentId}.</p>`,
-        text: `Pav Dental Receipt: Payment of £${(amountPence / 100).toFixed(2)} received via ${paymentMethod} for appointment ${appointmentId}.`,
-      });
-    }
-
-    await prisma.notificationHistory.create({
-      data: {
-        userId,
-        type: "receipt_email",
-        title: "Payment Receipt",
-        body: `Payment receipt for £${(amountPence / 100).toFixed(2)}`,
-        data: receiptData,
-        sentAt: new Date(),
-        status: "sent",
-      },
-    });
-  }
-
-  return res.json({
-    status: "receipt_sent",
-    deliveryMethods: {
-      push: preferences?.pushEnabled,
-      email: preferences?.emailEnabled,
-    },
-  });
 });
 
 export default router;
