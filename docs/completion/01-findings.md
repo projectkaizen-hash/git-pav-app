@@ -12,6 +12,12 @@ evidence and a proposed fix. Line numbers refer to `main` @ 07e372e.
 | BK-5 | **blocker** | `PATCH /api/booking/appointments/:id/confirm` confirms an appointment **without payment**: no payment id → no check at all; any client-sent id starting `pi_e2e_` / `pi_mock_` skips Stripe even with live keys; any succeeded intent (any amount, any appointment) is accepted; `depositPaidPence` is taken from the request body. **Reproduced locally** with a non-mock `sk_test_` key: a new patient confirmed a clinic appointment with an empty payment and `depositPaidPence: 999999` → 200 `confirmed` |
 | WH-1 | high | A clinic deposit that succeeds after the 10-minute hold has expired is kept: the webhook matches 0 rows, the appointment stays cancelled, and nothing refunds or alerts |
 | MF-1 | high | MFA is never enforced: `requireMFA` exists but no route uses it, and phone-OTP login lets clinicians/admins in with an SMS code alone |
+| MS-1 | **blocker** | `GET /api/messages` writes three **fabricated clinical messages** (from "Dr. Tariq Pav", about a treatment plan for tooth #31 and a £25 deposit) into the database for every user with an empty inbox; `GET /api/rewards*` creates **fabricated oral-health metrics and practitioner advice** for every user |
+| FN-1 | **blocker** (legal decision) | `/api/financing` "pre-approves" every user for £4,000 at 0% APR with no lender, credit check or FCA authorisation |
+| MS-2 | high | Any clinician or admin can read every patient's message threads (no care-relationship check) |
+| PT-1 | high | Clinicians can edit a patient's profile including the **login phone number**, then sign in as that patient via phone OTP; clinicians can also "sign" a treatment plan on the patient's behalf |
+| RX-1 | high | Prescriptions are shown as "DISPATCHED_TO_PHARMACY" with a made-up NHS EPS reference, but nothing is sent anywhere; any clinician can issue for any patient and read any patient's prescriptions |
+| VD-1 | high | Daily rooms are created public (no `privacy: private`, no meeting tokens), any logged-in user can create rooms, and patients get the room URL before being admitted |
 | P0-1 | blocker | Schema/migration drift: `migrate deploy` produces a DB the code can't run against; `migrate dev` would drop the PostGIS column (see 00-baseline §1.1) |
 | P0-2 | blocker | CI can't go green as written (lockfile fixed in ea0a067; `db execute` flag and e2e's live Daily/postcodes.io calls remain) |
 | P0-3 | high | Error handler logs patient first/last name in clear (PII) |
@@ -217,3 +223,63 @@ Audit: in-process `setInterval` workers, started on every API process.
 | WH-3 | medium | payments | No handling of `charge.refunded`, `charge.dispute.created` or clinic-side `payment_failed`/`canceled`; no processed-event table (audit rows duplicate on redelivery). | `payments.ts:266-446` | Add a `stripe_events` dedupe table; handle disputes/refunds for reconciliation. |
 | PM-1 | medium | security | `methods/attach` only checks ownership when *both* the PaymentMethod and the profile have a customer. A user without a Stripe customer can attach someone else's `pm_…` id, and `DELETE /methods/:id` then detaches it from the real owner. | `payments.ts:139-148`, `:226-229` | Require `pm.customer === profile.stripeCustomerId` (create the customer first); never detach a PM whose customer isn't the caller's. |
 | PM-2 | medium | missing feature | Saved cards are never used: deposit PaymentIntents are created without `customer`, so "Payment methods" is display-only. | `payments.ts:55-64`; `van.ts:885-896` | Pass `customer` + `setup_future_usage` (or remove the screen). Product decision. |
+
+### `routes/patients.ts`, `patient-dependants.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| PT-1 | high | security | `requirePatientRecordAccess` admits clinicians, and `PUT /:id/profile` lets them change the patient's name, medical history, consents **and `user.phone`**. Phone-OTP login uses that phone, so a clinician with any past appointment can take over the account. | `patients.ts:66-96`; `patient-access.ts:11-55`; `auth-otp.ts:349` | Patient-only for demographics/phone; clinician edits to medical history go through an audited clinical endpoint; phone change requires OTP to the new number. |
+| PT-2 | high | consent integrity | `POST /:id/plans/:planId/sign` and `/decline` also admit clinicians, so a clinician can sign a plan as the patient. Status isn't checked, so a declined plan can be signed and an accepted one declined; `signerName` is free text. | `patients.ts:213-336` | Patient-only; allow only `proposed → accepted/declined`; bind signer to the authenticated patient. |
+| PT-3 | medium | compliance | Odontogram updates overwrite the tooth row with no history and no audit entry; plan creation isn't audited. Clinical records need a change history. | `patients.ts:138-162`, `:182-209` | Append-only tooth-record history (or audit with before/after); audit plan creation. |
+| PT-4 | medium | data model | Consents live in two places: `PatientProfile.consents` JSON (writable via profile PUT) and the versioned `ConsentRecord` table. Medical history is unencrypted JSON. | `patients.ts:76-89`; `consents.ts` | One source (`ConsentRecord`); drop the JSON; decide on field encryption for medical history. |
+| DP-1 | medium | missing feature / data | `consentSigned` comes from the client (the comment says it mirrors a `guardian_consent` ConsentRecord; none is created). DOB isn't validated (future, adult). No update endpoint, and appointments have no dependant link, so a guardian can't book for a dependant. | `patient-dependants.ts:10-11`, `:21-29`, `:74-83` | Create the ConsentRecord server-side; validate age; add `dependantId` to bookings. Needs product input on who can be a dependant. |
+
+### `routes/consents.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| SAR-1 | high | GDPR | The SAR export omits messages, documents/photos, triage data, van requests (locations), dependants, financing, rewards, waitlist, notification history, payment methods and consent metadata. The CSV variant has no clinical data at all. | `consents.ts:192-294` | Build the export from a per-model registry with a test that fails when a model holding personal data isn't covered. |
+| SAR-2 | medium | security | The confirmation email interpolates `firstName` into HTML unescaped and contains a 15-minute bearer URL (OS-3). | `consents.ts:330` | Escape; link into the app. |
+| CO-1 | medium | compliance | Grant/withdraw aren't transactional (version race) and aren't audit-logged; the client can supply the IP recorded as consent evidence. | `consents.ts:21-117` | Transaction + unique `(profile, type, version)`; audit; server-side IP only. |
+| CO-2 | high | GDPR | `data-deletion-request` only writes an audit row and emails the patient; there is no queue, DPO view or erasure job (known limitation, now confirmed). | `consents.ts:350-388` | Erasure pipeline (Phase 2/3). Retention periods need your decision. |
+
+### `routes/video.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| VD-1 | high | security / PHI | Rooms are created without `privacy: "private"` and without meeting tokens (`roomData.config?.token` is always null for `/rooms`), so anyone with the URL can join a consult. Any authenticated user can create rooms with no appointment (cost abuse). `GET /status` returns the room URL before the clinician admits the patient, so the waiting room can be skipped. | `video.ts:33-119`, `:288-300` | Private rooms + per-participant meeting tokens issued only after admission; require an appointment the caller belongs to. |
+| VD-2 | high | clinical safety (**needs clinical sign-off**) | `submit-triage` stores pain/symptoms but never runs the red-flag check that booking uses. | `video.ts:221-261` | Run `checkRedFlags` and surface emergency guidance. |
+| VD-3 | medium | bug | `submit-triage` replaces `triageData` wholesale (drops uploaded photos and `admittedAt`); photo URLs stored in `triageData.photos` are 15-minute signed URLs that are dead later; each `/rooms` call makes a new room and overwrites the old one. | `video.ts:192-204`, `:240-252`, `:92-104` | Merge; store keys not URLs; reuse one room per appointment. |
+| VD-4 | medium | bug | Clinician queue filters `startTimeUtc >= now`, so a consult disappears from the queue the minute it is due. `admit-patient` doesn't check status (can admit a cancelled appointment). There's no "end consult / complete" endpoint, so video appointments never complete. | `video.ts:318-324`, `:357-379` | Window (e.g. start − 15 min to end + 30 min); status checks; complete endpoint. |
+
+### `routes/prescriptions.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| RX-1 | high | clinical safety (**NHS EPS decision**) | The response claims `DISPATCHED_TO_PHARMACY` with a fabricated `NHS-EPS-…` reference and QR payload; nothing is transmitted. A patient would expect to collect medication that was never sent. | `prescriptions.ts:55-103` | Until EPS exists: label as "private prescription — print/hand to patient" (wording needs clinical sign-off). EPS integration is the separate track you asked to decide. |
+| RX-2 | high | security | Any clinician can issue for any patient: `appointmentId` isn't checked against the clinician or patient, and the fallback links to the latest appointment regardless of status. If none is found the prescription is orphaned (no `patientId` column) and invisible to the patient. | `prescriptions.ts:21-53`, `:65-73` | Require an appointment owned by this clinician; add `patientId` FK. |
+| RX-3 | medium | security | `GET /patient/:userId` lets any clinician or admin read any patient's prescriptions (no care relationship). | `prescriptions.ts:107-136` | Reuse `requirePatientRecordAccess`. |
+
+### `routes/notifications.ts`, `waitlist.ts`, `messages.ts`, `financing.ts`, `rewards.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| MS-1 | **blocker** | clinical safety | Inbox seeding writes fabricated clinician messages (named clinician, specific tooth, plan to e-sign, "£25 deposit applied") into production data on first load, for any role. | `messages.ts:40-111` | Delete the seeding; show an empty state. Data migration to remove seeded rows where they exist. |
+| MS-2 | high | security / PHI | `isStaff` → `where: {}`: every clinician/admin sees every patient's threads and can reply to any, unpaginated. | `messages.ts:28-38`, `:181-185` | Scope to care team; paginate. |
+| MS-3 | high | missing feature / clinical safety | There's no recipient routing or staff inbox: patient messages go nowhere, nobody is notified, staff replies show as "You". A patient could report something urgent and get no response. | `messages.ts:134-169` | Route to clinic/clinician, notify, SLA + "not for emergencies" banner (wording: clinical sign-off). |
+| FN-1 | **blocker** | legal (**needs your decision**) | Financing returns `pre_approved` for everyone with a fixed £4,000 limit and 0 % APR, labelled "FCA-compliant", with no lender or credit check. Offering consumer credit needs FCA permission or a regulated partner. | `financing.ts:19-75` | Hide the feature for launch, or integrate a regulated provider. |
+| RW-1 | **blocker** | clinical safety | New users get fabricated plaque index, bleeding %, recall date, 14-day streak, 1,450 points and "practitioner advice" about tooth #31. | `rewards.ts:71-89` | Start from real (empty) data; advice only from a clinician. |
+| RW-2 | high | abuse / money | `POST /brushing-log` grants +25 points per call with no limit; points redeem for a "£25 treatment credit" and physical products. Vouchers are never validated anywhere. | `rewards.ts:207-240`, `:22-59` | Cap per day/session; server-side voucher redemption; decide if rewards ship at all. |
+| WL-1 | high | missing feature | Joining the waitlist promises "a 30-min priority alert when a slot opens", but nothing ever reads the waitlist; cancellations don't notify it. `serviceId` and past dates aren't validated. | `waitlist.ts:58-64` | Hook cancellations → notify first N in queue (needs product rules), or change the copy. |
+| NT-1 | medium | security | `POST /send`, `/schedule` and `/send-receipt` are client-callable. `send-receipt` emails a "Payment of £X received" receipt with a client-chosen amount and payment method; `/send` echoes `messages` back. | `notifications.ts:137-329` | Remove client-callable send/schedule; generate receipts server-side from Stripe events. |
+| NT-2 | low | bug | Quiet hours compare against server time (UTC), only on `/send`. | `notifications.ts:160-173` | Europe/London; apply in dispatcher (PP-3). |
+
+### `routes/admin.ts`, `audit.ts`, `dspt-audit.ts`, `services.ts`, `triage.ts`, `public-van.ts`, `van-queue.ts`, `van-stops.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| AD-1 | high | missing feature | There's no way to onboard clinicians, operators, clinics, services, vans, van assignments or service polygons except the seed script or direct SQL, and no admin UI in the app. Admin status override has no side effects (refunds, reminders, van request). | `admin.ts` (read-only apart from status override) | Minimal admin endpoints/console (or documented ops runbook) — scope needs your input. |
+| AR-1 | medium | integrity | `POST /api/audit/log` lets any user write arbitrary `action` strings into the tamper-evident chain (e.g. fake `UNAUTHORIZED_ACCESS_ATTEMPT`). `POST /retention` accepts `retentionDays=1`. | `audit.ts:11-28`, `:74-84` | Allow-list client actions with a `client.` prefix; bound retention (≥ policy minimum) + MFA. |
+| PV-1 | low | reliability | `public-van.ts` has its own `postcodeToCoordinates` with no timeout; an outage reports "outside our service area". | `public-van.ts:76-93` | Use `lib/geo.ts`; return "couldn't check" on failure. |
+| VS-1 | low | consistency | `POST /api/van/stops/:id/check-in` sets `on_site` without the "Van has arrived" push or ETA re-broadcast that the phase endpoint sends. | `van-stops.ts:60-66` vs `van.ts:674-680` | Share one transition function. |
+| DS-1 | ok | — | DSPT report is honest ("PROTOTYPE — NOT FOR PRODUCTION USE WITH PATIENT DATA"). Keep it that way until the assessment is done. | `dspt-audit.ts:44-50` | — |
