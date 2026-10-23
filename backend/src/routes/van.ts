@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import crypto from "crypto";
 import Stripe from "stripe";
 import { prisma } from "../lib/prisma";
+import { awardVisitPoints } from "../lib/rewards";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { HttpError } from "../middleware/error-handler";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
@@ -663,6 +664,22 @@ router.post("/requests/:id/phase", requireAuth, requireRole("operator"), validat
     where: { id: request.id },
     data: updateData,
   });
+
+  // The booking behind the visit ends the same way, and a completed visit
+  // earns the patient's points (decisions log #14).
+  if (request.appointmentId && (phase === "completed" || phase === "no_show")) {
+    await prisma.appointment.updateMany({
+      where: { id: request.appointmentId, status: { in: ["confirmed", "in_progress"] } },
+      data: { status: phase },
+    });
+    if (phase === "completed") {
+      // The visit is already closed; a failure here is caught up by the
+      // background sweep rather than failing the operator's update.
+      await awardVisitPoints(request.appointmentId).catch((err) => {
+        console.error("[Van] Visit points award failed:", err instanceof Error ? err.name : "unknown error");
+      });
+    }
+  }
 
   // Send notifications based on phase changes
   if (phase === "en_route") {

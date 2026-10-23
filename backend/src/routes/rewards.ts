@@ -6,51 +6,13 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { availableVoucherWhere, POINTS_PER_COMPLETED_VISIT, REWARDS_CATALOG } from "../lib/rewards";
 
 const router = Router();
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 // A new patient starts with nothing logged, not a pre-filled week.
 const EMPTY_WEEKLY_BRUSHING = WEEK_DAYS.map((day) => ({ day, am: false, pm: false, durationSec: 0 }));
-
-const REWARDS_CATALOG = [
-  {
-    id: "rw_1",
-    title: "Philips Sonicare Heads (3-Pack)",
-    category: "Preventative",
-    pointsCost: 800,
-    description: "C3 Premium Plaque Defence replacement brush heads with RFID sync.",
-    icon: "sparkles",
-    inStock: true,
-  },
-  {
-    id: "rw_2",
-    title: "AirFlow® Stain Removal Booster",
-    category: "In-Clinic Upgrade",
-    pointsCost: 1200,
-    description: "Complimentary high-pressure sodium bicarbonate polish at your next hygiene visit.",
-    icon: "zap",
-    inStock: true,
-  },
-  {
-    id: "rw_3",
-    title: "Boutique Whitening Refill Syringe",
-    category: "Cosmetic",
-    pointsCost: 1800,
-    description: "16% Carbamide Peroxide overnight home top-up syringe (requires custom trays).",
-    icon: "star",
-    inStock: true,
-  },
-  {
-    id: "rw_4",
-    title: "£25 Practice Treatment Credit",
-    category: "Voucher",
-    pointsCost: 2500,
-    description: "Direct credit voucher applied to any filling, crown, or dental checkup.",
-    icon: "check",
-    inStock: true,
-  },
-];
 
 const redeemRewardSchema = z.object({
   rewardId: z.string().trim().min(1).max(50),
@@ -77,19 +39,25 @@ async function getOrCreateMetrics(userId: string) {
 // ─── GET /api/rewards ─────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.sub;
-  const [metric, redemptions] = await Promise.all([
+  const [metric, redemptions, vouchers] = await Promise.all([
     getOrCreateMetrics(userId),
     prisma.rewardRedemption.findMany({
       where: { userId },
       orderBy: { redeemedAt: "desc" },
+    }),
+    prisma.rewardRedemption.findMany({
+      where: availableVoucherWhere(userId),
+      orderBy: { redeemedAt: "asc" },
+      select: { id: true, voucherCode: true, rewardTitle: true, discountPence: true, redeemedAt: true },
     }),
   ]);
 
   return res.json({
     pointsBalance: metric.pointsBalance,
     streakDays: metric.streakDays,
-    nextTierPoints: 2000,
+    pointsPerCompletedVisit: POINTS_PER_COMPLETED_VISIT,
     catalog: REWARDS_CATALOG,
+    vouchers,
     redemptions,
   });
 });
@@ -138,6 +106,7 @@ router.post("/redeem", requireAuth, validateBody(redeemRewardSchema), async (req
         rewardTitle: item.title,
         pointsCost: item.pointsCost,
         voucherCode,
+        discountPence: item.discountPence,
       },
     });
 

@@ -4,6 +4,7 @@ import { pseudonymiseIp } from "./audit-security";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { releaseVanDeposit } from "./van-payments";
 import { sendPatientNotification } from "./patient-push";
+import { awardMissedVisitPoints } from "./rewards";
 
 // Interval settings
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
@@ -308,6 +309,9 @@ export function startBackgroundJobs(): void {
   // Recurring timers
   slotExpiryTimer = setInterval(() => {
     processExpiredSlotHolds().catch(() => {});
+    awardMissedVisitPoints().catch((err) => {
+      console.error("[BACKGROUND JOBS] Visit points catch-up failed:", err instanceof Error ? err.name : "unknown error");
+    });
   }, SLOT_EXPIRY_INTERVAL_MS);
 
   notificationDispatchTimer = setInterval(() => {

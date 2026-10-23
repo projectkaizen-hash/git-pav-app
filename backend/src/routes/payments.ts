@@ -10,6 +10,7 @@ import { validateBody } from "../middleware/validate";
 import { createPaymentIntentSchema } from "../schemas/payments";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { sendPatientNotification } from "../lib/patient-push";
+import { applyDepositVoucher, depositDuePence } from "../lib/rewards";
 
 const router = Router();
 const isMockStripe = env.isMockStripe;
@@ -20,7 +21,7 @@ const stripe = new Stripe(env.stripeSecretKey, {
 // The server derives the deposit from the appointment's service. A mobile client
 // can never submit an amount, currency, or payment confirmation.
 router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchema), async (req: AuthRequest, res: Response) => {
-  const { appointmentId } = req.body;
+  const { appointmentId, voucherCode } = req.body as { appointmentId: string; voucherCode?: string };
 
   const profile = await prisma.patientProfile.findUnique({
     where: { userId: req.user!.sub },
@@ -39,6 +40,13 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
   });
   if (!appointment) return res.status(404).json({ error: "Active appointment hold not found" });
 
+  if (voucherCode && appointment.depositDiscountPence === 0) {
+    const applied = await applyDepositVoucher({ userId: req.user!.sub, appointment, voucherCode });
+    if (!applied.ok) return res.status(422).json({ error: applied.error });
+    appointment.depositDiscountPence = applied.discountPence;
+  }
+  const amountPence = depositDuePence(appointment);
+
   if (isMockStripe) {
     const paymentIntentId = `pi_mock_${appointment.id.replaceAll("-", "")}`;
     await prisma.appointment.update({
@@ -49,12 +57,16 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
       clientSecret: `${paymentIntentId}_secret_mock`,
       paymentIntentId,
       publishableKey: env.stripePublishableKey,
+      amountPence,
+      discountPence: appointment.depositDiscountPence,
       isMock: true,
     });
   }
 
+  // The amount is part of the key: a voucher added after a first attempt
+  // needs a new PaymentIntent for the lower amount.
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: appointment.service.depositPence,
+    amount: amountPence,
     currency: "gbp",
     metadata: {
       appointmentId: appointment.id,
@@ -62,7 +74,7 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
       serviceName: appointment.service.name,
     },
     automatic_payment_methods: { enabled: true },
-  }, { idempotencyKey: `appointment-deposit:${appointment.id}` });
+  }, { idempotencyKey: `appointment-deposit:${appointment.id}:${amountPence}` });
 
   await prisma.appointment.update({
     where: { id: appointment.id },
@@ -73,6 +85,8 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
     clientSecret: paymentIntent.client_secret,
     paymentIntentId: paymentIntent.id,
     publishableKey: env.stripePublishableKey,
+    amountPence,
+    discountPence: appointment.depositDiscountPence,
     isMock: false,
   });
 });

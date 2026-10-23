@@ -23,7 +23,7 @@ The owner's answers to the Phase 3 questions (23 Oct 2026), and the defaults cho
 | 11 | Who signs off triage rules and clinical wording | The practice's clinical lead, Dr Hassan Bhojani. Until sign-off, the app uses neutral, non-diagnostic wording with no "24/7 AI" claims. | Decided (reviewer), Draft (wording pending review) | CS-06, CS-36 |
 | 12 | Opening hours and rota | Clinic hours stored per clinic as data, default Mon to Fri 09:00 to 17:30, Sat 09:00 to 13:00, Sun closed. Rota is a weekly template per clinician with date overrides. | Default | CS-30 |
 | 13 | Waitlist | Remove | Decided | CS-32 |
-| 14 | Rewards rules | Points only for completed appointments, computed on the server: 10 points per completed visit, 100 points = £5 off a future deposit. No points for sign-up or self-reported data. | Default | CS-33 |
+| 14 | Rewards rules | Points only for completed appointments, computed on the server: 10 points per completed visit, 100 points = £5 off a future deposit. No points for sign-up or self-reported data. A voucher goes on one booking at a time, always leaves at least part of the deposit to pay by card, and comes back if that booking is cancelled. Past completed visits are credited once when this ships. | Default | CS-33 |
 | 15 | Saved cards | Use them for deposits | Decided | CS-22 |
 | 16 | Back office | Web dashboard | Decided | CS-31 |
 | 17 | Dependants | Only a parent or guardian can add and book for an under-16. Consent wording drafted for clinical review | Decided (rule), Draft (wording) | CS-34 |

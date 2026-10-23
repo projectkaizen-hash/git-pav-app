@@ -237,32 +237,36 @@ model Service {
 }
 
 model Appointment {
-  id                String             @id @default(uuid()) @db.Uuid
-  patientId         String             @map("patient_id") @db.Uuid
-  clinicianId       String?            @map("clinician_id") @db.Uuid
-  serviceId         String             @map("service_id")
-  channel           CareChannel
-  clinicId          String?            @map("clinic_id") @db.Uuid
-  vanId             String?            @map("van_id") @db.Uuid
-  startTimeUtc      DateTime           @map("start_time_utc")
-  endTimeUtc        DateTime           @map("end_time_utc")
-  status            AppointmentStatus  @default(draft_hold)
-  holdExpiresAt     DateTime?          @map("hold_expires_at")
-  accessDetails     Json?              @map("access_details")
-  triageData        Json?              @map("triage_data")
-  intraoralPhotos   String[]           @map("intraoral_photos")
-  totalPricePence   Int                @map("total_price_pence")
-  depositPaidPence  Int                @default(0) @map("deposit_paid_pence")
-  stripePaymentId   String?            @map("stripe_payment_id")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  clinic            Clinic?            @relation(fields: [clinicId], references: [id])
-  clinician         ClinicianProfile?  @relation(fields: [clinicianId], references: [id])
-  patient           PatientProfile     @relation(fields: [patientId], references: [id])
-  service           Service            @relation(fields: [serviceId], references: [id])
-  van               Van?               @relation(fields: [vanId], references: [id])
-  prescriptions     Prescription[]
-  vanServiceRequest VanServiceRequest?
+  id                   String             @id @default(uuid()) @db.Uuid
+  patientId            String             @map("patient_id") @db.Uuid
+  clinicianId          String?            @map("clinician_id") @db.Uuid
+  serviceId            String             @map("service_id")
+  channel              CareChannel
+  clinicId             String?            @map("clinic_id") @db.Uuid
+  vanId                String?            @map("van_id") @db.Uuid
+  startTimeUtc         DateTime           @map("start_time_utc")
+  endTimeUtc           DateTime           @map("end_time_utc")
+  status               AppointmentStatus  @default(draft_hold)
+  holdExpiresAt        DateTime?          @map("hold_expires_at")
+  accessDetails        Json?              @map("access_details")
+  triageData           Json?              @map("triage_data")
+  intraoralPhotos      String[]           @map("intraoral_photos")
+  totalPricePence      Int                @map("total_price_pence")
+  depositPaidPence     Int                @default(0) @map("deposit_paid_pence")
+  /// Taken off the service deposit by a rewards voucher when payment started.
+  depositDiscountPence Int                @default(0) @map("deposit_discount_pence")
+  stripePaymentId      String?            @map("stripe_payment_id")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  clinic               Clinic?            @relation(fields: [clinicId], references: [id])
+  clinician            ClinicianProfile?  @relation(fields: [clinicianId], references: [id])
+  patient              PatientProfile     @relation(fields: [patientId], references: [id])
+  service              Service            @relation(fields: [serviceId], references: [id])
+  van                  Van?               @relation(fields: [vanId], references: [id])
+  prescriptions        Prescription[]
+  vanServiceRequest    VanServiceRequest?
+  pointsAward          RewardPointsAward?
+  rewardVoucher        RewardRedemption?
 
   @@index([patientId])
   @@index([clinicianId])
@@ -653,16 +657,34 @@ model FinancingApplication {
 
 /// Oral Health Rewards Ledger & Redemptions
 model RewardRedemption {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  rewardId    String   @map("reward_id") @db.VarChar(50)
-  rewardTitle String   @map("reward_title") @db.VarChar(200)
-  pointsCost  Int      @map("points_cost")
-  voucherCode String   @unique @map("voucher_code") @db.VarChar(40)
-  redeemedAt  DateTime @default(now()) @map("redeemed_at")
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  rewardId      String       @map("reward_id") @db.VarChar(50)
+  rewardTitle   String       @map("reward_title") @db.VarChar(200)
+  pointsCost    Int          @map("points_cost")
+  voucherCode   String       @unique @map("voucher_code") @db.VarChar(40)
+  redeemedAt    DateTime     @default(now()) @map("redeemed_at")
+  /// Off a future deposit, for deposit vouchers.
+  discountPence Int          @default(0) @map("discount_pence")
+  /// The booking the voucher is on. It frees up again if that booking is cancelled.
+  appointmentId String?      @unique @map("appointment_id") @db.Uuid
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   @@index([userId, redeemedAt])
   @@map("reward_redemptions")
+}
+
+/// Points earned for a completed visit: at most one award per appointment.
+model RewardPointsAward {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  appointmentId String      @unique @map("appointment_id") @db.Uuid
+  points        Int
+  createdAt     DateTime    @default(now()) @map("created_at")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("reward_points_awards")
 }
 
 /// Patient Oral Health Metrics & Brushing Adherence

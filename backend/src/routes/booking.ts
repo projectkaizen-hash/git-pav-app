@@ -19,6 +19,7 @@ import {
 import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
+import { depositDuePence } from "../lib/rewards";
 
 const router = Router();
 
@@ -428,7 +429,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       if (paymentIntentId !== `pi_mock_${appointment.id.replaceAll("-", "")}`) {
         return { error: "Payment does not belong to this appointment", status: 409 };
       }
-      depositPaidPence = appointment.service.depositPence;
+      depositPaidPence = depositDuePence(appointment);
     } else {
       let intent: Stripe.PaymentIntent;
       try {
@@ -448,7 +449,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
           status: 402,
         };
       }
-      if (intent.currency !== "gbp" || intent.amount_received !== appointment.service.depositPence) {
+      if (intent.currency !== "gbp" || intent.amount_received !== depositDuePence(appointment)) {
         return { error: "Payment amount does not match the deposit for this service", status: 409 };
       }
       depositPaidPence = intent.amount_received;

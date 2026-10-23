@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { awardVisitPoints } from "../lib/rewards";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
 import { validateParams, validateQuery, validateBody } from "../middleware/validate";
 import {
@@ -178,6 +179,9 @@ router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), vali
     where: { id: appointmentId },
     data: { status: status as any },
   });
+
+  // Points for a completed visit (decisions log #14); a repeat is a no-op.
+  if (updated.status === "completed") await awardVisitPoints(updated.id);
 
   return res.json({ id: updated.id, status: updated.status, updatedAt: updated.updatedAt });
 });

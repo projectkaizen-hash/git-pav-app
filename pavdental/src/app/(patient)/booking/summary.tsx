@@ -7,6 +7,7 @@ import { ThemedText, Card, Button, AppIcon, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent } from "@/features/booking/booking-api";
+import { useRewards } from "@/features/hooks/use-dental-api";
 
 export default function BookingSummaryScreen() {
   const router = useRouter();
@@ -15,6 +16,14 @@ export default function BookingSummaryScreen() {
   const { service, clinic, clinician, slot, holdExpiresAt, resetDraft } = useBookingStore();
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
   const [isProcessing, setIsProcessing] = useState(false);
+  // A rewards voucher off this deposit (decisions log #14). The server checks
+  // it and sets the amount; this only previews it.
+  const { data: rewardsData } = useRewards();
+  const voucher: { voucherCode: string; discountPence: number } | undefined = rewardsData?.vouchers?.[0];
+  const [useVoucher, setUseVoucher] = useState(false);
+  const depositPence = service?.depositPence || 2000;
+  const voucherFits = !!voucher && voucher.discountPence < depositPence;
+  const depositDuePence = useVoucher && voucherFits ? depositPence - voucher!.discountPence : depositPence;
 
   useEffect(() => {
     if (!holdExpiresAt) return;
@@ -63,7 +72,7 @@ export default function BookingSummaryScreen() {
       });
 
       // 2. Create PaymentIntent on the server — amount is server-authoritative
-      const intent = await createPaymentIntent(appt.id);
+      const intent = await createPaymentIntent(appt.id, useVoucher && voucherFits ? voucher!.voucherCode : undefined);
 
       // 3. Validate that we have a real payment intent
       if (!intent.clientSecret) {
@@ -206,12 +215,26 @@ export default function BookingSummaryScreen() {
             </ThemedText>
           </View>
 
+          {voucherFits && (
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: useVoucher }}
+              onPress={() => setUseVoucher((v) => !v)}
+              style={styles.priceRow}
+            >
+              <ThemedText variant="body" style={styles.label}>
+                {useVoucher ? "☑" : "☐"} Use rewards voucher ({formatGbp(voucher!.discountPence)} off)
+              </ThemedText>
+              {useVoucher && <ThemedText variant="mono">–{formatGbp(voucher!.discountPence)}</ThemedText>}
+            </Pressable>
+          )}
+
           <View style={styles.priceRow}>
             <ThemedText variant="headline" style={styles.depositLabel}>
               Deposit Due Today (Stripe):
             </ThemedText>
             <ThemedText variant="mono" style={styles.depositAmount}>
-              {formatGbp(service?.depositPence || 2000)}
+              {formatGbp(depositDuePence)}
             </ThemedText>
           </View>
 
@@ -226,7 +249,7 @@ export default function BookingSummaryScreen() {
             Cancellation & Reschedule Policy:
           </ThemedText>
           <ThemedText variant="caption" style={styles.policyText}>
-            You can reschedule or cancel free of charge up to 48 hours prior to your visit. Deposits are fully refunded automatically to your card for cancellations within this window.
+            Cancel 48 hours or more before your visit for a full deposit refund, or 24 to 48 hours before for half. Deposits aren't refunded for cancellations less than 24 hours before. Refunds go back to your card automatically.
           </ThemedText>
         </View>
       </ScrollView>
@@ -250,7 +273,7 @@ export default function BookingSummaryScreen() {
             {isProcessing ? "Processing…" : Platform.OS === "android" ? "Google Pay" : "Apple Pay"}
           </ThemedText>
           <ThemedText variant="headline" style={styles.walletText}>
-            {formatGbp(service?.depositPence || 2000)}
+            {formatGbp(depositDuePence)}
           </ThemedText>
         </Pressable>
         <Button
