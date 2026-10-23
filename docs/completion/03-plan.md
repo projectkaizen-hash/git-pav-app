@@ -138,6 +138,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Skills:** `observability-by-default`, `security-discipline`
 - **Tests:** a log-capture test asserts that a name, a medical field, an OTP and a reset token never appear in output
 - **Acceptance:** with no email or SMS provider, sends fail loudly in production and log metadata only in dev
+- **Note:** delivered as error handler, communication service and a shared `lib/log-safety.ts`. Moving every `console.*` call onto one structured logger with request ids (the rest of SL-1) goes with error tracking in CS-44, where the transport is chosen.
 - **Depends on:** none
 - **Size:** S
 

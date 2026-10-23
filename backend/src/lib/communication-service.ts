@@ -1,4 +1,5 @@
 import { env } from "../config/env";
+import { maskEmail, maskPhone, safeError } from "./log-safety";
 
 export interface SendEmailOptions {
   to: string;
@@ -56,22 +57,35 @@ export class CommunicationService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error("[CommunicationService] Postmark error:", errorData);
+          const errorData = (await response.json().catch(() => ({}))) as any;
+          // Postmark's Message can echo the recipient; log the code only.
+          console.error("[CommunicationService] Postmark error:", {
+            status: response.status,
+            errorCode: errorData?.ErrorCode,
+            to: maskEmail(options.to),
+          });
           return { success: false };
         }
 
         const data = await response.json() as any;
         return { success: true, messageId: data.MessageID };
       } catch (err) {
-        console.error("[CommunicationService] Failed to send email via Postmark:", err);
+        console.error("[CommunicationService] Failed to send email via Postmark:", safeError(err));
         return { success: false };
       }
     }
 
-    // Development / Test fallback
-    console.log(`[Email Dispatch] To: ${options.to} | Subject: "${options.subject}"`);
-    console.log(`[Email Content]\n${options.text}\n`);
+    // No provider. Message bodies carry reset links, verification codes and
+    // OTPs, so they are never logged (CS-1). When deployed this is a failure,
+    // not a silent success.
+    if (env.isProduction || env.isStaging) {
+      console.error("[CommunicationService] Email not sent: POSTMARK_SERVER_TOKEN is not configured", {
+        subject: options.subject,
+        to: maskEmail(options.to),
+      });
+      return { success: false };
+    }
+    console.log("[Email Dispatch] (no provider, not sent)", { subject: options.subject, to: maskEmail(options.to) });
     return { success: true, messageId: `mock_email_${Date.now()}` };
   }
 
@@ -98,21 +112,29 @@ export class CommunicationService {
         );
 
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          console.error("[CommunicationService] Twilio error:", errData);
+          const errData = (await response.json().catch(() => ({}))) as any;
+          console.error("[CommunicationService] Twilio error:", {
+            status: response.status,
+            errorCode: errData?.code,
+            to: maskPhone(options.to),
+          });
           return { success: false };
         }
 
         const data = await response.json() as any;
         return { success: true, sid: data.sid };
       } catch (err) {
-        console.error("[CommunicationService] Failed to send SMS via Twilio:", err);
+        console.error("[CommunicationService] Failed to send SMS via Twilio:", safeError(err));
         return { success: false };
       }
     }
 
-    // Development / Test fallback
-    console.log(`[SMS Dispatch] To: ${options.to} | Body: "${options.body}"`);
+    // No provider: as for email, never log the body, and fail when deployed.
+    if (env.isProduction || env.isStaging) {
+      console.error("[CommunicationService] SMS not sent: Twilio is not configured", { to: maskPhone(options.to) });
+      return { success: false };
+    }
+    console.log("[SMS Dispatch] (no provider, not sent)", { to: maskPhone(options.to) });
     return { success: true, sid: `mock_sms_${Date.now()}` };
   }
 

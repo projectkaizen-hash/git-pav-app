@@ -1,51 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
-
-// Sensitive fields to redact from error logs and responses
-const SENSITIVE_FIELDS = [
-  'password',
-  'passwordHash',
-  'refreshToken',
-  'accessToken',
-  'token',
-  'secret',
-  'apiKey',
-  'apiSecret',
-  'stripeSecret',
-  'cardNumber',
-  'cvv',
-  'expiry',
-  'ssn',
-  'nhsNumber',
-  'medicalRecordNumber',
-  'phone',
-  'email',
-  'address',
-  'postcode',
-];
-
-function redactSensitiveData(obj: any): any {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => redactSensitiveData(item));
-  }
-
-  const redacted: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const lowerKey = key.toLowerCase();
-    if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field.toLowerCase()))) {
-      redacted[key] = '[REDACTED]';
-    } else if (typeof value === 'object' && value !== null) {
-      redacted[key] = redactSensitiveData(value);
-    } else {
-      redacted[key] = value;
-    }
-  }
-  return redacted;
-}
+import { safeError } from "../lib/log-safety";
 
 /**
  * Error carrying an intended HTTP status. Thrown by helpers (e.g. missing
@@ -71,14 +26,15 @@ export function errorHandler(
   const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
   const timestamp = new Date().toISOString();
 
-  // Log error with redacted sensitive data
+  // Never log request bodies or query values: they carry names, clinical
+  // notes, triage answers and contact details (EH-1, P0-3). Field names are
+  // enough to see what shape of request failed.
   console.error(`[${requestId}] ${timestamp} ERROR:`, {
-    message: err.message,
-    stack: err.stack,
+    ...safeError(err),
     path: req.path,
     method: req.method,
-    body: redactSensitiveData(req.body),
-    query: redactSensitiveData(req.query),
+    bodyFields: req.body && typeof req.body === "object" ? Object.keys(req.body) : [],
+    queryFields: Object.keys(req.query ?? {}),
   });
 
   // HttpErrors carry our own user-facing message; anything else is treated as
