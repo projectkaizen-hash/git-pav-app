@@ -1,0 +1,19 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Header } from "@/components/home/header";
+import { Footer } from "@/components/home/footer";
+import { ScrollProgress } from "@/components/home/scroll-progress";
+import { CheckoutPage } from "@/components/shop/checkout-page";
+
+export const Route = createFileRoute("/checkout")({ component: CheckoutRoute });
+
+function CheckoutRoute() {
+  return (
+    <main className="min-h-screen bg-[#fffdf9] text-fg">
+      <ScrollProgress />
+      <Header />
+      <CheckoutPage />
+      <Footer />
+    </main>
+  );
+}
+

@@ -182,7 +182,7 @@ export default function PrescriptionDetailScreen() {
           variant="secondary"
           size="lg"
           accessibilityLabel="Call Pav Dental practice"
-          onPress={() => Linking.openURL("tel:0800728336").catch(() => {})}
+          onPress={() => Linking.openURL("tel:08001938786").catch(() => {})}
         />
       </ScrollView>
     </View>
