@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { signToken } from "@/lib/auth/jwt";
+import { pavApiUrl, storeAppSession } from "@/lib/pav-api.server";
 
 import crypto from "node:crypto";
 
@@ -10,53 +11,85 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+const SESSION_SECONDS = 60 * 60 * 12;
+
+async function startDashboardSession(claims: { email: string; sub?: string }) {
+  const token = await signToken({ ...claims, role: "admin" }, SESSION_SECONDS);
+  const response = NextResponse.json({ success: true }, { headers: CORS_HEADERS });
+  response.cookies.set("admin_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_SECONDS,
+    path: "/",
+  });
+  return response;
+}
+
+const refuse = (status: number, error: string) => NextResponse.json({ error }, { status, headers: CORS_HEADERS });
+
+/**
+ * Staff sign in with their own Pav Dental app account (role admin), so the
+ * app's data is changed as them and audited. MFA codes are passed through.
+ * Without PAV_API_URL, only a configured ADMIN_PASSWORD_HASH is accepted:
+ * there is no built-in default password.
+ */
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, mfaCode } = (await request.json()) as {
+      email?: string;
+      password?: string;
+      mfaCode?: string;
+    };
+    if (!email || !password) return refuse(400, "Email and password are required");
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400, headers: CORS_HEADERS });
-    }
-
-    const expectedEmail = process.env.ADMIN_EMAIL || "admin@pavdental.com";
-    const expectedPassword = process.env.ADMIN_PASSWORD || "admin123";
-    const expectedHash = process.env.ADMIN_PASSWORD_HASH;
-
-    let isValid = false;
-    if (email === expectedEmail) {
-      if (expectedHash) {
-        const salt = process.env.ADMIN_SALT || "";
-        const hash = crypto
-          .createHash("sha256")
-          .update(password + salt)
-          .digest("hex");
-        isValid = hash === expectedHash;
-      } else {
-        isValid = password === expectedPassword;
+    const base = pavApiUrl();
+    if (base) {
+      const res = await fetch(`${base}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, ...(mfaCode ? { mfaCode } : {}) }),
+        cache: "no-store",
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        mfaRequired?: boolean;
+        accessToken?: string;
+        refreshToken?: string;
+        user?: { id: string; email: string; role: string };
+      };
+      if (res.status === 429) return refuse(429, "Too many attempts. Please wait and try again.");
+      if (!res.ok)
+        return refuse(401, body.error === "Invalid or expired MFA code" ? body.error : "Invalid email or password");
+      if (body.mfaRequired) {
+        return NextResponse.json({ mfaRequired: true }, { headers: CORS_HEADERS });
       }
+      if (!body.accessToken || !body.refreshToken || !body.user)
+        return refuse(502, "Sign-in failed. Please try again.");
+      if (body.user.role !== "admin") return refuse(403, "This account doesn't have back-office access");
+
+      await storeAppSession(body.accessToken, body.refreshToken);
+      return startDashboardSession({ email: body.user.email, sub: body.user.id });
     }
 
-    if (!isValid) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401, headers: CORS_HEADERS });
+    // Single-admin fallback for running the dashboard without the app.
+    const expectedEmail = process.env.ADMIN_EMAIL;
+    const expectedHash = process.env.ADMIN_PASSWORD_HASH;
+    if (!expectedEmail || !expectedHash) {
+      return refuse(503, "Sign-in isn't configured. Set PAV_API_URL (or ADMIN_EMAIL and ADMIN_PASSWORD_HASH).");
     }
-
-    // 24 hours expiry
-    const token = await signToken({ email, role: "admin" }, 60 * 60 * 24);
-
-    const response = NextResponse.json({ success: true, token }, { headers: CORS_HEADERS });
-
-    response.cookies.set("admin_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24,
-      path: "/",
-    });
-
-    return response;
+    const given = crypto
+      .createHash("sha256")
+      .update(password + (process.env.ADMIN_SALT ?? ""))
+      .digest();
+    const expected = Buffer.from(expectedHash, "hex");
+    const isValid =
+      email === expectedEmail && expected.length === given.length && crypto.timingSafeEqual(given, expected);
+    if (!isValid) return refuse(401, "Invalid email or password");
+    return startDashboardSession({ email });
   } catch (error) {
-    console.error("[POST /api/v1/admin/auth/login]", error);
-    return NextResponse.json({ error: "Authentication failed" }, { status: 500, headers: CORS_HEADERS });
+    console.error("[POST /api/v1/admin/auth/login]", error instanceof Error ? error.message : "unknown error");
+    return refuse(500, "Authentication failed");
   }
 }
 
