@@ -52,3 +52,17 @@ npm run rewrap:encrypted -- --apply # re-wraps them; safe to run again
 ```
 
 It only re-wraps each record's data key; the encrypted gate code or note itself is unchanged. It prints counts, never values. Run it again after changing `KMS_KEY_ID`. Signed download links issued before the deploy stop working (they last 15 minutes at most).
+
+## Before deploying the CS-15 indexes (`20261024030000` to `20261024030200`)
+
+These three migrations add partial unique indexes: one open shift per operator, one open shift per van, and one open van request per patient. They are built `CONCURRENTLY`, so they don't block writes, but they fail if duplicates already exist. Check first; each query should return no rows:
+
+```sql
+SELECT operator_id FROM van_shifts WHERE ended_at IS NULL GROUP BY 1 HAVING count(*) > 1;
+SELECT van_id FROM van_shifts WHERE ended_at IS NULL GROUP BY 1 HAVING count(*) > 1;
+SELECT patient_id FROM van_service_requests WHERE status IN ('pending', 'accepted', 'in_progress') GROUP BY 1 HAVING count(*) > 1;
+```
+
+If any rows come back, resolve them by hand (end the stale shift, or expire the older request after releasing its deposit) before deploying. If a migration fails part-way, Postgres leaves an invalid index behind: drop it with `DROP INDEX CONCURRENTLY "<name>";`, fix the duplicates, then mark the migration rolled back (`npx prisma migrate resolve --rolled-back <migration>`) and deploy again.
+
+Prisma can't declare partial indexes, so they aren't in `schema.prisma`; the drift check ignores them.

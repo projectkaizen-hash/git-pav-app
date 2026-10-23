@@ -186,6 +186,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Depends on:** CS-01
 - **Size:** M
 - 🛑 The migration needs any existing duplicates resolved first (none expected outside test).
+- **Note:** accepts on a shift run one at a time under a Postgres advisory lock, which covers the queue-depth race without a new request status. The `/requests` duplicate check is backed by the index, and the deposit intent carries the request id from creation (VR-11). Exclusion constraints for overlapping appointments stay with CS-16.
 
 ### CS-16 No double booking, no past slots
 - **Closes:** BK-2, BK-9, DB-2 (appointments part), ID-1, BK-3
