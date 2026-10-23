@@ -35,13 +35,13 @@ const links: RecordLink[] = [
   {
     icon: "image",
     title: "Radiographs & X-Rays",
-    subtitle: "Encrypted image vault (DICOM)",
+    subtitle: "Your X-rays and clinical images",
     route: "/(patient)/records/vault",
   },
   {
     icon: "creditCard",
-    title: "0% Treatment Financing",
-    subtitle: "Spread costs over 6–24 months (0% APR)",
+    title: "Payment plans",
+    subtitle: "How to spread the cost of treatment",
     route: "/(patient)/records/financing",
   },
   {
@@ -67,8 +67,7 @@ export default function PatientRecordsScreen() {
             Clinical timeline
           </ThemedText>
           <ThemedText variant="caption" style={styles.summarySub}>
-            Encrypted history of examinations, prescriptions, and digital X-rays across Van,
-            Video & Practice.
+            Your examinations, prescriptions and X-rays from van, video and practice visits.
           </ThemedText>
         </View>
       </Card>

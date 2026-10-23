@@ -364,8 +364,8 @@ export default function OperatorRouteScreen() {
                   useAuthStore.getState().updateUser({
                     role: "clinician",
                     email: "doctor@pavdental.com",
-                    firstName: "Tariq",
-                    lastName: "Pav",
+                    firstName: "Demo",
+                    lastName: "Clinician",
                   });
                   router.replace("/(clinician)/schedule" as any);
                 }}

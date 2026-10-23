@@ -50,3 +50,10 @@ export const confirmAppointmentSchema = z.object({
 }).strict();
 
 export const appointmentIdParamsSchema = z.object({ id: uuid }).strict();
+
+// The patient's pre-visit tasks. Only what the patient actually ticked is
+// recorded; nothing is assumed done (BK-7).
+export const CHECK_IN_TASKS = ["form", "consent", "insurance", "balance"] as const;
+export const appointmentCheckInSchema = z
+  .object({ completedTasks: z.array(z.enum(CHECK_IN_TASKS)).max(CHECK_IN_TASKS.length).default([]) })
+  .strict();

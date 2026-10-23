@@ -142,22 +142,11 @@ export async function markMessageThreadRead(threadId: string) {
   return res.json();
 }
 
-// ─── 0% APR Financing ─────────────────────────────────────────────────────────
-export async function fetchFinancing() {
+// ─── Payment plans ───────────────────────────────────────────────────────────
+// The app links to the practice's finance page; it makes no credit decisions.
+export async function fetchFinancing(): Promise<{ financeInfoUrl: string }> {
   const res = await authFetch("/api/financing");
-  if (!res.ok) throw new Error("Could not load financing applications");
-  return res.json();
-}
-
-export async function applyForFinancing(payload: {
-  treatmentCostPence: number;
-  durationMonths: 6 | 12 | 24;
-}) {
-  const res = await authFetch("/api/financing/apply", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Could not submit financing application");
+  if (!res.ok) throw new Error("Could not load payment plan details");
   return res.json();
 }
 
@@ -199,40 +188,12 @@ export async function logBrushingSession(payload: {
   return res.json();
 }
 
-// ─── Waitlist & Check-in & GDPR SAR ───────────────────────────────────────────
-export async function fetchWaitlistEntries() {
-  const res = await authFetch("/api/waitlist");
-  if (!res.ok) throw new Error("Could not load waitlist");
-  return res.json();
-}
-
-export async function joinWaitlistEntry(payload: {
-  serviceId: string;
-  preferredDates?: string[];
-  preferredChannels?: ("clinic" | "van" | "video")[];
-  preferredTimeSlots?: ("morning" | "afternoon" | "evening")[];
-  postcode?: string;
-  notes?: string;
-}) {
-  const res = await authFetch("/api/waitlist/join", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Could not join waitlist");
-  return res.json();
-}
-
-export async function leaveWaitlistEntry(id: string) {
-  const res = await authFetch(`/api/waitlist/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Could not leave waitlist");
-  return res.json();
-}
+// ─── Check-in & GDPR SAR ──────────────────────────────────────────────────────
+export type CheckInTask = "form" | "consent" | "insurance" | "balance";
 
 export async function completeAppointmentCheckIn(
   appointmentId: string,
-  payload: Record<string, boolean>
+  payload: { completedTasks: CheckInTask[] }
 ) {
   const res = await authFetch(`/api/booking/appointments/${appointmentId}/check-in`, {
     method: "POST",

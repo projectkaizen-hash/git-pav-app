@@ -229,4 +229,7 @@ export const env = Object.freeze({
   stripeWebhookSecret: values.stripeWebhookSecret,
   stripePublishableKey: values.stripePublishableKey ?? "pk_test_placeholder",
   allowedOrigins,
+  // Where patients read about payment plans. Credit decisions are made by the
+  // practice's finance provider, never in the app (decisions log #5).
+  financeInfoUrl: readOptional("FINANCE_INFO_URL") ?? "https://www.pavdental.com/services/finance",
 });

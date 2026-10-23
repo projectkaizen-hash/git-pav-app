@@ -256,21 +256,15 @@ async function runE2ESuite() {
     assert(pushRes.status === 201 || pushRes.status === 200, `Push token registration failed (${pushRes.status}): ${await pushRes.text()}`);
     console.log("✓ PASSED: Multi-Channel Expo Push Notification Token Registered");
 
-    // Step 11: Cancelled Slot Priority Waitlist Queue
-    const waitlistRes = await fetch(`${baseUrl}/api/waitlist/join`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        serviceId: testService.id,
-        preferredDate: "2026-09-25",
-      }),
+    // Step 11: The old cancel route that never refunded is retired (CS-18)
+    const oldCancelRes = await fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/cancel`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
     });
-    const waitlistData = (await waitlistRes.json()) as any;
-    assert(waitlistRes.status === 201, "Waitlist join failed");
-    console.log(`✓ PASSED: Priority Waitlist Joined (Position #${waitlistData.position})`);
+    assert(oldCancelRes.status === 410, `PATCH /cancel should be retired, got ${oldCancelRes.status}`);
+    const stillBooked = await prisma.appointment.findUniqueOrThrow({ where: { id: apptData.id } });
+    assert(stillBooked.status === "confirmed", `Retired cancel must not change the booking (status ${stillBooked.status})`);
+    console.log("✓ PASSED: No-refund cancel route retired (410, booking unchanged)");
 
     // Step 12: Cancellation Notice & Deposit Refund Evaluator
     const cancelRes = await fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/cancel-with-refund`, {
@@ -637,35 +631,23 @@ async function runE2ESuite() {
     assert(hasDataProcessing, "Granted consent not visible via /consents/current");
     console.log("✓ PASSED: Onboarding Consent Grant Persisted & Retrievable");
 
-    // Step 27: Waitlist Persistence (was previously an in-memory array)
+    // Step 27: The waitlist is removed (CS-32): joining is refused and nothing is stored
     const wlRes = await fetch(`${baseUrl}/api/waitlist/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ serviceId: testService.id, preferredDate: "2026-10-25" }),
     });
-    const wl = (await wlRes.json()) as any;
-    assert(wlRes.status === 201, `Waitlist join failed: ${JSON.stringify(wl)}`);
-    assert(typeof wl.position === "number", "Waitlist position missing");
+    assert(wlRes.status === 410, `Waitlist join should be retired, got ${wlRes.status}`);
+    const wlCount = await prisma.waitlistEntry.count({ where: { userId } });
+    assert(wlCount === 0, "Retired waitlist must not store entries");
+    console.log("✓ PASSED: Waitlist join retired (410, nothing stored)");
 
-    const wlRow = await prisma.waitlistEntry.findUnique({
-      where: {
-        serviceId_preferredDate_userId: {
-          serviceId: testService.id,
-          preferredDate: "2026-10-25",
-          userId,
-        },
-      },
-    });
-    assert(!!wlRow, "Waitlist entry not persisted to database");
-    console.log(`✓ PASSED: Waitlist Persisted to DB (position #${wl.position})`);
-
-    // Step 28: Waitlist Leave (DELETE /api/waitlist/:id)
-    const wlLeaveRes = await fetch(`${baseUrl}/api/waitlist/${wl.id}`, {
-      method: "DELETE",
+    // Step 28: Listing the retired waitlist also answers 410
+    const wlListRes = await fetch(`${baseUrl}/api/waitlist`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    assert(wlLeaveRes.status === 200, `Waitlist leave failed: ${await wlLeaveRes.text()}`);
-    console.log("✓ PASSED: Waitlist Leave Endpoint (DELETE /api/waitlist/:id)");
+    assert(wlListRes.status === 410, `Waitlist list should be retired, got ${wlListRes.status}`);
+    console.log("✓ PASSED: Waitlist list retired (410)");
 
     // Step 29: Clinical Messaging CRUD (GET / POST / REPLY / READ)
     const msgListRes = await fetch(`${baseUrl}/api/messages`, {
@@ -673,28 +655,35 @@ async function runE2ESuite() {
     });
     assert(msgListRes.status === 200, "Messages list failed");
     const msgList = (await msgListRes.json()) as any[];
-    assert(Array.isArray(msgList) && msgList.length >= 1, "Initial message thread not created");
+    assert(Array.isArray(msgList) && msgList.length === 0, `A new inbox should be empty, got ${msgList.length} threads`);
 
-    const msgReplyRes = await fetch(`${baseUrl}/api/messages/${msgList[0].id}/reply`, {
+    const msgCreateRes = await fetch(`${baseUrl}/api/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ body: "Thank you Dr. Pav, sensitivity has improved today." }),
+      body: JSON.stringify({ subject: "Synthetic question", body: "Synthetic message body." }),
+    });
+    const msgThread = (await msgCreateRes.json()) as any;
+    assert(msgCreateRes.status === 201 && msgThread.id, `Message thread create failed: ${JSON.stringify(msgThread)}`);
+
+    const msgReplyRes = await fetch(`${baseUrl}/api/messages/${msgThread.id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ body: "Synthetic follow-up." }),
     });
     assert(msgReplyRes.status === 201, `Message reply failed: ${await msgReplyRes.text()}`);
-    console.log("✓ PASSED: Clinical Care Messaging Persistence (GET + Reply)");
+    console.log("✓ PASSED: Clinical Care Messaging Persistence (empty inbox, create, reply)");
 
-    // Step 30: 0% APR Financing Application Persistence
+    // Step 30: In-app credit decisions are retired; patients are pointed to the finance page
     const finApplyRes = await fetch(`${baseUrl}/api/financing/apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        treatmentCostPence: 185000,
-        durationMonths: 12,
-      }),
+      body: JSON.stringify({ treatmentCostPence: 185000, durationMonths: 12 }),
     });
     const finApply = (await finApplyRes.json()) as any;
-    assert(finApplyRes.status === 201 && finApply.status === "pre_approved", `Financing apply failed: ${JSON.stringify(finApply)}`);
-    console.log(`✓ PASSED: 0% APR Financing Application Persisted (${finApply.agreementRef})`);
+    assert(finApplyRes.status === 410 && typeof finApply.financeInfoUrl === "string", `Financing apply should be retired: ${JSON.stringify(finApply)}`);
+    const finCount = await prisma.financingApplication.count({ where: { userId } });
+    assert(finCount === 0, "Retired financing endpoint must not record an approval");
+    console.log("✓ PASSED: In-app financing approvals retired (410 with finance page link)");
 
     // Step 31: Rewards & Oral Health Insights Persistence
     const brushRes = await fetch(`${baseUrl}/api/rewards/brushing-log`, {
@@ -708,21 +697,33 @@ async function runE2ESuite() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const rewardsData = (await rewardsRes.json()) as any;
-    assert(rewardsRes.status === 200 && typeof rewardsData.pointsBalance === "number", "Rewards fetch failed");
+    // A new patient starts with no points, and self-reported brushing earns none.
+    assert(rewardsRes.status === 200 && rewardsData.pointsBalance === 0, `Rewards should start at 0: ${JSON.stringify(rewardsData)}`);
 
-    const redeemRes = await fetch(`${baseUrl}/api/rewards/redeem`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ rewardId: "rw_1" }),
-    });
+    const redeem = () =>
+      fetch(`${baseUrl}/api/rewards/redeem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rewardId: "rw_1" }),
+      });
+    const brokeRes = await redeem();
+    assert(brokeRes.status === 422, `Redeeming with no points should fail: ${brokeRes.status}`);
+
+    // Stand-in for points earned from completed visits.
+    await prisma.oralHealthMetric.update({ where: { userId }, data: { pointsBalance: 1000 } });
+    const redeemRes = await redeem();
     const redeemData = (await redeemRes.json()) as any;
-    assert(redeemRes.status === 201 && redeemData.voucherCode, `Reward redeem failed: ${JSON.stringify(redeemData)}`);
+    assert(redeemRes.status === 201 && redeemData.voucherCode && redeemData.pointsBalance === 200, `Reward redeem failed: ${JSON.stringify(redeemData)}`);
 
     const insightsRes = await fetch(`${baseUrl}/api/rewards/insights`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const insightsData = (await insightsRes.json()) as any;
     assert(insightsRes.status === 200 && Array.isArray(insightsData.weeklyBrushing), "Insights fetch failed");
+    assert(
+      insightsData.plaqueIndexPercent === null && insightsData.bleedingPercent === null && insightsData.practitionerAdvice === null,
+      `Clinical insights must be null until recorded: ${JSON.stringify(insightsData)}`
+    );
     console.log(`✓ PASSED: Rewards & Oral Health Telemetry Persisted (Redeemed ${redeemData.voucherCode}, Balance: ${redeemData.pointsBalance} pts)`);
 
     // Step 32: Treatment Plan Cryptographic E-Signature

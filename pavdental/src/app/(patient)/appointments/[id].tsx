@@ -100,11 +100,15 @@ export default function AppointmentDetailScreen() {
   const doCancel = () => {
     setConfirmCancel(false);
     cancelMutation.mutate(booking.id, {
-      onSuccess: () => {
+      onSuccess: (result) => {
         setToast({ message: "Appointment cancelled", tone: "success" });
         router.replace({
           pathname: "/(patient)/appointments/cancelled" as never,
-          params: { appointmentId: booking.id },
+          params: {
+            appointmentId: booking.id,
+            refundAmountPence: String(result.refundAmountPence ?? 0),
+            policyNotice: result.policyNotice ?? "",
+          },
         });
       },
       onError: (err: Error) =>
@@ -235,7 +239,7 @@ export default function AppointmentDetailScreen() {
       {confirmCancel ? (
         <ConfirmSheet
           title="Cancel this appointment?"
-          message="Your slot will be released immediately. Deposits are refunded automatically when cancelling more than 48 hours ahead."
+          message="Your slot will be released immediately. Cancelling 48 hours or more ahead refunds your deposit in full, 24 to 48 hours ahead refunds half, and under 24 hours the deposit is kept."
           confirmLabel="Cancel Appointment"
           cancelLabel="Keep Booking"
           variant="destructive"

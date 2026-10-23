@@ -1,13 +1,12 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Card, Button, Badge } from "@/components";
+import { useRouter } from "expo-router";
+import { ThemedText, Card, Button } from "@/components";
 import { colors, spacing } from "@/theme";
 
 export default function VideoSummaryScreen() {
   const router = useRouter();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -21,48 +20,32 @@ export default function VideoSummaryScreen() {
               Consultation Summary
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              Conducted by Dr. Tariq Pav on Friday 19 Sep at 14:15.
+              Your video consultation has ended.
             </ThemedText>
           </View>
 
-          {/* Clinical Findings Card */}
+          {/* Notes and prescriptions are only shown once the clinician has recorded them. */}
           <Card elevation="raised" style={styles.card}>
             <ThemedText variant="headline" style={styles.cardHeader}>
-              Clinical Assessment & Findings
+              Notes and prescriptions
             </ThemedText>
             <ThemedText variant="body" style={styles.findingText}>
-              Suspected reversible pulpitis on lower right second molar (LR7). Deep occlusal caries detected on intraoral photographs. No acute spreading cellulitis or airway compromise noted.
+              Anything your clinician records from this consultation, including any prescription, will appear in your records.
             </ThemedText>
+            <Button
+              title="View prescriptions"
+              variant="secondary"
+              size="md"
+              onPress={() => router.push("/(patient)/records/prescriptions" as any)}
+            />
           </Card>
 
-          {/* Electronic Prescription */}
-          <Card elevation="raised" style={styles.card}>
-            <View style={styles.rowBetween}>
-              <ThemedText variant="headline" style={styles.cardHeader}>
-                Electronic Prescription Issued
-              </ThemedText>
-              <Badge label="Sent to Pharmacy" variant="success" />
-            </View>
-            <View style={styles.rxItem}>
-              <ThemedText variant="headline" style={styles.rxName}>
-                Amoxicillin 500mg Capsules
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.rxDosage}>
-                Take 1 capsule three times daily for 5 days.
-              </ThemedText>
-            </View>
-            <ThemedText variant="caption" style={styles.rxFooter}>
-              Dispatched electronically to Boots Pharmacy (Harley St branch).
-            </ThemedText>
-          </Card>
-
-          {/* Recommended Next Action */}
           <Card elevation="raised" style={styles.actionCard}>
             <ThemedText variant="headline" style={styles.actionTitle}>
-              Recommended Next Step
+              Need a follow-up visit?
             </ThemedText>
             <ThemedText variant="subhead" style={styles.actionBody}>
-              Book a Mobile Van or Clinic visit within 7 days for restorative filling before symptoms worsen.
+              If your clinician advised an in-person visit, you can book one here.
             </ThemedText>
             <View style={styles.ctaRow}>
               <Button
@@ -152,28 +135,6 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xxs,
     marginTop: spacing.sm,
-  },
-  rowBetween: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  rxDosage: {
-    color: colors.secondaryLabel,
-  },
-  rxFooter: {
-    color: colors.secondaryLabel,
-    marginTop: 2,
-  },
-  rxItem: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
-    gap: 2,
-    marginTop: spacing.xxs,
-    padding: spacing.sm,
-  },
-  rxName: {
-    color: colors.label,
   },
   safe: {
     backgroundColor: colors.systemBackground,

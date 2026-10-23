@@ -8,17 +8,17 @@ import {
   ThemedText,
   Card,
   Button,
-  Badge,
   AppIcon,
   ServiceHeroCard,
   EmergencyTriageModal,
+  ErrorState,
   type AppIconName,
 } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { fetchActiveVanRequest } from "@/features/van/van-api";
 import { useBookingStore } from "@/features/booking/booking-store";
-import { useServices } from "@/features/hooks/use-dental-api";
+import { useServices, useRewards } from "@/features/hooks/use-dental-api";
 import { DentalService } from "@/features/booking/booking-types";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -39,29 +39,6 @@ const CATEGORIES: CategoryFilter[] = [
   { key: "cosmetic", label: "Aesthetics", icon: "smile" },
 ];
 
-const FEATURED_FALLBACK_SERVICES: DentalService[] = [
-  {
-    id: "srv_implant",
-    name: "Dental Implants",
-    category: "restorative",
-    pricePence: 125000,
-    depositPence: 25000,
-    durationMinutes: 60,
-    supportedChannels: ["clinic"],
-    description: "Titanium implant placement and restorative crown.",
-  },
-  {
-    id: "srv_smile_restoration",
-    name: "Surgical Smile Restoration",
-    category: "cosmetic",
-    pricePence: 85000,
-    depositPence: 20000,
-    durationMinutes: 45,
-    supportedChannels: ["clinic"],
-    description: "Bespoke aesthetic ceramic restoration.",
-  },
-];
-
 function getHeroImage(category?: string, name?: string) {
   const lower = `${category || ""} ${name || ""}`.toLowerCase();
   if (lower.includes("implant") || lower.includes("restor") || lower.includes("emerg")) {
@@ -78,7 +55,11 @@ export default function PatientHomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey>("all");
   const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
 
-  const { data: apiServices } = useServices();
+  // Services and points come only from the API: no fallback catalogue, prices
+  // or points balance (MC-4).
+  const { data: apiServices, isError: servicesError, refetch: refetchServices } = useServices();
+  const { data: rewards } = useRewards();
+  const pointsBalance: number | undefined = (rewards as any)?.pointsBalance;
 
   useEffect(() => {
     if (params.triageModal === "true") {
@@ -101,10 +82,7 @@ export default function PatientHomeScreen() {
   }, []);
 
   const displayedServices = useMemo(() => {
-    const source: DentalService[] =
-      apiServices && (apiServices as DentalService[]).length > 0
-        ? (apiServices as DentalService[])
-        : FEATURED_FALLBACK_SERVICES;
+    const source: DentalService[] = Array.isArray(apiServices) ? (apiServices as DentalService[]) : [];
     if (selectedCategory === "all") return source;
     return source.filter(
       (s) => (s.category || "").toLowerCase() === selectedCategory
@@ -158,7 +136,7 @@ export default function PatientHomeScreen() {
           >
             <AppIcon name="sparkles" size={13} color="#F59E0B" />
             <ThemedText variant="caption" style={styles.pointsText}>
-              1,450 pts
+              {typeof pointsBalance === "number" ? `${pointsBalance.toLocaleString("en-GB")} pts` : "Perks"}
             </ThemedText>
           </Pressable>
 
@@ -261,6 +239,9 @@ export default function PatientHomeScreen() {
       )}
 
       {/* Hero Visual Service Cards (Filtered by Category) */}
+      {servicesError ? (
+        <ErrorState message="We couldn't load our services. Please try again." onRetry={() => refetchServices()} />
+      ) : null}
       <View style={styles.serviceStack}>
         {displayedServices.map((srv) => (
           <ServiceHeroCard
@@ -291,7 +272,7 @@ export default function PatientHomeScreen() {
             Video Consult
           </ThemedText>
           <ThemedText variant="caption" style={styles.quickSub}>
-            In 15 mins for pain & Rx
+            Speak to a dentist by video
           </ThemedText>
         </Pressable>
 
@@ -332,16 +313,15 @@ export default function PatientHomeScreen() {
               <ThemedText variant="headline" style={styles.emergencyTitle}>
                 Severe pain or acute swelling?
               </ThemedText>
-              <Badge label="24/7 AI" variant="danger" />
             </View>
             <ThemedText variant="caption" style={styles.emergencySub}>
-              Tap for instant clinical triage guidance & same-day slots.
+              Answer a few questions to see where to get help and find urgent appointments.
             </ThemedText>
           </View>
         </Card>
       </Pressable>
 
-      {/* Emergency AI Triage Modal */}
+      {/* Emergency triage modal */}
       <EmergencyTriageModal
         visible={showEmergencyModal}
         onClose={() => setShowEmergencyModal(false)}

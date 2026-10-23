@@ -8,7 +8,6 @@ import { Badge } from "./badge";
 import { Button } from "./button";
 import { AppIcon, AppIconName } from "./app-icon";
 import { colors, spacing, radius } from "@/theme";
-import { useBookingStore } from "@/features/booking/booking-store";
 
 export interface EmergencyTriageModalProps {
   visible: boolean;
@@ -25,90 +24,74 @@ interface SymptomOption {
   title: string;
   advice: string[];
   redFlag?: string;
-  recommendedService: string;
-  recommendedPricePence: number;
 }
 
+// DRAFT WORDING, needs clinical lead sign-off (decisions log #11). Titles
+// describe what the patient reports, never a diagnosis, and advice is general
+// first aid with no drug doses. Bookings go through the real service catalogue.
 const SYMPTOMS: SymptomOption[] = [
   {
     id: "pain",
     label: "Severe Pain",
     icon: "alert",
-    tag: "High Urgency",
-    title: "Acute Toothache / Pulpitis",
+    tag: "Urgent",
+    title: "Severe toothache",
     advice: [
-      "Alternate Paracetamol (500mg) and Ibuprofen (400mg) if medically suitable.",
-      "Avoid hot, cold, or sugary foods and drinks that trigger nerve spikes.",
-      "Keep head elevated with extra pillows when lying down to reduce throbbing pressure.",
+      "Take over-the-counter pain relief as directed on the packet, if it is safe for you.",
+      "Avoid very hot, cold or sugary food and drink if they make the pain worse.",
     ],
-    redFlag: "Call 999 if pain spreads to chest or is accompanied by confusion.",
-    recommendedService: "Emergency Toothache & Pain Relief",
-    recommendedPricePence: 7500,
+    redFlag: "Call NHS 111 if the pain is severe and you cannot get a dental appointment.",
   },
   {
     id: "broken",
     label: "Broken Tooth",
     icon: "zap",
-    tag: "Same-Day Care",
-    title: "Fractured Cusp / Enamel Trauma",
+    tag: "Same-day care",
+    title: "Broken or chipped tooth",
     advice: [
-      "Rinse gently with warm salt water to clean debris from the fracture site.",
-      "If a tooth fragment was recovered, store it submerged in cold milk or saliva.",
-      "Cover any razor-sharp edges with sugar-free chewing gum or ortho wax to protect your cheek.",
+      "Rinse your mouth gently with warm water.",
+      "If you have the broken piece, keep it in milk and bring it to your appointment.",
     ],
-    redFlag: "Seek A&E if tooth was completely knocked out (avulsed) with heavy head impact.",
-    recommendedService: "Emergency Dental Trauma & Repair",
-    recommendedPricePence: 9500,
+    redFlag: "Go to A&E if a tooth was knocked out after a head injury.",
   },
   {
     id: "filling",
     label: "Lost Crown / Filling",
     icon: "activity",
-    tag: "Priority Slot",
-    title: "Exposed Cavity / Dislodged Crown",
+    tag: "Priority",
+    title: "Lost crown or filling",
     advice: [
-      "Keep the crown safe in a clean dry container — do NOT force it back in with superglue.",
-      "Over-the-counter temporary dental cement from Boots can protect the sensitive dentin.",
-      "Chew entirely on the opposite side of your mouth until evaluated by Dr. Pav.",
+      "Keep the crown in a clean, dry container and bring it with you. Do not glue it back in.",
+      "Chew on the other side of your mouth until you have been seen.",
     ],
-    recommendedService: "Recement Crown / Emergency Dressing",
-    recommendedPricePence: 6500,
   },
   {
     id: "swelling",
     label: "Facial Swelling",
     icon: "alert",
-    tag: "Critical Urgency",
-    title: "Periapical Abscess / Cellulitis",
+    tag: "Urgent",
+    title: "Swelling in the face or gums",
     advice: [
-      "Apply a cold ice compress to the outer cheek in 10-minute intervals. Do NOT apply hot packs.",
-      "Never attempt to pop, pierce, or drain a gum boil at home.",
-      "Requires rapid clinical antibiotics or emergency drainage by our surgical team.",
+      "Do not try to burst or drain any swelling yourself.",
     ],
-    redFlag: "🚨 RED FLAG: If swelling restricts breathing or swallowing, visit nearest A&E immediately.",
-    recommendedService: "Emergency Abscess & Infection Triage",
-    recommendedPricePence: 8500,
+    redFlag: "Go to A&E or call 999 if swelling affects your breathing, swallowing or vision.",
   },
   {
     id: "bleeding",
     label: "Bleeding Gums",
     icon: "activity",
-    tag: "Clinical Review",
-    title: "Acute Gum Bleeding / Post-Extraction",
+    tag: "Clinical review",
+    title: "Bleeding from the gums or a socket",
     advice: [
-      "Bite down firmly on a clean folded gauze or dry tea bag for 20 continuous minutes.",
-      "Do NOT rinse vigorously, spit, or drink through a straw, as this dislodges the clot.",
-      "Avoid strenuous physical exertion and alcohol for the next 24 hours.",
+      "Bite firmly on a clean, folded piece of gauze for 20 minutes.",
+      "Avoid rinsing, spitting or drinking through a straw.",
     ],
-    redFlag: "Call our emergency hotline if bleeding does not stop after 45 minutes of direct pressure.",
-    recommendedService: "Post-Op Haemostasis & Gum Care",
-    recommendedPricePence: 6000,
+    redFlag: "Call NHS 111 if bleeding does not stop after 45 minutes of firm pressure.",
   },
 ];
 
 export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalProps) {
   const router = useRouter();
-  const { setService } = useBookingStore();
   const [selectedId, setSelectedId] = useState<SymptomType>("pain");
   const [painLevel, setPainLevel] = useState<number>(8);
 
@@ -121,20 +104,8 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
 
   const handleBookEmergency = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setService({
-      id: "srv_emergency",
-      name: selected.recommendedService,
-      category: "emergency",
-      pricePence: selected.recommendedPricePence,
-      depositPence: 2000,
-      durationMinutes: 30,
-      supportedChannels: ["clinic", "van"],
-      description: `Same-day emergency appointment for ${selected.title}.`,
-      isActive: true,
-      requiresOdontogram: false,
-    } as any);
     onClose();
-    router.push("/(patient)/booking/clinic-picker" as never);
+    router.push("/(patient)/booking/service-catalog" as never);
   };
 
   const handleStartVideo = () => {
@@ -167,7 +138,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
               <View style={styles.emergencyBadge}>
                 <AppIcon name="alert" size={13} color={colors.danger} />
                 <ThemedText variant="caption" style={styles.emergencyBadgeText}>
-                  24/7 AI CLINICAL TRIAGE
+                  URGENT SYMPTOM CHECK
                 </ThemedText>
               </View>
               <ThemedText variant="headline" style={styles.sheetTitle}>
@@ -281,7 +252,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
 
               <View style={styles.adviceList}>
                 <ThemedText variant="caption" style={styles.sectionLabel}>
-                  IMMEDIATE HOME CARE INSTRUCTIONS
+                  WHILE YOU WAIT
                 </ThemedText>
                 {selected.advice.map((line, idx) => (
                   <View key={idx} style={styles.adviceItemRow}>
@@ -308,10 +279,10 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
               <AppIcon name="phone" size={15} color={colors.ink} />
               <View style={styles.hotlineTextGroup}>
                 <ThemedText variant="caption" style={styles.hotlineLabel}>
-                  Need immediate phone advice?
+                  Need urgent advice by phone?
                 </ThemedText>
                 <ThemedText variant="subhead" style={styles.hotlineNumber}>
-                  Call Practice Emergency Line (0800 728 336) ›
+                  Call the practice (0800 728 336) ›
                 </ThemedText>
               </View>
             </Pressable>
@@ -320,7 +291,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
           {/* Action CTAs */}
           <View style={styles.sheetFooter}>
             <Button
-              title="Book Urgent Same-Day Appointment ›"
+              title="Book an appointment ›"
               variant="primary"
               size="lg"
               onPress={handleBookEmergency}

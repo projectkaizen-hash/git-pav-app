@@ -51,7 +51,7 @@ export default function WaitingRoomScreen() {
           </ThemedText>
 
           <ThemedText variant="subhead" style={styles.subtitle}>
-            Dr. Tariq Pav is reviewing your triage notes & photos and will connect with you in a moment.
+            Your clinician will connect with you shortly. Please keep this screen open.
           </ThemedText>
 
           {/* Consultation Pre-flight Checklist */}
@@ -65,34 +65,6 @@ export default function WaitingRoomScreen() {
 
             <View style={styles.checklist}>
               <View style={styles.checkItem}>
-                <View style={styles.checkIconSuccess}>
-                  <AppIcon name="check" size={14} color={colors.alwaysWhite} />
-                </View>
-                <View style={styles.checkTextGroup}>
-                  <ThemedText variant="subhead" style={styles.checkTitle}>
-                    Camera & Audio Verified
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.muted}>
-                    Front camera HD · Microphone active
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.checkItem}>
-                <View style={styles.checkIconSuccess}>
-                  <AppIcon name="check" size={14} color={colors.alwaysWhite} />
-                </View>
-                <View style={styles.checkTextGroup}>
-                  <ThemedText variant="subhead" style={styles.checkTitle}>
-                    Pre-consult Triage
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.muted}>
-                    4 photos attached · Severe toothache #31
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.checkItem}>
                 <View style={styles.checkIconPending}>
                   <ActivityIndicator size="small" color={colors.ink} />
                 </View>
@@ -101,7 +73,7 @@ export default function WaitingRoomScreen() {
                     Clinician Connection
                   </ThemedText>
                   <ThemedText variant="caption" style={styles.muted}>
-                    Dr. Tariq Pav is entering the room...
+                    Waiting for your clinician to join
                   </ThemedText>
                 </View>
               </View>
@@ -147,14 +119,6 @@ const styles = StyleSheet.create({
   checkIconPending: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
-    height: 24,
-    justifyContent: "center",
-    width: 24,
-  },
-  checkIconSuccess: {
-    alignItems: "center",
-    backgroundColor: colors.success,
     borderRadius: 12,
     height: 24,
     justifyContent: "center",

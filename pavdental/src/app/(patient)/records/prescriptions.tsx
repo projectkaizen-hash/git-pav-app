@@ -6,55 +6,12 @@ import { colors, spacing } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 
-export interface NormalizedPrescription {
-  id: string;
-  drugName: string;
-  strength: string;
-  form: string;
-  dosage: string;
-  course: string;
-  notes: string;
-  pharmacy: string;
-  prescriber: string;
-  issuedIso: string;
-  status: "active" | "completed";
-  refillsRemaining: number;
-  epsReference?: string;
-}
+import {
+  normalizePrescription,
+  type NormalizedPrescription,
+} from "@/features/records/prescription-normalize";
 
-export function normalizePrescription(raw: any): NormalizedPrescription {
-  const createdMs = raw.dispatchedAt
-    ? new Date(raw.dispatchedAt).getTime()
-    : raw.issuedAt
-      ? new Date(raw.issuedAt).getTime()
-      : Date.now();
-  const durationDays = Number(raw.durationDays || 5);
-  const isCompleted = Date.now() - createdMs > durationDays * 24 * 60 * 60 * 1000;
-  return {
-    id: raw.id,
-    drugName: raw.drugName || raw.medicationName || raw.medication || "Amoxicillin",
-    strength: raw.strength || "",
-    form: raw.form || "Oral Course",
-    dosage: raw.dosageInstructions || raw.frequency || raw.dosage || "1 capsule 3 times daily",
-    course: raw.course || `${durationDays} days`,
-    notes: raw.notes || "Complete the full prescribed course as directed by your GDC clinician.",
-    pharmacy:
-      raw.dispensingPharmacy ||
-      raw.pharmacy ||
-      (raw.pharmacyPostcode
-        ? `NHS EPS Nominated Pharmacy (${raw.pharmacyPostcode})`
-        : "NHS Electronic Prescription Service"),
-    prescriber:
-      raw.prescriber ||
-      (raw.clinician?.fullName
-        ? `${raw.clinician.fullName} (GDC #${raw.clinician.gdcNumber || "284910"})`
-        : raw.clinicianName || "Dr. Tariq Pav (GDC #284910)"),
-    issuedIso: raw.issuedIso || raw.dispatchedAt || raw.issuedAt || new Date().toISOString(),
-    status: raw.status || (isCompleted ? "completed" : "active"),
-    refillsRemaining: typeof raw.refillsRemaining === "number" ? raw.refillsRemaining : 0,
-    epsReference: raw.epsTransactionRef || raw.epsReference,
-  };
-}
+export { normalizePrescription };
 
 export default function PrescriptionsScreen() {
   const router = useRouter();
@@ -118,7 +75,7 @@ export default function PrescriptionsScreen() {
       <View style={styles.container}>
         <EmptyState
           heading="No prescriptions"
-          body="Prescriptions issued by your dentist via NHS Electronic Prescription Service will appear here."
+          body="Prescriptions issued by your dentist will appear here."
           icon="droplet"
         />
       </View>

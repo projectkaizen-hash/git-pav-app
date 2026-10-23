@@ -3,9 +3,13 @@ import Stripe from "stripe";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { redis } from "../lib/redis";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { pseudonymiseIp } from "../lib/audit-security";
+import { isLateForHold, refundLateDeposit } from "../lib/late-deposit";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import {
+  appointmentCheckInSchema,
   appointmentIdParamsSchema,
   confirmAppointmentSchema,
   createAppointmentSchema,
@@ -310,6 +314,56 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
   return res.json(appointments);
 });
 
+// ─── GET /api/booking/appointments/:id/clinical-context ──────────────────────
+// What a clinician needs on screen to prescribe or treat for this appointment:
+// who the patient is and their recorded allergies, medications and conditions.
+// Only the appointment's own clinician may read it, and every read is audited.
+router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clinician"), validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const clinician = await prisma.clinicianProfile.findUnique({
+    where: { userId: req.user!.sub },
+    select: { id: true },
+  });
+  if (!clinician) return res.status(403).json({ error: "Clinician profile required" });
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: String(req.params.id), clinicianId: clinician.id },
+    include: {
+      patient: {
+        select: {
+          id: true, firstName: true, lastName: true, dob: true,
+          addressLine1: true, addressLine2: true, city: true, postcode: true,
+          medicalHistory: true,
+        },
+      },
+    },
+  });
+  if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+  await createAuditLogWithIntegrity({
+    action: "clinical_record.read.appointment_context",
+    actorId: req.user!.sub,
+    resourceId: appointment.patient.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { appointmentId: appointment.id },
+  });
+
+  const p = appointment.patient;
+  return res.json({
+    appointmentId: appointment.id,
+    startTimeUtc: appointment.startTimeUtc,
+    patient: {
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      dob: p.dob,
+      address: [p.addressLine1, p.addressLine2, p.city, p.postcode].filter(Boolean).join(", ") || null,
+    },
+    // As recorded by the patient; the app shows "Not recorded" when null.
+    medicalHistory: p.medicalHistory ?? null,
+  });
+});
+
 // ─── PATCH /api/booking/appointments/:id/confirm ─────────────────────────────
 // Confirms a held appointment only after the server has verified its deposit.
 // The PaymentIntent is the one create-intent stored on the appointment; the
@@ -353,7 +407,10 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       };
     }
 
-    if (appointment.status !== "draft_hold") {
+    // A cancelled booking can still have a deposit in flight: verify it below
+    // and refund it rather than confirm (CS-17).
+    const late = isLateForHold(appointment);
+    if (appointment.status !== "draft_hold" && !late) {
       return { error: "Cannot confirm appointment in current status", status: 400 };
     }
 
@@ -397,6 +454,24 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       depositPaidPence = intent.amount_received;
     }
 
+    if (late) {
+      try {
+        await refundLateDeposit({
+          appointmentId: appointment.id,
+          patientId: appointment.patientId,
+          paymentIntentId,
+          amountPence: depositPaidPence,
+        });
+      } catch {
+        return { error: "Your booking hold expired and the automatic refund failed. Please contact the practice.", status: 502 };
+      }
+      return {
+        error: "Your booking hold ran out before payment went through, so your deposit has been refunded. Please choose a new time.",
+        status: 409,
+        depositRefunded: true,
+      };
+    }
+
     // Conditional update: if the webhook confirmed it in the meantime, this is
     // a no-op and the reminder ladder is not scheduled twice.
     const result = await prisma.appointment.updateMany({
@@ -427,7 +502,9 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
     };
   })().then((result: any) => {
     if (result.error) {
-      return res.status(result.httpStatus || result.status || 400).json({ error: result.error });
+      const body: Record<string, unknown> = { error: result.error };
+      if (result.depositRefunded) body.depositRefunded = true;
+      return res.status(result.httpStatus || result.status || 400).json(body);
     }
     const statusCode = result.httpStatus || result.status || 200;
     const { httpStatus, status, ...responseData } = result;
@@ -436,26 +513,19 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
 });
 
 // ─── PATCH /api/booking/appointments/:id/cancel ──────────────────────────────
-router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
-  const apptId = String(req.params.id);
-  const profile = await prisma.patientProfile.findUnique({
-    where: { userId: req.user!.sub },
-    select: { id: true },
+// Retired (decisions log #8): it cancelled without refunding the deposit.
+// Older app builds are pointed at the one cancel path.
+router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointmentIdParamsSchema), (_req: AuthRequest, res: Response) => {
+  return res.status(410).json({
+    error: "Please update the app to cancel this appointment.",
+    use: "POST /api/booking/appointments/:id/cancel-with-refund",
   });
-  if (!profile) return res.status(404).json({ error: "Patient not found" });
-
-  await prisma.appointment.updateMany({
-    where: { id: apptId, patientId: profile.id },
-    data: { status: "cancelled" },
-  });
-
-  return res.json({ message: "Appointment cancelled" });
 });
 
 // ─── POST /api/booking/appointments/:id/check-in ─────────────────────────────
-router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmentIdParamsSchema), validateBody(appointmentCheckInSchema), async (req: AuthRequest, res: Response) => {
   const apptId = String(req.params.id);
-  const { completedTasks } = (req.body ?? {}) as { completedTasks?: string[] };
+  const { completedTasks } = req.body as { completedTasks: string[] };
 
   const profile = await prisma.patientProfile.findUnique({
     where: { userId: req.user!.sub },
@@ -467,6 +537,9 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
     where: { id: apptId, patientId: profile.id },
   });
   if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+  if (appointment.status !== "confirmed") {
+    return res.status(409).json({ error: "Only confirmed appointments can be checked in" });
+  }
 
   const checkedInAt = new Date().toISOString();
   const updated = await prisma.appointment.update({
@@ -476,7 +549,7 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
         ...((appointment.accessDetails as Record<string, unknown>) || {}),
         checkedIn: true,
         checkedInAt,
-        completedTasks: completedTasks || ["form", "consent", "insurance", "balance"],
+        completedTasks: [...new Set(completedTasks)],
       },
     },
   });

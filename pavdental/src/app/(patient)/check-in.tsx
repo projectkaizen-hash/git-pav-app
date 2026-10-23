@@ -87,10 +87,7 @@ export default function CheckInScreen() {
   const complete = async () => {
     try {
       await completeAppointmentCheckIn(booking.id, {
-        medicalHistoryConfirmed: true,
-        consentConfirmed: true,
-        insuranceVerified: true,
-        covidScreened: true,
+        completedTasks: PRE_ARRIVAL_TASKS.filter((t) => doneIds.has(t.id)).map((t) => t.kind),
       });
       setToast({ message: "Checked in — see you soon!", tone: "success" });
       router.replace({ pathname: "/(patient)/appointments/[id]" as never, params: { id: booking.id } });

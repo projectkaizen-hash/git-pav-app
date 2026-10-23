@@ -130,7 +130,7 @@ export async function fetchActiveVanRequest(): Promise<VanServiceRequest | null>
 }
 
 /** Cancel a van request */
-export async function cancelVanRequest(id: string): Promise<VanServiceRequest> {
+export async function cancelVanRequest(id: string): Promise<VanServiceRequest & { depositRetained?: boolean }> {
   const res = await authFetch(`/api/van/requests/${id}/cancel`, { method: "POST" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

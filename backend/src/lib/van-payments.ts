@@ -38,6 +38,7 @@ export type VanDepositReleaseReason =
 export type VanDepositReleaseStatus =
   | "released" // uncaptured hold cancelled (authorisation lifted)
   | "refunded" // already captured — money returned to the patient
+  | "retained" // already captured and kept under the cancellation policy
   | "already_released" // intent was already cancelled upstream (idempotent no-op)
   | "nothing_to_release" // intent exists but holds no funds and is not cancellable
   | "mock" // mock Stripe mode — nothing to do
@@ -61,6 +62,15 @@ const HOLD_STATUSES: Stripe.PaymentIntent.Status[] = [
 ];
 
 /**
+ * Van cancellation policy (decisions log #6, a default the owner can change):
+ * a patient who cancels before the van sets off gets the deposit back; once
+ * the van is en route or on site the captured deposit covers the call-out.
+ */
+export function vanCancellationKeepsDeposit(phase: string | null | undefined): boolean {
+  return phase === "en_route" || phase === "on_site";
+}
+
+/**
  * Release the deposit attached to a van service request.
  *
  * - Uncaptured hold        → cancel the intent (lifts the authorisation)
@@ -73,7 +83,7 @@ const HOLD_STATUSES: Stripe.PaymentIntent.Status[] = [
 export async function releaseVanDeposit(
   paymentIntentId: string,
   reason: VanDepositReleaseReason,
-  opts?: { stripe?: Stripe }
+  opts?: { stripe?: Stripe; retainCaptured?: boolean }
 ): Promise<VanDepositReleaseResult> {
   if (isMockStripe && !opts?.stripe) {
     return { status: "mock" };
@@ -85,7 +95,11 @@ export async function releaseVanDeposit(
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
     let result: VanDepositReleaseResult;
 
-    if (intent.status === "succeeded") {
+    if (intent.status === "succeeded" && opts?.retainCaptured) {
+      // Kept under the cancellation policy. An uncaptured hold is still lifted
+      // below: the policy never captures money that was not already taken.
+      result = { status: "retained" };
+    } else if (intent.status === "succeeded") {
       // Deposit already captured (patient cancelled after operator accept) —
       // refund the full captured amount. Keyed per intent so a retried release
       // (e.g. network drop after the refund call) cannot double-refund.

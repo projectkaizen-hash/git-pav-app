@@ -93,7 +93,12 @@ export default function TreatmentPlanDetailScreen() {
   const completedCount = decision === "accepted" ? items.length : 0;
   const progress = items.length ? completedCount / items.length : 0;
 
-  const clinicianName = plan.clinician?.fullName || "Dr. Tariq Pav";
+  const clinicianName = plan.clinician?.fullName || "Your clinician";
+  // Credentials come from the clinician's record, never a hardcoded number.
+  const clinicianCredentials = [plan.clinician?.roleTitle, plan.clinician?.gdcNumber && `GDC ${plan.clinician.gdcNumber}`]
+    .filter(Boolean)
+    .join(", ");
+  const prescribedBy = clinicianCredentials ? `${clinicianName} · ${clinicianCredentials}` : clinicianName;
   const created = new Date(plan.createdAt).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
@@ -223,7 +228,7 @@ export default function TreatmentPlanDetailScreen() {
             />
           </View>
           <ThemedText variant="caption" style={styles.muted}>
-            Prescribed by {clinicianName} · BDS (Lon), GDC #244910 · {created}
+            Prescribed by {prescribedBy} · {created}
           </ThemedText>
         </Card>
 
@@ -339,11 +344,11 @@ export default function TreatmentPlanDetailScreen() {
               <View style={styles.financeLeft}>
                 <AppIcon name="creditCard" size={16} color={colors.ink} />
                 <ThemedText variant="caption" style={styles.financeText}>
-                  0% APR available — {formatGbp(Math.round(totalCostPence / 6))} / mo over 6 months
+                  Ask about payment plans
                 </ThemedText>
               </View>
               <ThemedText variant="caption" style={styles.financeLink}>
-                Calculate ›
+                Learn more ›
               </ThemedText>
             </Pressable>
           ) : null}
@@ -417,7 +422,7 @@ export default function TreatmentPlanDetailScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText variant="caption" style={styles.muted}>
-                  Prescribed by {clinicianName} · BDS (Lon), GDC #244910
+                  Prescribed by {prescribedBy}
                 </ThemedText>
 
                 <View style={styles.miniItemsDivider} />
@@ -434,7 +439,7 @@ export default function TreatmentPlanDetailScreen() {
                 ))}
               </Card>
 
-              {/* 0% Financing CTA */}
+              {/* Payment plans: details live on the practice's finance page */}
               <Pressable
                 onPress={() => {
                   setShowSignSheet(false);
@@ -444,7 +449,7 @@ export default function TreatmentPlanDetailScreen() {
               >
                 <AppIcon name="creditCard" size={14} color={colors.ink} />
                 <ThemedText variant="caption" style={styles.modalFinanceText}>
-                  Want to spread this into 6 x {formatGbp(Math.round(totalCostPence / 6))}/mo? Explore 0% Finance ›
+                  Ask about payment plans ›
                 </ThemedText>
               </Pressable>
 

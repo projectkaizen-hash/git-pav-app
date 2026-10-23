@@ -13,7 +13,7 @@ export default function ClinicianScheduleScreen() {
 
   const clinicianName = currentUser?.firstName
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
-    : "Dr. Tariq Pav";
+    : "Clinician";
 
   const sessions = (liveAppointments && liveAppointments.length > 0)
     ? liveAppointments.map((a: any) => ({
@@ -43,9 +43,6 @@ export default function ClinicianScheduleScreen() {
             <View style={styles.docInfo}>
               <ThemedText variant="headline" style={styles.docName}>
                 {clinicianName}
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.docSub}>
-                GDC #248912 · Principal Dental Surgeon
               </ThemedText>
             </View>
           </View>
@@ -225,9 +222,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
-  },
-  docSub: {
-    color: colors.secondaryLabel,
   },
   header: {
     alignItems: "center",

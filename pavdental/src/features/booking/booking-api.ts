@@ -130,11 +130,22 @@ export async function createPaymentIntent(appointmentId: string) {
 }
 
 // ─── Cancel Appointment ───────────────────────────────────────────────────────
-export async function cancelAppointment(appointmentId: string) {
-  const res = await authFetch(`/api/booking/appointments/${appointmentId}/cancel`, {
-    method: "PATCH",
+export interface CancellationResult {
+  appointmentId: string;
+  refundAmountPence: number;
+  refundPercentage: number;
+  policyNotice: string;
+}
+
+// The one cancel path: the server applies the deposit refund policy.
+export async function cancelAppointment(appointmentId: string): Promise<CancellationResult> {
+  const res = await authFetch(`/api/booking/appointments/${appointmentId}/cancel-with-refund`, {
+    method: "POST",
   });
-  if (!res.ok) throw new Error("Cancellation failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Cancellation failed");
+  }
   return res.json();
 }
 

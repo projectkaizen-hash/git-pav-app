@@ -42,11 +42,13 @@ export default function PrescriptionDetailScreen() {
     );
   }
 
-  const issued = new Date(rx.issuedIso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const issued = rx.issuedIso
+    ? new Date(rx.issuedIso).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "date not recorded";
 
   return (
     <View style={styles.container}>
@@ -62,7 +64,7 @@ export default function PrescriptionDetailScreen() {
                 {rx.drugName} {rx.strength}
               </ThemedText>
               <ThemedText variant="caption" style={styles.muted}>
-                {rx.form} · issued {issued}
+                {rx.form ? `${rx.form} · ` : ""}issued {issued}
               </ThemedText>
             </View>
             <Badge
@@ -101,11 +103,13 @@ export default function PrescriptionDetailScreen() {
               </ThemedText>
             </View>
           ) : null}
-          <View style={styles.notesBox}>
-            <ThemedText variant="caption" style={styles.notesText}>
-              {rx.notes}
-            </ThemedText>
-          </View>
+          {rx.notes ? (
+            <View style={styles.notesBox}>
+              <ThemedText variant="caption" style={styles.notesText}>
+                {rx.notes}
+              </ThemedText>
+            </View>
+          ) : null}
         </Card>
 
         {/* Pharmacy + prescriber */}
