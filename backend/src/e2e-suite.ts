@@ -124,20 +124,46 @@ async function runE2ESuite() {
     assert(apptRes.status === 201, "Appointment creation failed");
     const apptData = (await apptRes.json()) as any;
 
-    // Confirm Appointment post Stripe Deposit
-    const confirmRes = await fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/confirm`, {
-      method: "PATCH",
+    const confirmAppt = (body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/api/booking/appointments/${apptData.id}/confirm`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+    // The client can't confirm without a server-created deposit payment, can't
+    // name its own payment id, and can't set the amount paid (BK-5).
+    const unpaidRes = await confirmAppt({});
+    assert(unpaidRes.status === 402, `Confirm without payment must be refused (got ${unpaidRes.status})`);
+    const tamperRes = await confirmAppt({ depositPaidPence: 999999 });
+    assert(tamperRes.status === 400, `Client-set deposit amount must be rejected (got ${tamperRes.status})`);
+
+    const depositRes = await fetch(`${baseUrl}/api/payments/create-intent`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        stripePaymentId: "pi_e2e_test_deposit_stripe",
-        depositPaidPence: testService.depositPence,
-      }),
+      body: JSON.stringify({ appointmentId: apptData.id }),
     });
+    assert(depositRes.status === 200, "Deposit intent creation failed");
+    const depositData = (await depositRes.json()) as any;
+
+    const foreignRes = await confirmAppt({ stripePaymentId: "pi_e2e_test_deposit_stripe" });
+    assert(foreignRes.status === 409, `Foreign payment id must be refused (got ${foreignRes.status})`);
+
+    // Confirm Appointment post Stripe Deposit
+    const confirmRes = await confirmAppt({ stripePaymentId: depositData.paymentIntentId });
     assert(confirmRes.status === 200, "Appointment confirmation failed");
-    console.log("✓ PASSED: Appointment Booking & Deposit Confirmation Flow");
+    const confirmData = (await confirmRes.json()) as any;
+    assert(
+      confirmData.depositPaidPence === testService.depositPence,
+      "Recorded deposit must come from the server-side price"
+    );
+    console.log("✓ PASSED: Appointment Booking & Deposit Confirmation Flow (unpaid, tampered and foreign confirms refused)");
 
     // Step 7: Create WebRTC Video Consultation Room
     const videoRes = await fetch(`${baseUrl}/api/video/rooms`, {

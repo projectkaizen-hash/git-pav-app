@@ -31,14 +31,22 @@ export const createAppointmentSchema = z.object({
   clinicId: uuid.optional(),
   vanId: uuid.optional(),
   startTimeUtc: isoDateTime,
-  endTimeUtc: isoDateTime,
+  // Ignored: the server derives the end time from the service duration. Still
+  // accepted so existing clients keep working.
+  endTimeUtc: isoDateTime.optional(),
   slotId: z.string().trim().min(1).max(512).regex(/^[a-zA-Z0-9:._-]+$/).optional(),
   accessDetails: compactJsonObject.optional(),
   triageData: compactJsonObject.optional(),
 }).strict().superRefine((appointment, context) => {
-  if (new Date(appointment.endTimeUtc) <= new Date(appointment.startTimeUtc)) {
+  if (appointment.endTimeUtc && new Date(appointment.endTimeUtc) <= new Date(appointment.startTimeUtc)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "endTimeUtc must be after startTimeUtc" });
   }
 });
+
+// The client never supplies the amount paid. It may echo the PaymentIntent id
+// it paid, which must match the one the server created for this appointment.
+export const confirmAppointmentSchema = z.object({
+  stripePaymentId: z.string().trim().min(1).max(255).optional(),
+}).strict();
 
 export const appointmentIdParamsSchema = z.object({ id: uuid }).strict();

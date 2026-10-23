@@ -4,6 +4,12 @@ import { communicationService } from "./communication-service";
 
 let auditWriteQueue: Promise<unknown> = Promise.resolve();
 
+// Arbitrary constant key for a Postgres transaction-scoped advisory lock. It
+// serialises chain appends across every API process and replica, so two writers
+// can never chain off the same "last" entry (AU-1). The in-process queue above
+// still stops one process from queueing many connections on the lock.
+const AUDIT_CHAIN_LOCK_KEY = 7_201_884_310;
+
 // Audit log integrity using hash chains
 // Each log entry contains a hash of the previous entry to detect tampering
 export async function createAuditLogWithIntegrity(data: {
@@ -14,20 +20,22 @@ export async function createAuditLogWithIntegrity(data: {
   ipHash?: string | null;
   metadata?: any;
 }) {
-  const run = async () => {
+  const append = async (db: Pick<typeof prisma, "auditLog">) => {
     // Get the most recent non-archived audit log for hash chaining
     const lastLog =
-      typeof prisma.auditLog?.findFirst === "function"
-        ? await prisma.auditLog.findFirst({
+      typeof db.auditLog?.findFirst === "function"
+        ? await db.auditLog.findFirst({
             where: { archived: false },
             orderBy: [{ timestampUtc: "desc" }, { id: "desc" }],
             select: { integrityHash: true, id: true, timestampUtc: true },
           })
         : null;
 
+    // Strictly after the previous entry: verification orders by timestamp then
+    // (random) id, so an equal timestamp could sort out of chain order.
     let now = new Date();
-    if (lastLog?.timestampUtc && now.getTime() < lastLog.timestampUtc.getTime()) {
-      now = new Date(lastLog.timestampUtc.getTime());
+    if (lastLog?.timestampUtc && now.getTime() <= lastLog.timestampUtc.getTime()) {
+      now = new Date(lastLog.timestampUtc.getTime() + 1);
     }
     const nowIso = now.toISOString();
 
@@ -44,7 +52,7 @@ export async function createAuditLogWithIntegrity(data: {
       .update((lastLog?.integrityHash || "") + dataString)
       .digest("hex");
 
-    return prisma.auditLog.create({
+    return db.auditLog.create({
       data: {
         action: data.action,
         actorId: data.actorId ?? null,
@@ -58,6 +66,14 @@ export async function createAuditLogWithIntegrity(data: {
       },
     });
   };
+
+  const run = () =>
+    typeof prisma.$transaction === "function"
+      ? prisma.$transaction(async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY}::bigint)`;
+          return append(tx);
+        })
+      : append(prisma);
 
   const resultPromise = auditWriteQueue.then(run, run);
   auditWriteQueue = resultPromise.catch(() => {});

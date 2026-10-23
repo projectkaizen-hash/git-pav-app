@@ -2,7 +2,6 @@ import crypto from "crypto";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import 'express-async-errors';
 
 import authRoutes from "./routes/auth";
@@ -35,6 +34,7 @@ import { objectStorage } from "./lib/object-storage";
 import { auditMiddleware } from "./middleware/audit";
 import { attachOptionalAuth, requireAuth, requireRole, AuthRequest } from "./middleware/auth";
 import { errorHandler, notFoundHandler, standardResponse } from "./middleware/error-handler";
+import { buildRateLimiters, parseTrustProxy } from "./middleware/rate-limits";
 import { prisma } from "./lib/prisma";
 import { redis } from "./lib/redis";
 import { env } from "./config/env";
@@ -44,6 +44,8 @@ import { getCoverageBackend } from "./lib/van-coverage";
 
 const app = express();
 const PORT = env.port;
+// Behind a load balancer req.ip is the balancer unless the hop count is set.
+app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
 // ─── Security & parsing ───────────────────────────────────────────────────────
 app.use(helmet());
@@ -72,25 +74,19 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ─── Global rate limiter ──────────────────────────────────────────────────────
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: env.isProduction ? 200 : 2000,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
-
-// Auth endpoints get a tighter limiter
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: env.isProduction ? 20 : 500,
-  message: { error: "Too many auth attempts, try again in 15 minutes" },
-});
-
 // ─── Request identity attachment ─────────────────────────────────────────────
-// Attach optional auth for routes that need it (public catalog endpoints)
+// Attach optional auth for routes that need it (public catalog endpoints). It
+// runs before the limiter so signed-in traffic is limited per user.
 app.use(attachOptionalAuth);
+
+// ─── Rate limiting ───────────────────────────────────────────────────────────
+// Deployed, counters live in Redis so all replicas share them. Locally they stay
+// in memory so repeated test runs don't accumulate. See middleware/rate-limits.ts.
+const { globalLimiter, authLimiter } = buildRateLimiters({
+  production: env.isProduction,
+  redis: env.isProduction || env.isStaging ? redis : undefined,
+});
+app.use(globalLimiter);
 app.use(standardResponse);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

@@ -1,5 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import argon2 from "argon2";
+import { planSeed } from "../src/lib/seed-guard";
+
+// Throws before touching the database unless this is a local environment or
+// demo data was explicitly requested (see src/lib/seed-guard.ts).
+const seedPlan = planSeed(process.env);
 
 const prisma = new PrismaClient();
 
@@ -14,7 +19,7 @@ async function hashPassword(password: string): Promise<string> {
 
 async function main() {
   console.log("🌱 Seeding Pav Dental Full Production Baseline Data...");
-  const defaultPasswordHash = await hashPassword("Password123!");
+  const defaultPasswordHash = await hashPassword(seedPlan.demoPassword);
 
   // ─── 1. Clinics ────────────────────────────────────────────────────────────
   const clinicHarley = await prisma.clinic.upsert({
@@ -244,7 +249,7 @@ async function main() {
     });
   }
 
-  // ─── 4. Known User Accounts (Password123!) ───────────────────────────────────
+  // ─── 4. Known User Accounts (demo password, see seed-guard) ──────────────────
 
   // A. Patient Account: Alexander Wright
   let patientUser = await prisma.user.findUnique({ where: { email: "patient@pavdental.com" } });
@@ -307,7 +312,9 @@ async function main() {
     create: {
       userId: docUser.id,
       fullName: "Dr. Tariq Pav",
-      gdcNumber: "248912",
+      // Letters keep these outside the GDC's numeric register, so they can never
+      // match a real registrant (SD-2). Phone numbers use Ofcom drama ranges.
+      gdcNumber: "DEMO01",
       roleTitle: "Clinical Director & Implant Surgeon",
       specialisms: ["Implantology", "Invisalign", "Sedation"],
       bio: "Over 14 years clinical experience across London teaching hospitals and private surgeries.",
@@ -382,7 +389,7 @@ async function main() {
       data: {
         userId: sarahUser.id,
         fullName: "Dr. Sarah Jenkins",
-        gdcNumber: "281034",
+        gdcNumber: "DEMO02",
         roleTitle: "General Dental Practitioner",
         specialisms: ["Aesthetic Restorations", "Endodontics", "Anxious Patients"],
         bio: "Special interest in minimally invasive dentistry and nervous patient care.",
@@ -565,7 +572,11 @@ async function main() {
 
   console.log("✅ Database Baseline Seed Completed Successfully!");
   console.log("--------------------------------------------------");
-  console.log("Ready-to-test credentials (Password: Password123!):");
+  console.log(
+    seedPlan.printPassword
+      ? `Ready-to-test credentials (Password: ${seedPlan.demoPassword}):`
+      : "Ready-to-test credentials (password: the SEED_DEMO_PASSWORD you supplied):"
+  );
   console.log("  Patient:   patient@pavdental.com");
   console.log("  Clinician: doctor@pavdental.com");
   console.log("  Operator:  van@pavdental.com");

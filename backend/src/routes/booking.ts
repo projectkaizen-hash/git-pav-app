@@ -7,12 +7,14 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import {
   appointmentIdParamsSchema,
+  confirmAppointmentSchema,
   createAppointmentSchema,
   holdSlotSchema,
   slotsQuerySchema,
 } from "../schemas/booking";
 import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
+import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 
 const router = Router();
 
@@ -165,8 +167,12 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       }
     }
 
+    // The server owns the appointment length: end = start + service duration.
     const startDate = new Date(startTimeUtc);
-    const endDate = new Date(endTimeUtc);
+    if (startDate.getTime() <= Date.now()) {
+      return { error: "startTimeUtc must be in the future", status: 400 };
+    }
+    const endDate = new Date(startDate.getTime() + service.durationMinutes * 60 * 1000);
 
     if (slotId) {
       const lockHolder = await redis.get(slotLockKey(slotId)).catch(() => null);
@@ -305,15 +311,20 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
 });
 
 // ─── PATCH /api/booking/appointments/:id/confirm ─────────────────────────────
-router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+// Confirms a held appointment only after the server has verified its deposit.
+// The PaymentIntent is the one create-intent stored on the appointment; the
+// amount recorded comes from Stripe (or the service price in mock mode), never
+// from the request. The webhook confirms the same way, so whichever arrives
+// first wins and the other is a no-op.
+router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmentIdParamsSchema), validateBody(confirmAppointmentSchema), async (req: AuthRequest, res: Response) => {
   const apptId = String(req.params.id);
-  const { stripePaymentId, depositPaidPence } = req.body;
+  const { stripePaymentId } = req.body as { stripePaymentId?: string };
   const patientId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("confirm-appointment", { 
-    appointmentId: apptId, stripePaymentId, patientId 
-  });
 
-  return withIdempotency(idempotencyKey, async () => {
+  // No response cache here: a "not paid yet" answer must not be replayed after
+  // the patient pays. The handler is idempotent by itself (conditional update,
+  // and an already-confirmed appointment returns its stored state).
+  return (async (): Promise<any> => {
     const profile = await prisma.patientProfile.findUnique({
       where: { userId: patientId },
       select: { id: true },
@@ -324,6 +335,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
 
     const appointment = await prisma.appointment.findFirst({
       where: { id: apptId, patientId: profile.id },
+      include: { service: { select: { depositPence: true } } },
     });
 
     if (!appointment) {
@@ -345,38 +357,66 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       return { error: "Cannot confirm appointment in current status", status: 400 };
     }
 
-    const effectivePaymentId = stripePaymentId || appointment.stripePaymentId;
-    if (
-      !env.stripeSecretKey.startsWith("sk_test_mock") &&
-      effectivePaymentId &&
-      !effectivePaymentId.startsWith("pi_mock_") &&
-      !effectivePaymentId.startsWith("pi_e2e_")
-    ) {
+    const paymentIntentId = appointment.stripePaymentId;
+    if (!paymentIntentId) {
+      return { error: "No deposit payment has been started for this appointment", status: 402 };
+    }
+    if (stripePaymentId && stripePaymentId !== paymentIntentId) {
+      return { error: "Payment does not belong to this appointment", status: 409 };
+    }
+
+    let depositPaidPence: number;
+    if (env.isMockStripe) {
+      // Development and test only (env.ts rejects mock keys when deployed).
+      if (paymentIntentId !== `pi_mock_${appointment.id.replaceAll("-", "")}`) {
+        return { error: "Payment does not belong to this appointment", status: 409 };
+      }
+      depositPaidPence = appointment.service.depositPence;
+    } else {
+      let intent: Stripe.PaymentIntent;
       try {
         const stripe = new Stripe(env.stripeSecretKey, {
           apiVersion: "2025-02-24.acacia" as never,
         });
-        const intent = await stripe.paymentIntents.retrieve(effectivePaymentId);
-        if (!["succeeded", "requires_capture"].includes(intent.status)) {
-          return {
-            error: `PaymentIntent has not succeeded (status: ${intent.status})`,
-            status: 400,
-          };
-        }
+        intent = await stripe.paymentIntents.retrieve(paymentIntentId);
       } catch {
-        return { error: "Failed to verify Stripe PaymentIntent", status: 400 };
+        return { error: "Failed to verify Stripe PaymentIntent", status: 502 };
       }
+      if (intent.metadata?.appointmentId !== appointment.id) {
+        return { error: "Payment does not belong to this appointment", status: 409 };
+      }
+      if (intent.status !== "succeeded") {
+        return {
+          error: `PaymentIntent has not succeeded (status: ${intent.status})`,
+          status: 402,
+        };
+      }
+      if (intent.currency !== "gbp" || intent.amount_received !== appointment.service.depositPence) {
+        return { error: "Payment amount does not match the deposit for this service", status: 409 };
+      }
+      depositPaidPence = intent.amount_received;
     }
 
-    const confirmed = await prisma.appointment.update({
-      where: { id: apptId },
+    // Conditional update: if the webhook confirmed it in the meantime, this is
+    // a no-op and the reminder ladder is not scheduled twice.
+    const result = await prisma.appointment.updateMany({
+      where: { id: apptId, status: "draft_hold", stripePaymentId: paymentIntentId },
       data: {
         status: "confirmed",
-        stripePaymentId: stripePaymentId || appointment.stripePaymentId,
-        depositPaidPence: depositPaidPence || appointment.depositPaidPence,
+        depositPaidPence,
         holdExpiresAt: null,
       },
     });
+    if (result.count === 1) {
+      await scheduleAppointmentReminderLadder(apptId).catch((err) => {
+        console.error("[Booking] Failed to schedule reminders:", err);
+      });
+    }
+
+    const confirmed = await prisma.appointment.findUniqueOrThrow({ where: { id: apptId } });
+    if (confirmed.status !== "confirmed") {
+      return { error: "Cannot confirm appointment in current status", status: 409 };
+    }
 
     return {
       id: confirmed.id,
@@ -385,7 +425,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       message: "Appointment confirmed successfully",
       httpStatus: 200,
     };
-  }).then((result: any) => {
+  })().then((result: any) => {
     if (result.error) {
       return res.status(result.httpStatus || result.status || 400).json({ error: result.error });
     }

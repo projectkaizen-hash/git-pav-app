@@ -35,7 +35,7 @@ import {
 import { sendPatientNotification } from "../lib/patient-push";
 
 const router = Router();
-const isMockStripe = env.stripeSecretKey.startsWith("sk_test_mock");
+const isMockStripe = env.isMockStripe;
 const stripe = new Stripe(env.stripeSecretKey, {
   apiVersion: "2025-02-24.acacia" as never,
 });

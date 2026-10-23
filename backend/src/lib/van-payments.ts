@@ -13,7 +13,7 @@ import { env } from "../config/env";
 import { prisma } from "./prisma";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
 
-export const isMockStripe = env.stripeSecretKey.startsWith("sk_test_mock");
+export const isMockStripe = env.isMockStripe;
 
 function makeStripeClient(): Stripe {
   return new Stripe(env.stripeSecretKey, {
