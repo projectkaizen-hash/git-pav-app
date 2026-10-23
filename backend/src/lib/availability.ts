@@ -90,21 +90,19 @@ export class AvailabilityError extends Error {
 }
 
 /**
- * Every slot each matching clinician works on a UK calendar date, marked
- * available when it is far enough ahead and nothing else overlaps it.
- * Clinic slots also have to fall inside that clinic's opening hours.
+ * When each matching clinician works on a UK calendar date, as minutes after
+ * midnight. For a clinic visit the times are also cut to the clinic's hours,
+ * and a closed clinic gives nobody any time.
  */
-export async function slotsForDay(args: {
+export async function workingWindows(args: {
   date: string;
   channel: SlotChannel;
-  durationMinutes: number;
   clinicianId?: string;
   clinicId?: string;
-  now?: Date;
-}): Promise<Slot[]> {
-  const { date, channel, durationMinutes, clinicianId, clinicId } = args;
-  const now = args.now ?? new Date();
+}): Promise<Map<string, Window[]>> {
+  const { date, channel, clinicianId, clinicId } = args;
   const weekday = weekdayOf(date);
+  const windowsByClinician = new Map<string, Window[]>();
 
   let clinicHours: { opens: number; closes: number } | null = null;
   if (channel === "clinic") {
@@ -119,7 +117,7 @@ export async function slotsForDay(args: {
     });
     if (!clinic || !clinic.isActive) throw new AvailabilityError(404, "Clinic not found");
     const hours = clinic.openingHours[0];
-    if (!hours || clinic.closures.length > 0) return [];
+    if (!hours || clinic.closures.length > 0) return windowsByClinician;
     clinicHours = { opens: hours.opensMinute, closes: hours.closesMinute };
   }
 
@@ -139,7 +137,6 @@ export async function slotsForDay(args: {
     orderBy: { id: "asc" },
   });
 
-  const windowsByClinician = new Map<string, Window[]>();
   for (const c of clinicians) {
     const override = c.rotaOverrides[0];
     let windows: Window[] = override
@@ -156,6 +153,25 @@ export async function slotsForDay(args: {
     }
     if (windows.length > 0) windowsByClinician.set(c.id, windows);
   }
+  return windowsByClinician;
+}
+
+/**
+ * Every slot each matching clinician works on a UK calendar date, marked
+ * available when it is far enough ahead and nothing else overlaps it.
+ * Clinic slots also have to fall inside that clinic's opening hours.
+ */
+export async function slotsForDay(args: {
+  date: string;
+  channel: SlotChannel;
+  durationMinutes: number;
+  clinicianId?: string;
+  clinicId?: string;
+  now?: Date;
+}): Promise<Slot[]> {
+  const { date, durationMinutes } = args;
+  const now = args.now ?? new Date();
+  const windowsByClinician = await workingWindows(args);
   if (windowsByClinician.size === 0) return [];
 
   const dayStart = londonTimeToUtc(date, 0);
@@ -202,4 +218,45 @@ export async function bookableClinician(args: {
   const slots = await slotsForDay({ ...args, date: londonDate(args.startTimeUtc) });
   const match = slots.find((s) => s.available && s.startTimeUtc.getTime() === args.startTimeUtc.getTime());
   return match?.clinicianId ?? null;
+}
+
+/**
+ * Upcoming confirmed visits that no longer sit inside their clinician's
+ * working hours (and the clinic's, for a clinic visit), e.g. after a rota
+ * change or a closure. They stay booked; staff decide what to do with them.
+ */
+export async function appointmentsOutsideHours(where: { clinicianId?: string; clinicId?: string }, now = new Date()) {
+  const upcoming = await prisma.appointment.findMany({
+    where: {
+      ...where,
+      clinicianId: where.clinicianId ?? { not: null },
+      channel: { in: ["clinic", "video"] },
+      status: "confirmed",
+      startTimeUtc: { gte: now },
+    },
+    select: { id: true, clinicianId: true, clinicId: true, channel: true, startTimeUtc: true, endTimeUtc: true },
+    orderBy: { startTimeUtc: "asc" },
+    take: 200,
+  });
+  const outside: typeof upcoming = [];
+  for (const a of upcoming) {
+    const date = londonDate(a.startTimeUtc);
+    let windows: Window[] = [];
+    try {
+      windows =
+        (await workingWindows({
+          date,
+          channel: a.channel as SlotChannel,
+          clinicianId: a.clinicianId!,
+          clinicId: a.clinicId ?? undefined,
+        })).get(a.clinicianId!) ?? [];
+    } catch (err) {
+      if (!(err instanceof AvailabilityError)) throw err;
+    }
+    const fits = windows.some(
+      (w) => londonTimeToUtc(date, w.start) <= a.startTimeUtc && a.endTimeUtc <= londonTimeToUtc(date, w.end)
+    );
+    if (!fits) outside.push(a);
+  }
+  return outside;
 }
