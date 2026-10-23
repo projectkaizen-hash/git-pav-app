@@ -161,6 +161,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Depends on:** CS-03
 - **Size:** M
 - 🛑 The re-wrap rewrites existing ciphertext in place (reversible from a backup). Real KMS would be a new paid service, so it's your decision.
+- **Note:** done in two parts. Part 1 (fixed salt, key id per record, separate URL-signing key, `npm run rewrap:encrypted`) keeps the local master key and documents that honestly. Part 2 wraps the data keys with AWS KMS once the owner supplies a key (decision #18).
 
 ### CS-14 Rate limiting that fits the app
 - **Closes:** SV-1

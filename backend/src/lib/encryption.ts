@@ -3,11 +3,24 @@
  *
  * Implements AES-256-GCM envelope encryption using per-record random 256-bit
  * Data Encryption Keys (DEKs) wrapped by a Key Encryption Key (KEK) derived
- * via HKDF-SHA256 from the configured master key / KMS key context.
+ * via HKDF-SHA256 from the local master key (ENCRYPTION_KEY). KMS_KEY_ID is
+ * only a label that versions the KEK; no KMS call is made yet (EN-2).
+ *
+ * Each record stores the key id it was wrapped under, and decrypt derives the
+ * KEK from that stored id, so changing KMS_KEY_ID or AWS_REGION never makes
+ * old data unreadable (EN-1). Records written before the fix ("legacy", no
+ * "v2:" prefix) were derived with AWS_REGION as the HKDF salt; they still
+ * decrypt, and `scripts/rewrap-encrypted-fields.ts` moves them onto the
+ * current key.
  */
 
 import crypto from "crypto";
 import { env } from "../config/env";
+
+const KEY_SCHEME = "v2:";
+const KEK_SALT = "pavdental-kek-salt-v2";
+// Before EN-1 the salt was AWS_REGION, which defaulted to this.
+const LEGACY_DEFAULT_REGION = "eu-west-2";
 
 export interface EncryptionConfig {
   keyId: string;
@@ -24,6 +37,26 @@ export interface EncryptedData {
   algorithm: string;
 }
 
+function masterKey(): string {
+  const rawKey = process.env.ENCRYPTION_KEY || env.encryptionKey;
+  if (!rawKey || rawKey.length < 32 || rawKey.includes("default-key")) {
+    throw new Error(
+      "CRITICAL: ENCRYPTION_KEY must be configured with at least 32 characters. Static fallback keys are forbidden."
+    );
+  }
+  return rawKey;
+}
+
+/**
+ * A key for something other than wrapping records, such as signing download
+ * URLs, derived from the master key so the two uses never share a key (EN-3).
+ */
+export function deriveSubKey(purpose: string): Buffer {
+  return Buffer.from(
+    crypto.hkdfSync("sha256", Buffer.from(masterKey(), "utf8"), Buffer.from(KEK_SALT, "utf8"), Buffer.from(`pavdental-subkey:${purpose}`, "utf8"), 32)
+  );
+}
+
 export class EncryptionService {
   private config: EncryptionConfig;
 
@@ -37,18 +70,14 @@ export class EncryptionService {
    * Encrypt plaintext using a unique random 256-bit DEK wrapped by the KEK.
    */
   async encrypt(plaintext: string): Promise<EncryptedData> {
-    const kek = this.deriveKek();
+    const keyId = this.currentKeyId();
+    const [kek] = this.keksFor(keyId);
 
     // 1. Generate unique 32-byte Data Encryption Key (DEK) for this record
     const dek = crypto.randomBytes(32);
-    const dekIv = crypto.randomBytes(12);
 
     // 2. Wrap DEK with KEK using AES-256-GCM and keyId as AAD
-    const dekCipher = crypto.createCipheriv("aes-256-gcm", kek, dekIv);
-    dekCipher.setAAD(Buffer.from(this.config.keyId, "utf8"));
-    const wrappedDek = Buffer.concat([dekCipher.update(dek), dekCipher.final()]);
-    const dekAuthTag = dekCipher.getAuthTag();
-    const encryptedDek = Buffer.concat([wrappedDek, dekAuthTag]).toString("hex");
+    const { encryptedDek, dekIv } = this.wrapDek(dek, kek, keyId);
 
     // 3. Encrypt payload with DEK using AES-256-GCM
     const iv = crypto.randomBytes(16);
@@ -64,8 +93,8 @@ export class EncryptionService {
       ciphertext: ciphertext + authTag.toString("hex"),
       iv: iv.toString("hex"),
       encryptedDek,
-      dekIv: dekIv.toString("hex"),
-      keyId: this.config.keyId,
+      dekIv,
+      keyId,
       algorithm: this.config.algorithm,
     };
   }
@@ -74,22 +103,63 @@ export class EncryptionService {
    * Decrypt data using unwrapped DEK (or legacy direct key for backward compatibility).
    */
   async decrypt(encryptedData: EncryptedData): Promise<string> {
-    const kek = this.deriveKek();
-    let dek: Buffer;
-
-    if (encryptedData.encryptedDek && encryptedData.dekIv) {
-      const dekIv = Buffer.from(encryptedData.dekIv, "hex");
-      const rawWrapped = Buffer.from(encryptedData.encryptedDek, "hex");
-      const dekAuthTag = rawWrapped.slice(-16);
-      const wrappedDek = rawWrapped.slice(0, -16);
-
-      const dekDecipher = crypto.createDecipheriv("aes-256-gcm", kek, dekIv);
-      dekDecipher.setAAD(Buffer.from(encryptedData.keyId || this.config.keyId, "utf8"));
-      dekDecipher.setAuthTag(dekAuthTag);
-      dek = Buffer.concat([dekDecipher.update(wrappedDek), dekDecipher.final()]);
-    } else {
-      dek = kek;
+    const keyId = encryptedData.keyId || this.config.keyId;
+    let lastError: unknown;
+    for (const kek of this.keksFor(keyId)) {
+      try {
+        return this.decryptWith(encryptedData, kek, keyId);
+      } catch (error) {
+        lastError = error;
+      }
     }
+    throw lastError;
+  }
+
+  /** True when the record isn't wrapped under the current key. */
+  needsRewrap(encryptedData: EncryptedData): boolean {
+    return encryptedData.keyId !== this.currentKeyId();
+  }
+
+  /**
+   * Re-wraps a record under the current key. Only the DEK is re-wrapped; the
+   * payload ciphertext is unchanged. Legacy records that used the KEK directly
+   * are re-encrypted.
+   */
+  async rewrap(encryptedData: EncryptedData): Promise<EncryptedData> {
+    if (!this.needsRewrap(encryptedData)) return encryptedData;
+    if (!encryptedData.encryptedDek || !encryptedData.dekIv) {
+      return this.encrypt(await this.decrypt(encryptedData));
+    }
+
+    const oldKeyId = encryptedData.keyId || this.config.keyId;
+    let dek: Buffer | null = null;
+    let lastError: unknown;
+    for (const kek of this.keksFor(oldKeyId)) {
+      try {
+        dek = this.unwrapDek(encryptedData.encryptedDek, encryptedData.dekIv, kek, oldKeyId);
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!dek) throw lastError;
+
+    const keyId = this.currentKeyId();
+    const [kek] = this.keksFor(keyId);
+    const wrapped = this.wrapDek(dek, kek, keyId);
+    dek.fill(0);
+    return { ...encryptedData, ...wrapped, keyId };
+  }
+
+  private currentKeyId(): string {
+    return `${KEY_SCHEME}${this.config.keyId}`;
+  }
+
+  private decryptWith(encryptedData: EncryptedData, kek: Buffer, keyId: string): string {
+    const dek =
+      encryptedData.encryptedDek && encryptedData.dekIv
+        ? this.unwrapDek(encryptedData.encryptedDek, encryptedData.dekIv, kek, keyId)
+        : kek;
 
     try {
       const iv = Buffer.from(encryptedData.iv, "hex");
@@ -110,24 +180,46 @@ export class EncryptionService {
     }
   }
 
+  private wrapDek(dek: Buffer, kek: Buffer, keyId: string): { encryptedDek: string; dekIv: string } {
+    const dekIv = crypto.randomBytes(12);
+    const dekCipher = crypto.createCipheriv("aes-256-gcm", kek, dekIv);
+    dekCipher.setAAD(Buffer.from(keyId, "utf8"));
+    const wrappedDek = Buffer.concat([dekCipher.update(dek), dekCipher.final()]);
+    const encryptedDek = Buffer.concat([wrappedDek, dekCipher.getAuthTag()]).toString("hex");
+    return { encryptedDek, dekIv: dekIv.toString("hex") };
+  }
+
+  private unwrapDek(encryptedDek: string, dekIvHex: string, kek: Buffer, keyId: string): Buffer {
+    const rawWrapped = Buffer.from(encryptedDek, "hex");
+    const dekDecipher = crypto.createDecipheriv("aes-256-gcm", kek, Buffer.from(dekIvHex, "hex"));
+    dekDecipher.setAAD(Buffer.from(keyId, "utf8"));
+    dekDecipher.setAuthTag(rawWrapped.slice(-16));
+    return Buffer.concat([dekDecipher.update(rawWrapped.slice(0, -16)), dekDecipher.final()]);
+  }
+
+  /**
+   * The KEKs a record with this key id may have been wrapped under. Current
+   * records have exactly one. Legacy records were salted with whatever
+   * AWS_REGION was at the time, so try the configured region and the old
+   * default.
+   */
+  private keksFor(keyId: string): Buffer[] {
+    if (keyId.startsWith(KEY_SCHEME)) return [this.deriveKek(KEK_SALT, keyId)];
+    const salts = [...new Set([this.config.region, LEGACY_DEFAULT_REGION])];
+    return salts.map((salt) => this.deriveKek(salt, keyId));
+  }
+
   /**
    * Derive a 256-bit Key Encryption Key (KEK) using HKDF-SHA256.
    * Refuses weak or static fallback keys.
    */
-  private deriveKek(): Buffer {
-    const rawKey = process.env.ENCRYPTION_KEY || env.encryptionKey;
-    if (!rawKey || rawKey.length < 32 || rawKey.includes("default-key")) {
-      throw new Error(
-        "CRITICAL: ENCRYPTION_KEY must be configured with at least 32 characters. Static fallback keys are forbidden."
-      );
-    }
-
+  private deriveKek(salt: string = KEK_SALT, keyId: string = this.currentKeyId()): Buffer {
     return Buffer.from(
       crypto.hkdfSync(
         "sha256",
-        Buffer.from(rawKey, "utf8"),
-        Buffer.from(this.config.region, "utf8"),
-        Buffer.from(`pavdental-kek:${this.config.keyId}`, "utf8"),
+        Buffer.from(masterKey(), "utf8"),
+        Buffer.from(salt, "utf8"),
+        Buffer.from(`pavdental-kek:${keyId}`, "utf8"),
         32
       )
     );
@@ -174,6 +266,14 @@ export class ClinicalRecordEncryptionService {
 
   async decryptField(encryptedData: EncryptedData): Promise<string> {
     return await this.encryptionService.decrypt(encryptedData);
+  }
+
+  needsRewrap(encryptedData: EncryptedData): boolean {
+    return this.encryptionService.needsRewrap(encryptedData);
+  }
+
+  async rewrapField(encryptedData: EncryptedData): Promise<EncryptedData> {
+    return await this.encryptionService.rewrap(encryptedData);
   }
 }
 

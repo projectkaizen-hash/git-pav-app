@@ -41,3 +41,14 @@ npm run db:check-orphans -- --validate # only when every count is 0
 ```
 
 The script never deletes anything. If it finds orphaned rows, leave them for review and don't validate until they're resolved.
+
+## After deploying CS-13 (encryption keys)
+
+There's no schema change. Encrypted van access details (gate codes and door notes) written before CS-13 still decrypt, but they rely on the old key derivation, which used `AWS_REGION`. To move them onto the current key, take a database backup and then run this from `backend/`:
+
+```bash
+npm run rewrap:encrypted            # counts the records that need it; changes nothing
+npm run rewrap:encrypted -- --apply # re-wraps them; safe to run again
+```
+
+It only re-wraps each record's data key; the encrypted gate code or note itself is unchanged. It prints counts, never values. Run it again after changing `KMS_KEY_ID`. Signed download links issued before the deploy stop working (they last 15 minutes at most).
