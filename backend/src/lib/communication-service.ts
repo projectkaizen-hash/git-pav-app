@@ -216,7 +216,8 @@ export class CommunicationService {
 
       const result = await this.sendEmail({
         to: destination,
-        subject: `Your Pav Dental security code: ${code}`,
+        // Generic subject: subjects show on lock screens and in logs (CS-4).
+        subject: "Your Pav Dental security code",
         html,
         text,
       });

@@ -11,6 +11,8 @@ export default function SignInScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email || "");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,11 +22,17 @@ export default function SignInScreen() {
       return;
     }
 
+    if (codeSent && mfaCode.trim().length < 6) {
+      setError("Enter the 6-digit security code we sent you.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      await authApi.signIn(email.trim(), password);
-      // Route protection in (auth)/_layout will redirect on auth state change
+      const result = await authApi.signIn(email.trim(), password, codeSent ? mfaCode.trim() : undefined);
+      if (result?.mfaRequired) setCodeSent(true);
+      // Otherwise route protection in (auth)/_layout redirects on auth state change
     } catch (err: any) {
       setError(err?.message || "Invalid email or password. Please try again.");
     } finally {
@@ -99,6 +107,7 @@ export default function SignInScreen() {
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                setCodeSent(false);
                 if (error) setError(null);
               }}
             />
@@ -115,6 +124,23 @@ export default function SignInScreen() {
               }}
             />
 
+            {codeSent ? (
+              <Input
+                label="Security code"
+                placeholder="6-digit code"
+                keyboardType="number-pad"
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
+                maxLength={6}
+                value={mfaCode}
+                onChangeText={(text) => {
+                  setMfaCode(text);
+                  if (error) setError(null);
+                }}
+                hint="We've sent a code to your phone or email."
+              />
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Forgot your password?"
@@ -129,7 +155,7 @@ export default function SignInScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Sign In"
+              title={codeSent ? "Verify and sign in" : "Sign In"}
               size="lg"
               loading={loading}
               onPress={handleSignIn}

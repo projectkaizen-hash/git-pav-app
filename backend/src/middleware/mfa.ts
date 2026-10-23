@@ -8,7 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from './auth';
-import crypto from 'crypto';
+import { otpService } from '../lib/otp-service';
 
 /**
  * Check if user has MFA enabled
@@ -26,42 +26,6 @@ async function isMFAEnabled(userId: string): Promise<boolean> {
  */
 function isMFARequired(role: string): boolean {
   return role === 'clinician' || role === 'admin';
-}
-
-/**
- * Verify MFA code
- */
-async function verifyMFA(userId: string, code: string): Promise<boolean> {
-  const hashedCode = hashMFA(code);
-  
-  const mfaCode = await prisma.mfaCode.findFirst({
-    where: {
-      userId,
-      code: hashedCode,
-      expiresAt: { gt: new Date() },
-      usedAt: null,
-    },
-  });
-
-  if (!mfaCode) {
-    return false;
-  }
-
-  // Mark code as used
-  await prisma.mfaCode.update({
-    where: { id: mfaCode.id },
-    data: { usedAt: new Date() },
-  });
-
-  return true;
-}
-
-/**
- * Hash MFA code
- */
-function hashMFA(code: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(code).digest('hex');
 }
 
 /**
@@ -180,7 +144,7 @@ export async function verifyMFAForRequest(req: AuthRequest, res: Response) {
     return res.status(400).json({ error: 'MFA code is required' });
   }
 
-  const verified = await verifyMFA(req.user.sub, code);
+  const verified = await otpService.verifyOTP(req.user.sub, String(code), 'mfa_step_up');
 
   if (!verified) {
     return res.status(400).json({ error: 'Invalid or expired MFA code' });

@@ -5,35 +5,29 @@
 // - POST /api/auth/otp/request { phone }        → { success, message }
 // - POST /api/auth/otp/verify  { phone, code }  → { accessToken, refreshToken, user }
 //
-// Flow: a 6-digit code is hashed and stored against the user's account via
-// the existing MfaCode model, delivered over SMS, and verified with a
-// short-lived single-use token. Verification always runs inside a
-// transaction that flips the stored code to used and creates the session.
+// Flow: a 6-digit code is issued through otpService with purpose
+// "phone_login", delivered over SMS, and redeemed once.
 //
 // Security notes:
-// - Codes are stored hashed (sha256) and single-use.
+// - Patients only. Staff sign in with a password and a security code, so a
+//   staff number gets the same answers as an unknown one (CS-08, AT-1).
+// - Codes are stored hashed (sha256), single-use, and only verify their own
+//   purpose; a code is burned after five wrong guesses (OT-2).
 // - Verification is rate-limited per phone (5/hour) to blunt brute force.
 // - Anti-enumeration: /request always answers 200 with a generic message —
 //   unknown numbers simply get no SMS. /verify returns one generic 401 for
 //   both "unknown phone" and "bad code".
-// - Verification consumes the code with an updateMany guarded on usedAt IS
-//   NULL, so two concurrent submits of the same code cannot both create
-//   sessions (only the transaction that flips usedAt proceeds).
+// - Redeeming is guarded on usedAt IS NULL, so two concurrent submits of the
+//   same code can't both create sessions.
 
 import { Router, Request, Response } from "express";
-import crypto from "crypto";
 import { prisma } from "../lib/prisma";
-import { twoFactorService, rateLimiter } from "../lib/otp-service";
-import { communicationService } from "../lib/communication-service";
+import { otpService, rateLimiter } from "../lib/otp-service";
 import { createSession, toAuthUser } from "./auth";
 
 const router = Router();
 
 const PHONE_RE = /^\+?[1-9]\d{6,14}$/; // E.164-ish
-
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
 
 // ─── POST /api/auth/otp/request ──────────────────────────────────────────
 router.post("/request", async (req: Request, res: Response) => {
@@ -49,8 +43,10 @@ router.post("/request", async (req: Request, res: Response) => {
     return res.status(429).json({ error: "Too many requests. Please try again later." });
   }
 
+  // Phone sign-in is for patients only: staff sign in with a password and a
+  // security code (CS-08, AT-1). Staff numbers get the same reply as unknown ones.
   const user = await prisma.user.findFirst({
-    where: { phone: cleanPhone, isActive: true },
+    where: { phone: cleanPhone, isActive: true, role: "patient" },
   });
   if (!user) {
     // Anti-enumeration: same shape/status as the success path; no SMS is sent.
@@ -63,14 +59,12 @@ router.post("/request", async (req: Request, res: Response) => {
     return;
   }
 
-  // 6-digit numeric code, short expiry — same lifecycle as MFA codes.
-  const { code, hashedCode, expiresAt } = twoFactorService.generateOTP();
-
-  await prisma.mfaCode.create({
-    data: { userId: user.id, code: hashedCode, expiresAt },
+  const { delivered } = await otpService.createAndSendOTP({
+    userId: user.id,
+    phone: user.phone ?? cleanPhone,
+    purpose: "phone_login",
+    deliveryMethod: "sms",
   });
-
-  const delivered = await communicationService.sendMfaCode(user.phone ?? cleanPhone, code);
   if (!delivered) {
     return res.status(502).json({ error: "Could not send the code. Please try again." });
   }
@@ -93,7 +87,7 @@ router.post("/verify", async (req: Request, res: Response) => {
   }
 
   const user = await prisma.user.findFirst({
-    where: { phone: cleanPhone, isActive: true },
+    where: { phone: cleanPhone, isActive: true, role: "patient" },
     include: { patientProfile: true, clinicianProfile: true },
   });
   if (!user) {
@@ -106,45 +100,10 @@ router.post("/verify", async (req: Request, res: Response) => {
     return;
   }
 
-  const hashedCode = hashToken(code.trim());
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const mfaCode = await tx.mfaCode.findFirst({
-        where: {
-          userId: user.id,
-          code: hashedCode,
-          expiresAt: { gt: new Date() },
-          usedAt: null,
-        },
-        orderBy: { createdAt: "desc" },
-      });
-      if (!mfaCode) return null;
-
-      // Consume the code inside the same transaction that verifies it.
-      // updateMany guarded on usedAt IS NULL: under a concurrent double-submit
-      // only one transaction wins; the loser sees count 0 and gets 401.
-      const consumed = await tx.mfaCode.updateMany({
-        where: { id: mfaCode.id, usedAt: null },
-        data: { usedAt: new Date() },
-      });
-      if (consumed.count !== 1) return null;
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: { phoneVerified: true },
-      });
-
-      return { ok: true as const };
-    });
-
-    if (!result) {
-      return res.status(401).json({ error: "Invalid or expired code" });
-    }
-  } catch (err) {
-    console.error("[auth-otp] verification transaction failed:", err);
-    return res.status(500).json({ error: "Verification failed. Please try again." });
+  if (!(await otpService.verifyOTP(user.id, code, "phone_login"))) {
+    return res.status(401).json({ error: "Invalid or expired code" });
   }
+  await prisma.user.update({ where: { id: user.id }, data: { phoneVerified: true } });
 
   const { accessToken, refreshToken } = await createSession(user.id, req);
 

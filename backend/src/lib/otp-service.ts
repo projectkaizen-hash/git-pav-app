@@ -9,7 +9,7 @@
  * - Token expiration
  */
 
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, randomInt, createHash, timingSafeEqual } from 'crypto';
 
 export interface OTPConfig {
   expirySeconds: number;
@@ -63,10 +63,10 @@ export function generateToken(length: number): string {
  * Generate OTP code
  */
 export function generateOTPCode(length: number): string {
-  const digits = '0123456789';
+  // CSPRNG, one digit at a time (CS-08, OT-1).
   let code = '';
   for (let i = 0; i < length; i++) {
-    code += digits[Math.floor(Math.random() * digits.length)];
+    code += String(randomInt(0, 10));
   }
   return code;
 }
@@ -234,6 +234,7 @@ export class TwoFactorService {
 import { redis } from './redis';
 import { prisma } from './prisma';
 import { communicationService } from './communication-service';
+import { safeError } from './log-safety';
 
 /**
  * Rate Limiter
@@ -248,10 +249,10 @@ export class RateLimiter {
   async isRateLimited(key: string, maxAttempts: number, windowSeconds: number): Promise<boolean> {
     try {
       const redisKey = `ratelimit:${key}`;
+      // Create the key with its expiry first, so a failed EXPIRE after INCR
+      // can never leave a counter that never resets (OT-3).
+      await redis.set(redisKey, "0", "EX", windowSeconds, "NX");
       const current = await redis.incr(redisKey);
-      if (current === 1) {
-        await redis.expire(redisKey, windowSeconds);
-      }
       return current > maxAttempts;
     } catch {
       // Memory fallback if Redis is unavailable
@@ -312,19 +313,30 @@ export const passwordResetService = new PasswordResetService();
 export const twoFactorService = new TwoFactorService();
 export const rateLimiter = new RateLimiter();
 
+/** What a one-time code is for. A code verifies only its own purpose (OT-2). */
+export type OtpPurpose = "mfa" | "phone_login" | "mfa_step_up";
+
+/** Wrong guesses a code takes before it's burned (OT-2). */
+export const OTP_MAX_ATTEMPTS = 5;
+
 export const otpService = {
+  /**
+   * Issues a code for one purpose and sends it. Only the newest unused code
+   * for a user and purpose can be redeemed.
+   */
   async createAndSendOTP(params: {
     userId: string;
     email?: string;
     phone?: string;
-    purpose?: string;
+    purpose: OtpPurpose;
     deliveryMethod?: "sms" | "email";
-  }): Promise<{ code: string; expiresAt: Date }> {
+  }): Promise<{ code: string; expiresAt: Date; delivered: boolean }> {
     const { code, hashedCode, expiresAt } = twoFactorService.generateOTP();
     await prisma.mfaCode.create({
       data: {
         userId: params.userId,
         code: hashedCode,
+        purpose: params.purpose,
         expiresAt,
       },
     });
@@ -332,33 +344,47 @@ export const otpService = {
       params.deliveryMethod === "sms" && params.phone
         ? params.phone
         : params.email || params.phone || "";
-    if (recipient) {
-      await communicationService.sendMfaCode(recipient, code).catch((err) => {
-        console.error("[OTP Service] Failed to dispatch MFA code:", err);
-      });
-    }
-    return { code, expiresAt };
+    const delivered = recipient
+      ? await communicationService.sendMfaCode(recipient, code).catch((err) => {
+          console.error("[OTP Service] Failed to dispatch a code:", safeError(err));
+          return false;
+        })
+      : false;
+    return { code, expiresAt, delivered };
   },
 
-  async verifyOTP(userId: string, code: string, _purpose?: string): Promise<boolean> {
+  /**
+   * Redeems the newest live code for this user and purpose. A wrong guess
+   * counts against that code, and it's burned after OTP_MAX_ATTEMPTS, so a
+   * code can't be brute-forced across many IPs inside its five minutes.
+   */
+  async verifyOTP(userId: string, code: string, purpose: OtpPurpose): Promise<boolean> {
     if (!code || typeof code !== "string") return false;
-    const hashedCode = hashToken(code.trim());
-    const mfaCode = await prisma.mfaCode.findFirst({
-      where: {
-        userId,
-        code: hashedCode,
-        expiresAt: { gt: new Date() },
-        usedAt: null,
-      },
+    const latest = await prisma.mfaCode.findFirst({
+      where: { userId, purpose, expiresAt: { gt: new Date() }, usedAt: null },
       orderBy: { createdAt: "desc" },
     });
-    if (!mfaCode) return false;
+    if (!latest) return false;
 
+    const given = Buffer.from(hashToken(code.trim()), "hex");
+    const stored = Buffer.from(latest.code, "hex");
+    if (given.length !== stored.length || !timingSafeEqual(given, stored)) {
+      const counted = await prisma.mfaCode.update({
+        where: { id: latest.id },
+        data: { attempts: { increment: 1 } },
+        select: { attempts: true },
+      });
+      if (counted.attempts >= OTP_MAX_ATTEMPTS) {
+        await prisma.mfaCode.updateMany({ where: { id: latest.id, usedAt: null }, data: { usedAt: new Date() } });
+      }
+      return false;
+    }
+
+    // Guarded on usedAt so a double submit redeems the code once.
     const consumed = await prisma.mfaCode.updateMany({
-      where: { id: mfaCode.id, usedAt: null },
+      where: { id: latest.id, usedAt: null, attempts: { lt: OTP_MAX_ATTEMPTS } },
       data: { usedAt: new Date() },
     });
     return consumed.count === 1;
   },
 };
-
