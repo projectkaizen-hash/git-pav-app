@@ -6,6 +6,7 @@ import { colors, spacing } from "@/theme";
 import { useClinics } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { ClinicLocation } from "@/features/booking/booking-types";
+import { formatOpeningHours } from "@/features/booking/uk-time";
 
 export default function ClinicPickerScreen() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function ClinicPickerScreen() {
                   <View style={styles.hoursRow}>
                     <AppIcon name="clock" size={13} color={colors.secondaryLabel} />
                     <ThemedText variant="caption" style={styles.hours}>
-                      {clinic.operatingHours}
+                      {clinic.openingHours ? formatOpeningHours(clinic.openingHours) : clinic.operatingHours}
                     </ThemedText>
                   </View>
                 </View>

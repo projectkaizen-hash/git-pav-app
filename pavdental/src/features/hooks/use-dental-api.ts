@@ -59,6 +59,7 @@ export function useClinicians(channel?: string) {
 // ─── Slot & Booking Hooks ─────────────────────────────────────────────────────
 export function useSlots(params: {
   clinicianId?: string;
+  clinicId?: string;
   serviceId?: string;
   date: string;
   channel?: string;

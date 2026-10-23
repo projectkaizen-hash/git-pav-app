@@ -1,5 +1,6 @@
 import { authFetch } from "../auth/auth-api";
 import { DentalService, ClinicLocation, Clinician, TimeSlot } from "./booking-types";
+import { ukDayLabel, ukDate, ukTime } from "./uk-time";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -28,8 +29,9 @@ export async function fetchClinicians(channel?: string): Promise<Clinician[]> {
 // ─── Slots ────────────────────────────────────────────────────────────────────
 export async function fetchSlots(params: {
   clinicianId?: string;
+  clinicId?: string;
   serviceId?: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD, UK calendar date
   channel?: string;
 }): Promise<TimeSlot[]> {
   const qs = new URLSearchParams(
@@ -39,24 +41,15 @@ export async function fetchSlots(params: {
   if (!res.ok) throw new Error("Could not load slots");
   const raw: any[] = await res.json();
 
-  // Normalise to TimeSlot shape
+  // Normalise to TimeSlot shape, shown in UK time (the clinic's hours).
   return raw.map((s) => ({
     id: s.id,
     clinicianId: params.clinicianId ?? "",
-    clinicId: "",
+    clinicId: params.clinicId ?? "",
     startTimeUtc: s.startTimeUtc,
     endTimeUtc: s.endTimeUtc,
-    displayTime: new Date(s.startTimeUtc).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }),
-    dateFormatted: new Date(s.startTimeUtc).toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    }),
+    displayTime: ukTime(new Date(s.startTimeUtc)),
+    dateFormatted: ukDayLabel(ukDate(new Date(s.startTimeUtc))),
     channel: params.channel as any ?? "clinic",
     isAvailable: s.available,
   }));

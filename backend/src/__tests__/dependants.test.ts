@@ -1,6 +1,7 @@
 import http from "http";
 import crypto from "crypto";
 import { ageInYears, parseIsoDate } from "../lib/age";
+import { londonTimeToUtc } from "../lib/availability";
 
 // CS-34 (decisions log #17): only an adult parent or guardian adds a child,
 // only children under 16 are added, and under-16s cannot hold their own
@@ -119,6 +120,10 @@ describe("dependants", () => {
         roleTitle: "Dentist",
       },
     });
+    // Works every day 09:00 to 17:00, so the booking below is a real slot.
+    await prisma.clinicianRotaBlock.createMany({
+      data: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ clinicianId: clinician.id, weekday, startMinute: 540, endMinute: 1020 })),
+    });
     const clinicianToken = signAccessToken({ sub: clinicianUser.id, role: "clinician", sessionId: crypto.randomUUID() });
     const service = await prisma.service.findFirstOrThrow({ select: { id: true } });
 
@@ -128,10 +133,10 @@ describe("dependants", () => {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId: service.id,
-          channel: "clinic",
+          channel: "video",
           clinicianId: clinician.id,
           dependantId,
-          startTimeUtc: new Date(Date.now() + dayOffset * 86400000).toISOString(),
+          startTimeUtc: londonTimeToUtc(new Date(Date.now() + dayOffset * 86400000).toISOString().slice(0, 10), 540).toISOString(),
         }),
       }).then(async (r) => ({ status: r.status, body: (await r.json()) as any }));
 

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import argon2 from "argon2";
 import { planSeed } from "../src/lib/seed-guard";
+import { applyDefaultHours } from "../src/lib/default-hours";
 
 // Throws before touching the database unless this is a local environment or
 // demo data was explicitly requested (see src/lib/seed-guard.ts).
@@ -32,7 +33,7 @@ async function main() {
       postcode: "W1G 9PQ",
       city: "London",
       phone: "020 7946 0123",
-      operatingHours: "Mon–Fri: 08:00 – 19:00, Sat: 09:00 – 16:00",
+      operatingHours: "Mon–Fri: 09:00 – 17:30, Sat: 09:00 – 13:00",
     },
   });
 
@@ -46,7 +47,7 @@ async function main() {
       postcode: "E14 5JP",
       city: "London",
       phone: "020 7946 0456",
-      operatingHours: "Mon–Fri: 07:30 – 19:30",
+      operatingHours: "Mon–Fri: 09:00 – 17:30, Sat: 09:00 – 13:00",
     },
   });
 
@@ -573,6 +574,11 @@ async function main() {
 
   console.log("✅ Database Baseline Seed Completed Successfully!");
   console.log("--------------------------------------------------");
+  // ─── Opening hours and rota (decisions log #12) ─────────────────────────────
+  // Default hours for every clinic and the same weekly rota for every
+  // clinician, so slots exist out of the box.
+  await applyDefaultHours(prisma);
+
   console.log(
     seedPlan.printPassword
       ? `Ready-to-test credentials (Password: ${seedPlan.demoPassword}):`

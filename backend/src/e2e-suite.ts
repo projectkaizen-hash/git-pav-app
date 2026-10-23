@@ -92,8 +92,26 @@ async function runE2ESuite() {
     assert(vanData.isCovered === true, "Van coverage check failed for SW1A");
     console.log(`✓ PASSED: Van Sector Polygon Coverage Verified (${vanData.assignedVan})`);
 
+    // Real slots come from the clinic's hours and the clinicians' rota
+    // (CS-30), so the suite books the next two free ones at a seeded clinic.
+    const clinicsRes = await fetch(`${baseUrl}/api/services/clinics`);
+    const e2eClinic = ((await clinicsRes.json()) as any[])[0];
+    assert(e2eClinic?.openingHours?.length > 0, "Clinics must come with their opening hours");
+    const freeSlots: any[] = [];
+    for (let day = 1; day <= 14 && freeSlots.length < 2; day++) {
+      const date = new Date(Date.now() + day * 86400000).toISOString().slice(0, 10);
+      const slotsRes = await fetch(
+        `${baseUrl}/api/booking/slots?date=${date}&channel=clinic&clinicId=${e2eClinic.id}&serviceId=${testService.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      assert(slotsRes.status === 200, `Slots lookup failed (got ${slotsRes.status})`);
+      freeSlots.push(...((await slotsRes.json()) as any[]).filter((s) => s.available));
+    }
+    assert(freeSlots.length >= 2, "No free slots in the next two weeks");
+    const [slot1, slot2] = freeSlots;
+
     // Step 5: Redis Slot Hold (10-minute lock)
-    const slotId = `slot_e2e_${Date.now()}`;
+    const slotId = slot1.id;
     const holdRes = await fetch(`${baseUrl}/api/booking/hold-slot`, {
       method: "POST",
       headers: {
@@ -116,8 +134,8 @@ async function runE2ESuite() {
       body: JSON.stringify({
         serviceId: testService.id,
         channel: "clinic",
-        startTimeUtc: new Date(Date.now() + 86400000).toISOString(),
-        endTimeUtc: new Date(Date.now() + 86400000 + 1800000).toISOString(),
+        clinicId: e2eClinic.id,
+        startTimeUtc: slot1.startTimeUtc,
         slotId,
       }),
     });
@@ -187,7 +205,7 @@ async function runE2ESuite() {
     // create-intent only serves appointments still in draft_hold with an
     // unexpired hold, so this uses a fresh unconfirmed appointment rather
     // than the one confirmed in step 6.
-    const slot2Id = `slot_e2e_${Date.now()}_b`;
+    const slot2Id = slot2.id;
     const hold2Res = await fetch(`${baseUrl}/api/booking/hold-slot`, {
       method: "POST",
       headers: {
@@ -208,8 +226,8 @@ async function runE2ESuite() {
       body: JSON.stringify({
         serviceId: testService.id,
         channel: "clinic",
-        startTimeUtc: new Date(Date.now() + 90000000).toISOString(),
-        endTimeUtc: new Date(Date.now() + 90000000 + 1800000).toISOString(),
+        clinicId: e2eClinic.id,
+        startTimeUtc: slot2.startTimeUtc,
         slotId: slot2Id,
       }),
     });

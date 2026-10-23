@@ -14,7 +14,7 @@ export default function BookingSummaryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { service, clinic, clinician, slot, holdExpiresAt, resetDraft } = useBookingStore();
+  const { service, clinic, clinician, slot, holdExpiresAt, resetDraft, channel } = useBookingStore();
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
   const [isProcessing, setIsProcessing] = useState(false);
   // A rewards voucher off this deposit (decisions log #14). The server checks
@@ -67,7 +67,8 @@ export default function BookingSummaryScreen() {
       // 1. Create draft appointment
       const appt = await createAppointment({
         serviceId: service?.id || "srv_checkup",
-        channel: (service?.supportedChannels[0] as any) || "clinic",
+        // This flow books clinic visits; video and van have their own flows.
+        channel: channel ?? "clinic",
         clinicianId: clinician?.id,
         clinicId: clinic?.id,
         startTimeUtc: startTime,

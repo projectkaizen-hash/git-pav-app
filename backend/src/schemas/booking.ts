@@ -15,6 +15,7 @@ const compactJsonObject = z.record(z.unknown()).refine(
 
 export const slotsQuerySchema = z.object({
   clinicianId: uuid.optional(),
+  clinicId: uuid.optional(),
   serviceId: resourceId.optional(),
   date: isoDate,
   channel: bookingChannel.optional(),

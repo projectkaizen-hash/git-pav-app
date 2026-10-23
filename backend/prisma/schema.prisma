@@ -148,21 +148,23 @@ model PatientProfile {
 }
 
 model ClinicianProfile {
-  id                 String          @id @default(uuid()) @db.Uuid
-  userId             String          @unique @map("user_id") @db.Uuid
-  fullName           String          @map("full_name")
-  gdcNumber          String          @unique @map("gdc_number") @db.VarChar(6)
-  roleTitle          String          @map("role_title")
+  id                 String                  @id @default(uuid()) @db.Uuid
+  userId             String                  @unique @map("user_id") @db.Uuid
+  fullName           String                  @map("full_name")
+  gdcNumber          String                  @unique @map("gdc_number") @db.VarChar(6)
+  roleTitle          String                  @map("role_title")
   specialisms        String[]
   bio                String?
-  photoUrl           String?         @map("photo_url")
-  isTelehealthActive Boolean         @default(true) @map("is_telehealth_active")
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
+  photoUrl           String?                 @map("photo_url")
+  isTelehealthActive Boolean                 @default(true) @map("is_telehealth_active")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
   appointments       Appointment[]
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   prescriptions      Prescription[]
   treatmentPlans     TreatmentPlan[]
+  rota               ClinicianRotaBlock[]
+  rotaOverrides      ClinicianRotaOverride[]
 
   @@index([gdcNumber])
   @@index([isTelehealthActive])
@@ -170,18 +172,84 @@ model ClinicianProfile {
 }
 
 model Clinic {
-  id             String        @id @default(uuid()) @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
   name           String
   address        String
   postcode       String
   city           String
   phone          String
-  operatingHours String        @map("operating_hours")
-  isActive       Boolean       @default(true) @map("is_active")
-  createdAt      DateTime      @default(now()) @map("created_at")
+  /// Free-text summary shown to patients. Slots come from openingHours.
+  operatingHours String                  @map("operating_hours")
+  isActive       Boolean                 @default(true) @map("is_active")
+  createdAt      DateTime                @default(now()) @map("created_at")
   appointments   Appointment[]
+  openingHours   ClinicOpeningHours[]
+  closures       ClinicClosure[]
+  rotaBlocks     ClinicianRotaBlock[]
+  rotaOverrides  ClinicianRotaOverride[]
 
   @@map("clinics")
+}
+
+// Opening hours and rota (decisions log #12). Times are minutes after
+// midnight, Europe/London wall-clock time; weekday is 0 (Sunday) to 6.
+// A weekday with no row is a closed day.
+model ClinicOpeningHours {
+  id           String @id @default(uuid()) @db.Uuid
+  clinicId     String @map("clinic_id") @db.Uuid
+  weekday      Int    @db.SmallInt
+  opensMinute  Int    @map("opens_minute") @db.SmallInt
+  closesMinute Int    @map("closes_minute") @db.SmallInt
+  clinic       Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, weekday])
+  @@map("clinic_opening_hours")
+}
+
+/// A day the clinic is shut outside its weekly hours, e.g. a bank holiday.
+model ClinicClosure {
+  id       String   @id @default(uuid()) @db.Uuid
+  clinicId String   @map("clinic_id") @db.Uuid
+  date     DateTime @db.Date
+  reason   String?  @db.VarChar(200)
+  clinic   Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, date])
+  @@map("clinic_closures")
+}
+
+/// A clinician's weekly working block. clinicId null: not tied to one clinic
+/// (any clinic, video and van).
+model ClinicianRotaBlock {
+  id          String           @id @default(uuid()) @db.Uuid
+  clinicianId String           @map("clinician_id") @db.Uuid
+  clinicId    String?          @map("clinic_id") @db.Uuid
+  weekday     Int              @db.SmallInt
+  startMinute Int              @map("start_minute") @db.SmallInt
+  endMinute   Int              @map("end_minute") @db.SmallInt
+  clinician   ClinicianProfile @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+  clinic      Clinic?          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicianId, weekday, startMinute])
+  @@index([clinicId])
+  @@map("clinician_rota_blocks")
+}
+
+/// Replaces a clinician's weekly rota for one date. No times: not working.
+model ClinicianRotaOverride {
+  id          String           @id @default(uuid()) @db.Uuid
+  clinicianId String           @map("clinician_id") @db.Uuid
+  date        DateTime         @db.Date
+  clinicId    String?          @map("clinic_id") @db.Uuid
+  startMinute Int?             @map("start_minute") @db.SmallInt
+  endMinute   Int?             @map("end_minute") @db.SmallInt
+  reason      String?          @db.VarChar(200)
+  clinician   ClinicianProfile @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+  clinic      Clinic?          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicianId, date])
+  @@index([clinicId])
+  @@map("clinician_rota_overrides")
 }
 
 model Van {
