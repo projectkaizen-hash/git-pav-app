@@ -16,6 +16,11 @@ export default function ResetPasswordScreen() {
   const [completed, setCompleted] = useState(false);
 
   const handleReset = async () => {
+    if (!token || !token.trim()) {
+      setError("Invalid or missing password reset token. Please request a new reset link.");
+      return;
+    }
+
     if (!password || !confirmPassword) {
       setError("Please fill in both password fields.");
       return;
@@ -26,15 +31,22 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+      setError(
+        "Password must be at least 8 characters and contain uppercase, lowercase, and a number."
+      );
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      await authApi.resetPassword(token || "placeholder-token", password);
+      await authApi.resetPassword(token.trim(), password);
       setCompleted(true);
     } catch (err: any) {
       setError(err?.message || "Failed to reset password. Link may have expired.");

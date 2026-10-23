@@ -1,12 +1,16 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Switch, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button, Card } from "@/components";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText, Input, Button, Card, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useVanStore } from "@/features/van/van-store";
+import { fetchServices } from "@/features/van/van-api";
+import { Service } from "@/features/van/van-types";
 
 export default function VanAccessDetailsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const store = useVanStore();
 
   const [addressLine1, setAddressLine1] = useState(store.addressLine1 || "");
@@ -19,32 +23,34 @@ export default function VanAccessDetailsScreen() {
   const [gateCode, setGateCode] = useState(store.gateCode || "");
   const [accessNotes, setAccessNotes] = useState(store.accessNotes || "");
 
-  // Available mobile treatments
-  const services = [
-    {
-      id: "srv_checkup",
-      name: "Routine Dental Exam & Oral Health Check",
-      pricePence: 8500,
-      durationMinutes: 45,
-      description: "Full clinical checkup, cancer screening & intraoral photos",
-    },
-    {
-      id: "srv_emergency",
-      name: "Emergency Triage & Pain Relief",
-      pricePence: 9500,
-      durationMinutes: 45,
-      description: "Urgent assessment for toothache, broken tooth or infection",
-    },
-    {
-      id: "srv_hygiene",
-      name: "AirFlow Stain Removal & Hygiene",
-      pricePence: 11000,
-      durationMinutes: 45,
-      description: "Gentle high-pressure polishing & plaque removal",
-    },
-  ];
+  // Fetch services from API
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(store.serviceId || "");
 
-  const [selectedServiceId, setSelectedServiceId] = useState(store.serviceId || "srv_checkup");
+  useEffect(() => {
+    loadServices();
+  }, []);
+
+  const loadServices = async () => {
+    try {
+      setLoadingServices(true);
+      const vanServices = await fetchServices("van");
+      setServices(vanServices);
+      
+      // Set default service if none selected or if the stored service is not available
+      if (!selectedServiceId || !vanServices.find(s => s.id === selectedServiceId)) {
+        if (vanServices.length > 0) {
+          setSelectedServiceId(vanServices[0].id);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to load available services. Please try again.");
+      console.error("Failed to load services:", error);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
 
   const handleContinue = () => {
     if (!addressLine1.trim()) {
@@ -59,6 +65,7 @@ export default function VanAccessDetailsScreen() {
       serviceName: chosenService.name,
       servicePricePence: chosenService.pricePence,
       serviceDurationMinutes: chosenService.durationMinutes,
+      serviceDepositPence: chosenService.depositPence ?? null,
     });
 
     store.setAccessDetails({
@@ -89,7 +96,10 @@ export default function VanAccessDetailsScreen() {
 
         {/* Destination Address */}
         <Card elevation="raised" style={styles.sectionCard}>
-          <ThemedText variant="headline">📍 Destination Address</ThemedText>
+          <View style={styles.sectionTitleRow}>
+            <AppIcon name="mapPin" size={18} color={colors.ink} />
+            <ThemedText variant="headline">Destination Address</ThemedText>
+          </View>
           <Input
             label="Street Address"
             placeholder="e.g. 14 Harley Street"
@@ -123,103 +133,143 @@ export default function VanAccessDetailsScreen() {
         {/* Treatment Selection */}
         <View style={styles.section}>
           <ThemedText variant="headline">Select Clinical Treatment</ThemedText>
-          <View style={styles.optionGroup}>
-            {services.map((srv) => {
-              const isSelected = selectedServiceId === srv.id;
-              return (
-                <Card
-                  key={srv.id}
-                  padding="sm"
-                  style={[styles.serviceCard, isSelected && styles.serviceCardActive]}
-                >
-                  <View style={styles.serviceRow}>
-                    <ThemedText
-                      variant="headline"
-                      style={[styles.serviceTitle, isSelected && styles.serviceTitleActive]}
-                      onPress={() => setSelectedServiceId(srv.id)}
+          {loadingServices ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.ink} />
+              <ThemedText variant="caption" style={styles.loadingText}>
+                Loading available services...
+              </ThemedText>
+            </View>
+          ) : services.length === 0 ? (
+            <Card style={styles.errorCard}>
+              <ThemedText variant="caption" style={styles.errorText}>
+                No services available for van visits at this time.
+              </ThemedText>
+            </Card>
+          ) : (
+            <View style={styles.optionGroup}>
+              {services.map((srv) => {
+                const isSelected = selectedServiceId === srv.id;
+                return (
+                  <Pressable
+                    key={srv.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => setSelectedServiceId(srv.id)}
+                  >
+                    <Card
+                      padding="sm"
+                      style={[styles.serviceCard, isSelected && styles.serviceCardActive]}
                     >
-                      {srv.name}
-                    </ThemedText>
-                    <ThemedText variant="headline" style={styles.priceText}>
-                      £{(srv.pricePence / 100).toFixed(2)}
-                    </ThemedText>
-                  </View>
-                  <ThemedText variant="caption" style={styles.serviceDesc}>
-                    {srv.description} · {srv.durationMinutes} min visit
-                  </ThemedText>
-                </Card>
-              );
-            })}
-          </View>
+                      <View style={styles.serviceRow}>
+                        <ThemedText
+                          variant="headline"
+                          style={[styles.serviceTitle, isSelected && styles.serviceTitleActive]}
+                        >
+                          {srv.name}
+                        </ThemedText>
+                        <ThemedText variant="mono" style={styles.priceText}>
+                          £{(srv.pricePence / 100).toFixed(2)}
+                        </ThemedText>
+                      </View>
+                      <ThemedText variant="caption" style={styles.serviceDesc}>
+                        {srv.description} · {srv.durationMinutes} min visit
+                      </ThemedText>
+                    </Card>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {/* Parking Type Selector */}
         <View style={styles.section}>
           <ThemedText variant="headline">Where will the surgical van park?</ThemedText>
           <View style={styles.optionGroup}>
-            <Card
-              padding="sm"
-              style={[styles.optionCard, parkingType === "private_driveway" && styles.optionCardActive]}
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: parkingType === "private_driveway" }}
+              onPress={() => setParkingType("private_driveway")}
             >
-              <ThemedText
-                variant="body"
-                style={[styles.optionTitle, parkingType === "private_driveway" && styles.optionTitleActive]}
-                onPress={() => setParkingType("private_driveway")}
+              <Card
+                padding="sm"
+                style={[styles.optionCard, parkingType === "private_driveway" && styles.optionCardActive]}
               >
-                🏠 Private Driveway (Recommended)
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.optionSub}>
-                Sufficient space for a 7.4m vehicle off the main road.
-              </ThemedText>
-            </Card>
+                <ThemedText
+                  variant="body"
+                  style={[styles.optionTitle, parkingType === "private_driveway" && styles.optionTitleActive]}
+                >
+                  Private driveway (recommended)
+                </ThemedText>
+                <ThemedText variant="caption" style={styles.optionSub}>
+                  Sufficient space for a 7.4m vehicle off the main road.
+                </ThemedText>
+              </Card>
+            </Pressable>
 
-            <Card
-              padding="sm"
-              style={[styles.optionCard, parkingType === "permit_bay" && styles.optionCardActive]}
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: parkingType === "permit_bay" }}
+              onPress={() => setParkingType("permit_bay")}
             >
-              <ThemedText
-                variant="body"
-                style={[styles.optionTitle, parkingType === "permit_bay" && styles.optionTitleActive]}
-                onPress={() => setParkingType("permit_bay")}
+              <Card
+                padding="sm"
+                style={[styles.optionCard, parkingType === "permit_bay" && styles.optionCardActive]}
               >
-                🛣 On-Street Kerbside Permit Bay
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.optionSub}>
-                Resident permit or visitor voucher will be provided on arrival.
-              </ThemedText>
-            </Card>
+                <ThemedText
+                  variant="body"
+                  style={[styles.optionTitle, parkingType === "permit_bay" && styles.optionTitleActive]}
+                >
+                  On-street kerbside permit bay
+                </ThemedText>
+                <ThemedText variant="caption" style={styles.optionSub}>
+                  Resident permit or visitor voucher will be provided on arrival.
+                </ThemedText>
+              </Card>
+            </Pressable>
 
-            <Card
-              padding="sm"
-              style={[styles.optionCard, parkingType === "visitor" && styles.optionCardActive]}
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: parkingType === "visitor" }}
+              onPress={() => setParkingType("visitor")}
             >
-              <ThemedText
-                variant="body"
-                style={[styles.optionTitle, parkingType === "visitor" && styles.optionTitleActive]}
-                onPress={() => setParkingType("visitor")}
+              <Card
+                padding="sm"
+                style={[styles.optionCard, parkingType === "visitor" && styles.optionCardActive]}
               >
-                🏢 Corporate / Office Visitor Parking Bay
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.optionSub}>
-                Pre-authorized commercial or industrial parking area.
-              </ThemedText>
-            </Card>
+                <ThemedText
+                  variant="body"
+                  style={[styles.optionTitle, parkingType === "visitor" && styles.optionTitleActive]}
+                >
+                  Corporate / office visitor parking bay
+                </ThemedText>
+                <ThemedText variant="caption" style={styles.optionSub}>
+                  Pre-authorized commercial or industrial parking area.
+                </ThemedText>
+              </Card>
+            </Pressable>
 
-            <Card
-              padding="sm"
-              style={[styles.optionCard, parkingType === "other" && styles.optionCardActive]}
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: parkingType === "other" }}
+              onPress={() => setParkingType("other")}
             >
-              <ThemedText
-                variant="body"
-                style={[styles.optionTitle, parkingType === "other" && styles.optionTitleActive]}
-                onPress={() => setParkingType("other")}
+              <Card
+                padding="sm"
+                style={[styles.optionCard, parkingType === "other" && styles.optionCardActive]}
               >
-                🅿️ Other Safe Kerb / Loading Bay
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.optionSub}>
-                Legal stopping area with safe pedestrian and clinical access.
-              </ThemedText>
-            </Card>
+                <ThemedText
+                  variant="body"
+                  style={[styles.optionTitle, parkingType === "other" && styles.optionTitleActive]}
+                >
+                  Other safe kerb / loading bay
+                </ThemedText>
+                <ThemedText variant="caption" style={styles.optionSub}>
+                  Legal stopping area with safe pedestrian and clinical access.
+                </ThemedText>
+              </Card>
+            </Pressable>
           </View>
         </View>
 
@@ -234,7 +284,7 @@ export default function VanAccessDetailsScreen() {
           <Switch
             value={hasGatedAccess}
             onValueChange={setHasGatedAccess}
-            trackColor={{ true: colors.brand, false: colors.separator }}
+            trackColor={{ true: colors.ink, false: colors.separator }}
           />
         </View>
 
@@ -259,7 +309,7 @@ export default function VanAccessDetailsScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
           title="Review & Dispatch Van ›"
           size="lg"
@@ -280,6 +330,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  errorCard: {
+    backgroundColor: colors.secondaryBackground,
+    padding: spacing.md,
+  },
+  errorText: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+  },
   flex1: {
     flex: 1,
   },
@@ -292,6 +350,14 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xxs,
   },
+  loadingContainer: {
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.lg,
+  },
+  loadingText: {
+    color: colors.secondaryLabel,
+  },
   optionCard: {
     backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
@@ -300,8 +366,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   optionCardActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   optionGroup: {
     gap: spacing.xs,
@@ -314,11 +380,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   optionTitleActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   priceText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   row: {
@@ -332,6 +398,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
   },
+  sectionTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
   serviceCard: {
     backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
@@ -340,8 +411,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   serviceCardActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   serviceDesc: {
     color: colors.secondaryLabel,
@@ -356,7 +427,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   serviceTitleActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   sub: {

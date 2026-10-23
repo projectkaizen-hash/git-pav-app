@@ -6,7 +6,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jw
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { loginSchema, refreshSchema, registerSchema, authResponseSchema } from "../schemas/auth";
-import { emailVerificationService, passwordResetService, twoFactorService, rateLimiter } from "../lib/otp-service";
+import { emailVerificationService, passwordResetService, twoFactorService, rateLimiter, otpService } from "../lib/otp-service";
 import { communicationService } from "../lib/communication-service";
 import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
 
@@ -147,7 +147,41 @@ router.post("/login", validateBody(loginSchema), async (req: Request, res: Respo
     },
   });
 
-  const { accessToken, refreshToken } = await createSession(user.id, req);
+  if (user.mfaEnabled) {
+    if (req.body.mfaCode) {
+      const mfaValid = await otpService.verifyOTP(user.id, String(req.body.mfaCode), "mfa");
+      if (!mfaValid) {
+        return res.status(401).json({ error: "Invalid or expired MFA code" });
+      }
+    } else {
+      await otpService.createAndSendOTP({
+        userId: user.id,
+        email: user.email,
+        phone: user.phone || undefined,
+        purpose: "mfa",
+        deliveryMethod: user.phone ? "sms" : "email",
+      });
+      return res.status(200).json({
+        mfaRequired: true,
+        userId: user.id,
+        message: "MFA verification code sent",
+      });
+    }
+  }
+
+  const { accessToken, refreshToken, session } = await createSession(user.id, req);
+
+  if (user.mfaEnabled && req.body.mfaCode) {
+    const now = new Date();
+    await prisma.mfaVerification.create({
+      data: {
+        userId: user.id,
+        sessionId: session.id,
+        verifiedAt: now,
+        expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+      },
+    }).catch(() => {});
+  }
 
   const authResponse = {
     accessToken,
@@ -173,17 +207,27 @@ router.post("/refresh", validateBody(refreshSchema), async (req: Request, res: R
   }
 
   const tokenHash = hashToken(refreshToken);
-  const session = await prisma.authSession.findFirst({
-    where: {
-      id: payload.sessionId,
-      refreshTokenHash: tokenHash,
-      revokedAt: null,
-    },
+  const session = await prisma.authSession.findUnique({
+    where: { id: payload.sessionId },
     include: { user: { include: { patientProfile: true, clinicianProfile: true } } },
   });
 
-  if (!session || new Date() > session.expiresAt) {
+  if (!session || session.revokedAt || new Date() > session.expiresAt) {
     return res.status(401).json({ error: "Session expired or revoked" });
+  }
+
+  if (!session.user.isActive) {
+    res.status(401).json({ error: "Account is deactivated" });
+    return;
+  }
+
+  const validHash = session.refreshTokenHash === tokenHash;
+  if (!validHash) {
+    await prisma.authSession.update({
+      where: { id: session.id },
+      data: { revokedAt: new Date() },
+    });
+    return res.status(401).json({ error: "Invalid refresh token — session revoked" });
   }
 
   // Rotate refresh token
@@ -229,7 +273,7 @@ router.post("/logout", requireAuth, async (req: AuthRequest, res: Response) => {
   return res.json({ message: "Logged out" });
 });
 
-// ─── GET /api/auth/sessions ───────────────────────────────────────────────────
+// ─── GET /api/auth/sessions ─────────────────────────────────────────────
 router.get("/sessions", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: "Unauthorised" });
 
@@ -275,7 +319,7 @@ router.post("/verify-email/request", async (req: Request, res: Response) => {
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    return res.status(404).json({ error: "User not found" });
+    return res.json({ message: "If an account exists, a verification code has been sent." });
   }
 
   if (user.emailVerified) {
@@ -384,9 +428,15 @@ router.post("/password-reset/confirm", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Token and new password are required" });
   }
 
-  // Validate password strength
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,128}$/;
-  if (!passwordRegex.test(newPassword)) {
+  // Validate password strength (matching registerSchema rules)
+  const isStrongPassword =
+    typeof newPassword === "string" &&
+    newPassword.length >= 8 &&
+    newPassword.length <= 128 &&
+    /[A-Z]/.test(newPassword) &&
+    /[a-z]/.test(newPassword) &&
+    /[0-9]/.test(newPassword);
+  if (!isStrongPassword) {
     return res.status(400).json({ 
       error: "Password must be 8-128 characters with at least one uppercase, one lowercase, and one number" 
     });
@@ -610,5 +660,9 @@ function toAuthUser(
     profileId,
   };
 }
+
+// Shared with sub-routers (auth-account, auth-otp) so session creation and
+// the auth-user shape stay identical across every login path.
+export { createSession, toAuthUser };
 
 export default router;

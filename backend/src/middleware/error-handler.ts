@@ -47,6 +47,21 @@ function redactSensitiveData(obj: any): any {
   return redacted;
 }
 
+/**
+ * Error carrying an intended HTTP status. Thrown by helpers (e.g. missing
+ * operator profile) so express-async-errors routes it here and the client
+ * gets a meaningful status instead of a blanket 500.
+ */
+export class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 export function errorHandler(
   err: Error,
   req: Request,
@@ -66,14 +81,17 @@ export function errorHandler(
     query: redactSensitiveData(req.query),
   });
 
-  // Return safe error response
+  // HttpErrors carry our own user-facing message; anything else is treated as
+  // an internal failure and only exposes its message outside production.
+  const isHttpError = err instanceof HttpError;
+  const status = isHttpError ? err.status : 500;
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  res.status(500).json({
-    error: isDevelopment ? err.message : 'Internal server error',
+
+  res.status(status).json({
+    error: isHttpError ? err.message : isDevelopment ? err.message : 'Internal server error',
     requestId,
     timestamp,
-    ...(isDevelopment && { stack: err.stack }),
+    ...(isDevelopment && !isHttpError && { stack: err.stack }),
   });
 }
 

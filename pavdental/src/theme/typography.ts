@@ -57,5 +57,14 @@ export const type = {
     lineHeight: 22,
     color: colors.label,
   },
+  // Uppercase section eyebrows — SectionHeader, form group labels
+  overline: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    lineHeight: 16,
+    color: colors.secondaryLabel,
+  },
 } as const satisfies Record<string, TextStyle>;
 

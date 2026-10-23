@@ -6,7 +6,7 @@ import { ThemedText } from "../themed-text";
 import { Input } from "../input";
 import { Button } from "../button";
 import { Badge } from "../badge";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 import {
   personalInfoSchema,
@@ -265,8 +265,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   fieldLabel: {
-    color: colors.label,
-    fontSize: 13,
     fontWeight: "600",
   },
   genderContainer: {
@@ -281,15 +279,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   genderPillActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   genderPillText: {
     color: colors.secondaryLabel,
     fontWeight: "500",
   },
   genderPillTextActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   genderPills: {
@@ -310,10 +308,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
     marginBottom: spacing.xs,
   },
 });

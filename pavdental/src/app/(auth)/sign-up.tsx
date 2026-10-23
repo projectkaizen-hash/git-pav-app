@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   footerLink: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   footerRow: {

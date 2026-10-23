@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ThemedText, Card, ListRow, Button, Badge } from "@/components";
+import { ThemedText, Card, ListRow, Button, Badge, AppIcon } from "@/components";
 import { ToggleSwitch } from "@/components/settings/ToggleSwitch";
 import { PasswordChangeForm, PasswordChangeFormData } from "@/components/forms/PasswordChangeForm";
 import { useBiometrics } from "@/features/security/biometric-hooks";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { useChangePasswordMutation, useResendVerificationMutation } from "@/features/account/account-hooks";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -107,15 +107,15 @@ export default function SecurityScreen() {
             title="Change Account Password"
             subtitle="Update your master security password"
             left={<ThemedText>🔑</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
+            right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
             onPress={() => setPasswordModalVisible(true)}
             separator
           />
           <ListRow
             title="Active Logged-in Sessions"
             subtitle="View devices and sign out other sessions"
-            left={<ThemedText>📱</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
+            left={<AppIcon name="smartphone" size={18} color={colors.ink} />}
+            right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
             onPress={() => router.push("/(patient)/(tabs)/profile/sessions" as any)}
           />
         </Card>
@@ -161,7 +161,7 @@ export default function SecurityScreen() {
             title="Consent & Data Usage"
             subtitle="Signed GDPR records & retention disclosures"
             left={<ThemedText>📄</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
+            right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
             onPress={() => router.push("/(patient)/(tabs)/profile/consent" as any)}
             separator
           />
@@ -227,10 +227,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   verifyCard: {
     backgroundColor: colors.secondaryBackground,

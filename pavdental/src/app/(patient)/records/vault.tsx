@@ -1,25 +1,27 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking } from "react-native";
-import { ThemedText, Card } from "@/components";
+import { View, StyleSheet, ScrollView, Pressable, Linking } from "react-native";
+import { ThemedText, Card, EmptyState, ErrorState, Skeleton, AppIcon, type AppIconName } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useDocumentVault } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 
 export default function DocumentVaultScreen() {
   const user = useCurrentUser();
-  const userId = user?.id || "00000000-0000-0000-0000-000000000000";
-  const { data: documents, isLoading, isError, refetch } = useDocumentVault(userId);
+  const userId = user?.id || "";
+  const { data: apiDocs, isLoading, isError, refetch } = useDocumentVault(userId);
 
-  const getDocIcon = (type: string) => {
+  const documents = apiDocs ?? [];
+
+  const getDocIcon = (type: string): AppIconName => {
     switch (type) {
       case "xray":
-        return "🩻";
+        return "image";
       case "prescription":
-        return "💊";
+        return "droplet";
       case "invoice":
-        return "🧾";
+        return "fileText";
       default:
-        return "📄";
+        return "fileText";
     }
   };
 
@@ -37,44 +39,36 @@ export default function DocumentVaultScreen() {
             Document Vault
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            Digital health documents, X-rays, and invoices. Production security implementation required.
+            Digital health documents, X-rays, and invoices encrypted at rest.
           </ThemedText>
         </View>
 
         {/* Security Badge Banner */}
         <View style={styles.securityBanner}>
+          <AppIcon name="lock" size={14} color={colors.secondaryLabel} />
           <ThemedText variant="caption" style={styles.securityText}>
-            🔒 Downloads use time-limited signed URLs. Independent security review required for production.
+            All downloads are streamed securely via encrypted, time-limited signed access.
           </ThemedText>
         </View>
 
         {/* Document Cards */}
-        {isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.brand} />
-            <ThemedText variant="caption" style={styles.sub}>
-              Loading your clinical documents...
-            </ThemedText>
+        {isLoading && !apiDocs ? (
+          <View style={styles.docList}>
+            <Skeleton height={76} borderRadius={16} />
+            <Skeleton height={76} borderRadius={16} />
+            <Skeleton height={76} borderRadius={16} />
           </View>
         ) : isError ? (
-          <Card style={styles.emptyCard}>
-            <ThemedText variant="headline" style={{ color: colors.danger }}>
-              Could not load documents
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.sub}>
-              Please check your network connection.
-            </ThemedText>
-            <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-              <ThemedText variant="caption" style={styles.retryText}>Retry</ThemedText>
-            </Pressable>
-          </Card>
-        ) : !documents || documents.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <ThemedText variant="headline">No Documents Yet</ThemedText>
-            <ThemedText variant="caption" style={styles.sub}>
-              Your X-rays, prescriptions, and invoices will appear here after your appointments.
-            </ThemedText>
-          </Card>
+          <ErrorState
+            message="Could not load your documents. Please try again."
+            onRetry={() => refetch()}
+          />
+        ) : documents.length === 0 ? (
+          <EmptyState
+            heading="No documents yet"
+            body="Your X-rays, prescriptions, and invoices will appear here after your appointments."
+            icon="fileText"
+          />
         ) : (
           <View style={styles.docList}>
             {documents.map((doc: any) => {
@@ -93,7 +87,7 @@ export default function DocumentVaultScreen() {
                 <Card key={doc.id} elevation="raised" style={styles.docCard}>
                   <View style={styles.docRow}>
                     <View style={styles.iconCircle}>
-                      <ThemedText variant="title">{getDocIcon(doc.docType || doc.type || "")}</ThemedText>
+                      <AppIcon name={getDocIcon(doc.docType || doc.type || "")} size={18} color={colors.ink} />
                     </View>
 
                     <View style={styles.docInfo}>
@@ -106,12 +100,12 @@ export default function DocumentVaultScreen() {
                     </View>
 
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Download ${doc.title}`}
                       onPress={() => handleDownload(doc.downloadUrl || doc.signedUrl || "")}
                       style={({ pressed }) => [styles.downloadBtn, pressed && styles.downloadBtnPressed]}
                     >
-                      <ThemedText variant="caption" style={styles.downloadText}>
-                        Download ↓
-                      </ThemedText>
+                      <AppIcon name="download" size={18} color={colors.ink} />
                     </Pressable>
                   </View>
                 </Card>
@@ -157,17 +151,15 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   downloadBtn: {
-    backgroundColor: colors.brandSubtle,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 22,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   downloadBtnPressed: {
     opacity: 0.7,
-  },
-  downloadText: {
-    color: colors.brand,
-    fontWeight: "700",
   },
   emptyCard: {
     alignItems: "center",
@@ -191,20 +183,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.xl,
   },
-  retryBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: 8,
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  retryText: {
-    color: colors.onBrand,
-    fontWeight: "700",
-  },
   securityBanner: {
+    alignItems: "center",
     backgroundColor: colors.secondaryBackground,
     borderRadius: 8,
+    flexDirection: "row",
+    gap: spacing.xs,
     padding: spacing.sm,
   },
   securityText: {

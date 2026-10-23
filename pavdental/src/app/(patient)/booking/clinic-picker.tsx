@@ -1,7 +1,7 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card } from "@/components";
+import { ThemedText, Card, AppIcon, EmptyState, ErrorState, Skeleton, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useClinics } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
@@ -10,7 +10,9 @@ import { ClinicLocation } from "@/features/booking/booking-types";
 export default function ClinicPickerScreen() {
   const router = useRouter();
   const { setClinic, service } = useBookingStore();
-  const { data: clinics, isLoading, isError } = useClinics();
+  const { data: apiClinics, isLoading, isError, refetch } = useClinics();
+
+  const clinics: ClinicLocation[] = (apiClinics ?? []) as ClinicLocation[];
 
   const handleSelectClinic = (clinic: ClinicLocation) => {
     setClinic(clinic);
@@ -20,6 +22,7 @@ export default function ClinicPickerScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
+        <ProgressPills total={5} current={2} />
         <ThemedText variant="headline">
           {service ? `Where would you like your ${service.name}?` : "Select a Clinic"}
         </ThemedText>
@@ -29,17 +32,21 @@ export default function ClinicPickerScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={colors.brand} />
-          <ThemedText variant="caption">Loading practice locations...</ThemedText>
+        <View style={styles.clinicList}>
+          <Skeleton height={88} borderRadius={16} />
+          <Skeleton height={88} borderRadius={16} />
         </View>
-      ) : isError || !clinics || clinics.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <ThemedText variant="headline">No Clinic Locations Available</ThemedText>
-          <ThemedText variant="caption" style={styles.sub}>
-            Unable to fetch clinic locations.
-          </ThemedText>
-        </Card>
+      ) : isError ? (
+        <ErrorState
+          message="Could not load clinics. Please try again."
+          onRetry={() => refetch()}
+        />
+      ) : clinics.length === 0 ? (
+        <EmptyState
+          heading="No clinics available"
+          body="Practice locations will appear here once configured."
+          icon="mapPin"
+        />
       ) : (
         <View style={styles.clinicList}>
           {clinics.map((clinic) => (
@@ -50,7 +57,7 @@ export default function ClinicPickerScreen() {
             >
               <Card elevation="raised" style={styles.card}>
                 <View style={styles.iconBox}>
-                  <ThemedText variant="title">🏥</ThemedText>
+                  <AppIcon name="plus" size={22} color={colors.ink} />
                 </View>
                 <View style={styles.info}>
                   <ThemedText variant="headline" style={styles.name}>
@@ -59,13 +66,14 @@ export default function ClinicPickerScreen() {
                   <ThemedText variant="subhead" style={styles.address}>
                     {clinic.address}, {clinic.postcode}
                   </ThemedText>
-                  <ThemedText variant="caption" style={styles.hours}>
-                    🕒 {clinic.operatingHours}
-                  </ThemedText>
+                  <View style={styles.hoursRow}>
+                    <AppIcon name="clock" size={13} color={colors.secondaryLabel} />
+                    <ThemedText variant="caption" style={styles.hours}>
+                      {clinic.operatingHours}
+                    </ThemedText>
+                  </View>
                 </View>
-                <ThemedText variant="headline" style={styles.arrow}>
-                  ›
-                </ThemedText>
+                <AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />
               </Card>
             </Pressable>
           ))}
@@ -108,9 +116,15 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xxs,
   },
+  hoursRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 2,
+  },
   hours: {
     color: colors.secondaryLabel,
-    marginTop: 2,
+    flex: 1,
   },
   iconBox: {
     alignItems: "center",

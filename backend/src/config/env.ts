@@ -56,6 +56,7 @@ function validateProductionSecrets(values: {
   jwtAccessSecret?: string;
   jwtRefreshSecret?: string;
   auditIpHmacSecret?: string;
+  encryptionKey?: string;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
   stripePublishableKey?: string;
@@ -69,6 +70,7 @@ function validateProductionSecrets(values: {
     ["JWT_ACCESS_SECRET", values.jwtAccessSecret],
     ["JWT_REFRESH_SECRET", values.jwtRefreshSecret],
     ["AUDIT_IP_HMAC_SECRET", values.auditIpHmacSecret],
+    ["ENCRYPTION_KEY", values.encryptionKey],
     ["STRIPE_SECRET_KEY", values.stripeSecretKey],
     ["STRIPE_WEBHOOK_SECRET", values.stripeWebhookSecret],
     ["STRIPE_PUBLISHABLE_KEY", values.stripePublishableKey],
@@ -86,8 +88,15 @@ function validateProductionSecrets(values: {
     ["JWT_ACCESS_SECRET", values.jwtAccessSecret],
     ["JWT_REFRESH_SECRET", values.jwtRefreshSecret],
     ["AUDIT_IP_HMAC_SECRET", values.auditIpHmacSecret],
+    ["ENCRYPTION_KEY", values.encryptionKey],
   ] as const) {
-    if (!secret || secret.length < 32 || secret.includes("change_me") || secret.startsWith("dev_")) {
+    if (
+      !secret ||
+      secret.length < 32 ||
+      secret.includes("change_me") ||
+      secret.includes("default-key") ||
+      secret.startsWith("dev_")
+    ) {
       const envName = isProduction ? "production" : "staging";
       throw new Error(`${name} must be a unique ${envName} secret of at least 32 characters`);
     }
@@ -142,6 +151,8 @@ const values = {
   jwtAccessSecret: readOptional("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: readOptional("JWT_REFRESH_SECRET"),
   auditIpHmacSecret: readOptional("AUDIT_IP_HMAC_SECRET"),
+  encryptionKey: readOptional("ENCRYPTION_KEY"),
+  kmsKeyId: readOptional("KMS_KEY_ID"),
   stripeSecretKey: readOptional("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: readOptional("STRIPE_WEBHOOK_SECRET"),
   stripePublishableKey: readOptional("STRIPE_PUBLISHABLE_KEY"),
@@ -165,6 +176,8 @@ export const env = Object.freeze({
   jwtAccessSecret: values.jwtAccessSecret ?? "dev_access_secret_change_me",
   jwtRefreshSecret: values.jwtRefreshSecret ?? "dev_refresh_secret_change_me",
   auditIpHmacSecret: values.auditIpHmacSecret ?? "dev_audit_hmac_secret_change_me",
+  encryptionKey: values.encryptionKey ?? "dev_clinical_envelope_kek_32_bytes_minimum_key",
+  kmsKeyId: values.kmsKeyId ?? "arn:aws:kms:eu-west-2:000000000000:key/pavdental-clinical-cmk",
   stripeSecretKey: values.stripeSecretKey ?? "sk_test_mock_stripe_key_pav_dental",
   stripeWebhookSecret: values.stripeWebhookSecret,
   stripePublishableKey: values.stripePublishableKey ?? "pk_test_placeholder",

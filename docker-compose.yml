@@ -34,7 +34,28 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build: ./backend
+    container_name: pavdental_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      DATABASE_URL: postgresql://pavdental:pavdental_secure_dev_password@postgres:5432/pavdental_db?schema=public
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGINS: http://localhost:8081,http://localhost:19006,exp://localhost:8081
+      # STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / DAILY_API_KEY etc. come
+      # from backend/.env (mounted below) — do not hardcode secrets here.
+    env_file:
+      - ./backend/.env
+    ports:
+      - "3000:3000"
+
 volumes:
   pgdata:
   redisdata:
-

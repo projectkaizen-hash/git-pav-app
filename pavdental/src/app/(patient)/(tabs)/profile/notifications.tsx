@@ -1,14 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import * as Haptics from "expo-haptics";
-import { ThemedText } from "@/components";
+import { ThemedText, AppIcon } from "@/components";
 import { ToggleSwitch } from "@/components/settings/ToggleSwitch";
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
   useNotificationPermissions,
 } from "@/features/notifications/notification-hooks";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 export default function NotificationsScreen() {
   const { data: prefs } = useNotificationPreferences();
@@ -22,6 +22,22 @@ export default function NotificationsScreen() {
   const [appointmentReminders, setAppointmentReminders] = useState(prefs?.appointmentReminders ?? true);
   const [appointmentConfirmations, setAppointmentConfirmations] = useState(prefs?.appointmentConfirmations ?? true);
   const [marketingUpdates, setMarketingUpdates] = useState(prefs?.marketingUpdates ?? false);
+
+  useEffect(() => {
+    if (!prefs) return;
+    if (typeof prefs.pushEnabled === "boolean") setPushEnabled(prefs.pushEnabled);
+    if (typeof prefs.emailEnabled === "boolean") setEmailEnabled(prefs.emailEnabled);
+    if (typeof prefs.smsEnabled === "boolean") setSmsEnabled(prefs.smsEnabled);
+    if (typeof prefs.appointmentReminders === "boolean") {
+      setAppointmentReminders(prefs.appointmentReminders);
+    }
+    if (typeof prefs.appointmentConfirmations === "boolean") {
+      setAppointmentConfirmations(prefs.appointmentConfirmations);
+    }
+    if (typeof prefs.marketingUpdates === "boolean") {
+      setMarketingUpdates(prefs.marketingUpdates);
+    }
+  }, [prefs]);
 
   const handleTogglePush = async (value: boolean) => {
     if (value && !permissions.granted) {
@@ -127,7 +143,7 @@ export default function NotificationsScreen() {
             setAppointmentConfirmations(val);
             savePreference({ appointmentConfirmations: val });
           }}
-          icon={<ThemedText>🦷</ThemedText>}
+          icon={<AppIcon name="activity" size={18} color={colors.ink} />}
         />
       </View>
 
@@ -166,10 +182,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
 });
 

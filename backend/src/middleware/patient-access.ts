@@ -12,16 +12,18 @@ export async function requirePatientRecordAccess(
   req: AuthRequest,
   res: Response
 ): Promise<PatientProfile | null> {
-  const requestedUserId = String(req.params.id);
+  const requestedId = String(req.params.id);
   const actor = req.user!;
 
-  const profile = await prisma.patientProfile.findUnique({ where: { userId: requestedUserId } });
+  const profile =
+    (await prisma.patientProfile.findUnique({ where: { userId: requestedId } })) ??
+    (await prisma.patientProfile.findUnique({ where: { id: requestedId } }));
   if (!profile) {
     res.status(404).json({ error: "Patient not found" });
     return null;
   }
 
-  if (actor.role === "patient" && actor.sub === requestedUserId) return profile;
+  if (actor.role === "patient" && (actor.sub === profile.userId || actor.sub === requestedId)) return profile;
 
   if (actor.role !== "clinician") {
     res.status(403).json({ error: "Clinical record access is not permitted for this role" });
@@ -71,7 +73,13 @@ export async function requireActiveAppointmentContext(
     return null;
   }
 
-  const profile = await prisma.patientProfile.findUnique({ where: { userId: requestedUserId } });
+  const profile =
+    typeof prisma.patientProfile.findFirst === "function"
+      ? await prisma.patientProfile.findFirst({
+          where: { OR: [{ userId: requestedUserId }, { id: requestedUserId }] },
+        })
+      : (await prisma.patientProfile.findUnique({ where: { userId: requestedUserId } })) ??
+        (await prisma.patientProfile.findUnique({ where: { id: requestedUserId } }));
   if (!profile) {
     res.status(404).json({ error: "Patient not found" });
     return null;

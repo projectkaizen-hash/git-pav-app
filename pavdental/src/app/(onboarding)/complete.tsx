@@ -2,28 +2,18 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Button } from "@/components";
+import { ThemedText, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useAuthStore } from "@/features/auth/auth-store";
 
 export default function OnboardingCompleteScreen() {
   const router = useRouter();
-  const { setAuth, user: existingUser, accessToken } = useAuthStore();
+  const { user: existingUser, accessToken } = useAuthStore();
 
   const handleEnterApp = () => {
     if (!existingUser || !accessToken) {
-      setAuth(accessToken || "local-patient-session", {
-        id: existingUser?.id || "patient_registered",
-        sub: existingUser?.id || "patient_registered",
-        email: existingUser?.email || "patient@pavdental.co.uk",
-        firstName: existingUser?.firstName || "Patient",
-        lastName: existingUser?.lastName || "Member",
-        role: "patient",
-        emailVerified: true,
-        phoneVerified: true,
-        mfaEnabled: false,
-        isMfaEnabled: false,
-      });
+      router.replace("/(auth)/sign-in");
+      return;
     }
     router.replace("/(patient)/(tabs)/home");
   };
@@ -33,9 +23,7 @@ export default function OnboardingCompleteScreen() {
       <View style={styles.container}>
         <View style={styles.centerBox}>
           <View style={styles.celebrationCircle}>
-            <ThemedText variant="largeTitle" style={styles.checkEmoji}>
-              🎉
-            </ThemedText>
+            <AppIcon name="checkCircle" size={40} color={colors.success} />
           </View>
 
           <ThemedText variant="largeTitle" style={styles.title}>
@@ -65,7 +53,7 @@ const styles = StyleSheet.create({
   },
   celebrationCircle: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 48,
     height: 96,
     justifyContent: "center",
@@ -77,9 +65,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
-  },
-  checkEmoji: {
-    fontSize: 44,
   },
   container: {
     flex: 1,

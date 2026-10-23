@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { ThemedText } from "../themed-text";
 import { Badge } from "../badge";
+import { AppIcon } from "../app-icon";
 import { colors, spacing } from "@/theme";
 
 export interface SessionData {
@@ -39,12 +40,18 @@ export function SessionItem({ session, onRevoke, isRevoking = false }: SessionIt
     <View style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.deviceInfo}>
-          <ThemedText style={styles.deviceIcon}>
-            {session.deviceInfo?.toLowerCase().includes("iphone") ||
-            session.deviceInfo?.toLowerCase().includes("android")
-              ? "📱"
-              : "💻"}
-          </ThemedText>
+          <View style={styles.deviceIconWrap}>
+            <AppIcon
+              name={
+                session.deviceInfo?.toLowerCase().includes("iphone") ||
+                session.deviceInfo?.toLowerCase().includes("android")
+                  ? "smartphone"
+                  : "grid"
+              }
+              size={20}
+              color={colors.ink}
+            />
+          </View>
           <View style={styles.titleGroup}>
             <View style={styles.titleRow}>
               <ThemedText variant="headline" style={styles.deviceTitle}>
@@ -98,8 +105,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
   },
-  deviceIcon: {
-    fontSize: 24,
+  deviceIconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
   },
   deviceInfo: {
     alignItems: "center",
@@ -115,12 +127,9 @@ const styles = StyleSheet.create({
   },
   metaHash: {
     color: colors.label,
-    fontFamily: "Courier",
-    fontSize: 11,
+    fontVariant: ["tabular-nums"],
   },
   metaLabel: {
-    color: colors.secondaryLabel,
-    fontSize: 11,
   },
   metaRow: {
     alignItems: "center",

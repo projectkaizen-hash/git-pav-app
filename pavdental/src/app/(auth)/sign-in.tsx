@@ -63,9 +63,10 @@ export default function SignInScreen() {
             </View>
           ) : null}
 
-          {/* Quick Demo Role Fillers */}
+          {/* Quick Demo Role Fillers — development only */}
+          {__DEV__ ? (
           <View style={styles.demoRow}>
-            <ThemedText variant="caption" style={styles.demoLabel}>Demo 1-Tap Fill:</ThemedText>
+            <ThemedText variant="caption" style={styles.demoLabel}>Demo 1-tap fill:</ThemedText>
             <View style={styles.demoPills}>
               {[
                 { label: "Patient", email: "patient@pavdental.com" },
@@ -86,6 +87,7 @@ export default function SignInScreen() {
               ))}
             </View>
           </View>
+          ) : null}
 
           <View style={styles.form}>
             <Input
@@ -114,6 +116,8 @@ export default function SignInScreen() {
             />
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Forgot your password?"
               onPress={() => router.push("/(auth)/forgot")}
               style={styles.forgotPassPressable}
             >
@@ -142,7 +146,11 @@ export default function SignInScreen() {
               <ThemedText variant="subhead" style={styles.footerLabel}>
                 Don't have an account?{" "}
               </ThemedText>
-              <Pressable onPress={() => router.push("/(auth)/sign-up")}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Register for an account"
+                onPress={() => router.push("/(auth)/sign-up")}
+              >
                 <ThemedText variant="subhead" style={styles.footerLink}>
                   Register
                 </ThemedText>
@@ -169,14 +177,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   demoPill: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
   demoPillText: {
-    color: colors.brand,
-    fontSize: 12,
     fontWeight: "700",
   },
   demoPills: {
@@ -203,7 +209,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   footerLink: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   footerRow: {
@@ -217,7 +223,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   forgotText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   form: {

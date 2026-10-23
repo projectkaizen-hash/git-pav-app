@@ -1,0 +1,128 @@
+import React from "react";
+import { View, StyleSheet, ScrollView } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ThemedText, Card, Button, AppIcon } from "@/components";
+import { colors, spacing } from "@/theme";
+import { useMyAppointments } from "@/features/hooks/use-dental-api";
+
+// ─── Cancelled confirmation (Mobbin Zocdoc "Cancelled Details") ───────────────
+// Confirms what happened, when the refund lands, and offers one-tap rebook.
+
+export default function CancelledAppointmentScreen() {
+  const router = useRouter();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { data: appointments } = useMyAppointments();
+
+  const booking = (appointments as any[] | undefined)?.find((b) => b.id === appointmentId);
+  const serviceName = booking?.service?.name || "Your appointment";
+  const depositPence = booking?.service?.depositPence;
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.hero}>
+          <View style={styles.markTile}>
+            <AppIcon name="close" size={28} color={colors.danger} />
+          </View>
+          <ThemedText variant="largeTitle" style={styles.title}>
+            Appointment cancelled
+          </ThemedText>
+          <ThemedText variant="subhead" style={styles.subtitle}>
+            {serviceName} has been cancelled and the slot released.
+          </ThemedText>
+        </View>
+
+        {depositPence ? (
+          <Card elevation="raised" style={styles.refundCard}>
+            <View style={styles.refundRow}>
+              <AppIcon name="creditCard" size={16} color={colors.ink} />
+              <ThemedText variant="subhead" style={styles.refundTitle}>
+                Refund on its way
+              </ThemedText>
+            </View>
+            <ThemedText variant="caption" style={styles.muted}>
+              Your £{(depositPence / 100).toFixed(2)} deposit will be refunded by your bank
+              within 5 working days — no action needed.
+            </ThemedText>
+          </Card>
+        ) : null}
+
+        <View style={styles.nextSection}>
+          <ThemedText variant="overline">What next?</ThemedText>
+          <Button
+            title="Book this again"
+            size="lg"
+            onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
+          />
+          <Button
+            title="Find another time"
+            variant="secondary"
+            size="lg"
+            onPress={() => router.push("/(patient)/booking/clinic-picker" as never)}
+          />
+          <Button
+            title="Back to my bookings"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.replace("/(patient)/(tabs)/appointments" as never)}
+          />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+  },
+  content: {
+    gap: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  hero: {
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.lg,
+  },
+  markTile: {
+    alignItems: "center",
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: 28,
+    height: 64,
+    justifyContent: "center",
+    marginBottom: spacing.xxs,
+    width: 64,
+  },
+  muted: {
+    color: colors.secondaryLabel,
+    lineHeight: 18,
+  },
+  nextSection: {
+    gap: spacing.xs,
+  },
+  refundCard: {
+    backgroundColor: colors.secondaryBackground,
+    gap: spacing.xxs,
+    padding: spacing.md,
+  },
+  refundRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  refundTitle: {
+    color: colors.label,
+    fontWeight: "700",
+  },
+  subtitle: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+  },
+  title: {
+    color: colors.label,
+    textAlign: "center",
+  },
+});

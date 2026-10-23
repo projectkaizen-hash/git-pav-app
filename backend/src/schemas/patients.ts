@@ -43,3 +43,20 @@ export const createTreatmentPlanSchema = z.object({
     costPence: z.number().int().min(0).max(1000000),
   })).min(1).max(50),
 }).strict();
+
+export const planActionParamsSchema = z.object({
+  id: uuid,
+  planId: uuid,
+}).strict();
+
+export const signTreatmentPlanSchema = z.object({
+  signerName: z.string().trim().min(1).max(150).refine(
+    (val) => !/<script|javascript:|onerror|onload/i.test(val),
+    "Signature contains forbidden executable markup"
+  ),
+  signatureData: z.string().trim().max(50000).refine(
+    (val) => !/<script|javascript:|onerror|onload/i.test(val),
+    "Signature data contains forbidden executable markup"
+  ).optional(),
+  consentConfirmed: z.literal(true),
+}).strict();

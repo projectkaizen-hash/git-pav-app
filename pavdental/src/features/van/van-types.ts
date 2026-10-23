@@ -1,5 +1,19 @@
 // Mobile van dispatch types
 
+export type Service = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  durationMinutes: number;
+  pricePence: number;
+  depositPence: number;
+  supportedChannels: string[];
+  prepInstructions: string[];
+  requiresPriorConsult: boolean;
+  isActive: boolean;
+};
+
 export type VanShiftStatus = "offline" | "online" | "paused";
 
 export type VanRequestStatus =
@@ -18,7 +32,8 @@ export type VanStopPhase =
   | "on_site"
   | "in_treatment"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "no_show";
 
 export type VanAccessDetails = {
   addressLine1: string;
@@ -70,9 +85,12 @@ export type VanServiceRequest = {
   etaSeconds?: number | null;
   etaLabel?: string | null;
   notes?: string | null;
+  /** Whether the patient has authorized the manual-capture deposit hold */
+  depositAuthorized?: boolean;
   service?: {
     name: string;
     durationMinutes: number;
+    pricePence?: number;
   };
   patient?: {
     firstName: string;
@@ -98,5 +116,26 @@ export type VanAvailability = {
   vanId: string | null;
   shiftId: string | null;
   message: string;
+};
+
+/** Response from POST /api/van/requests — includes deposit payment details */
+export type CreateVanRequestResponse = VanServiceRequest & {
+  /** Present when the patient must authorize the deposit via PaymentSheet */
+  clientSecret?: string | null;
+  paymentIntentId?: string | null;
+  depositAmount?: number;
+  paymentRequired?: boolean;
+  /** True when the backend is running in mock-Stripe mode (skip the sheet) */
+  isMockPayment?: boolean;
+};
+
+/** Response from POST /api/van/requests/:id/payment-retry */
+export type DepositRetryResponse = {
+  /** Null when the deposit is already authorized — nothing to present */
+  clientSecret: string | null;
+  paymentIntentId: string;
+  depositAmount: number;
+  alreadyAuthorized: boolean;
+  isMockPayment: boolean;
 };
 

@@ -1,5 +1,22 @@
 import app from "../server";
 import http from "http";
+import { prisma } from "../lib/prisma";
+import {
+  emailVerificationService,
+  passwordResetService,
+  twoFactorService,
+  otpService,
+  rateLimiter,
+} from "../lib/otp-service";
+import {
+  createAuditLogWithIntegrity,
+  verifyAuditIntegrity,
+  isCriticalAuditEvent,
+} from "../lib/audit-integrity";
+import {
+  requirePatientRecordAccess,
+  requireActiveAppointmentContext,
+} from "../middleware/patient-access";
 
 describe("Auth API Integration Tests", () => {
   let server: http.Server;
@@ -289,6 +306,162 @@ describe("Auth API Integration Tests", () => {
 
       const data: any = await response.json();
       expect(data.user.role).toBe("patient");
+    });
+  });
+
+  describe("Security & Core Services (OTP, Audit Integrity, Patient Access)", () => {
+    it("should generate and verify email verification, password reset, and 2FA tokens via otp-service", async () => {
+      const emailTok = emailVerificationService.generateVerificationToken();
+      expect(emailTok.token).toHaveLength(32);
+      expect(emailVerificationService.verifyToken(emailTok.token, emailTok.hashedToken, emailTok.expiresAt)).toBe(true);
+      expect(emailVerificationService.verifyToken("wrong", emailTok.hashedToken, emailTok.expiresAt)).toBe(false);
+
+      const resetTok = passwordResetService.generateResetToken();
+      expect(passwordResetService.verifyToken(resetTok.token, resetTok.hashedToken, resetTok.expiresAt)).toBe(true);
+
+      const otp = twoFactorService.generateOTP();
+      expect(otp.code).toMatch(/^\d{6}$/);
+      expect(twoFactorService.verifyOTP(otp.code, otp.hashedCode, otp.expiresAt)).toBe(true);
+
+      const dbOtp = await otpService.createAndSendOTP({
+        userId,
+        email: testUser.email,
+        purpose: "mfa",
+        deliveryMethod: "email",
+      });
+      expect(dbOtp.code).toMatch(/^\d{6}$/);
+      expect(await otpService.verifyOTP(userId, "000000", "mfa")).toBe(false);
+      expect(await otpService.verifyOTP(userId, dbOtp.code, "mfa")).toBe(true);
+      // Single-use: second verification of same code must fail
+      expect(await otpService.verifyOTP(userId, dbOtp.code, "mfa")).toBe(false);
+
+      const rlKey = `test-rl-${Date.now()}`;
+      expect(await rateLimiter.isRateLimited(rlKey, 2, 60)).toBe(false);
+      expect(await rateLimiter.isRateLimited(rlKey, 2, 60)).toBe(false);
+      expect(await rateLimiter.isRateLimited(rlKey, 2, 60)).toBe(true);
+      await rateLimiter.reset(rlKey);
+    });
+
+    it("should enforce MFA challenge on login when user.mfaEnabled is true", async () => {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { mfaEnabled: true },
+      });
+
+      try {
+        // 1. Login without mfaCode returns mfaRequired: true
+        const challengeRes = await fetch(`${baseUrl}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: testUser.email,
+            password: testUser.password,
+          }),
+        });
+        expect(challengeRes.status).toBe(200);
+        const challengeData: any = await challengeRes.json();
+        expect(challengeData.mfaRequired).toBe(true);
+        expect(challengeData.userId).toBe(userId);
+
+        // 2. Login with invalid mfaCode returns 401
+        const badMfaRes = await fetch(`${baseUrl}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: testUser.email,
+            password: testUser.password,
+            mfaCode: "000000",
+          }),
+        });
+        expect(badMfaRes.status).toBe(401);
+
+        // 3. Issue a known OTP and complete MFA login
+        const issued = await otpService.createAndSendOTP({
+          userId,
+          email: testUser.email,
+          purpose: "mfa",
+          deliveryMethod: "email",
+        });
+        const goodMfaRes = await fetch(`${baseUrl}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: testUser.email,
+            password: testUser.password,
+            mfaCode: issued.code,
+          }),
+        });
+        expect(goodMfaRes.status).toBe(200);
+        const goodMfaData: any = await goodMfaRes.json();
+        expect(goodMfaData).toHaveProperty("accessToken");
+      } finally {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { mfaEnabled: false },
+        });
+      }
+    });
+
+    it("should maintain a valid cryptographic hash chain via audit-integrity", async () => {
+      const entry = await createAuditLogWithIntegrity({
+        action: "AUTH_INTEGRATION_TEST_EVENT",
+        actorId: userId,
+        resourceId: userId,
+        sessionId: null,
+        ipHash: "test_ip_hash",
+        metadata: { test: true },
+      });
+      expect(entry.integrityHash).toBeTruthy();
+      expect(isCriticalAuditEvent("UNAUTHORIZED_ACCESS_ATTEMPT")).toBe(true);
+      expect(isCriticalAuditEvent("AUTH_INTEGRATION_TEST_EVENT")).toBe(false);
+
+      const integrity = await verifyAuditIntegrity(1000);
+      expect(integrity.valid).toBe(true);
+      expect(integrity.verified).toBe(true);
+    });
+
+    it("should enforce BOLA/RBAC in requirePatientRecordAccess and requireActiveAppointmentContext", async () => {
+      const profile = await prisma.patientProfile.findUnique({ where: { userId } });
+      expect(profile).not.toBeNull();
+
+      const makeMockRes = () => {
+        const res: any = { statusCode: 200, body: null };
+        res.status = (code: number) => {
+          res.statusCode = code;
+          return res;
+        };
+        res.json = (payload: any) => {
+          res.body = payload;
+          return res;
+        };
+        return res;
+      };
+
+      // Own patient access succeeds by both userId and profile.id
+      const ownRes = makeMockRes();
+      const ownResult = await requirePatientRecordAccess(
+        { params: { id: profile!.id }, user: { sub: userId, role: "patient", sessionId: "s1" } } as any,
+        ownRes
+      );
+      expect(ownResult?.id).toBe(profile!.id);
+
+      // Different patient access is rejected with 403
+      const otherRes = makeMockRes();
+      const otherResult = await requirePatientRecordAccess(
+        { params: { id: profile!.id }, user: { sub: "00000000-0000-0000-0000-000000000099", role: "patient", sessionId: "s2" } } as any,
+        otherRes
+      );
+      expect(otherResult).toBeNull();
+      expect(otherRes.statusCode).toBe(403);
+
+      // Non-clinician cannot modify clinical records in requireActiveAppointmentContext
+      const activeRes = makeMockRes();
+      const activeResult = await requireActiveAppointmentContext(
+        { params: { id: profile!.id }, user: { sub: userId, role: "patient", sessionId: "s1" } } as any,
+        activeRes
+      );
+      expect(activeResult).toBeNull();
+      expect(activeRes.statusCode).toBe(403);
     });
   });
 });

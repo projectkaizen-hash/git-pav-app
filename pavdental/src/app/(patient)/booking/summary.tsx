@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, Pressable, Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStripe } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Button } from "@/components";
+import { ThemedText, Card, Button, AppIcon, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent } from "@/features/booking/booking-api";
 
 export default function BookingSummaryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { service, clinic, clinician, slot, holdExpiresAt, resetDraft } = useBookingStore();
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
@@ -78,13 +80,16 @@ export default function BookingSummaryScreen() {
         // Appearance tweaks to match app theme
         appearance: {
           colors: {
-            primary: colors.brand as string,
+            primary: colors.ink as string,
             background: colors.systemBackground as string,
             componentBackground: colors.secondaryBackground as string,
             componentText: colors.label as string,
             placeholderText: colors.secondaryLabel as string,
           },
         },
+        // Surface Apple Pay / Google Pay inside the native sheet
+        applePay: { merchantCountryCode: "GB" },
+        googlePay: { merchantCountryCode: "GB", currencyCode: "GBP", testEnv: true },
       });
 
       if (initError) {
@@ -117,10 +122,13 @@ export default function BookingSummaryScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        <ProgressPills total={5} current={5} />
+
         {/* Soft Hold Countdown Banner */}
         <View style={styles.timerBanner}>
+          <AppIcon name="clock" size={14} color={colors.warning} />
           <ThemedText variant="caption" style={styles.timerText}>
-            ⏳ Slot reserved for {formatTimer(secondsRemaining)}. Complete payment to secure.
+            Slot reserved for {formatTimer(secondsRemaining)}. Complete payment to secure.
           </ThemedText>
         </View>
 
@@ -167,6 +175,22 @@ export default function BookingSummaryScreen() {
           </View>
         </Card>
 
+        {/* Insurance & eligibility (optional, Mobbin Zocdoc pattern) */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add or verify insurance"
+          onPress={() => router.push("/(patient)/booking/insurance" as never)}
+          style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+        >
+          <Card elevation="flat" style={styles.insuranceRow}>
+            <AppIcon name="shield" size={16} color={colors.ink} />
+            <ThemedText variant="caption" style={styles.insuranceText}>
+              Insurance & eligibility — scan a policy to auto-claim
+            </ThemedText>
+            <AppIcon name="chevronRight" size={14} color={colors.tertiaryLabel} />
+          </Card>
+        </Pressable>
+
         {/* Payment & Deposit Summary */}
         <Card elevation="raised" style={styles.card}>
           <ThemedText variant="headline" style={styles.sectionTitle}>
@@ -207,11 +231,32 @@ export default function BookingSummaryScreen() {
         </View>
       </ScrollView>
 
-      {/* Stripe Payment CTA */}
-      <View style={styles.footerBar}>
+      {/* Wallet-first payment CTAs (Apple/Google Pay primary) */}
+      <View style={[styles.footerBar, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            Platform.OS === "android" ? "Pay deposit with Google Pay" : "Pay deposit with Apple Pay"
+          }
+          disabled={secondsRemaining === 0 || isProcessing}
+          onPress={handlePayDeposit}
+          style={({ pressed }) => [
+            styles.walletButton,
+            (secondsRemaining === 0 || isProcessing) && styles.walletButtonDisabled,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <ThemedText variant="headline" style={styles.walletText}>
+            {isProcessing ? "Processing…" : Platform.OS === "android" ? "Google Pay" : "Apple Pay"}
+          </ThemedText>
+          <ThemedText variant="headline" style={styles.walletText}>
+            {formatGbp(service?.depositPence || 2000)}
+          </ThemedText>
+        </Pressable>
         <Button
-          title={secondsRemaining === 0 ? "Slot Expired - Select New Time" : (isProcessing ? "Processing Stripe..." : `Pay ${formatGbp(service?.depositPence || 2000)} Deposit`)}
+          title={secondsRemaining === 0 ? "Slot Expired - Select New Time" : `Pay by card instead`}
           size="lg"
+          variant="secondary"
           loading={isProcessing}
           disabled={secondsRemaining === 0}
           onPress={secondsRemaining === 0 ? () => {
@@ -244,12 +289,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   dateHighlight: {
-    color: colors.brand,
+    color: colors.ink,
   },
   depositAmount: {
-    color: colors.brand,
-    fontSize: 18,
-    fontWeight: "700",
+    color: colors.ink,
   },
   depositLabel: {
     color: colors.label,
@@ -258,7 +301,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.systemBackground,
     borderTopColor: colors.separator,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.xs,
     padding: spacing.md,
+  },
+  insuranceRow: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  insuranceText: {
+    color: colors.label,
+    flex: 1,
+    fontWeight: "600",
   },
   label: {
     color: colors.secondaryLabel,
@@ -295,11 +351,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.warningSubtle,
     borderRadius: 8,
+    flexDirection: "row",
+    gap: spacing.xs,
     padding: spacing.sm,
   },
   timerText: {
     color: colors.warning,
-    fontWeight: "700",
+    flex: 1,
+    fontWeight: "600",
+  },
+  walletButton: {
+    alignItems: "center",
+    backgroundColor: colors.alwaysBlack,
+    borderRadius: 999,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+  },
+  walletButtonDisabled: {
+    opacity: 0.4,
+  },
+  walletText: {
+    color: colors.alwaysWhite,
   },
   value: {
     color: colors.label,

@@ -8,6 +8,38 @@ export interface Point {
   lng: number;
 }
 
+/**
+ * Convert UK postcode to coordinates using postcodes.io API
+ * Real geocoding service for accurate UK postcode coordinates
+ *
+ * Hard 3s timeout: this is called in the create-request hot path, and a slow
+ * upstream must not stall dispatch (on timeout/HTTP error the postcode
+ * consistency check is skipped rather than blocking the request).
+ */
+const POSTCODE_GEOCODE_TIMEOUT_MS = 3_000;
+
+export async function postcodeToCoordinates(postcode: string): Promise<Point | null> {
+  try {
+    const response = await fetch(
+      `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`,
+      { signal: AbortSignal.timeout(POSTCODE_GEOCODE_TIMEOUT_MS) }
+    );
+    const data = await response.json() as { status: number; result?: { latitude: number; longitude: number } };
+    
+    if (data.status === 200 && data.result) {
+      return {
+        lat: data.result.latitude,
+        lng: data.result.longitude
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Postcode geocoding error:', error);
+    return null;
+  }
+}
+
 export interface Polygon {
   type: "Polygon";
   coordinates: number[][][]; // GeoJSON format: [[[lng, lat], ...]]
@@ -41,6 +73,23 @@ export function pointInPolygon(point: Point, polygon: Polygon): boolean {
  */
 export function calculateDistance(point1: Point, point2: Point): number {
   const R = 6371; // Earth's radius in km
+  const dLat = toRad(point2.lat - point1.lat);
+  const dLng = toRad(point2.lng - point1.lng);
+  
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(point1.lat)) * Math.cos(toRad(point2.lat)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Calculate distance between two points using Haversine formula
+ * Returns distance in meters
+ */
+export function haversineMetres(point1: Point, point2: Point): number {
+  const R = 6_371_000; // Earth's radius in meters
   const dLat = toRad(point2.lat - point1.lat);
   const dLng = toRad(point2.lng - point1.lng);
   

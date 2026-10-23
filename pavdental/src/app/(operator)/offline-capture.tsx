@@ -1,10 +1,50 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { ThemedText, Input, Button, Card, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { authFetch } from "@/features/auth/auth-api";
+
+export const OFFLINE_VAN_NOTES_QUEUE_KEY = "pav_offline_van_notes_queue";
+
+interface QueuedVanNote {
+  stopId: string;
+  notes: string;
+  queuedAt: string;
+}
+
+async function readOfflineNotesQueue(): Promise<QueuedVanNote[]> {
+  try {
+    const raw =
+      Platform.OS === "web"
+        ? typeof window !== "undefined"
+          ? window.localStorage.getItem(OFFLINE_VAN_NOTES_QUEUE_KEY)
+          : null
+        : await SecureStore.getItemAsync(OFFLINE_VAN_NOTES_QUEUE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeOfflineNotesQueue(queue: QueuedVanNote[]): Promise<void> {
+  try {
+    const serialized = JSON.stringify(queue);
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OFFLINE_VAN_NOTES_QUEUE_KEY, serialized);
+      }
+    } else {
+      await SecureStore.setItemAsync(OFFLINE_VAN_NOTES_QUEUE_KEY, serialized);
+    }
+  } catch {
+    // Ignore storage write error
+  }
+}
 
 export default function OfflineCaptureScreen() {
   const router = useRouter();
@@ -23,6 +63,35 @@ export default function OfflineCaptureScreen() {
   const [clinicalNotes, setClinicalNotes] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
+  const [queuedCount, setQueuedCount] = useState(0);
+
+  const flushOfflineQueue = useCallback(async () => {
+    const queue = await readOfflineNotesQueue();
+    if (queue.length === 0) {
+      setQueuedCount(0);
+      return;
+    }
+    const remaining: QueuedVanNote[] = [];
+    for (const item of queue) {
+      try {
+        const res = await authFetch(`/api/van/requests/${item.stopId}/phase`, {
+          method: "POST",
+          body: JSON.stringify({ phase: "completed", notes: item.notes }),
+        });
+        if (!res.ok) {
+          remaining.push(item);
+        }
+      } catch {
+        remaining.push(item);
+      }
+    }
+    await writeOfflineNotesQueue(remaining);
+    setQueuedCount(remaining.length);
+  }, []);
+
+  useEffect(() => {
+    flushOfflineQueue();
+  }, [flushOfflineQueue]);
 
   const handleSaveAndSync = async () => {
     if (!clinicalNotes.trim()) {
@@ -37,28 +106,35 @@ export default function OfflineCaptureScreen() {
 
     setIsSyncing(true);
     try {
-      // Try live dispatch phase API first, fall back to legacy appointment complete
       const phaseRes = await authFetch(`/api/van/requests/${params.stopId}/phase`, {
         method: "POST",
         body: JSON.stringify({ phase: "completed", notes: clinicalNotes }),
       });
 
       if (!phaseRes.ok) {
-        // Fall back to legacy /api/van/stops/:id/complete
-        await authFetch(`/api/van/stops/${params.stopId}/complete`, {
-          method: "POST",
-          body: JSON.stringify({ notes: clinicalNotes }),
-        });
+        const err = await phaseRes.json().catch(() => ({}));
+        throw new Error((err as any).message || (err as any).error || "Could not complete the visit");
       }
 
+      await flushOfflineQueue();
       setIsSavedOffline(true);
-      setTimeout(() => {
-        router.replace("/(operator)/route" as any);
-      }, 1500);
-    } catch (error) {
+      router.replace("/(operator)/route" as any);
+    } catch {
+      const existing = await readOfflineNotesQueue();
+      const updated: QueuedVanNote[] = [
+        ...existing.filter((item) => item.stopId !== params.stopId),
+        {
+          stopId: params.stopId,
+          notes: clinicalNotes.trim(),
+          queuedAt: new Date().toISOString(),
+        },
+      ];
+      await writeOfflineNotesQueue(updated);
+      setQueuedCount(updated.length);
+      setIsSavedOffline(true);
       Alert.alert(
-        "Sync Failed",
-        "Unable to save notes to server. The data has been saved locally and will sync when connection is restored.",
+        "Saved to Offline Queue",
+        "Unable to reach the server right now. Your clinical notes have been encrypted and queued locally (`pav_offline_van_notes_queue`) and will sync automatically when connectivity returns.",
         [{ text: "OK", onPress: () => router.replace("/(operator)/route" as any) }]
       );
     } finally {
@@ -74,10 +150,15 @@ export default function OfflineCaptureScreen() {
           <View style={styles.syncLeft}>
             <View style={styles.onlineDot} />
             <ThemedText variant="caption" style={styles.syncText}>
-              Auto-sync enabled · Notes encrypted locally
+              {queuedCount > 0
+                ? `${queuedCount} note(s) queued offline · Will auto-sync`
+                : "Auto-sync enabled · Notes encrypted locally"}
             </ThemedText>
           </View>
-          <Badge label="Cloud Connected" variant="success" />
+          <Badge
+            label={queuedCount > 0 ? `${queuedCount} Queued` : "Cloud Connected"}
+            variant={queuedCount > 0 ? "warning" : "success"}
+          />
         </View>
 
         <View style={styles.header}>
@@ -213,9 +294,7 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   totalDue: {
-    color: colors.brand,
-    fontSize: 16,
-    fontWeight: "700",
+    color: colors.ink,
   },
 });
 

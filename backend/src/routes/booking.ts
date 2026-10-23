@@ -1,4 +1,6 @@
 import { Router, Response } from "express";
+import Stripe from "stripe";
+import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { redis } from "../lib/redis";
 import { requireAuth, AuthRequest } from "../middleware/auth";
@@ -48,29 +50,40 @@ router.get("/slots", requireAuth, validateQuery(slotsQuerySchema), async (req: A
   const duration = service?.durationMinutes || 30;
 
   // Generate slots from 09:00–17:00 UTC in `duration`-minute increments
-  const slots = [];
+  const rawSlots: Array<{
+    lockKey: string;
+    slotStart: Date;
+    slotEnd: Date;
+    isBooked: boolean;
+  }> = [];
   const base = new Date(`${date}T09:00:00Z`);
+  const dayLimit = new Date(`${date}T17:00:00Z`).getTime();
 
-  for (let i = 0; base.getTime() + i * duration * 60000 < new Date(`${date}T17:00:00Z`).getTime(); i++) {
+  for (let i = 0; base.getTime() + i * duration * 60000 < dayLimit; i++) {
     const slotStart = new Date(base.getTime() + i * duration * 60000);
     const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
     const isBooked = existing.some(
-      (a) => a.startTimeUtc.getTime() === slotStart.getTime()
+      (a) => a.startTimeUtc < slotEnd && a.endTimeUtc > slotStart
     );
 
-    // Check Redis hold
     const lockKey = `slot:${date}:${clinicianId || "any"}:${slotStart.toISOString()}`;
-    const held = await redis.exists(lockKey).catch(() => 0);
-
-    slots.push({
-      id: lockKey,
-      startTimeUtc: slotStart.toISOString(),
-      endTimeUtc: slotEnd.toISOString(),
-      available: !isBooked && held === 0,
-      durationMinutes: duration,
-    });
+    rawSlots.push({ lockKey, slotStart, slotEnd, isBooked });
   }
+
+  const lockKeys = rawSlots.map((s) => s.lockKey);
+  const lockValues =
+    lockKeys.length > 0
+      ? await redis.mget(...lockKeys).catch(() => lockKeys.map(() => null))
+      : [];
+
+  const slots = rawSlots.map((s, idx) => ({
+    id: s.lockKey,
+    startTimeUtc: s.slotStart.toISOString(),
+    endTimeUtc: s.slotEnd.toISOString(),
+    available: !s.isBooked && lockValues[idx] === null,
+    durationMinutes: duration,
+  }));
 
   return res.json(slots);
 });
@@ -79,36 +92,31 @@ router.get("/slots", requireAuth, validateQuery(slotsQuerySchema), async (req: A
 router.post("/hold-slot", requireAuth, validateBody(holdSlotSchema), async (req: AuthRequest, res: Response) => {
   const { slotId } = req.body;
   const patientId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("hold-slot", { slotId, patientId });
+  const lockKey = slotLockKey(slotId);
 
-  return withIdempotency(idempotencyKey, async () => {
-    const lockKey = slotLockKey(slotId);
+  // SET NX EX — only set if not already held
+  const acquired = await redis
+    .set(lockKey, patientId, "EX", SLOT_HOLD_SECONDS, "NX")
+    .catch(() => null);
 
-    // SET NX EX — only set if not already held
-    const result = await redis
-      .set(lockKey, patientId, "EX", SLOT_HOLD_SECONDS, "NX")
-      .catch(() => null);
-
-    if (!result) {
-      return {
+  if (!acquired) {
+    const currentHolder = await redis.get(lockKey).catch(() => null);
+    if (currentHolder !== patientId) {
+      return res.status(409).json({
         success: false,
         slotId,
         error: "Slot already held by another patient",
-      };
+        message: "Slot is already held by another patient",
+      });
     }
+  }
 
-    return {
-      success: true,
-      slotId,
-      holdExpiresAt: Date.now() + SLOT_HOLD_SECONDS * 1000,
-      holdDurationSeconds: SLOT_HOLD_SECONDS,
-      message: "Slot held for 10 minutes. Complete deposit to confirm.",
-    };
-  }).then(result => {
-    if (!result.success) {
-      return res.status(409).json(result);
-    }
-    return res.json(result);
+  return res.json({
+    success: true,
+    slotId,
+    holdExpiresAt: Date.now() + SLOT_HOLD_SECONDS * 1000,
+    holdDurationSeconds: SLOT_HOLD_SECONDS,
+    message: "Slot held for 10 minutes. Complete deposit to confirm.",
   });
 });
 
@@ -157,6 +165,40 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       }
     }
 
+    const startDate = new Date(startTimeUtc);
+    const endDate = new Date(endTimeUtc);
+
+    if (slotId) {
+      const lockHolder = await redis.get(slotLockKey(slotId)).catch(() => null);
+      if (lockHolder && lockHolder !== patientId) {
+        return {
+          error: "Slot is currently held by another patient",
+          status: 409,
+        };
+      }
+    }
+
+    if (clinicianId) {
+      const overlapping = await prisma.appointment.findFirst({
+        where: {
+          clinicianId,
+          startTimeUtc: { lt: endDate },
+          endTimeUtc: { gt: startDate },
+          OR: [
+            { status: { in: ["confirmed", "in_progress"] } },
+            { status: "draft_hold", holdExpiresAt: { gt: new Date() } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (overlapping) {
+        return {
+          error: "Appointment slot is already booked for this clinician",
+          status: 409,
+        };
+      }
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         patientId: profile.id,
@@ -165,8 +207,8 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
         channel,
         clinicId: clinicId || null,
         vanId: vanId || null,
-        startTimeUtc: new Date(startTimeUtc),
-        endTimeUtc: new Date(endTimeUtc),
+        startTimeUtc: startDate,
+        endTimeUtc: endDate,
         status: "draft_hold",
         holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         accessDetails: accessDetails || null,
@@ -187,9 +229,10 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     }
 
     return { appointment, status: 201 };
-  }).then(result => {
+  }).then((result: any) => {
     if (result.error) {
-      return res.status(result.status).json({ error: result.error });
+      const { status, ...errorBody } = result;
+      return res.status(status || 400).json(errorBody);
     }
     return res.status(result.status).json(result.appointment);
   });
@@ -197,6 +240,51 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
 
 // ─── GET /api/booking/appointments ───────────────────────────────────────────
 router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response) => {
+  // Clinicians get their own schedule (today forward, ascending); everyone
+  // else gets their patient appointments. The mobile clinician schedule
+  // screen consumes this via the same endpoint and response shape.
+  if (req.user!.role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { id: true },
+    });
+    if (!clinician) return res.status(404).json({ error: "Clinician profile not found" });
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const schedule = await prisma.appointment.findMany({
+      where: {
+        clinicianId: clinician.id,
+        startTimeUtc: { gte: startOfToday },
+        status: { notIn: ["cancelled", "no_show"] },
+      },
+      include: {
+        service: { select: { name: true, durationMinutes: true } },
+        clinician: { select: { fullName: true, photoUrl: true } },
+        clinic: { select: { name: true, address: true } },
+        patient: { select: { id: true, firstName: true, lastName: true, dob: true } },
+      },
+      orderBy: { startTimeUtc: "asc" },
+    });
+
+    return res.json(
+      schedule.map((a) => ({
+        ...a,
+        patient: a.patient
+          ? {
+              id: a.patient.id,
+              firstName: a.patient.firstName,
+              lastName: a.patient.lastName,
+              age: a.patient.dob
+                ? Math.floor((Date.now() - new Date(a.patient.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
+                : null,
+            }
+          : null,
+      }))
+    );
+  }
+
   const profile = await prisma.patientProfile.findUnique({
     where: { userId: req.user!.sub },
     select: { id: true },
@@ -257,6 +345,29 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
       return { error: "Cannot confirm appointment in current status", status: 400 };
     }
 
+    const effectivePaymentId = stripePaymentId || appointment.stripePaymentId;
+    if (
+      !env.stripeSecretKey.startsWith("sk_test_mock") &&
+      effectivePaymentId &&
+      !effectivePaymentId.startsWith("pi_mock_") &&
+      !effectivePaymentId.startsWith("pi_e2e_")
+    ) {
+      try {
+        const stripe = new Stripe(env.stripeSecretKey, {
+          apiVersion: "2025-02-24.acacia" as never,
+        });
+        const intent = await stripe.paymentIntents.retrieve(effectivePaymentId);
+        if (!["succeeded", "requires_capture"].includes(intent.status)) {
+          return {
+            error: `PaymentIntent has not succeeded (status: ${intent.status})`,
+            status: 400,
+          };
+        }
+      } catch {
+        return { error: "Failed to verify Stripe PaymentIntent", status: 400 };
+      }
+    }
+
     const confirmed = await prisma.appointment.update({
       where: { id: apptId },
       data: {
@@ -276,10 +387,11 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
     };
   }).then((result: any) => {
     if (result.error) {
-      return res.status(result.httpStatus).json({ error: result.error });
+      return res.status(result.httpStatus || result.status || 400).json({ error: result.error });
     }
-    const { httpStatus, ...responseData } = result;
-    return res.status(httpStatus).json(responseData);
+    const statusCode = result.httpStatus || result.status || 200;
+    const { httpStatus, status, ...responseData } = result;
+    return res.status(statusCode).json(responseData);
   });
 });
 
@@ -298,6 +410,43 @@ router.patch("/appointments/:id/cancel", requireAuth, validateParams(appointment
   });
 
   return res.json({ message: "Appointment cancelled" });
+});
+
+// ─── POST /api/booking/appointments/:id/check-in ─────────────────────────────
+router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const apptId = String(req.params.id);
+  const { completedTasks } = (req.body ?? {}) as { completedTasks?: string[] };
+
+  const profile = await prisma.patientProfile.findUnique({
+    where: { userId: req.user!.sub },
+    select: { id: true },
+  });
+  if (!profile) return res.status(404).json({ error: "Patient not found" });
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: apptId, patientId: profile.id },
+  });
+  if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+  const checkedInAt = new Date().toISOString();
+  const updated = await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: {
+      accessDetails: {
+        ...((appointment.accessDetails as Record<string, unknown>) || {}),
+        checkedIn: true,
+        checkedInAt,
+        completedTasks: completedTasks || ["form", "consent", "insurance", "balance"],
+      },
+    },
+  });
+
+  return res.json({
+    id: updated.id,
+    checkedIn: true,
+    checkedInAt,
+    status: updated.status,
+  });
 });
 
 export default router;

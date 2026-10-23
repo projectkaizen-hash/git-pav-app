@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { authFetch } from "@/features/auth/auth-api";
@@ -24,7 +24,8 @@ export default function ClinicianConsultRoomScreen() {
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
     : "Dr. Tariq Pav";
 
-  const [activeTab, setActiveTab] = useState<"video" | "triage">("video");
+  const [activeTab, setActiveTab] = useState<"video" | "triage" | "chart">("video");
+  const [selectedTooth, setSelectedTooth] = useState<number>(31);
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [roomName, setRoomName] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -84,7 +85,7 @@ export default function ClinicianConsultRoomScreen() {
             <ThemedText variant="headline" style={styles.patientName}>
               {patientName}
             </ThemedText>
-            <Badge label={`⏱ ${formatTime(seconds)}`} variant="success" />
+            <Badge label={`${formatTime(seconds)}`} variant="success" />
           </View>
           <Pressable
             onPress={() => router.replace("/(clinician)/schedule")}
@@ -106,7 +107,7 @@ export default function ClinicianConsultRoomScreen() {
               variant="caption"
               style={[styles.tabText, activeTab === "video" && styles.tabTextActive]}
             >
-              🎥 Live WebRTC Call
+              📹 Video Call
             </ThemedText>
           </Pressable>
           <Pressable
@@ -117,7 +118,18 @@ export default function ClinicianConsultRoomScreen() {
               variant="caption"
               style={[styles.tabText, activeTab === "triage" && styles.tabTextActive]}
             >
-              📋 Patient Triage Notes
+              📋 Triage & Photos
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab("chart")}
+            style={[styles.tabItem, activeTab === "chart" && styles.tabItemActive]}
+          >
+            <ThemedText
+              variant="caption"
+              style={[styles.tabText, activeTab === "chart" && styles.tabTextActive]}
+            >
+              🦷 Tooth Chart
             </ThemedText>
           </Pressable>
         </View>
@@ -126,9 +138,11 @@ export default function ClinicianConsultRoomScreen() {
         {activeTab === "video" ? (
           <View style={styles.videoArea}>
             <View style={styles.streamBox}>
-              <ThemedText variant="largeTitle" style={styles.streamEmoji}>
-                {isCameraOff ? "🙈" : "🤳"}
-              </ThemedText>
+              <AppIcon
+                name={isCameraOff ? "micOff" : "video"}
+                size={44}
+                color={colors.tertiaryLabel}
+              />
               <ThemedText variant="headline" style={styles.streamText}>
                 {patientName}
               </ThemedText>
@@ -156,7 +170,7 @@ export default function ClinicianConsultRoomScreen() {
             {/* Self Picture-in-Picture */}
             <View style={styles.smallSelfPip}>
               <ThemedText variant="caption" style={styles.pipLabel}>
-                {clinicianName} {isMuted ? "🔇" : "🎙"}
+                {clinicianName}
               </ThemedText>
             </View>
 
@@ -166,7 +180,7 @@ export default function ClinicianConsultRoomScreen() {
                 onPress={() => setIsMuted(!isMuted)}
                 style={[styles.controlBtn, isMuted && styles.controlBtnActive]}
               >
-                <ThemedText variant="headline">{isMuted ? "🔇" : "🎙"}</ThemedText>
+                <AppIcon name={isMuted ? "micOff" : "mic"} size={18} color={colors.label} />
                 <ThemedText variant="caption" style={styles.controlText}>
                   {isMuted ? "Unmute" : "Mute"}
                 </ThemedText>
@@ -176,24 +190,24 @@ export default function ClinicianConsultRoomScreen() {
                 onPress={() => setIsCameraOff(!isCameraOff)}
                 style={[styles.controlBtn, isCameraOff && styles.controlBtnActive]}
               >
-                <ThemedText variant="headline">{isCameraOff ? "🚫" : "📹"}</ThemedText>
+                <AppIcon name="video" size={18} color={colors.label} />
                 <ThemedText variant="caption" style={styles.controlText}>
                   {isCameraOff ? "Start Video" : "Stop Video"}
                 </ThemedText>
               </Pressable>
 
               <Pressable
-                onPress={() => setActiveTab("triage")}
+                onPress={() => setActiveTab("chart")}
                 style={styles.controlBtn}
               >
-                <ThemedText variant="headline">📝</ThemedText>
+                <ThemedText variant="headline">🦷</ThemedText>
                 <ThemedText variant="caption" style={styles.controlText}>
-                  Triage
+                  Chart
                 </ThemedText>
               </Pressable>
             </View>
           </View>
-        ) : (
+        ) : activeTab === "triage" ? (
           <ScrollView contentContainerStyle={styles.triageScroll}>
             <Card elevation="raised" style={styles.triageCard}>
               <ThemedText variant="headline">Patient Reported Symptoms</ThemedText>
@@ -221,6 +235,108 @@ export default function ClinicianConsultRoomScreen() {
                 <View style={styles.photoThumb}>
                   <ThemedText variant="caption">Lower Arch</ThemedText>
                 </View>
+              </View>
+            </Card>
+          </ScrollView>
+        ) : (
+          <ScrollView contentContainerStyle={styles.triageScroll}>
+            <Card elevation="raised" style={styles.triageCard}>
+              <View style={styles.odontogramHeader}>
+                <ThemedText variant="headline">Interactive Odontogram (32 Teeth)</ThemedText>
+                <Badge label="Active Charting" variant="info" />
+              </View>
+              <ThemedText variant="caption" style={styles.chartSub}>
+                Tap any tooth to review condition or record clinical findings during consult.
+              </ThemedText>
+
+              {/* Upper Arch */}
+              <ThemedText variant="caption" style={styles.archLabel}>
+                Upper Arch (Maxillary #1–#16)
+              </ThemedText>
+              <View style={styles.archRow}>
+                {Array.from({ length: 16 }, (_, i) => i + 1).map((num) => {
+                  const isSelected = selectedTooth === num;
+                  return (
+                    <Pressable
+                      key={num}
+                      onPress={() => setSelectedTooth(num)}
+                      style={[
+                        styles.toothCapsule,
+                        isSelected && styles.toothCapsuleSelected,
+                      ]}
+                    >
+                      <ThemedText
+                        variant="caption"
+                        style={[
+                          styles.toothNumText,
+                          isSelected && styles.toothNumTextSelected,
+                        ]}
+                      >
+                        {num}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Lower Arch */}
+              <ThemedText variant="caption" style={styles.archLabel}>
+                Lower Arch (Mandibular #17–#32)
+              </ThemedText>
+              <View style={styles.archRow}>
+                {Array.from({ length: 16 }, (_, i) => i + 17).map((num) => {
+                  const isSelected = selectedTooth === num;
+                  const isDecay = num === 31;
+                  return (
+                    <Pressable
+                      key={num}
+                      onPress={() => setSelectedTooth(num)}
+                      style={[
+                        styles.toothCapsule,
+                        isDecay && styles.toothCapsuleDecay,
+                        isSelected && styles.toothCapsuleSelected,
+                      ]}
+                    >
+                      <ThemedText
+                        variant="caption"
+                        style={[
+                          styles.toothNumText,
+                          isDecay && styles.toothNumTextDecay,
+                          isSelected && styles.toothNumTextSelected,
+                        ]}
+                      >
+                        {num}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Card>
+
+            {/* Selected Tooth Detail */}
+            <Card elevation="raised" style={styles.triageCard}>
+              <View style={styles.odontogramHeader}>
+                <ThemedText variant="headline">
+                  Tooth #{selectedTooth} {selectedTooth === 31 ? "(LR7 / 47) · Decay" : "· Sound"}
+                </ThemedText>
+                {selectedTooth === 31 ? (
+                  <Badge label="Early Risk (15-25%)" variant="warning" />
+                ) : (
+                  <Badge label="Healthy" variant="success" />
+                )}
+              </View>
+              <ThemedText variant="body" style={styles.triageText}>
+                {selectedTooth === 31
+                  ? "Distal-occlusal demineralisation with active dentinal sensitivity. Requires composite restoration and fluoride varnish application."
+                  : "No abnormal mobility, gingival pocketing < 3mm, sound margins."}
+              </ThemedText>
+              <View style={styles.actionPillRow}>
+                <Button
+                  title="Prescribe Antibiotic (EPS)"
+                  size="sm"
+                  variant="secondary"
+                  onPress={handleEndAndPrescribe}
+                />
               </View>
             </Card>
           </ScrollView>
@@ -264,7 +380,6 @@ const styles = StyleSheet.create({
   },
   controlText: {
     color: colors.label,
-    fontSize: 11,
   },
   controls: {
     backgroundColor: colors.systemBackground,
@@ -292,14 +407,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   openWebRtcBtn: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 8,
     marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   openWebRtcText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   patientBadge: {
@@ -325,8 +440,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   photoThumbFocus: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   pipLabel: {
     color: colors.label,
@@ -334,7 +449,6 @@ const styles = StyleSheet.create({
   },
   roomTag: {
     color: colors.secondaryLabel,
-    fontSize: 11,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -360,9 +474,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
   },
-  streamEmoji: {
-    fontSize: 54,
-  },
   streamText: {
     color: colors.label,
   },
@@ -373,7 +484,7 @@ const styles = StyleSheet.create({
   },
   tabItemActive: {
     backgroundColor: colors.systemBackground,
-    borderBottomColor: colors.brand,
+    borderBottomColor: colors.ink,
     borderBottomWidth: 2,
   },
   tabRow: {
@@ -387,7 +498,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   tabTextActive: {
-    color: colors.brand,
+    color: colors.ink,
   },
   topBar: {
     alignItems: "center",
@@ -417,5 +528,59 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: spacing.md,
+  },
+  actionPillRow: {
+    flexDirection: "row",
+    marginTop: spacing.xs,
+  },
+  archLabel: {
+    color: colors.secondaryLabel,
+    fontWeight: "600",
+    marginTop: spacing.xs,
+  },
+  archRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  chartSub: {
+    color: colors.secondaryLabel,
+  },
+  odontogramHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  toothCapsule: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    minWidth: 20,
+    paddingHorizontal: 2,
+  },
+  toothCapsuleDecay: {
+    backgroundColor: colors.warningSubtle,
+    borderColor: colors.warning,
+  },
+  toothCapsuleSelected: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  toothNumText: {
+    color: colors.label,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  toothNumTextDecay: {
+    color: colors.warning,
+  },
+  toothNumTextSelected: {
+    color: colors.alwaysWhite,
   },
 });

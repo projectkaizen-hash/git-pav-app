@@ -8,7 +8,11 @@ dist/
 web-build/
 *.log
 
-
+# Uploads & test artifacts
+uploads/
+backend/uploads/
+**/testsprite_tests/tmp/
+.freebuff/
 
 # Database & Docker data
 pgdata/
@@ -18,7 +22,14 @@ redisdata/
 .DS_Store
 Thumbs.db
 
-# Server environment secrets
+# Environment secrets
+.env*
+!.env.example
 /backend/.env
 /backend/.env.*
 !/backend/.env.example
+
+# Mobile app environment secrets (publishable keys only, but never tracked)
+/pavdental/.env.development
+/pavdental/.env.production
+!/pavdental/.env.example

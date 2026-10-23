@@ -62,7 +62,7 @@ export function Avatar({ name, uri, size = "md" }: AvatarProps) {
           width: dim,
           height: dim,
           borderRadius: dim / 2,
-          backgroundColor: colors.brandSubtle,
+          backgroundColor: colors.inkSubtle,
         },
       ]}
       accessibilityLabel={name}
@@ -70,7 +70,7 @@ export function Avatar({ name, uri, size = "md" }: AvatarProps) {
     >
       <ThemedText
         variant="body"
-        style={{ fontSize: initialsFontSize[size], color: colors.brand, fontWeight: "600" }}
+        style={{ fontSize: initialsFontSize[size], color: colors.ink, fontWeight: "600" }}
         accessibilityElementsHidden
       >
         {initials}

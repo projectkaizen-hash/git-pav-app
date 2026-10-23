@@ -2,8 +2,24 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Button } from "@/components";
+import { ThemedText, Button, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
+import { authFetch } from "@/features/auth/auth-api";
+import { useAuthStore } from "@/features/auth/auth-store";
+import {
+  useOnboardingStore,
+  OnboardingMedicalHistory,
+} from "@/features/onboarding/onboarding-store";
+
+/** Free-text gender → backend enum; unmappable values → "other" */
+function mapGender(value: string): string | undefined {
+  const v = value.trim().toLowerCase();
+  if (!v) return undefined;
+  if (["male", "m"].includes(v)) return "male";
+  if (["female", "f"].includes(v)) return "female";
+  if (v.includes("prefer") || v.includes("not say")) return "prefer_not_to_say";
+  return "other";
+}
 
 export default function OnboardingConsentsScreen() {
   const router = useRouter();
@@ -11,23 +27,87 @@ export default function OnboardingConsentsScreen() {
   const [treatmentConsent, setTreatmentConsent] = useState(false);
   const [directMarketing, setDirectMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const setConsents = useOnboardingStore((s) => s.setConsents);
+  const draft = useOnboardingStore();
+  const { user } = useAuthStore();
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!dataProcessing || !treatmentConsent) {
       setError("Please accept the mandatory health data & clinical treatment consents to continue.");
       return;
     }
+    if (!user?.profileId) {
+      setError("Session error — please sign in again.");
+      return;
+    }
 
-    router.push("/(onboarding)/complete");
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      setConsents({ dataProcessing, treatmentConsent, directMarketing });
+
+      const history: OnboardingMedicalHistory = draft.medicalHistory;
+
+      // 1. Profile + medical history → patients API (server-authoritative)
+      const profileRes = await authFetch(`/api/patients/${user.profileId}/profile`, {
+        method: "PUT",
+        body: JSON.stringify({
+          dob: draft.dob || undefined,
+          gender: mapGender(draft.gender),
+          addressLine1: draft.addressLine1 || undefined,
+          addressLine2: draft.addressLine2 || undefined,
+          city: draft.city || undefined,
+          postcode: draft.postcode || undefined,
+          emergencyContactName: draft.emergencyContactName || undefined,
+          emergencyContactPhone: draft.emergencyContactPhone || undefined,
+          medicalHistory: {
+            hasAllergies: history.hasAllergies,
+            allergies: history.allergyDetails || undefined,
+            isTakingMeds: history.isTakingMeds,
+            medications: history.medDetails || undefined,
+            isBleedingRisk: history.isBleedingRisk,
+            gpSurgery: history.gpSurgery || undefined,
+          },
+        }),
+      });
+      if (!profileRes.ok) {
+        const err = await profileRes.json().catch(() => ({}));
+        throw new Error((err as any).error || "Could not save your profile");
+      }
+
+      // 2. Consents → consent records (versioned, DSPT-auditable)
+      const grants: Array<{ consentType: string; lawfulBasis: string }> = [
+        { consentType: "data_processing", lawfulBasis: "vital_interests" },
+        { consentType: "clinical_records", lawfulBasis: "consent" },
+        ...(directMarketing
+          ? [{ consentType: "direct_marketing", lawfulBasis: "consent" }]
+          : []),
+      ];
+      for (const grant of grants) {
+        const res = await authFetch("/api/consents/grant", {
+          method: "POST",
+          body: JSON.stringify(grant),
+        });
+        if (!res.ok && res.status !== 409) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).error || `Could not record ${grant.consentType} consent`);
+        }
+      }
+
+      router.push("/(onboarding)/complete");
+    } catch (err: any) {
+      setError(err?.message || "Could not finish setup. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText variant="caption" style={styles.stepBadge}>
-            STEP 4 OF 4
-          </ThemedText>
+          <ProgressPills total={5} current={5} />
           <ThemedText variant="largeTitle" style={styles.title}>
             Privacy & Consents
           </ThemedText>
@@ -57,7 +137,7 @@ export default function OnboardingConsentsScreen() {
                   setDataProcessing(val);
                   if (error) setError(null);
                 }}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
@@ -77,7 +157,7 @@ export default function OnboardingConsentsScreen() {
                   setTreatmentConsent(val);
                   if (error) setError(null);
                 }}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
@@ -94,7 +174,7 @@ export default function OnboardingConsentsScreen() {
               <Switch
                 value={directMarketing}
                 onValueChange={setDirectMarketing}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
@@ -105,8 +185,9 @@ export default function OnboardingConsentsScreen() {
 
         <View style={styles.actions}>
           <Button
-            title="Complete Registration"
+            title={isSubmitting ? "Saving your details..." : "Complete Registration"}
             size="lg"
+            loading={isSubmitting}
             onPress={handleComplete}
           />
         </View>
@@ -162,11 +243,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  stepBadge: {
-    color: colors.brand,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,

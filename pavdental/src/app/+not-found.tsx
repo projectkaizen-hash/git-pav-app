@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   linkText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
 });

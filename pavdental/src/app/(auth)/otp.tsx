@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   changePhoneText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   errorBox: {

@@ -181,3 +181,32 @@ export function formatGbp(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
+export const mockAppointments = [
+  {
+    id: "appt_1",
+    status: "confirmed",
+    channel: "clinic",
+    startTimeUtc: new Date(Date.now() + 86400000 * 2).toISOString(),
+    service: { name: "AirFlow® Stain Removal & Hygiene" },
+    clinician: { fullName: "Dr. Tariq Pav" },
+    clinic: { name: "Pav Dental Central Practice" },
+  },
+  {
+    id: "appt_2",
+    status: "confirmed",
+    channel: "video",
+    startTimeUtc: new Date(Date.now() + 86400000 * 5).toISOString(),
+    service: { name: "Emergency Video Triage & Consult" },
+    clinician: { fullName: "Dr. Sarah Jenkins" },
+  },
+  {
+    id: "appt_3",
+    status: "completed",
+    channel: "van",
+    startTimeUtc: new Date(Date.now() - 86400000 * 14).toISOString(),
+    service: { name: "Comprehensive Examination & 2 X-Rays" },
+    clinician: { fullName: "Elena Rostova" },
+    van: { name: "Pav Dental Mobile Van #1" },
+  },
+];
+

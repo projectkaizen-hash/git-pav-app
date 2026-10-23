@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Card, Button } from "@/components";
+import { ThemedText, Card, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { fetchMyAppointments } from "@/features/booking/booking-api";
@@ -13,6 +13,7 @@ export default function BookingConfirmedScreen() {
   const { service, clinic, slot, resetDraft } = useBookingStore();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [calendarAdded, setCalendarAdded] = useState(false);
   const appointmentId = params.appointmentId;
 
   // Poll for appointment confirmation status
@@ -65,9 +66,11 @@ export default function BookingConfirmedScreen() {
       <View style={styles.container}>
         <View style={styles.centerBox}>
           <View style={[styles.checkCircle, isConfirmed ? styles.confirmedCircle : styles.pendingCircle]}>
-            <ThemedText variant="largeTitle">
-              {isChecking ? "⏳" : isConfirmed ? "✅" : "⚠️"}
-            </ThemedText>
+            <AppIcon
+              name={isChecking ? "clock" : isConfirmed ? "check" : "alert"}
+              size={40}
+              color={isChecking ? colors.warning : isConfirmed ? colors.success : colors.danger}
+            />
           </View>
 
           <ThemedText variant="largeTitle" style={styles.title}>
@@ -83,23 +86,38 @@ export default function BookingConfirmedScreen() {
           </ThemedText>
 
           {isChecking && (
-            <ActivityIndicator size="large" color={colors.brand} style={styles.spinner} />
+            <ActivityIndicator size="large" color={colors.ink} style={styles.spinner} />
           )}
 
           <Card elevation="raised" style={styles.summaryCard}>
             <ThemedText variant="headline" style={styles.treatmentName}>
               {service?.name || "Dental Checkup"}
             </ThemedText>
-            <ThemedText variant="body" style={styles.timing}>
-              📅 {slot ? `${slot.dateFormatted} at ${slot.displayTime}` : "Selected Time"}
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.location}>
-              📍 {clinic?.name || "Pav Dental Central Practice"}
-            </ThemedText>
+            <View style={styles.metaRow}>
+              <AppIcon name="calendar" size={14} color={colors.ink} />
+              <ThemedText variant="body" style={styles.timing}>
+                {slot ? `${slot.dateFormatted} at ${slot.displayTime}` : "Selected Time"}
+              </ThemedText>
+            </View>
+            <View style={styles.metaRow}>
+              <AppIcon name="mapPin" size={14} color={colors.secondaryLabel} />
+              <ThemedText variant="caption" style={styles.location}>
+                {clinic?.name || "Pav Dental Central Practice"}
+              </ThemedText>
+            </View>
           </Card>
         </View>
 
         <View style={styles.actions}>
+          {isConfirmed ? (
+            <Button
+              title={calendarAdded ? "Added to Calendar ✓" : "Add to Calendar"}
+              variant="secondary"
+              size="lg"
+              disabled={calendarAdded}
+              onPress={() => setCalendarAdded(true)}
+            />
+          ) : null}
           <Button
             title="View My Appointments"
             size="lg"
@@ -145,6 +163,12 @@ const styles = StyleSheet.create({
   },
   location: {
     color: colors.secondaryLabel,
+    flex: 1,
+  },
+  metaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xxs,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -167,7 +191,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   timing: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   title: {

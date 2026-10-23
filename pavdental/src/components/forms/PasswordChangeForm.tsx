@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ThemedText } from "../themed-text";
 import { Input } from "../input";
 import { Button } from "../button";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 import {
   passwordChangeSchema,
@@ -227,13 +227,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   toggleShow: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
 });

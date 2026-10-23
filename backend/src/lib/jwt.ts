@@ -12,6 +12,7 @@ export interface AccessTokenPayload {
   sub: string;       // user UUID
   role: string;
   sessionId: string;
+  jti?: string;
 }
 
 export interface RefreshTokenPayload {
@@ -21,7 +22,11 @@ export interface RefreshTokenPayload {
 }
 
 export function signAccessToken(payload: AccessTokenPayload): string {
-  return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRY });
+  return jwt.sign(
+    { ...payload, jti: payload.jti || crypto.randomUUID() },
+    ACCESS_SECRET,
+    { expiresIn: ACCESS_EXPIRY }
+  );
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {

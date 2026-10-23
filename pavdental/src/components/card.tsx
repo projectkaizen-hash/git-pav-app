@@ -2,7 +2,9 @@ import { View, ViewProps, StyleSheet, StyleProp, ViewStyle } from "react-native"
 import { colors, radius, spacing, shadows } from "@/theme";
 
 interface CardProps extends ViewProps {
-  /** Use "raised" for action-oriented cards, "flat" for content list items */
+  /** Visual variant matching Neo Financial aesthetic */
+  variant?: "default" | "dark" | "outline" | "elevated" | "accent";
+  /** Use "raised" for action-oriented cards, "flat" for content list items (legacy support) */
   elevation?: "flat" | "raised";
   /** Internal padding preset */
   padding?: "sm" | "md" | "lg" | "none";
@@ -19,22 +21,28 @@ const paddingMap = {
 
 /**
  * Card — base container with rounded corners and optional elevation.
- * Accept children for composition; don't add content-specific props here.
+ * Refactored to support Neo Financial card styling with continuous squircle corners.
  */
 export function Card({
+  variant = "default",
   elevation = "flat",
   padding = "md",
   style,
   children,
   ...props
 }: CardProps) {
+  const isRaised = elevation === "raised" || variant === "elevated";
+
   return (
     <View
       {...props}
       style={[
         styles.base,
+        variant === "dark" && styles.dark,
+        variant === "outline" && styles.outline,
+        variant === "accent" && styles.accent,
+        isRaised && styles.raised,
         { padding: paddingMap[padding] },
-        elevation === "raised" && styles.raised,
         style,
       ]}
     >
@@ -46,14 +54,29 @@ export function Card({
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.systemBackground,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.separator,
     // @ts-ignore
     borderCurve: "continuous",
     overflow: "hidden",
   },
+  dark: {
+    backgroundColor: colors.ink,
+    borderColor: colors.inkSoft,
+  },
+  outline: {
+    backgroundColor: "transparent",
+    borderColor: colors.separator,
+  },
+  accent: {
+    backgroundColor: colors.infoSubtle,
+    borderColor: colors.info,
+  },
   raised: {
     // @ts-ignore — boxShadow is supported in RN 0.76+
     boxShadow: shadows.raised,
+    borderColor: "transparent",
   },
 });
 

@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert, Modal, ActivityIndicator } from "react-native";
 import * as Haptics from "expo-haptics";
 import { CardField, useStripe, CardFieldInput } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
 import {
   usePaymentMethods,
   useRemovePaymentMethodMutation,
   useSetDefaultPaymentMethodMutation,
 } from "@/features/account/account-hooks";
 import { accountApi } from "@/features/account/account-api";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 import { TouchableOpacity } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -129,9 +129,9 @@ export default function PaymentMethodsScreen() {
           <Card key={pm.id} style={styles.paymentCard}>
             <View style={styles.cardTop}>
               <View style={styles.brandRow}>
-                <ThemedText style={styles.brandIcon}>
-                  {pm.brand === "visa" ? "💳" : "💳"}
-                </ThemedText>
+                <View style={styles.brandIconWrap}>
+                  <AppIcon name="creditCard" size={20} color={colors.ink} />
+                </View>
                 <View>
                   <ThemedText variant="headline" style={styles.cardName}>
                     {pm.brand.toUpperCase()} •••• {pm.last4}
@@ -219,7 +219,7 @@ export default function PaymentMethodsScreen() {
 
           {isSaving && (
             <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={colors.brand} />
+              <ActivityIndicator size="large" color={colors.ink} />
             </View>
           )}
         </View>
@@ -229,8 +229,13 @@ export default function PaymentMethodsScreen() {
 }
 
 const styles = StyleSheet.create({
-  brandIcon: {
-    fontSize: 24,
+  brandIconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
   },
   brandRow: {
     alignItems: "center",
@@ -284,10 +289,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   headerSub: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFill,
@@ -318,7 +320,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   setDefaultText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   stripeNote: {

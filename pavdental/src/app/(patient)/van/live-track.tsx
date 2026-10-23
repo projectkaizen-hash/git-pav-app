@@ -3,20 +3,23 @@ import { View, StyleSheet, Pressable, Alert, ActivityIndicator, ScrollView } fro
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThemedText, Card, Button, Badge } from "@/components";
+import { ThemedText, Card, Button, Badge, AppIcon, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
-import { fetchVanRequest, fetchActiveVanRequest, cancelVanRequest } from "@/features/van/van-api";
+import { fetchVanRequest, fetchActiveVanRequest, cancelVanRequest, retryDepositAuthorization, presentVanDepositSheet, DepositCanceledError } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
+import { useStripe } from "@stripe/stripe-react-native";
 
 export default function VanLiveTrackScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ requestId?: string }>();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   // Poll request status every 5s
-  const { data: request, isLoading } = useQuery<VanServiceRequest | null>({
+  const { data: apiRequest, isLoading } = useQuery<VanServiceRequest | null>({
     queryKey: ["van-request-live", params.requestId],
     queryFn: () =>
       params.requestId
@@ -24,6 +27,8 @@ export default function VanLiveTrackScreen() {
         : fetchActiveVanRequest(),
     refetchInterval: 5000,
   });
+
+  const request = apiRequest ?? null;
 
   // Calculate remaining seconds for pending requests
   useEffect(() => {
@@ -72,13 +77,68 @@ export default function VanLiveTrackScreen() {
     );
   };
 
+  /**
+   * (Re-)authorize the deposit hold for a pending request whose PaymentSheet
+   * was dismissed or whose card was declined. Uses the payment-retry endpoint
+   * so the client secret is always fresh and server-validated.
+   */
+  const handleAuthorizeDeposit = async () => {
+    if (!request) return;
+    setIsAuthorizing(true);
+    try {
+      const retry = await retryDepositAuthorization(request.id);
+      if (retry.alreadyAuthorized || !retry.clientSecret) {
+        // Webhook already stamped it — refresh state.
+        queryClient.invalidateQueries({ queryKey: ["van-request-live"] });
+        return;
+      }
+      await presentVanDepositSheet(retry.clientSecret, {
+        initPaymentSheet,
+        presentPaymentSheet,
+      });
+      // Authorized — poll will pick up the stamped request.
+      queryClient.invalidateQueries({ queryKey: ["van-request-live"] });
+    } catch (err: any) {
+      if (err instanceof DepositCanceledError) {
+        // Silent — banner stays, patient can tap again.
+      } else {
+        Alert.alert("Authorization Failed", err?.message || "Could not authorize the deposit. You have not been charged.");
+      }
+    } finally {
+      setIsAuthorizing(false);
+    }
+  };
+
   if (isLoading && !request) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={colors.ink} />
         <ThemedText variant="caption" style={styles.loadingText}>
           Connecting to live van dispatch system...
         </ThemedText>
+      </SafeAreaView>
+    );
+  }
+
+  if (!request) {
+    return (
+      <SafeAreaView style={styles.centerContainer}>
+        <AppIcon name="truck" size={32} color={colors.secondaryLabel} />
+        <ThemedText variant="headline">No Active Van Request</ThemedText>
+        <ThemedText variant="caption" style={styles.loadingText}>
+          You don't have a mobile surgery visit in progress right now.
+        </ThemedText>
+        <Button
+          title="Request Mobile Dental Van"
+          variant="primary"
+          onPress={() => router.replace("/(patient)/van/service-area" as any)}
+        />
+        <Button
+          title="Return Home"
+          variant="ghost"
+          size="sm"
+          onPress={() => router.replace("/(patient)/(tabs)/home")}
+        />
       </SafeAreaView>
     );
   }
@@ -118,18 +178,19 @@ export default function VanLiveTrackScreen() {
         {/* Top Header */}
         <View style={styles.topFloat}>
           <View style={styles.backRow}>
-            <Pressable
+            <Button
+              title="Close"
+              variant="secondary"
+              size="sm"
+              accessibilityLabel="Close live tracking"
               onPress={() => router.replace("/(patient)/(tabs)/home")}
-              style={styles.backBtn}
-            >
-              <ThemedText variant="headline">✕ Close Map</ThemedText>
-            </Pressable>
+            />
             <Badge
               label={
                 status === "pending"
-                  ? "⏳ Operator Review"
+                  ? "Operator review"
                   : status === "accepted"
-                  ? "✓ In Live Queue"
+                  ? "In live queue"
                   : status.replace("_", " ").toUpperCase()
               }
               variant={
@@ -143,23 +204,27 @@ export default function VanLiveTrackScreen() {
           </View>
         </View>
 
-        {/* Live Simulation Map Area */}
+        {/* Tracking stage — deliberate branded panel (real map SDK intentionally not used) */}
         <View style={styles.mapArea}>
           <View style={styles.mapBackground}>
             {/* Route track */}
             <View style={styles.routeLine} />
 
-            {/* Van Pin with pulsating wave */}
+            {/* Van marker with pulse ring */}
             <View style={styles.vanMarker}>
-              <ThemedText variant="title">🚐</ThemedText>
+              <View style={styles.markerBubble}>
+                <AppIcon name="truck" size={20} color={colors.onInk} />
+              </View>
               <View style={styles.pulseRing} />
             </View>
 
-            {/* Destination Pin */}
+            {/* Destination marker */}
             <View style={styles.homeMarker}>
-              <ThemedText variant="title">📍</ThemedText>
-              <ThemedText variant="caption" style={styles.homeLabel}>
-                {request?.accessDetails?.addressLine1 || "Your Address"}
+              <View style={[styles.markerBubble, styles.markerBubbleHome]}>
+                <AppIcon name="mapPin" size={20} color={colors.ink} />
+              </View>
+              <ThemedText variant="caption" style={styles.homeLabel} numberOfLines={1}>
+                {request?.accessDetails?.addressLine1 || "Your address"}
               </ThemedText>
             </View>
           </View>
@@ -178,7 +243,7 @@ export default function VanLiveTrackScreen() {
                       status === "declined" || status === "expired" || status === "cancelled"
                         ? colors.danger
                         : phase === "in_treatment"
-                        ? colors.brand
+                        ? colors.ink
                         : phase === "on_site"
                         ? colors.warning
                         : colors.success,
@@ -254,12 +319,28 @@ export default function VanLiveTrackScreen() {
           )}
 
           {/* Dynamic Instructions */}
+          {status === "pending" && request?.depositAuthorized === false && (
+            <View style={styles.depositBanner}>
+              <ThemedText variant="caption" style={styles.depositBannerText}>
+                <ThemedText variant="caption" style={styles.boldText}>
+                  Deposit not authorized:
+                </ThemedText>{" "}
+                The van team can only dispatch once your deposit hold is authorized. You haven't been charged.
+              </ThemedText>
+              <Button
+                title={isAuthorizing ? "Opening payment sheet…" : "Authorize deposit"}
+                size="sm"
+                loading={isAuthorizing}
+                onPress={handleAuthorizeDeposit}
+              />
+            </View>
+          )}
+
           {status === "pending" && (
             <View style={styles.pendingAlertBox}>
               <ThemedText variant="caption" style={styles.pendingText}>
-                ⏱{" "}
                 <ThemedText variant="caption" style={styles.boldText}>
-                  Operator Decision Countdown:
+                  Operator decision countdown:
                 </ThemedText>{" "}
                 {secondsRemaining !== null ? formatTimer(secondsRemaining) : "4:00"}. If the operator cannot take the stop, your request will automatically expire.
               </ThemedText>
@@ -269,7 +350,7 @@ export default function VanLiveTrackScreen() {
           {phase === "en_route" && (
             <View style={styles.infoBox}>
               <ThemedText variant="caption" style={styles.infoText}>
-                🚗 Our surgical van is in transit to{" "}
+                Our surgical van is in transit to{" "}
                 <ThemedText variant="caption" style={styles.boldText}>
                   {request?.accessDetails?.addressLine1}
                 </ThemedText>
@@ -281,7 +362,7 @@ export default function VanLiveTrackScreen() {
           {phase === "on_site" && (
             <View style={styles.infoBox}>
               <ThemedText variant="caption" style={styles.infoText}>
-                📍 The van has parked at your property! Please meet the clinician outside or answer buzzer.
+                The van has parked at your property. Please meet the clinician outside or answer the buzzer.
               </ThemedText>
             </View>
           )}
@@ -289,10 +370,10 @@ export default function VanLiveTrackScreen() {
           {/* Vehicle & Procedure Details */}
           <View style={styles.driverRow}>
             <View style={styles.driverAvatar}>
-              <ThemedText variant="title">🚐</ThemedText>
+              <AppIcon name="truck" size={18} color={colors.ink} />
             </View>
             <View style={styles.driverInfo}>
-              <ThemedText variant="headline" style={styles.driverName}>
+              <ThemedText variant="subhead" style={styles.driverName}>
                 {request?.van?.name || "Pav Dental Mobile Surgery Unit #1"}
               </ThemedText>
               <ThemedText variant="caption" style={styles.driverSub}>
@@ -307,7 +388,12 @@ export default function VanLiveTrackScreen() {
             <Button
               title="View Treatment Summary & Records ›"
               variant="primary"
-              onPress={() => router.push("/(patient)/van/complete" as any)}
+              onPress={() =>
+                router.push({
+                  pathname: "/(patient)/van/complete" as any,
+                  params: { requestId: request.id },
+                })
+              }
             />
           )}
 
@@ -321,7 +407,7 @@ export default function VanLiveTrackScreen() {
 
           {canCancel && (
             <Button
-              title="Cancel Van Request"
+              title="Cancel van request"
               variant="secondary"
               size="sm"
               loading={cancelMutation.isPending}
@@ -335,12 +421,6 @@ export default function VanLiveTrackScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    backgroundColor: colors.systemBackground,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
   backRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -385,7 +465,6 @@ const styles = StyleSheet.create({
   },
   driverName: {
     color: colors.label,
-    fontSize: 15,
   },
   driverRow: {
     alignItems: "center",
@@ -399,7 +478,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   etaText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   homeLabel: {
@@ -409,16 +488,30 @@ const styles = StyleSheet.create({
   homeMarker: {
     alignItems: "center",
     bottom: "25%",
+    maxWidth: "45%",
     position: "absolute",
-    right: "20%",
+    right: "8%",
+  },
+  markerBubble: {
+    alignItems: "center",
+    backgroundColor: colors.ink,
+    borderRadius: 24,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  markerBubbleHome: {
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderWidth: 1.5,
   },
   infoBox: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 8,
     padding: spacing.sm,
   },
   infoText: {
-    color: colors.brand,
+    color: colors.ink,
     lineHeight: 16,
   },
   loadingText: {
@@ -437,12 +530,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: spacing.sm,
   },
+  depositBanner: {
+    backgroundColor: colors.warningSubtle,
+    borderRadius: 8,
+    gap: spacing.sm,
+    padding: spacing.sm,
+  },
+  depositBannerText: {
+    color: colors.warning,
+    lineHeight: 16,
+  },
   pendingText: {
     color: colors.warning,
     lineHeight: 16,
   },
   pulseRing: {
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderRadius: 20,
     borderWidth: 2,
     height: 40,
@@ -452,7 +555,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   routeLine: {
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderStyle: "dashed",
     borderWidth: 1.5,
     height: "50%",
@@ -495,12 +598,12 @@ const styles = StyleSheet.create({
     width: 20,
   },
   stepDotCurrent: {
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
     borderWidth: 2,
-    borderColor: colors.onBrand,
+    borderColor: colors.onInk,
   },
   stepDotPassed: {
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
   },
   stepItem: {
     alignItems: "center",
@@ -511,16 +614,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   stepLabelCurrent: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   stepNum: {
-    color: colors.onBrand,
+    color: colors.onInk,
     fontSize: 10,
     fontWeight: "700",
   },
   stepNumPassed: {
-    color: colors.onBrand,
+    color: colors.onInk,
   },
   stepperContainer: {
     flexDirection: "row",

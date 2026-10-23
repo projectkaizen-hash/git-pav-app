@@ -1,11 +1,10 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge } from "@/components";
+import { ThemedText, Card, Badge, AppIcon, ProgressPills, EmptyState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { Clinician } from "@/features/booking/booking-types";
-
 import { useClinicians } from "@/features/hooks/use-dental-api";
 
 export default function ClinicianPickerScreen() {
@@ -13,7 +12,7 @@ export default function ClinicianPickerScreen() {
   const { setClinician, clinic } = useBookingStore();
 
   const { data: apiClinicians } = useClinicians();
-  const clinicians = (apiClinicians || []) as Clinician[];
+  const clinicians = (apiClinicians ?? []) as Clinician[];
 
   const handleSelectClinician = (clinician: Clinician | null) => {
     setClinician(clinician);
@@ -28,6 +27,7 @@ export default function ClinicianPickerScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
+        <ProgressPills total={5} current={3} />
         <ThemedText variant="headline">Select a Dentist or Hygienist</ThemedText>
         <ThemedText variant="caption" style={styles.sub}>
           Or choose 'First Available' for the earliest appointment slot.
@@ -41,7 +41,7 @@ export default function ClinicianPickerScreen() {
       >
         <Card elevation="raised" style={styles.anyCard}>
           <View style={styles.anyIcon}>
-            <ThemedText variant="title">⚡️</ThemedText>
+            <AppIcon name="zap" size={22} color={colors.ink} />
           </View>
           <View style={styles.anyInfo}>
             <ThemedText variant="headline" style={styles.anyTitle}>
@@ -51,49 +51,74 @@ export default function ClinicianPickerScreen() {
               Recommended for urgent care or fastest booking dates.
             </ThemedText>
           </View>
-          <ThemedText variant="headline" style={styles.arrow}>
-            ›
-          </ThemedText>
+          <AppIcon name="chevronRight" size={16} color={colors.ink} />
         </Card>
       </Pressable>
 
       {/* Clinicians List */}
-      <View style={styles.clinicianList}>
-        {eligibleClinicians.map((doc) => (
-          <Pressable
-            key={doc.id}
-            onPress={() => handleSelectClinician(doc)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Card elevation="raised" style={styles.card}>
-              <View style={styles.docRow}>
-                <View style={styles.avatar}>
-                  <ThemedText variant="title" style={styles.avatarText}>
-                    {doc.fullName[3] || "D"}
-                  </ThemedText>
+      {eligibleClinicians.length === 0 ? (
+        <EmptyState
+          heading="No specific clinicians listed"
+          body="Choose 'Any Practitioner (First Available)' above to see open slots."
+          icon="profile"
+        />
+      ) : (
+        <View style={styles.clinicianList}>
+          {eligibleClinicians.map((doc) => (
+            <Pressable
+              key={doc.id}
+              onPress={() => handleSelectClinician(doc)}
+              style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Card elevation="raised" style={styles.card}>
+                <View style={styles.docRow}>
+                  <View style={styles.avatar}>
+                    <ThemedText variant="title" style={styles.avatarText}>
+                      {doc.fullName[3] || "D"}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.docInfo}>
+                    <ThemedText variant="headline" style={styles.name}>
+                      {doc.fullName}
+                    </ThemedText>
+                    <ThemedText variant="caption" style={styles.role}>
+                      {doc.roleTitle} · GDC: #{doc.gdcNumber}
+                    </ThemedText>
+                    <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
+                      {doc.bio}
+                    </ThemedText>
+                  </View>
                 </View>
-                <View style={styles.docInfo}>
-                  <ThemedText variant="headline" style={styles.name}>
-                    {doc.fullName}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.role}>
-                    {doc.roleTitle} · GDC: #{doc.gdcNumber}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
-                    {doc.bio}
-                  </ThemedText>
-                </View>
-              </View>
 
-              <View style={styles.specialismsRow}>
-                {doc.specialisms.map((spec) => (
-                  <Badge key={spec} label={spec} variant="default" />
-                ))}
-              </View>
-            </Card>
-          </Pressable>
-        ))}
-      </View>
+                <View style={styles.specialismsRow}>
+                  {(doc.specialisms || []).map((spec) => (
+                    <Badge key={spec} label={spec} variant="default" />
+                  ))}
+                </View>
+
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={`View full profile for ${doc.fullName}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(patient)/booking/provider-profile" as never,
+                      params: { id: doc.id },
+                    })
+                  }
+                  style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <View style={styles.profileLink}>
+                    <ThemedText variant="caption" style={styles.profileLinkText}>
+                      View profile & reviews
+                    </ThemedText>
+                    <AppIcon name="chevronRight" size={13} color={colors.ink} />
+                  </View>
+                </Pressable>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -101,8 +126,8 @@ export default function ClinicianPickerScreen() {
 const styles = StyleSheet.create({
   anyCard: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -124,10 +149,10 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   anyTitle: {
-    color: colors.brand,
+    color: colors.ink,
   },
   arrow: {
-    color: colors.brand,
+    color: colors.ink,
   },
   avatar: {
     alignItems: "center",
@@ -138,7 +163,7 @@ const styles = StyleSheet.create({
     width: 50,
   },
   avatarText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   bio: {
@@ -176,6 +201,16 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.label,
+  },
+  profileLink: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 2,
+  },
+  profileLinkText: {
+    color: colors.ink,
+    fontWeight: "700",
   },
   role: {
     color: colors.secondaryLabel,

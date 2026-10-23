@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ThemedText, Card, Button, Input } from "@/components";
+import { ThemedText, Card, Button, Input, AppIcon } from "@/components";
 import { useDeleteAccountMutation } from "@/features/account/account-hooks";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -61,7 +61,7 @@ export default function DeleteAccountScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Warning Banner */}
       <View style={styles.warningCard}>
-        <ThemedText style={styles.warningIcon}>⚠️</ThemedText>
+        <AppIcon name="alert" size={24} color={colors.danger} />
         <View style={styles.warningTextWrap}>
           <ThemedText variant="headline" style={styles.warningTitle}>
             Irreversible Account Closure
@@ -169,10 +169,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   warningCard: {
     backgroundColor: colors.dangerSubtle,
@@ -182,9 +179,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
-  },
-  warningIcon: {
-    fontSize: 24,
   },
   warningSub: {
     color: colors.secondaryLabel,

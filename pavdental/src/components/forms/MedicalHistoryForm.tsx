@@ -3,10 +3,11 @@ import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ThemedText } from "../themed-text";
+import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 import {
   medicalHistorySchema,
@@ -121,7 +122,7 @@ export function MedicalHistoryForm({
             setHasAllergies(val);
             setValue("hasAllergies", val, { shouldDirty: true });
           }}
-          icon={<ThemedText>⚠️</ThemedText>}
+          icon={<AppIcon name="alert" size={18} color={colors.warning} />}
         />
 
         {hasAllergies ? (
@@ -138,10 +139,10 @@ export function MedicalHistoryForm({
                     onPress={() => toggleAllergyTag(tag)}
                     style={[styles.tag, active && styles.tagActive]}
                     accessibilityRole="button"
+                    accessibilityLabel={`${tag}, ${active ? "Selected" : "Not selected"}`}
                     accessibilityState={{ selected: active }}
                   >
                     <ThemedText variant="caption" style={[styles.tagText, active && styles.tagTextActive]}>
-                      {active ? "✓ " : "+ "}
                       {tag}
                     </ThemedText>
                   </Pressable>
@@ -212,7 +213,7 @@ export function MedicalHistoryForm({
                 <ThemedText variant="headline" style={[styles.conditionText, active && styles.conditionTextActive]}>
                   {cond}
                 </ThemedText>
-                <ThemedText style={active ? styles.checkActive : styles.checkInactive}>
+                <ThemedText variant="headline" style={active ? undefined : styles.checkInactive}>
                   {active ? "☑️" : "⬜"}
                 </ThemedText>
               </Pressable>
@@ -296,11 +297,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  checkActive: {
-    fontSize: 18,
-  },
   checkInactive: {
-    fontSize: 18,
     opacity: 0.4,
   },
   conditionRow: {
@@ -313,15 +310,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   conditionRowActive: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
   },
   conditionText: {
     color: colors.label,
     flex: 1,
-    fontSize: 14,
   },
   conditionTextActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   conditionsList: {
@@ -342,10 +338,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
     marginBottom: spacing.xs,
   },
   subContainer: {

@@ -1,17 +1,23 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import { ThemedText, Button, Card } from "@/components";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText, Button, Card, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 
 export default function DeviceCheckScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
   const [cameraOk] = useState(true);
   const [micOk] = useState(true);
   const [networkOk] = useState(true);
 
   const handleJoinWaitingRoom = () => {
-    router.push("/(patient)/video/waiting" as any);
+    router.push({
+      pathname: "/(patient)/video/waiting" as any,
+      params: { appointmentId: appointmentId || "" },
+    });
   };
 
   return (
@@ -28,7 +34,7 @@ export default function DeviceCheckScreen() {
 
         {/* Video Preview Box */}
         <View style={styles.videoPreview}>
-          <ThemedText variant="title">📹</ThemedText>
+          <AppIcon name="video" size={22} color={colors.ink} />
           <ThemedText variant="caption" style={styles.previewNote}>
             Front Camera Preview (Self View)
           </ThemedText>
@@ -38,11 +44,11 @@ export default function DeviceCheckScreen() {
         <Card elevation="raised" style={styles.card}>
           <View style={styles.checkItem}>
             <View style={styles.checkLeft}>
-              <ThemedText>📷</ThemedText>
+              <AppIcon name="camera" size={18} color={colors.ink} />
               <ThemedText variant="body">Camera Access</ThemedText>
             </View>
             <ThemedText variant="caption" style={styles.okText}>
-              {cameraOk ? "✓ Ready" : "Error"}
+              {cameraOk ? "Ready" : "Error"}
             </ThemedText>
           </View>
 
@@ -50,11 +56,11 @@ export default function DeviceCheckScreen() {
 
           <View style={styles.checkItem}>
             <View style={styles.checkLeft}>
-              <ThemedText>🎙</ThemedText>
+              <AppIcon name="mic" size={18} color={colors.ink} />
               <ThemedText variant="body">Microphone</ThemedText>
             </View>
             <ThemedText variant="caption" style={styles.okText}>
-              {micOk ? "✓ Detected" : "Error"}
+              {micOk ? "Detected" : "Error"}
             </ThemedText>
           </View>
 
@@ -62,11 +68,11 @@ export default function DeviceCheckScreen() {
 
           <View style={styles.checkItem}>
             <View style={styles.checkLeft}>
-              <ThemedText>📶</ThemedText>
+              <AppIcon name="zap" size={18} color={colors.ink} />
               <ThemedText variant="body">Connection Speed</ThemedText>
             </View>
             <ThemedText variant="caption" style={styles.okText}>
-              {networkOk ? "✓ High (HD Video)" : "Poor"}
+              {networkOk ? "High (HD Video)" : "Poor"}
             </ThemedText>
           </View>
         </Card>
@@ -83,7 +89,7 @@ export default function DeviceCheckScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
           title="Enter Waiting Room"
           size="lg"

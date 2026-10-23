@@ -1,0 +1,131 @@
+[
+  {
+    "id": "TC001",
+    "title": "Render the Pav Dental Welcome landing screen and open the email sign-in sheet",
+    "description": "Verify that opening / displays the Pav Dental welcome screen ('Oral Wellness & Aesthetic Dentistry') and clicking 'Sign In' or 'Or sign in with email address ›' reveals the 'Welcome back' email entry form with the 'Continue' button.",
+    "category": "Welcome and Authentication Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to http://localhost:8081/"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify 'Pav Dental' and 'Oral Wellness' text are visible on the welcome screen"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Sign In' button or 'Or sign in with email address ›' button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify 'Welcome back', the 'name@example.co.uk' email input, and the 'Continue' button are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Sign in via /sign-in and reach the authenticated Patient Home Dashboard",
+    "description": "Verify that navigating to /sign-in, entering email test@pavdental.com and password Password123!, and clicking 'Sign In' authenticates the user and redirects to the Patient Home Dashboard.",
+    "category": "Welcome and Authentication Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to http://localhost:8081/sign-in"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email input (placeholder 'name@example.co.uk') with test@pavdental.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password input (placeholder 'Enter your password') with Password123!"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Sign In' button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the authenticated Patient Home Dashboard is displayed with bottom navigation tabs (Home, Bookings, Records, Messages, Profile)"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Sign in using the 1-tap Patient demo button on /sign-in",
+    "description": "Verify that clicking the 'Patient' quick-fill pill on /sign-in populates patient@pavdental.com and Password123!, and clicking 'Sign In' lands on the Patient Home Dashboard.",
+    "category": "Welcome and Authentication Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to http://localhost:8081/sign-in"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Patient' demo quick-fill button"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Sign In' button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the Patient Home Dashboard"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Navigate to the Bookings tab after signing in and view appointments",
+    "description": "Verify that after signing in at /sign-in, clicking the 'Bookings' tab in the bottom navigation bar displays the patient's appointments and booking options.",
+    "category": "Patient Home and Care Catalog",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to http://localhost:8081/sign-in"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Patient' demo quick-fill button and click 'Sign In'"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Bookings' tab in the bottom navigation bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the Appointments / Bookings screen is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Navigate to the Records tab after signing in and view clinical records",
+    "description": "Verify that after signing in at /sign-in, clicking the 'Records' tab displays the patient's dental records and odontogram chart.",
+    "category": "Dental Records and Odontogram",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to http://localhost:8081/sign-in"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Patient' demo quick-fill button and click 'Sign In'"
+      },
+      {
+        "type": "action",
+        "description": "Click the 'Records' tab in the bottom navigation bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dental records view is displayed"
+      }
+    ],
+    "priority": "High"
+  }
+]

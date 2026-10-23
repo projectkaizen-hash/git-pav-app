@@ -1,12 +1,30 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { ThemedText, Card, Button } from "@/components";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { ThemedText, Card, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
+import { fetchVanRequest, fetchActiveVanRequest } from "@/features/van/van-api";
+import { formatGbp } from "@/features/booking/booking-api";
 
 export default function VanCompleteScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ requestId?: string }>();
+
+  const { data: request } = useQuery({
+    queryKey: ["van-request-complete", params.requestId],
+    queryFn: () =>
+      params.requestId
+        ? fetchVanRequest(params.requestId)
+        : fetchActiveVanRequest(),
+  });
+
+  const serviceName = request?.service?.name || "Mobile Surgery Consultation";
+  const priceLabel =
+    request?.service?.pricePence != null
+      ? formatGbp(request.service.pricePence)
+      : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -14,7 +32,7 @@ export default function VanCompleteScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.centerHeader}>
             <View style={styles.checkCircle}>
-              <ThemedText variant="largeTitle">🦷</ThemedText>
+              <AppIcon name="checkCircle" size={36} color={colors.success} />
             </View>
             <ThemedText variant="largeTitle" style={styles.title}>
               Van Visit Complete!
@@ -30,15 +48,22 @@ export default function VanCompleteScreen() {
               Procedures Completed On Board
             </ThemedText>
             <View style={styles.treatmentRow}>
-              <ThemedText variant="body">• Dental Examination & Gum Check</ThemedText>
+              <AppIcon name="check" size={15} color={colors.success} />
+              <ThemedText variant="body" style={styles.treatmentName}>
+                {serviceName}
+              </ThemedText>
+              <ThemedText variant="caption" style={styles.okTag}>
+                {priceLabel ? `${priceLabel} · Done` : "Done"}
+              </ThemedText>
+            </View>
+            <View style={styles.treatmentRow}>
+              <AppIcon name="check" size={15} color={colors.success} />
+              <ThemedText variant="body" style={styles.treatmentName}>Dental examination & gum check</ThemedText>
               <ThemedText variant="caption" style={styles.okTag}>Done</ThemedText>
             </View>
             <View style={styles.treatmentRow}>
-              <ThemedText variant="body">• 2 Digital Low-Dose Bitewings</ThemedText>
-              <ThemedText variant="caption" style={styles.okTag}>Done</ThemedText>
-            </View>
-            <View style={styles.treatmentRow}>
-              <ThemedText variant="body">• AirFlow Hygiene & Stain Removal</ThemedText>
+              <AppIcon name="check" size={15} color={colors.success} />
+              <ThemedText variant="body" style={styles.treatmentName}>Digital clinical notes & charting</ThemedText>
               <ThemedText variant="caption" style={styles.okTag}>Done</ThemedText>
             </View>
           </Card>
@@ -90,7 +115,7 @@ const styles = StyleSheet.create({
   },
   checkCircle: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 40,
     height: 80,
     justifyContent: "center",
@@ -138,8 +163,11 @@ const styles = StyleSheet.create({
   treatmentRow: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: spacing.xs,
     paddingVertical: 2,
+  },
+  treatmentName: {
+    flex: 1,
   },
 });
 

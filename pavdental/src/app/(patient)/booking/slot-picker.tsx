@@ -1,30 +1,40 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Button } from "@/components";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText, Card, Button, ProgressPills, ChipPill, Toast } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { TimeSlot } from "@/features/booking/booking-types";
-
 import { useSlots, useHoldSlotMutation } from "@/features/hooks/use-dental-api";
 
 export default function SlotPickerScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { setSlot, setHoldExpiry, clinician, clinic, service } = useBookingStore();
-  const [selectedDate, setSelectedDate] = useState<string>("Mon 22 Sep");
+
+  const upcomingDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date();
+      d.setDate(d.getDate() + idx);
+      const iso = d.toISOString().split("T")[0];
+      const label = d.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+      return { label, iso };
+    });
+  }, []);
+
+  const [selectedDate, setSelectedDate] = useState<string>(upcomingDays[0].label);
   const [selectedSlot, setSelectedSlotState] = useState<TimeSlot | null>(null);
+  const [partOfDay, setPartOfDay] = useState<"any" | "am" | "pm">("any");
+  const [holdError, setHoldError] = useState<string | null>(null);
 
-  const dates = ["Mon 22 Sep", "Tue 23 Sep", "Wed 24 Sep", "Thu 25 Sep"];
-
-  // Format "Mon 22 Sep" to "2026-09-22"
-  const dateMap: Record<string, string> = {
-    "Mon 22 Sep": "2026-09-22",
-    "Tue 23 Sep": "2026-09-23",
-    "Wed 24 Sep": "2026-09-24",
-    "Thu 25 Sep": "2026-09-25",
-  };
-
-  const isoDate = dateMap[selectedDate] || "2026-09-22";
+  const dates = upcomingDays.map((d) => d.label);
+  const isoDate =
+    upcomingDays.find((d) => d.label === selectedDate)?.iso ?? upcomingDays[0].iso;
 
   const { data: apiSlots } = useSlots({
     date: isoDate,
@@ -32,7 +42,7 @@ export default function SlotPickerScreen() {
     serviceId: service?.id,
   });
 
-  const slots = apiSlots || [];
+  const slots: TimeSlot[] = (apiSlots ?? []) as TimeSlot[];
 
   const filteredSlots = slots.filter((slot) => {
     if (slot.dateFormatted && slot.dateFormatted !== selectedDate) return false;
@@ -41,26 +51,49 @@ export default function SlotPickerScreen() {
     return slot.isAvailable;
   });
 
+  const hourOf = (slot: TimeSlot) => {
+    const iso = (slot as any).startTimeUtc || (slot as any).start_time_utc;
+    if (iso) return new Date(iso).getHours();
+    const [h] = String(slot.displayTime || "").split(":");
+    return Number(h) || 0;
+  };
+
+  const visibleSlots = filteredSlots.filter((slot) => {
+    if (partOfDay === "am") return hourOf(slot) < 12;
+    if (partOfDay === "pm") return hourOf(slot) >= 12;
+    return true;
+  });
+
+  const soonestSlot = visibleSlots.length
+    ? [...visibleSlots].sort((a, b) => hourOf(a) - hourOf(b))[0]
+    : null;
+
   const holdMutation = useHoldSlotMutation();
 
   const handleContinue = async () => {
     if (!selectedSlot) return;
+    setHoldError(null);
     setSlot(selectedSlot);
 
     // Call Redis slot hold API
     try {
       const res = await holdMutation.mutateAsync(selectedSlot.id);
       setHoldExpiry(res.holdExpiresAt);
-    } catch {
-      // 10-minute fallback TTL if offline
-      setHoldExpiry(Date.now() + 10 * 60 * 1000);
+      router.push("/(patient)/booking/summary" as any);
+    } catch (err: any) {
+      setHoldError(err?.message || "Could not reserve this slot. Please try another time.");
     }
-
-    router.push("/(patient)/booking/summary" as any);
   };
 
   return (
     <View style={styles.container}>
+      {holdError ? (
+        <Toast
+          message={holdError}
+          tone="error"
+          onDismiss={() => setHoldError(null)}
+        />
+      ) : null}
       {/* Date Selector Row */}
       <View style={styles.dateBar}>
         <ScrollView
@@ -73,11 +106,17 @@ export default function SlotPickerScreen() {
             return (
               <Pressable
                 key={d}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
                 onPress={() => {
                   setSelectedDate(d);
                   setSelectedSlotState(null);
                 }}
-                style={[styles.datePill, active && styles.datePillActive]}
+                style={({ pressed }) => [
+                  styles.datePill,
+                  active && styles.datePillActive,
+                  pressed && { opacity: 0.8 },
+                ]}
               >
                 <ThemedText
                   variant="caption"
@@ -93,11 +132,42 @@ export default function SlotPickerScreen() {
 
       {/* Available Slot Grid */}
       <ScrollView contentContainerStyle={styles.content}>
+        <ProgressPills total={5} current={4} />
+
+        {/* Quick-pick chips (Zocdoc "soonest / part of day" pattern) */}
+        <View style={styles.quickRow}>
+          <ChipPill
+            label="Soonest available"
+            tone="ink"
+            selected={!!selectedSlot && selectedSlot.id === soonestSlot?.id}
+            onPress={() => {
+              setPartOfDay("any");
+              if (soonestSlot) setSelectedSlotState(soonestSlot);
+            }}
+          />
+          <ChipPill
+            label="Morning"
+            selected={partOfDay === "am"}
+            onPress={() => {
+              setPartOfDay(partOfDay === "am" ? "any" : "am");
+              setSelectedSlotState(null);
+            }}
+          />
+          <ChipPill
+            label="Afternoon"
+            selected={partOfDay === "pm"}
+            onPress={() => {
+              setPartOfDay(partOfDay === "pm" ? "any" : "pm");
+              setSelectedSlotState(null);
+            }}
+          />
+        </View>
+
         <ThemedText variant="headline" style={styles.sectionHeader}>
           Available Times for {selectedDate}
         </ThemedText>
 
-        {filteredSlots.length === 0 ? (
+        {visibleSlots.length === 0 ? (
           <Card style={styles.emptyCard}>
             <ThemedText variant="body" style={styles.emptyText}>
               No available slots for this date. Please check the next day or choose 'Any Practitioner'.
@@ -105,13 +175,20 @@ export default function SlotPickerScreen() {
           </Card>
         ) : (
           <View style={styles.slotGrid}>
-            {filteredSlots.map((slot) => {
+            {visibleSlots.map((slot) => {
               const selected = selectedSlot?.id === slot.id;
               return (
                 <Pressable
                   key={slot.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`Appointment at ${slot.displayTime}`}
                   onPress={() => setSelectedSlotState(slot)}
-                  style={[styles.slotItem, selected && styles.slotItemSelected]}
+                  style={({ pressed }) => [
+                    styles.slotItem,
+                    selected && styles.slotItemSelected,
+                    pressed && { opacity: 0.85 },
+                  ]}
                 >
                   <ThemedText
                     variant="headline"
@@ -127,7 +204,7 @@ export default function SlotPickerScreen() {
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View style={styles.footerBar}>
+      <View style={[styles.footerBar, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
           title={selectedSlot ? `Confirm ${selectedSlot.displayTime}` : "Choose a time slot"}
           size="lg"
@@ -161,7 +238,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   datePillActive: {
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
   },
   dateScroll: {
     gap: spacing.xs,
@@ -173,7 +250,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   dateTextActive: {
-    color: colors.onBrand,
+    color: colors.onInk,
   },
   emptyCard: {
     alignItems: "center",
@@ -189,6 +266,11 @@ const styles = StyleSheet.create({
     borderTopColor: colors.separator,
     borderTopWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
+  },
+  quickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
   },
   sectionHeader: {
     color: colors.label,
@@ -209,14 +291,14 @@ const styles = StyleSheet.create({
     width: "31%",
   },
   slotItemSelected: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   slotTime: {
     color: colors.label,
   },
   slotTimeSelected: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
 });

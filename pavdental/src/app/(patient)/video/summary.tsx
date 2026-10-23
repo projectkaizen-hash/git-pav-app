@@ -1,12 +1,13 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 
 export default function VideoSummaryScreen() {
   const router = useRouter();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -99,14 +100,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actionCard: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
   },
   actionTitle: {
-    color: colors.brand,
+    color: colors.ink,
   },
   card: {
     backgroundColor: colors.systemBackground,

@@ -83,6 +83,11 @@ router.get("/users", requireAuth, requireRole("admin"), validateQuery(adminUsers
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where: whereClause,
+      include: {
+        patientProfile: { select: { firstName: true, lastName: true, city: true, postcode: true } },
+        clinicianProfile: { select: { fullName: true, gdcNumber: true, roleTitle: true } },
+        operatorProfile: { select: { fullName: true, phone: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
       skip,
@@ -90,17 +95,30 @@ router.get("/users", requireAuth, requireRole("admin"), validateQuery(adminUsers
     prisma.user.count({ where: whereClause }),
   ]);
 
-  const formattedUsers = users.map((u) => ({
-    id: u.id,
-    email: u.email,
-    phone: u.phone,
-    role: u.role,
-    isActive: u.isActive,
-    emailVerified: u.emailVerified,
-    createdAt: u.createdAt,
-    name: "N/A",
-    details: "System User",
-  }));
+  const formattedUsers = users.map((u) => {
+    const name = u.patientProfile
+      ? `${u.patientProfile.firstName} ${u.patientProfile.lastName}`.trim()
+      : u.clinicianProfile?.fullName || u.operatorProfile?.fullName || u.email.split("@")[0];
+    const details = u.clinicianProfile
+      ? `GDC #${u.clinicianProfile.gdcNumber} · ${u.clinicianProfile.roleTitle}`
+      : u.patientProfile
+        ? [u.patientProfile.city, u.patientProfile.postcode].filter(Boolean).join(", ") || "Registered Patient"
+        : u.operatorProfile
+          ? "Mobile Van Operator"
+          : "System Administrator";
+
+    return {
+      id: u.id,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      isActive: u.isActive,
+      emailVerified: u.emailVerified,
+      createdAt: u.createdAt,
+      name,
+      details,
+    };
+  });
 
   return res.json({ users: formattedUsers, total, page, limit });
 });
@@ -147,6 +165,14 @@ router.get("/appointments", requireAuth, requireRole("admin"), validateQuery(adm
 router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), validateParams(appointmentIdParamsSchema), validateBody(updateAppointmentStatusSchema), async (req: AuthRequest, res: Response) => {
   const appointmentId = String(req.params.id);
   const { status } = req.body;
+
+  const existing = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
 
   const updated = await prisma.appointment.update({
     where: { id: appointmentId },

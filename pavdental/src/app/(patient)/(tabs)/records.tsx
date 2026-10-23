@@ -1,59 +1,96 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, ListRow } from "@/components";
+import { ThemedText, Card, ListRow, AppIcon, type AppIconName } from "@/components";
 import { colors, spacing } from "@/theme";
+
+// ─── Records — clinical documents hub (routes unchanged) ──────────────────────
+
+interface RecordLink {
+  icon: AppIconName;
+  title: string;
+  subtitle: string;
+  route: string;
+}
+
+const links: RecordLink[] = [
+  {
+    icon: "activity",
+    title: "Digital Odontogram",
+    subtitle: "Interactive 32-tooth dental chart",
+    route: "/(patient)/records/odontogram",
+  },
+  {
+    icon: "clipboard",
+    title: "Treatment Estimates & Plans",
+    subtitle: "Review and approve digital treatment plans",
+    route: "/(patient)/records/plans",
+  },
+  {
+    icon: "droplet",
+    title: "Prescriptions & Dispensing",
+    subtitle: "View electronic pharmacy notes",
+    route: "/(patient)/records/prescriptions",
+  },
+  {
+    icon: "image",
+    title: "Radiographs & X-Rays",
+    subtitle: "Encrypted image vault (DICOM)",
+    route: "/(patient)/records/vault",
+  },
+  {
+    icon: "creditCard",
+    title: "0% Treatment Financing",
+    subtitle: "Spread costs over 6–24 months (0% APR)",
+    route: "/(patient)/records/financing",
+  },
+  {
+    icon: "clock",
+    title: "Oral Health Activity & Insights",
+    subtitle: "Weekly brushing streaks & recall timer",
+    route: "/(patient)/records/insights",
+  },
+];
 
 export default function PatientRecordsScreen() {
   const router = useRouter();
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.summaryCard}>
-        <ThemedText variant="headline" style={styles.summaryTitle}>
-          Clinical Timeline
-        </ThemedText>
-        <ThemedText variant="caption" style={styles.summarySub}>
-          Full encrypted history of examinations, prescriptions, and digital X-rays across Van, Video & Practice.
-        </ThemedText>
-      </View>
+      {/* Summary banner */}
+      <Card style={styles.summaryCard}>
+        <View style={styles.summaryIcon}>
+          <AppIcon name="shield" size={20} color={colors.onInk} />
+        </View>
+        <View style={styles.summaryText}>
+          <ThemedText variant="headline" style={styles.summaryTitle}>
+            Clinical timeline
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.summarySub}>
+            Encrypted history of examinations, prescriptions, and digital X-rays across Van,
+            Video & Practice.
+          </ThemedText>
+        </View>
+      </Card>
 
       <View style={styles.section}>
-        <ThemedText variant="headline" style={styles.sectionHeader}>
-          Documents & Plans
-        </ThemedText>
+        <ThemedText variant="overline">Documents & plans</ThemedText>
         <Card padding="none">
-          <ListRow
-            title="Digital Odontogram"
-            subtitle="Interactive 32-tooth dental chart"
-            left={<ThemedText>🦷</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
-            onPress={() => router.push("/(patient)/records/odontogram" as any)}
-            separator
-          />
-          <ListRow
-            title="Treatment Estimates & Plans"
-            subtitle="1 active estimate pending approval"
-            left={<ThemedText>📋</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
-            onPress={() => router.push("/(patient)/records/plans" as any)}
-            separator
-          />
-          <ListRow
-            title="Prescriptions & Dispensing"
-            subtitle="View electronic pharmacy notes"
-            left={<ThemedText>💊</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
-            onPress={() => router.push("/(patient)/records/vault" as any)}
-            separator
-          />
-          <ListRow
-            title="Radiographs & X-Rays"
-            subtitle="Encrypted image vault (DICOM)"
-            left={<ThemedText>🩻</ThemedText>}
-            right={<ThemedText variant="subhead">›</ThemedText>}
-            onPress={() => router.push("/(patient)/records/vault" as any)}
-          />
+          {links.map((link, i) => (
+            <ListRow
+              key={link.title}
+              title={link.title}
+              subtitle={link.subtitle}
+              left={
+                <View style={styles.rowIcon}>
+                  <AppIcon name={link.icon} size={18} color={colors.ink} />
+                </View>
+              }
+              right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
+              onPress={() => router.push(link.route as never)}
+              separator={i < links.length - 1}
+            />
+          ))}
         </Card>
       </View>
     </ScrollView>
@@ -69,23 +106,41 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     padding: spacing.md,
   },
+  rowIcon: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
   section: {
     gap: spacing.xs,
   },
-  sectionHeader: {
-    color: colors.label,
-  },
   summaryCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
-    gap: spacing.xxs,
-    padding: spacing.md,
+    alignItems: "center",
+    backgroundColor: colors.ink,
+    flexDirection: "row",
+    gap: spacing.sm,
+    padding: spacing.lg,
+  },
+  summaryIcon: {
+    alignItems: "center",
+    backgroundColor: colors.inkSoft,
+    borderRadius: 24,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
   },
   summarySub: {
-    color: colors.secondaryLabel,
+    color: colors.alwaysWhite,
+    opacity: 0.75,
+  },
+  summaryText: {
+    flex: 1,
+    gap: 2,
   },
   summaryTitle: {
-    color: colors.label,
+    color: colors.alwaysWhite,
   },
 });
-

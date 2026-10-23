@@ -12,6 +12,14 @@ export default function PatientLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="booking" />
+      <Stack.Screen name="appointments" />
+      <Stack.Screen name="records" />
+      <Stack.Screen name="van" />
+      <Stack.Screen name="video" />
+      <Stack.Screen name="check-in" options={{ headerShown: true, title: "Pre-Visit Check-In", headerBackTitle: "Back" }} />
+      <Stack.Screen name="perks" />
+      <Stack.Screen name="waitlist" />
     </Stack>
   );
 }

@@ -1,64 +1,159 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge } from "@/components";
-import { colors, spacing } from "@/theme";
+import * as Haptics from "expo-haptics";
+import {
+  ThemedText,
+  Input,
+  AppIcon,
+  ServiceHeroCard,
+  ProgressPills,
+  EmptyState,
+} from "@/components";
+import { colors, spacing, radius } from "@/theme";
 import { useServices } from "@/features/hooks/use-dental-api";
-import { formatGbp } from "@/features/booking/booking-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { DentalService } from "@/features/booking/booking-types";
+import { formatGbp } from "@/features/booking/booking-api";
 
+type CategoryFilter =
+  | "all"
+  | "checkup"
+  | "hygiene"
+  | "emergency"
+  | "restorative"
+  | "cosmetic";
 
-type CategoryFilter = "all" | "checkup" | "hygiene" | "emergency" | "restorative" | "cosmetic";
+const CATEGORIES: { label: string; value: CategoryFilter; icon: any }[] = [
+  { label: "All", value: "all", icon: "grid" },
+  { label: "Checkup", value: "checkup", icon: "profile" },
+  { label: "Hygiene", value: "hygiene", icon: "sparkle" },
+  { label: "Surgery", value: "restorative", icon: "activity" },
+  { label: "Cosmetic", value: "cosmetic", icon: "smile" },
+  { label: "Emergency", value: "emergency", icon: "alert" },
+];
+
+function getServiceImage(category?: string, name?: string) {
+  const lower = `${category || ""} ${name || ""}`.toLowerCase();
+  if (lower.includes("implant") || lower.includes("restor") || lower.includes("emerg")) {
+    return require("../../../../assets/images/implant.jpg");
+  }
+  if (lower.includes("veneer") || lower.includes("whitening") || lower.includes("cosmetic")) {
+    return require("../../../../assets/images/welcome-hero.jpg");
+  }
+  return require("../../../../assets/images/smile-restoration.jpg");
+}
 
 export default function ServiceCatalogScreen() {
   const router = useRouter();
   const { setService, setChannel } = useBookingStore();
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+  const [showSearch, setShowSearch] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { data: apiServices } = useServices();
-  const services = apiServices || [];
+  const services = useMemo(
+    () => ((apiServices as DentalService[] | undefined) ?? []),
+    [apiServices]
+  );
 
-  const filteredServices = services.filter((s) => {
-    if (selectedCategory === "all") return true;
-    return s.category === selectedCategory;
-  });
+  const filteredServices = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return services.filter((srv) => {
+      const matchesCat =
+        selectedCategory === "all" ||
+        (srv.category || "").toLowerCase() === selectedCategory;
+      const matchesQuery =
+        !q ||
+        srv.name.toLowerCase().includes(q) ||
+        (srv.description || "").toLowerCase().includes(q) ||
+        (srv.category || "").toLowerCase().includes(q);
+      return matchesCat && matchesQuery;
+    });
+  }, [services, selectedCategory, search]);
 
   const handleSelectService = (service: DentalService) => {
-    setService(service);
+    setService({
+      ...service,
+      id: service.id,
+      name: service.name,
+      pricePence: service.pricePence,
+      depositPence: service.depositPence ?? Math.round((service.pricePence || 0) * 0.25),
+    });
     setChannel("clinic");
-    router.push("/(patient)/booking/clinic-picker" as any);
+    router.push("/(patient)/booking/clinic-picker" as never);
   };
-
-  const categories: { label: string; value: CategoryFilter }[] = [
-    { label: "All Treatments", value: "all" },
-    { label: "Checkups", value: "checkup" },
-    { label: "Hygiene", value: "hygiene" },
-    { label: "Emergency", value: "emergency" },
-    { label: "Fillings", value: "restorative" },
-    { label: "Whitening", value: "cosmetic" },
-  ];
 
   return (
     <View style={styles.container}>
-      {/* Category Horizontal Filter Pills */}
-      <View style={styles.filterContainer}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Progress Pills for Multi-Step Booking */}
+        <ProgressPills total={5} current={1} />
+
+        {/* Top Header: "Choose a Service" + Search Icon button */}
+        <View style={styles.headerRow}>
+          <ThemedText variant="largeTitle" style={styles.headerTitle}>
+            Choose{"\n"}a Service
+          </ThemedText>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search treatments"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowSearch((prev) => !prev);
+            }}
+            style={styles.searchIconBtn}
+          >
+            <AppIcon name="search" size={18} color={colors.ink} />
+          </Pressable>
+        </View>
+
+        {/* Optional Search bar dropdown */}
+        {showSearch ? (
+          <View style={styles.searchBarWrap}>
+            <Input
+              placeholder="Search treatments by name..."
+              value={search}
+              onChangeText={setSearch}
+              autoFocus
+            />
+          </View>
+        ) : null}
+
+        {/* Filter Category Pills */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
+          contentContainerStyle={styles.categoryScroll}
         >
-          {categories.map((cat) => {
-            const active = selectedCategory === cat.value;
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat.value;
             return (
               <Pressable
                 key={cat.value}
-                onPress={() => setSelectedCategory(cat.value)}
-                style={[styles.pill, active && styles.pillActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setSelectedCategory(cat.value);
+                }}
+                style={[
+                  styles.categoryPill,
+                  isActive ? styles.categoryPillActive : styles.categoryPillInactive,
+                ]}
               >
+                <AppIcon
+                  name={cat.icon}
+                  size={14}
+                  color={isActive ? colors.alwaysWhite : colors.ink}
+                />
                 <ThemedText
-                  variant="caption"
-                  style={[styles.pillText, active && styles.pillTextActive]}
+                  variant="subhead"
+                  style={[
+                    styles.categoryText,
+                    isActive ? styles.categoryTextActive : styles.categoryTextInactive,
+                  ]}
                 >
                   {cat.label}
                 </ThemedText>
@@ -66,152 +161,101 @@ export default function ServiceCatalogScreen() {
             );
           })}
         </ScrollView>
-      </View>
 
-      {/* Services List */}
-      <ScrollView contentContainerStyle={styles.serviceList}>
-        {filteredServices.map((srv) => (
-          <Pressable
-            key={srv.id}
-            onPress={() => handleSelectService(srv)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Card elevation="raised" style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.titleArea}>
-                  <ThemedText variant="headline" style={styles.serviceName}>
-                    {srv.name}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.duration}>
-                    ⏱ {srv.durationMinutes} mins
-                  </ThemedText>
-                </View>
-                <View style={styles.priceArea}>
-                  <ThemedText variant="mono" style={styles.price}>
-                    {formatGbp(srv.pricePence)}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.deposit}>
-                    Dep: {formatGbp(srv.depositPence)}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <ThemedText variant="subhead" style={styles.desc}>
-                {srv.description}
-              </ThemedText>
-
-              <View style={styles.footerRow}>
-                <View style={styles.badgeRow}>
-                  {srv.supportedChannels.map((ch) => (
-                    <Badge
-                      key={ch}
-                      label={ch.toUpperCase()}
-                      variant={ch === "van" ? "success" : ch === "video" ? "info" : "default"}
-                    />
-                  ))}
-                </View>
-                <ThemedText variant="caption" style={styles.selectCta}>
-                  Select ›
-                </ThemedText>
-              </View>
-            </Card>
-          </Pressable>
-        ))}
+        {/* Live Service Catalog Cards */}
+        {filteredServices.length === 0 ? (
+          <EmptyState
+            heading="No matching services"
+            body="Try clearing your search or choosing another treatment category."
+            icon="search"
+          />
+        ) : (
+          <View style={styles.cardList}>
+            {filteredServices.map((srv) => (
+              <ServiceHeroCard
+                key={srv.id}
+                title={srv.name}
+                badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
+                image={getServiceImage(srv.category, srv.name)}
+                actionLabel="Book Appointment"
+                onPressAction={() => handleSelectService(srv)}
+                onPressChat={() => router.push("/(patient)/(tabs)/messages" as never)}
+                onPressInfo={() => handleSelectService(srv)}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badgeRow: {
-    flexDirection: "row",
-    gap: 4,
+  cardList: {
+    gap: spacing.md,
   },
-  card: {
-    backgroundColor: colors.systemBackground,
+  categoryPill: {
+    alignItems: "center",
+    borderRadius: radius.full,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  categoryPillActive: {
+    backgroundColor: colors.ink,
+  },
+  categoryPillInactive: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderWidth: 1,
+  },
+  categoryScroll: {
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingVertical: spacing.xxs,
   },
-  cardHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
+  categoryText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  categoryTextActive: {
+    color: colors.alwaysWhite,
+  },
+  categoryTextInactive: {
+    color: colors.label,
   },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
   },
-  deposit: {
-    color: colors.secondaryLabel,
-    fontSize: 11,
-  },
-  desc: {
-    color: colors.secondaryLabel,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  duration: {
-    color: colors.secondaryLabel,
-  },
-  filterContainer: {
-    backgroundColor: colors.systemBackground,
-    borderBottomColor: colors.separator,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  filterScroll: {
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  footerRow: {
-    alignItems: "center",
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-  },
-  pill: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  pillActive: {
-    backgroundColor: colors.brand,
-  },
-  pillText: {
-    color: colors.label,
-    fontWeight: "600",
-  },
-  pillTextActive: {
-    color: colors.onBrand,
-  },
-  price: {
-    color: colors.brand,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  priceArea: {
-    alignItems: "flex-end",
-  },
-  selectCta: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  serviceList: {
+  content: {
     gap: spacing.md,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  serviceName: {
-    color: colors.label,
+  headerRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
   },
-  titleArea: {
-    flex: 1,
-    gap: 2,
-    paddingRight: spacing.sm,
+  headerTitle: {
+    color: colors.label,
+    fontSize: 32,
+    fontWeight: "700",
+    lineHeight: 38,
+  },
+  searchBarWrap: {
+    marginTop: -spacing.xs,
+  },
+  searchIconBtn: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
 });
-

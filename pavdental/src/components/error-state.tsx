@@ -2,6 +2,7 @@ import { View, StyleSheet } from "react-native";
 import { colors, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { Button } from "./button";
+import { AppIcon } from "./app-icon";
 
 interface ErrorStateProps {
   /** User-friendly error message (never raw API errors) */
@@ -24,9 +25,9 @@ export function ErrorState({
       accessibilityLiveRegion="polite"
       accessibilityLabel={message}
     >
-      <ThemedText variant="title" style={styles.icon} accessibilityElementsHidden>
-        ⚠️
-      </ThemedText>
+      <View style={styles.iconWrap} accessibilityElementsHidden>
+        <AppIcon name="alert" size={30} color={colors.warning} />
+      </View>
 
       <ThemedText variant="headline" style={styles.message}>
         {message}
@@ -55,8 +56,13 @@ const styles = StyleSheet.create({
   cta: {
     marginTop: spacing.xs,
   },
-  icon: {
-    fontSize: 40,
+  iconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.warningSubtle,
+    borderRadius: 32,
+    height: 64,
+    justifyContent: "center",
+    width: 64,
   },
   message: {
     color: colors.secondaryLabel,

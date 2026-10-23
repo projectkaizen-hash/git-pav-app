@@ -1,6 +1,13 @@
 // ─── Shared component barrel ──────────────────────────────────────────────────
 // Import from "@/components" everywhere — never from component sub-files directly.
 export { ThemedText } from "./themed-text";
+export { AppIcon, type AppIconName } from "./app-icon";
+export { IconButton } from "./icon-button";
+export { ChipPill } from "./chip-pill";
+export { SectionHeader } from "./section-header";
+export { Toast } from "./toast";
+export { ConfirmSheet } from "./confirm-sheet";
+export { ProgressPills } from "./progress-pills";
 export { Button } from "./button";
 export { Input } from "./input";
 export { Card } from "./card";
@@ -18,3 +25,7 @@ export { EmergencyContactForm } from "./forms/EmergencyContactForm";
 export { PasswordChangeForm } from "./forms/PasswordChangeForm";
 export { ToggleSwitch } from "./settings/ToggleSwitch";
 export { SessionItem } from "./settings/SessionItem";
+export { ServiceHeroCard } from "./service-hero-card";
+export { SwipeToStart } from "./swipe-to-start";
+export { MetricRing } from "./metric-ring";
+export { EmergencyTriageModal } from "./emergency-triage-modal";

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { View, Animated, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "@/theme";
 
@@ -17,12 +17,16 @@ interface SkeletonProps {
 export function Skeleton({ width = "100%", height = 20, borderRadius = radius.sm, style }: SkeletonProps) {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
-  Animated.loop(
-    Animated.sequence([
-      Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-    ])
-  ).start();
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
 
   return (
     <Animated.View

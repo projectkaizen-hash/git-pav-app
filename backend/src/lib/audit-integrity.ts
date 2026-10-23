@@ -1,55 +1,75 @@
 import crypto from "crypto";
 import { prisma } from "./prisma";
+import { communicationService } from "./communication-service";
+
+let auditWriteQueue: Promise<unknown> = Promise.resolve();
 
 // Audit log integrity using hash chains
 // Each log entry contains a hash of the previous entry to detect tampering
 export async function createAuditLogWithIntegrity(data: {
   action: string;
-  actorId: string | null;
-  resourceId: string | null;
-  sessionId: string | null;
-  ipHash: string;
-  metadata: any;
+  actorId?: string | null;
+  resourceId?: string | null;
+  sessionId?: string | null;
+  ipHash?: string | null;
+  metadata?: any;
 }) {
-  // Get the most recent non-archived audit log for hash chaining
-  const lastLog = await prisma.auditLog.findFirst({
-    where: { archived: false },
-    orderBy: { timestampUtc: "desc" },
-    select: { integrityHash: true, id: true },
-  });
+  const run = async () => {
+    // Get the most recent non-archived audit log for hash chaining
+    const lastLog =
+      typeof prisma.auditLog?.findFirst === "function"
+        ? await prisma.auditLog.findFirst({
+            where: { archived: false },
+            orderBy: [{ timestampUtc: "desc" }, { id: "desc" }],
+            select: { integrityHash: true, id: true, timestampUtc: true },
+          })
+        : null;
 
-  // Create hash chain: hash(previousHash + currentData)
-  const dataString = JSON.stringify({
-    action: data.action,
-    actorId: data.actorId,
-    resourceId: data.resourceId,
-    timestamp: new Date().toISOString(),
-  });
+    let now = new Date();
+    if (lastLog?.timestampUtc && now.getTime() < lastLog.timestampUtc.getTime()) {
+      now = new Date(lastLog.timestampUtc.getTime());
+    }
+    const nowIso = now.toISOString();
 
-  const integrityHash = crypto
-    .createHash("sha256")
-    .update((lastLog?.integrityHash || "") + dataString)
-    .digest("hex");
-
-  return prisma.auditLog.create({
-    data: {
+    // Create hash chain: hash(previousHash + currentData)
+    const dataString = JSON.stringify({
       action: data.action,
-      actorId: data.actorId,
-      resourceId: data.resourceId,
-      sessionId: data.sessionId,
-      ipHash: data.ipHash,
-      metadata: data.metadata,
-      integrityHash,
-      archived: false,
-    },
-  });
+      actorId: data.actorId ?? null,
+      resourceId: data.resourceId ?? null,
+      timestamp: nowIso,
+    });
+
+    const integrityHash = crypto
+      .createHash("sha256")
+      .update((lastLog?.integrityHash || "") + dataString)
+      .digest("hex");
+
+    return prisma.auditLog.create({
+      data: {
+        action: data.action,
+        actorId: data.actorId ?? null,
+        resourceId: data.resourceId ?? null,
+        sessionId: data.sessionId ?? null,
+        ipHash: data.ipHash ?? null,
+        metadata: data.metadata ?? {},
+        integrityHash,
+        timestampUtc: now,
+        archived: false,
+      },
+    });
+  };
+
+  const resultPromise = auditWriteQueue.then(run, run);
+  auditWriteQueue = resultPromise.catch(() => {});
+  return resultPromise;
 }
 
 // Verify audit log integrity by checking hash chain
 export async function verifyAuditIntegrity(limit: number = 1000) {
+  await auditWriteQueue.catch(() => {});
   const logs = await prisma.auditLog.findMany({
     where: { archived: false },
-    orderBy: { timestampUtc: "asc" },
+    orderBy: [{ timestampUtc: "asc" }, { id: "asc" }],
     take: limit,
     select: {
       id: true,
@@ -65,6 +85,11 @@ export async function verifyAuditIntegrity(limit: number = 1000) {
   const issues: string[] = [];
 
   for (const log of logs) {
+    if (!log.integrityHash) {
+      issues.push(`Missing integrity hash - possible tampering for log ${log.id} at ${log.timestampUtc.toISOString()}`);
+      continue;
+    }
+
     const dataString = JSON.stringify({
       action: log.action,
       actorId: log.actorId,
@@ -85,6 +110,7 @@ export async function verifyAuditIntegrity(limit: number = 1000) {
   }
 
   return {
+    valid: issues.length === 0,
     verified: issues.length === 0,
     checkedCount: logs.length,
     issues,
@@ -145,7 +171,6 @@ export function isCriticalAuditEvent(action: string): boolean {
 
 // Send alert for critical audit events
 export async function sendCriticalAuditAlert(log: any) {
-  // In production, this would integrate with alerting systems (PagerDuty, Slack, etc.)
   console.error(`[CRITICAL AUDIT ALERT] ${log.action}`, {
     actorId: log.actorId,
     resourceId: log.resourceId,
@@ -153,12 +178,22 @@ export async function sendCriticalAuditAlert(log: any) {
     ipHash: log.ipHash,
   });
 
-  // TODO: Integrate with actual alerting system
-  // await alertingService.send({
-  //   severity: "critical",
-  //   title: `Critical Audit Event: ${log.action}`,
-  //   details: log,
-  // });
+  await communicationService.sendEmail({
+    to: "ops@pavdental.com",
+    subject: `[CRITICAL AUDIT ALERT] ${log.action}`,
+    html: `<p>A critical security audit event occurred:</p><pre>${JSON.stringify(
+      {
+        action: log.action,
+        actorId: log.actorId,
+        resourceId: log.resourceId,
+        timestamp: log.timestampUtc,
+        ipHash: log.ipHash,
+      },
+      null,
+      2
+    )}</pre>`,
+    text: `Critical security audit event: ${log.action} (actorId: ${log.actorId}, resourceId: ${log.resourceId})`,
+  }).catch((err) => console.error("[AUDIT ALERT] Failed to send email alert:", err));
 }
 
 // Audit failure detection and alerting
@@ -176,7 +211,12 @@ export async function checkAuditFailures() {
   if (recentFailures.length > 10) {
     // High failure rate - send alert
     console.error(`[AUDIT FAILURE ALERT] High failure rate: ${recentFailures.length} failures in 24h`);
-    // TODO: Send alert to operations team
+    await communicationService.sendEmail({
+      to: "ops@pavdental.com",
+      subject: `[AUDIT FAILURE ALERT] ${recentFailures.length} failures in 24h`,
+      html: `<p>High failure rate detected in the last 24 hours (${recentFailures.length} events).</p>`,
+      text: `High failure rate detected in the last 24 hours (${recentFailures.length} events).`,
+    }).catch((err) => console.error("[AUDIT FAILURE ALERT] Failed to send email:", err));
   }
 
   return {

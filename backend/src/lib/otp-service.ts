@@ -232,6 +232,8 @@ export class TwoFactorService {
 }
 
 import { redis } from './redis';
+import { prisma } from './prisma';
+import { communicationService } from './communication-service';
 
 /**
  * Rate Limiter
@@ -309,4 +311,54 @@ export const emailVerificationService = new EmailVerificationService();
 export const passwordResetService = new PasswordResetService();
 export const twoFactorService = new TwoFactorService();
 export const rateLimiter = new RateLimiter();
+
+export const otpService = {
+  async createAndSendOTP(params: {
+    userId: string;
+    email?: string;
+    phone?: string;
+    purpose?: string;
+    deliveryMethod?: "sms" | "email";
+  }): Promise<{ code: string; expiresAt: Date }> {
+    const { code, hashedCode, expiresAt } = twoFactorService.generateOTP();
+    await prisma.mfaCode.create({
+      data: {
+        userId: params.userId,
+        code: hashedCode,
+        expiresAt,
+      },
+    });
+    const recipient =
+      params.deliveryMethod === "sms" && params.phone
+        ? params.phone
+        : params.email || params.phone || "";
+    if (recipient) {
+      await communicationService.sendMfaCode(recipient, code).catch((err) => {
+        console.error("[OTP Service] Failed to dispatch MFA code:", err);
+      });
+    }
+    return { code, expiresAt };
+  },
+
+  async verifyOTP(userId: string, code: string, _purpose?: string): Promise<boolean> {
+    if (!code || typeof code !== "string") return false;
+    const hashedCode = hashToken(code.trim());
+    const mfaCode = await prisma.mfaCode.findFirst({
+      where: {
+        userId,
+        code: hashedCode,
+        expiresAt: { gt: new Date() },
+        usedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!mfaCode) return false;
+
+    const consumed = await prisma.mfaCode.updateMany({
+      where: { id: mfaCode.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    return consumed.count === 1;
+  },
+};
 

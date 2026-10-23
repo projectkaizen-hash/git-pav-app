@@ -1,0 +1,9 @@
+node_modules/
+dist/
+uploads/
+backend/uploads/
+**/testsprite_tests/tmp/
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json
+.env*
+!.env.example

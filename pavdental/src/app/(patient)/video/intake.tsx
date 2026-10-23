@@ -6,12 +6,13 @@ import {
   Pressable,
   Switch,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, Card } from "@/components";
 import { colors, spacing } from "@/theme";
 
 export default function VideoIntakeScreen() {
   const router = useRouter();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
   const [symptomText, setSymptomText] = useState("");
   const [painLevel, setPainLevel] = useState<number>(5);
   const [hasSwelling, setHasSwelling] = useState(false);
@@ -31,7 +32,16 @@ export default function VideoIntakeScreen() {
       setError("Please consent to the clinical consultation terms to continue.");
       return;
     }
-    router.push("/(patient)/video/photos" as any);
+    router.push({
+      pathname: "/(patient)/video/photos" as any,
+      params: {
+        appointmentId: appointmentId || "",
+        symptomText: symptomText.trim(),
+        painLevel: String(painLevel),
+        hasSwelling: String(hasSwelling),
+        duration,
+      },
+    });
   };
 
   return (
@@ -108,7 +118,7 @@ export default function VideoIntakeScreen() {
           <Switch
             value={hasSwelling}
             onValueChange={setHasSwelling}
-            trackColor={{ true: colors.brand, false: colors.separator }}
+            trackColor={{ true: colors.ink, false: colors.separator }}
           />
         </View>
 
@@ -151,7 +161,7 @@ export default function VideoIntakeScreen() {
                 setDualRecordingConsent(val);
                 if (error) setError(null);
               }}
-              trackColor={{ true: colors.brand, false: colors.separator }}
+              trackColor={{ true: colors.ink, false: colors.separator }}
             />
           </View>
         </Card>
@@ -205,8 +215,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   durationItemActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   durationList: {
     flexDirection: "row",
@@ -214,11 +224,10 @@ const styles = StyleSheet.create({
   },
   durationText: {
     color: colors.secondaryLabel,
-    fontSize: 12,
     textAlign: "center",
   },
   durationTextActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   errorBox: {
@@ -247,7 +256,7 @@ const styles = StyleSheet.create({
     width: 30,
   },
   painPillSelected: {
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
   },
   painRow: {
     flexDirection: "row",
@@ -259,7 +268,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   painTextSelected: {
-    color: colors.onBrand,
+    color: colors.onInk,
     fontWeight: "700",
   },
   section: {

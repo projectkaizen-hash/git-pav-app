@@ -29,11 +29,20 @@ router.post("/register-token", requireAuth, validateBody(registerPushTokenSchema
     });
 
     if (existing) {
+      const updated = await prisma.pushToken.update({
+        where: { id: existing.id },
+        data: {
+          active: true,
+          userId: req.user!.sub,
+          platform: platform || existing.platform,
+          updatedAt: new Date(),
+        },
+      });
       return {
-        id: existing.id,
+        id: updated.id,
         status: "already_registered",
-        platform: existing.platform,
-        httpStatus: 200
+        platform: updated.platform,
+        httpStatus: 200,
       };
     }
 

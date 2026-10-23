@@ -7,7 +7,7 @@ import {
   useAddDependantMutation,
   useRemoveDependantMutation,
 } from "@/features/account/account-hooks";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 export default function DependantsScreen() {
   const { data: dependants = [] } = useDependants();
@@ -94,7 +94,7 @@ export default function DependantsScreen() {
             <Card key={dep.id} style={styles.depCard}>
               <View style={styles.depTop}>
                 <View style={styles.avatarCircle}>
-                  <ThemedText style={styles.avatarInitial}>{dep.firstName[0]}</ThemedText>
+                  <ThemedText variant="headline" style={styles.avatarInitial}>{dep.firstName[0]}</ThemedText>
                 </View>
                 <View style={styles.depInfo}>
                   <View style={styles.nameRow}>
@@ -109,8 +109,11 @@ export default function DependantsScreen() {
 
               <View style={styles.depBottom}>
                 <View style={styles.consentBadge}>
-                  <ThemedText variant="caption" style={styles.consentText}>
-                    {dep.consentSigned ? "✓ Parental Consent Active" : "⚠️ Consent Pending"}
+                  <ThemedText
+                    variant="caption"
+                    style={[styles.consentText, { color: dep.consentSigned ? colors.success : colors.warning }]}
+                  >
+                    {dep.consentSigned ? "Parental consent active" : "Consent pending"}
                   </ThemedText>
                 </View>
 
@@ -209,21 +212,17 @@ export default function DependantsScreen() {
 const styles = StyleSheet.create({
   avatarCircle: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 22,
     height: 44,
     justifyContent: "center",
     width: 44,
   },
   avatarInitial: {
-    color: colors.brand,
-    fontSize: 18,
-    fontWeight: "700",
+    color: colors.ink,
   },
   consentBadge: {},
   consentText: {
-    color: colors.success,
-    fontSize: 11,
     fontWeight: "600",
   },
   container: {
@@ -269,10 +268,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   headerSub: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   list: {
     gap: spacing.sm,
@@ -312,14 +308,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   relPillActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   relPillText: {
     color: colors.secondaryLabel,
   },
   relPillTextActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   relPills: {

@@ -1,0 +1,564 @@
+import React, { useState } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Linking } from "react-native";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
+import { ThemedText } from "./themed-text";
+import { Card } from "./card";
+import { Badge } from "./badge";
+import { Button } from "./button";
+import { AppIcon, AppIconName } from "./app-icon";
+import { colors, spacing, radius } from "@/theme";
+import { useBookingStore } from "@/features/booking/booking-store";
+
+export interface EmergencyTriageModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+type SymptomType = "pain" | "broken" | "filling" | "swelling" | "bleeding";
+
+interface SymptomOption {
+  id: SymptomType;
+  label: string;
+  icon: AppIconName;
+  tag: string;
+  title: string;
+  advice: string[];
+  redFlag?: string;
+  recommendedService: string;
+  recommendedPricePence: number;
+}
+
+const SYMPTOMS: SymptomOption[] = [
+  {
+    id: "pain",
+    label: "Severe Pain",
+    icon: "alert",
+    tag: "High Urgency",
+    title: "Acute Toothache / Pulpitis",
+    advice: [
+      "Alternate Paracetamol (500mg) and Ibuprofen (400mg) if medically suitable.",
+      "Avoid hot, cold, or sugary foods and drinks that trigger nerve spikes.",
+      "Keep head elevated with extra pillows when lying down to reduce throbbing pressure.",
+    ],
+    redFlag: "Call 999 if pain spreads to chest or is accompanied by confusion.",
+    recommendedService: "Emergency Toothache & Pain Relief",
+    recommendedPricePence: 7500,
+  },
+  {
+    id: "broken",
+    label: "Broken Tooth",
+    icon: "zap",
+    tag: "Same-Day Care",
+    title: "Fractured Cusp / Enamel Trauma",
+    advice: [
+      "Rinse gently with warm salt water to clean debris from the fracture site.",
+      "If a tooth fragment was recovered, store it submerged in cold milk or saliva.",
+      "Cover any razor-sharp edges with sugar-free chewing gum or ortho wax to protect your cheek.",
+    ],
+    redFlag: "Seek A&E if tooth was completely knocked out (avulsed) with heavy head impact.",
+    recommendedService: "Emergency Dental Trauma & Repair",
+    recommendedPricePence: 9500,
+  },
+  {
+    id: "filling",
+    label: "Lost Crown / Filling",
+    icon: "activity",
+    tag: "Priority Slot",
+    title: "Exposed Cavity / Dislodged Crown",
+    advice: [
+      "Keep the crown safe in a clean dry container — do NOT force it back in with superglue.",
+      "Over-the-counter temporary dental cement from Boots can protect the sensitive dentin.",
+      "Chew entirely on the opposite side of your mouth until evaluated by Dr. Pav.",
+    ],
+    recommendedService: "Recement Crown / Emergency Dressing",
+    recommendedPricePence: 6500,
+  },
+  {
+    id: "swelling",
+    label: "Facial Swelling",
+    icon: "alert",
+    tag: "Critical Urgency",
+    title: "Periapical Abscess / Cellulitis",
+    advice: [
+      "Apply a cold ice compress to the outer cheek in 10-minute intervals. Do NOT apply hot packs.",
+      "Never attempt to pop, pierce, or drain a gum boil at home.",
+      "Requires rapid clinical antibiotics or emergency drainage by our surgical team.",
+    ],
+    redFlag: "🚨 RED FLAG: If swelling restricts breathing or swallowing, visit nearest A&E immediately.",
+    recommendedService: "Emergency Abscess & Infection Triage",
+    recommendedPricePence: 8500,
+  },
+  {
+    id: "bleeding",
+    label: "Bleeding Gums",
+    icon: "activity",
+    tag: "Clinical Review",
+    title: "Acute Gum Bleeding / Post-Extraction",
+    advice: [
+      "Bite down firmly on a clean folded gauze or dry tea bag for 20 continuous minutes.",
+      "Do NOT rinse vigorously, spit, or drink through a straw, as this dislodges the clot.",
+      "Avoid strenuous physical exertion and alcohol for the next 24 hours.",
+    ],
+    redFlag: "Call our emergency hotline if bleeding does not stop after 45 minutes of direct pressure.",
+    recommendedService: "Post-Op Haemostasis & Gum Care",
+    recommendedPricePence: 6000,
+  },
+];
+
+export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalProps) {
+  const router = useRouter();
+  const { setService } = useBookingStore();
+  const [selectedId, setSelectedId] = useState<SymptomType>("pain");
+  const [painLevel, setPainLevel] = useState<number>(8);
+
+  const selected = SYMPTOMS.find((s) => s.id === selectedId) || SYMPTOMS[0];
+
+  const handleSelectSymptom = (id: SymptomType) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setSelectedId(id);
+  };
+
+  const handleBookEmergency = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setService({
+      id: "srv_emergency",
+      name: selected.recommendedService,
+      category: "emergency",
+      pricePence: selected.recommendedPricePence,
+      depositPence: 2000,
+      durationMinutes: 30,
+      supportedChannels: ["clinic", "van"],
+      description: `Same-day emergency appointment for ${selected.title}.`,
+      isActive: true,
+      requiresOdontogram: false,
+    } as any);
+    onClose();
+    router.push("/(patient)/booking/clinic-picker" as never);
+  };
+
+  const handleStartVideo = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onClose();
+    router.push("/(patient)/video/intake" as never);
+  };
+
+  const handleCallHotline = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Linking.openURL("tel:0800728336").catch(() => {});
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+
+        <View style={styles.sheetContainer}>
+          <View style={styles.sheetGrabber} />
+
+          {/* Header */}
+          <View style={styles.sheetHeader}>
+            <View style={styles.headerTitleGroup}>
+              <View style={styles.emergencyBadge}>
+                <AppIcon name="alert" size={13} color={colors.danger} />
+                <ThemedText variant="caption" style={styles.emergencyBadgeText}>
+                  24/7 AI CLINICAL TRIAGE
+                </ThemedText>
+              </View>
+              <ThemedText variant="headline" style={styles.sheetTitle}>
+                What are you experiencing?
+              </ThemedText>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={onClose}
+              style={styles.closeBtn}
+            >
+              <AppIcon name="close" size={16} color={colors.ink} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Symptom selection horizontal pills */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.symptomPillsRow}
+            >
+              {SYMPTOMS.map((item) => {
+                const isActive = item.id === selectedId;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => handleSelectSymptom(item.id)}
+                    style={[
+                      styles.symptomPill,
+                      isActive ? styles.symptomPillActive : styles.symptomPillInactive,
+                    ]}
+                  >
+                    <AppIcon
+                      name={item.icon}
+                      size={14}
+                      color={isActive ? colors.alwaysWhite : colors.ink}
+                    />
+                    <ThemedText
+                      variant="caption"
+                      style={[
+                        styles.symptomPillText,
+                        isActive && styles.symptomPillTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {/* Pain Severity Stepper */}
+            <Card elevation="flat" style={styles.painScoreCard}>
+              <View style={styles.painScoreHeader}>
+                <ThemedText variant="caption" style={styles.sectionLabel}>
+                  PAIN SEVERITY SCALE (1–10)
+                </ThemedText>
+                <ThemedText variant="mono" style={styles.painScoreValue}>
+                  {painLevel} / 10 · {painLevel >= 8 ? "Severe" : painLevel >= 4 ? "Moderate" : "Mild"}
+                </ThemedText>
+              </View>
+
+              <View style={styles.painDotsRow}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                  const isSelected = score === painLevel;
+                  const isFilled = score <= painLevel;
+                  return (
+                    <Pressable
+                      key={score}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        setPainLevel(score);
+                      }}
+                      style={[
+                        styles.painDot,
+                        isFilled && styles.painDotFilled,
+                        isSelected && styles.painDotSelected,
+                      ]}
+                    >
+                      <ThemedText
+                        variant="caption"
+                        style={[
+                          styles.painDotText,
+                          isFilled && styles.painDotTextFilled,
+                        ]}
+                      >
+                        {score}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Card>
+
+            {/* Selected Assessment & Clinical Advice Card */}
+            <Card elevation="raised" style={styles.assessmentCard}>
+              <View style={styles.assessmentTopRow}>
+                <ThemedText variant="headline" style={styles.assessmentTitle}>
+                  {selected.title}
+                </ThemedText>
+                <Badge
+                  label={selected.tag}
+                  variant={selected.id === "swelling" ? "danger" : "warning"}
+                />
+              </View>
+
+              <View style={styles.adviceList}>
+                <ThemedText variant="caption" style={styles.sectionLabel}>
+                  IMMEDIATE HOME CARE INSTRUCTIONS
+                </ThemedText>
+                {selected.advice.map((line, idx) => (
+                  <View key={idx} style={styles.adviceItemRow}>
+                    <View style={styles.adviceBullet} />
+                    <ThemedText variant="caption" style={styles.adviceLine}>
+                      {line}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+
+              {/* Red Flag Warning Box */}
+              {selected.redFlag ? (
+                <View style={styles.redFlagBox}>
+                  <ThemedText variant="caption" style={styles.redFlagText}>
+                    {selected.redFlag}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </Card>
+
+            {/* Quick Hotline Banner */}
+            <Pressable onPress={handleCallHotline} style={styles.hotlineBanner}>
+              <AppIcon name="phone" size={15} color={colors.ink} />
+              <View style={styles.hotlineTextGroup}>
+                <ThemedText variant="caption" style={styles.hotlineLabel}>
+                  Need immediate phone advice?
+                </ThemedText>
+                <ThemedText variant="subhead" style={styles.hotlineNumber}>
+                  Call Practice Emergency Line (0800 728 336) ›
+                </ThemedText>
+              </View>
+            </Pressable>
+          </ScrollView>
+
+          {/* Action CTAs */}
+          <View style={styles.sheetFooter}>
+            <Button
+              title="Book Urgent Same-Day Appointment ›"
+              variant="primary"
+              size="lg"
+              onPress={handleBookEmergency}
+            />
+            <Button
+              title="Start 15-Min Video Triage Now"
+              variant="secondary"
+              size="md"
+              onPress={handleStartVideo}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  sheetContainer: {
+    backgroundColor: colors.systemBackground,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: spacing.sm,
+    maxHeight: "90%",
+    paddingBottom: 28,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  sheetGrabber: {
+    alignSelf: "center",
+    backgroundColor: colors.separator,
+    borderRadius: 3,
+    height: 4,
+    marginBottom: spacing.xs,
+    width: 36,
+  },
+  sheetHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: spacing.xxs,
+  },
+  headerTitleGroup: {
+    flex: 1,
+    gap: 4,
+  },
+  emergencyBadge: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: radius.full,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  emergencyBadgeText: {
+    color: colors.danger,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  sheetTitle: {
+    color: colors.label,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  closeBtn: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: radius.full,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  scrollContent: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  symptomPillsRow: {
+    gap: spacing.xs,
+    paddingVertical: 4,
+  },
+  symptomPill: {
+    alignItems: "center",
+    borderRadius: radius.full,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  symptomPillActive: {
+    backgroundColor: colors.ink,
+  },
+  symptomPillInactive: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderWidth: 1,
+  },
+  symptomPillText: {
+    color: colors.label,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  symptomPillTextActive: {
+    color: colors.alwaysWhite,
+  },
+  painScoreCard: {
+    backgroundColor: colors.secondaryBackground,
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  painScoreHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  sectionLabel: {
+    color: colors.secondaryLabel,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  painScoreValue: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  painDotsRow: {
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "space-between",
+  },
+  painDot: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  painDotFilled: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FCA5A5",
+  },
+  painDotSelected: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
+  },
+  painDotText: {
+    color: colors.secondaryLabel,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  painDotTextFilled: {
+    color: colors.danger,
+  },
+  assessmentCard: {
+    backgroundColor: colors.systemBackground,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  assessmentTopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  assessmentTitle: {
+    color: colors.label,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  adviceList: {
+    gap: 6,
+  },
+  adviceItemRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8,
+  },
+  adviceBullet: {
+    backgroundColor: colors.ink,
+    borderRadius: 2,
+    height: 4,
+    marginTop: 6,
+    width: 4,
+  },
+  adviceLine: {
+    color: colors.label,
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  redFlagBox: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FEE2E2",
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: spacing.xs,
+  },
+  redFlagText: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  hotlineBanner: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  hotlineTextGroup: {
+    flex: 1,
+  },
+  hotlineLabel: {
+    color: colors.secondaryLabel,
+    fontSize: 10,
+  },
+  hotlineNumber: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sheetFooter: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs,
+  },
+});

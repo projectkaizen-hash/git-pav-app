@@ -5,6 +5,7 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { colors, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
 
@@ -65,7 +66,10 @@ export function ListRow({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
-      onPress={onPress}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onPress();
+      }}
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       {inner}

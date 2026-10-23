@@ -30,15 +30,16 @@ router.post("/log", requireAuth, async (req: AuthRequest, res: Response) => {
 // ─── GET /api/audit/logs ──────────────────────────────────────────────────────
 // Admin / DSPT officer access only
 router.get("/logs", requireAuth, requireRole("admin"), async (req: AuthRequest, res: Response) => {
-
-  const { page = "1", limit = "50", actorId } = req.query;
-  const skip = (parseInt(String(page)) - 1) * parseInt(String(limit));
+  const { page: rawPage = "1", limit: rawLimit = "50", actorId } = req.query;
+  const page = Math.max(1, parseInt(String(rawPage), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(rawLimit), 10) || 50));
+  const skip = (page - 1) * limit;
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where: actorId ? { actorId: String(actorId) } : {},
       orderBy: { timestampUtc: "desc" },
-      take: parseInt(String(limit)),
+      take: limit,
       skip,
     }),
     prisma.auditLog.count({
@@ -46,7 +47,12 @@ router.get("/logs", requireAuth, requireRole("admin"), async (req: AuthRequest, 
     }),
   ]);
 
-  return res.json({ logs, total, page: parseInt(String(page)), limit: parseInt(String(limit)) });
+  return res.json({
+    logs: logs.map((l) => ({ ...l, id: l.id.toString() })),
+    total,
+    page,
+    limit,
+  });
 });
 
 // ─── GET /api/audit/integrity ──────────────────────────────────────────────────
@@ -57,7 +63,8 @@ router.get("/integrity", requireAuth, async (req: AuthRequest, res: Response) =>
   }
 
   const { limit = "1000" } = req.query;
-  const result = await verifyAuditIntegrity(parseInt(String(limit)));
+  const parsedLimit = Math.min(10000, Math.max(1, parseInt(String(limit), 10) || 1000));
+  const result = await verifyAuditIntegrity(parsedLimit);
 
   return res.json(result);
 });
@@ -70,7 +77,8 @@ router.post("/retention", requireAuth, async (req: AuthRequest, res: Response) =
   }
 
   const { retentionDays = "365" } = req.body;
-  const result = await applyAuditRetentionPolicy(parseInt(String(retentionDays)));
+  const parsedDays = Math.max(1, parseInt(String(retentionDays), 10) || 365);
+  const result = await applyAuditRetentionPolicy(parsedDays);
 
   return res.json(result);
 });

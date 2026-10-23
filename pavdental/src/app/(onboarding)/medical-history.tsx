@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
+import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 export default function OnboardingMedicalHistoryScreen() {
   const router = useRouter();
@@ -13,8 +14,17 @@ export default function OnboardingMedicalHistoryScreen() {
   const [medDetails, setMedDetails] = useState("");
   const [isBleedingRisk, setIsBleedingRisk] = useState(false);
   const [gpSurgery, setGpSurgery] = useState("");
+  const setMedicalHistory = useOnboardingStore((s) => s.setMedicalHistory);
 
   const handleNext = () => {
+    setMedicalHistory({
+      hasAllergies,
+      allergyDetails: allergyDetails.trim(),
+      isTakingMeds,
+      medDetails: medDetails.trim(),
+      isBleedingRisk,
+      gpSurgery: gpSurgery.trim(),
+    });
     router.push("/(onboarding)/consents");
   };
 
@@ -29,9 +39,7 @@ export default function OnboardingMedicalHistoryScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <ThemedText variant="caption" style={styles.stepBadge}>
-              STEP 3 OF 4
-            </ThemedText>
+            <ProgressPills total={5} current={4} />
             <ThemedText variant="largeTitle" style={styles.title}>
               Medical History
             </ThemedText>
@@ -52,7 +60,7 @@ export default function OnboardingMedicalHistoryScreen() {
               <Switch
                 value={hasAllergies}
                 onValueChange={setHasAllergies}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
 
@@ -76,7 +84,7 @@ export default function OnboardingMedicalHistoryScreen() {
               <Switch
                 value={isTakingMeds}
                 onValueChange={setIsTakingMeds}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
 
@@ -100,7 +108,7 @@ export default function OnboardingMedicalHistoryScreen() {
               <Switch
                 value={isBleedingRisk}
                 onValueChange={setIsBleedingRisk}
-                trackColor={{ true: colors.brand, false: colors.separator }}
+                trackColor={{ true: colors.ink, false: colors.separator }}
               />
             </View>
 
@@ -150,11 +158,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  stepBadge: {
-    color: colors.brand,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,

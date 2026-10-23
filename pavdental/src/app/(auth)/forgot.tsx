@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   successTitle: {
-    color: colors.brand,
+    color: colors.ink,
   },
   title: {
     color: colors.label,

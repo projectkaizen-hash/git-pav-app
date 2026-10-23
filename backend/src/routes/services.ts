@@ -5,22 +5,48 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 const router = Router();
 
 // ─── GET /api/services ────────────────────────────────────────────────────────
-router.get("/", async (_req: Request, res: Response) => {
+// Optional query: ?channel=van|clinic|video
+// Validated against the CareChannel enum: an unknown value must 400 here
+// rather than surface as a Prisma enum-cast 500.
+const CARE_CHANNELS = ["clinic", "van", "video"] as const;
+type CareChannelName = (typeof CARE_CHANNELS)[number];
+
+function parseChannelParam(
+  channel: unknown
+): { ok: true; value: CareChannelName | null } | { ok: false } {
+  if (typeof channel === "undefined") return { ok: true, value: null };
+  if (typeof channel !== "string") return { ok: false };
+  if (!CARE_CHANNELS.includes(channel as CareChannelName)) return { ok: false };
+  return { ok: true, value: channel as CareChannelName };
+}
+
+router.get("/", async (req: Request, res: Response) => {
+  const parsed = parseChannelParam(req.query.channel);
+  if (!parsed.ok) {
+    return res.status(400).json({ error: "Invalid channel — expected clinic, van, or video" });
+  }
+
   const services = await prisma.service.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(parsed.value ? { supportedChannels: { has: parsed.value } } : {}),
+    },
     orderBy: { name: "asc" },
   });
   return res.json(services);
 });
 
 // ─── GET /api/clinicians ──────────────────────────────────────────────────────
-// Optional query: ?channel=video|clinic|van
+// Optional query: ?channel=video|clinic|van (validated; unknown → 400)
 router.get("/clinicians", async (req: Request, res: Response) => {
-  const { channel } = req.query;
+  const parsed = parseChannelParam(req.query.channel);
+  if (!parsed.ok) {
+    return res.status(400).json({ error: "Invalid channel — expected clinic, van, or video" });
+  }
 
   const clinicians = await prisma.clinicianProfile.findMany({
     where: {
-      ...(channel === "video" ? { isTelehealthActive: true } : {}),
+      ...(parsed.value === "video" ? { isTelehealthActive: true } : {}),
     },
     select: {
       id: true,

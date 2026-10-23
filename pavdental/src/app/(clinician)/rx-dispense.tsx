@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, Card } from "@/components";
 import { colors, spacing } from "@/theme";
@@ -31,23 +31,30 @@ export default function ClinicianRxDispenseScreen() {
   const handleSignAndSend = async () => {
     setIsSubmitting(true);
     try {
-      await authFetch("/api/prescriptions", {
+      const res = await authFetch("/api/prescriptions", {
         method: "POST",
         body: JSON.stringify({
-          appointmentId: params.appointmentId && params.appointmentId.length > 10 ? params.appointmentId : undefined,
+          appointmentId:
+            params.appointmentId && params.appointmentId.length > 10
+              ? params.appointmentId
+              : undefined,
           medicationName: medication,
           dosageInstructions,
           dispensingPharmacy: pharmacyName,
         }),
       });
-    } catch (err) {
-      console.warn("[Rx dispatch error]", err);
-    }
-    setIsSubmitting(false);
-    setIsDispatched(true);
-    setTimeout(() => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to dispatch prescription");
+      }
+      setIsDispatched(true);
       router.replace("/(clinician)/schedule");
-    }, 1200);
+    } catch (err: any) {
+      console.warn("[Rx dispatch error]", err);
+      Alert.alert("Prescription Dispatch Failed", err?.message || "Failed to dispatch prescription");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -70,7 +77,7 @@ export default function ClinicianRxDispenseScreen() {
             {patientAddress}
           </ThemedText>
           <ThemedText variant="caption" style={styles.allergyWarning}>
-            ⚠️ Known Allergy: Penicillin (Check before dispensing)
+            Known allergy: Penicillin — check before dispensing
           </ThemedText>
         </Card>
 

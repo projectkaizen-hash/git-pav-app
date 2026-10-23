@@ -27,28 +27,27 @@ export default function VerifyEmailScreen() {
       setInfoMessage(null);
 
       // Attempt verification against API
-      await authApi.confirmEmailVerification(code.trim()).catch((err) => {
-        // In local development mode without Postmark server token configured, allow skip
-        if (process.env.EXPO_PUBLIC_APP_ENV === "development" || code.trim() === "123456") {
-          return;
-        }
-        throw err;
-      });
+      await authApi.confirmEmailVerification(code.trim());
 
-      // Once verified, move into patient home screen
-      router.replace("/(patient)/(tabs)/home");
+      // Once verified, invite profile setup (skippable) — then patient home
+      router.replace("/(auth)/account-created");
     } catch (err: any) {
       setError(err?.message || "Verification failed. Please check the code.");
+      return;
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    if (!email) return;
+    if (!email) {
+      setError("Email address is missing. Please return to sign-in.");
+      return;
+    }
     try {
       setResending(true);
       setError(null);
+      setInfoMessage(null);
       await authApi.resendEmailVerification(email);
       setInfoMessage("Verification code resent to your email.");
     } catch (err: any) {
@@ -151,13 +150,13 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   infoBox: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 8,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
   infoText: {
-    color: colors.brand,
+    color: colors.ink,
   },
   flex: {
     flex: 1,

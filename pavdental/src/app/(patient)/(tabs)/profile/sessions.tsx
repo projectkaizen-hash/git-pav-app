@@ -8,33 +8,17 @@ import {
   useRevokeSessionMutation,
   useRevokeAllOtherSessionsMutation,
 } from "@/features/security/security-hooks";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 export default function SessionsScreen() {
   const { data: sessions = [], isLoading, refetch } = useSessionsQuery();
   const revokeSession = useRevokeSessionMutation();
   const revokeAllOthers = useRevokeAllOtherSessionsMutation();
 
-  // If sessions are empty, mock current session for demonstration
-  const displaySessions: SessionData[] =
-    sessions.length > 0
-      ? sessions.map((s, idx) => ({ ...s, isCurrent: idx === 0 }))
-      : [
-          {
-            id: "current-session-app",
-            deviceInfo: "Pav Dental iOS / Android Client",
-            ipAddressHash: "a9482f3b14e245a9",
-            createdAt: new Date().toISOString(),
-            isCurrent: true,
-          },
-          {
-            id: "web-session-safari",
-            deviceInfo: "Safari on macOS (Web Portal)",
-            ipAddressHash: "f420cb887a12b890",
-            createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-            isCurrent: false,
-          },
-        ];
+  const displaySessions: SessionData[] = sessions.map((s, idx) => ({
+    ...s,
+    isCurrent: s.isCurrent ?? idx === 0,
+  }));
 
   const hasOtherSessions = displaySessions.filter((s) => !s.isCurrent).length > 0;
 
@@ -96,7 +80,7 @@ export default function SessionsScreen() {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={colors.ink} />
       </View>
     );
   }
@@ -113,14 +97,20 @@ export default function SessionsScreen() {
       </View>
 
       <View style={styles.sessionList}>
-        {displaySessions.map((session) => (
-          <SessionItem
-            key={session.id}
-            session={session}
-            onRevoke={handleRevokeSingle}
-            isRevoking={revokeSession.isPending}
-          />
-        ))}
+        {displaySessions.length === 0 ? (
+          <ThemedText variant="caption" style={styles.headerDesc}>
+            No active device sessions found.
+          </ThemedText>
+        ) : (
+          displaySessions.map((session) => (
+            <SessionItem
+              key={session.id}
+              session={session}
+              onRevoke={handleRevokeSingle}
+              isRevoking={revokeSession.isPending}
+            />
+          ))
+        )}
       </View>
 
       {hasOtherSessions && (
@@ -164,10 +154,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   headerSub: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
   sessionList: {
     gap: spacing.sm,

@@ -12,6 +12,16 @@ export default function AuthLayout() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
+      const currentScreen = segments[segments.length - 1];
+      const isRegistrationStep =
+        currentScreen === "sign-up" ||
+        currentScreen === "verify-email" ||
+        currentScreen === "account-created";
+
+      if (isRegistrationStep) {
+        return;
+      }
+
       // Admins are intentionally excluded from the mobile client. They use the
       // separate web dashboard and must not fall through to patient routes.
       if (user.role !== "admin" || segments.join("/") !== "(auth)/access-denied") {
@@ -32,6 +42,8 @@ export default function AuthLayout() {
       <Stack.Screen name="sign-up" />
       <Stack.Screen name="otp" />
       <Stack.Screen name="verify-email" />
+      <Stack.Screen name="account-created" />
+      <Stack.Screen name="guest-limit" />
       <Stack.Screen name="forgot" />
       <Stack.Screen name="reset" />
       <Stack.Screen name="biometric-unlock" />

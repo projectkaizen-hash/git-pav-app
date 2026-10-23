@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { usePatientProfile } from "@/features/hooks/use-dental-api";
-import { colors, spacing } from "@/theme";
+import { requestDataAccessExport } from "@/features/records/records-api";
+import { authFetch } from "@/features/auth/auth-api";
+import { colors, spacing, type } from "@/theme";
 
 export default function ConsentScreen() {
   const user = useCurrentUser();
   const userId = user?.id || "";
-  const { data: profile } = usePatientProfile(userId);
+  const { data: profile, refetch } = usePatientProfile(userId);
   const [isExporting, setIsExporting] = useState(false);
+  const [isUpdatingMarketing, setIsUpdatingMarketing] = useState(false);
 
   const consents = (profile?.consents as any) || {
     healthData: { signed: true, version: "v2.1", date: "2026-01-10" },
@@ -17,22 +20,69 @@ export default function ConsentScreen() {
     marketing: { signed: false, version: "v2.1", date: null },
   };
 
+  const [marketingOptedIn, setMarketingOptedIn] = useState<boolean>(
+    Boolean(consents.marketing?.signed)
+  );
+
+  useEffect(() => {
+    if (profile?.consents) {
+      setMarketingOptedIn(Boolean((profile.consents as any).marketing?.signed));
+    }
+  }, [profile]);
+
+  const handleToggleMarketingConsent = async () => {
+    const nextState = !marketingOptedIn;
+    setIsUpdatingMarketing(true);
+    try {
+      const endpoint = nextState ? "/api/consents/grant" : "/api/consents/withdraw";
+      const payload = nextState
+        ? { consentType: "direct_marketing", lawfulBasis: "consent" }
+        : { consentType: "direct_marketing", reason: "Withdrawn by patient in mobile app" };
+      const res = await authFetch(endpoint, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok && res.status !== 409) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || "Could not update marketing consent");
+      }
+      setMarketingOptedIn(nextState);
+      refetch();
+    } catch (err: any) {
+      Alert.alert(
+        "Consent Update Error",
+        err?.message || "Could not update your marketing consent preference."
+      );
+    } finally {
+      setIsUpdatingMarketing(false);
+    }
+  };
+
   const handleExportData = async () => {
     setIsExporting(true);
-    setTimeout(() => {
-      setIsExporting(false);
+    try {
+      const res = await requestDataAccessExport({
+        reason: "Patient Subject Access Request via Mobile App",
+        format: "json",
+      });
       Alert.alert(
         "GDPR Export Generated",
-        "Your encrypted subject access request (SAR) bundle has been prepared. A secure download link has been sent to your registered email address.",
+        res?.sha256
+          ? `Your encrypted Subject Access Request (SAR) bundle (SHA-256: ${String(res.sha256).slice(0, 12)}…) has been stored in your Document Vault and emailed to your registered address.`
+          : "Your encrypted Subject Access Request (SAR) bundle has been prepared and sent to your registered email address.",
         [{ text: "OK" }]
       );
-    }, 1200);
+    } catch (err: any) {
+      Alert.alert("Export Error", err?.message || "Could not generate GDPR export bundle.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.banner}>
-        <ThemedText style={styles.bannerIcon}>📋</ThemedText>
+        <AppIcon name="clipboard" size={24} color={colors.ink} />
         <View style={styles.bannerTextWrap}>
           <ThemedText variant="headline">UK GDPR & NHS DSPT Standards</ThemedText>
           <ThemedText variant="caption" style={styles.bannerSub}>
@@ -93,13 +143,26 @@ export default function ConsentScreen() {
               Recall & Preventive Reminders
             </ThemedText>
             <Badge
-              variant={consents.marketing?.signed ? "success" : "default"}
-              label={consents.marketing?.signed ? "Opted In" : "Opted Out"}
+              variant={marketingOptedIn ? "success" : "default"}
+              label={marketingOptedIn ? "Opted In" : "Opted Out"}
             />
           </View>
           <ThemedText variant="caption" style={styles.cardDesc}>
             Notifications sent every 6 months to remind you when your routine dental checkup or hygiene session is due.
           </ThemedText>
+          <Button
+            title={
+              isUpdatingMarketing
+                ? "Updating..."
+                : marketingOptedIn
+                  ? "Withdraw Marketing & Recall Consent"
+                  : "Opt In to Recall Reminders"
+            }
+            variant="secondary"
+            size="sm"
+            loading={isUpdatingMarketing}
+            onPress={handleToggleMarketingConsent}
+          />
         </Card>
       </View>
 
@@ -147,9 +210,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
-  bannerIcon: {
-    fontSize: 26,
-  },
+
   bannerSub: {
     color: colors.secondaryLabel,
   },
@@ -195,16 +256,12 @@ const styles = StyleSheet.create({
   },
   metaText: {
     color: colors.secondaryLabel,
-    fontSize: 11,
   },
   section: {
     gap: spacing.xs,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
   },
 });
 

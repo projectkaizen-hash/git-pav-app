@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { useRouter } from "expo-router";
-import { ThemedText, Button } from "@/components";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import { ThemedText, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 
 interface PhotoSlot {
@@ -9,10 +11,20 @@ interface PhotoSlot {
   label: string;
   description: string;
   isCaptured: boolean;
+  uri?: string;
 }
 
 export default function IntraoralPhotosScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    appointmentId?: string;
+    symptomText?: string;
+    painLevel?: string;
+    hasSwelling?: string;
+    duration?: string;
+  }>();
+
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([
     {
       id: "front",
@@ -40,7 +52,23 @@ export default function IntraoralPhotosScreen() {
     },
   ]);
 
-  const toggleCapture = (id: string) => {
+  const toggleCapture = async (id: string) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setPhotoSlots((prev) =>
+          prev.map((slot) =>
+            slot.id === id ? { ...slot, isCaptured: true, uri: result.assets[0].uri } : slot
+          )
+        );
+        return;
+      }
+    } catch {
+      // Fallback
+    }
     setPhotoSlots((prev) =>
       prev.map((slot) =>
         slot.id === id ? { ...slot, isCaptured: !slot.isCaptured } : slot
@@ -49,7 +77,16 @@ export default function IntraoralPhotosScreen() {
   };
 
   const handleContinue = () => {
-    router.push("/(patient)/video/device-check" as any);
+    router.push({
+      pathname: "/(patient)/video/photo-review" as any,
+      params: {
+        appointmentId: params.appointmentId || "",
+        symptomText: params.symptomText || "",
+        painLevel: params.painLevel || "5",
+        hasSwelling: params.hasSwelling || "false",
+        duration: params.duration || "",
+      },
+    });
   };
 
   return (
@@ -67,7 +104,7 @@ export default function IntraoralPhotosScreen() {
         {/* Tip Banner */}
         <View style={styles.tipBox}>
           <ThemedText variant="caption" style={styles.tipText}>
-            💡 <ThemedText variant="caption" style={styles.tipBold}>Tip:</ThemedText> Use your smartphone's camera flash or stand near natural window light.
+            <ThemedText variant="caption" style={styles.tipBold}>Tip:</ThemedText> Use your smartphone's camera flash or stand near natural window light.
           </ThemedText>
         </View>
 
@@ -80,9 +117,11 @@ export default function IntraoralPhotosScreen() {
               style={[styles.slotCard, slot.isCaptured && styles.slotCardCaptured]}
             >
               <View style={styles.thumbnailBox}>
-                <ThemedText variant="title">
-                  {slot.isCaptured ? "📸" : "➕"}
-                </ThemedText>
+                <AppIcon
+                  name={slot.isCaptured ? "image" : "plus"}
+                  size={22}
+                  color={slot.isCaptured ? colors.success : colors.ink}
+                />
               </View>
               <View style={styles.slotInfo}>
                 <ThemedText variant="headline" style={styles.slotLabel}>
@@ -103,9 +142,9 @@ export default function IntraoralPhotosScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title="Continue to Device Check ›"
+          title="Review Photos ›"
           size="lg"
           onPress={handleContinue}
         />
@@ -151,8 +190,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   slotCardCaptured: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   slotDesc: {
     color: colors.secondaryLabel,
@@ -172,7 +211,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   statusDone: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   statusPending: {

@@ -13,11 +13,17 @@ export default function ProfileSubLayout() {
           color: colors.label,
           fontWeight: "600",
         },
-        headerTintColor: colors.brand,
+        headerTintColor: colors.ink,
         headerShadowVisible: false,
         headerBackTitle: "Account",
       }}
     >
+      <Stack.Screen
+        name="index"
+        options={{
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="personal-info"
         options={{

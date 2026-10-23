@@ -1,6 +1,9 @@
 import { prisma } from "./prisma";
 import { communicationService } from "./communication-service";
 import { pseudonymiseIp } from "./audit-security";
+import { createAuditLogWithIntegrity } from "./audit-integrity";
+import { releaseVanDeposit } from "./van-payments";
+import { sendPatientNotification } from "./patient-push";
 
 // Interval settings
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
@@ -50,13 +53,13 @@ export async function processExpiredSlotHolds(): Promise<{ expiredCount: number 
 
     // Audit log each cancellation
     for (const appt of expiredHolds) {
-      await prisma.auditLog.create({
-        data: {
-          action: "appointment.hold_expired",
-          resourceId: appt.id,
-          ipHash: pseudonymiseIp("127.0.0.1"),
-          metadata: { reason: "10-minute hold window elapsed without payment" },
-        },
+      await createAuditLogWithIntegrity({
+        action: "appointment.hold_expired",
+        actorId: null,
+        resourceId: appt.id,
+        sessionId: null,
+        ipHash: pseudonymiseIp("127.0.0.1"),
+        metadata: { reason: "10-minute hold window elapsed without payment" },
       }).catch(() => {});
     }
 
@@ -231,19 +234,60 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
 }
 
 /**
- * Sweeps pending van service requests that have passed their expiresAt TTL and sets them to expired.
+ * Sweeps pending van service requests that have passed their expiresAt TTL.
+ * Each expired request has its deposit PaymentIntent released (the hold is
+ * cancelled — the patient is never left with a pending card authorisation),
+ * then the request is marked expired and the patient is notified. Requests
+ * whose release failed stay pending and are retried on the next pass; the
+ * accept-time expiry check remains a final fallback.
  */
 export async function processExpiredVanRequests(): Promise<{ expiredCount: number }> {
   const now = new Date();
   try {
-    const result = await prisma.vanServiceRequest.updateMany({
+    const stale = await prisma.vanServiceRequest.findMany({
       where: {
         status: "pending",
         expiresAt: { lte: now },
       },
-      data: { status: "expired" },
+      select: {
+        id: true,
+        patientId: true,
+        paymentIntentId: true,
+      },
+      take: 50, // Batch limit per cycle
     });
-    return { expiredCount: result.count };
+
+    let expiredCount = 0;
+    for (const request of stale) {
+      // Release the deposit hold first. On failure the request stays pending
+      // so the next sweep retries both the release and the expiry.
+      if (request.paymentIntentId) {
+        const release = await releaseVanDeposit(request.paymentIntentId, "expired");
+        if (release.status === "failed") continue;
+      }
+
+      // Idempotent re-check: only transition requests that are still pending
+      // (an operator may have accepted/declined mid-sweep).
+      const result = await prisma.vanServiceRequest.updateMany({
+        where: { id: request.id, status: "pending" },
+        data: { status: "expired" },
+      });
+
+      if (result.count === 1) {
+        expiredCount++;
+        await sendPatientNotification(
+          request.patientId,
+          "Van Request Expired",
+          "No operator accepted your van request in time, so it has expired. No deposit was taken — please try again later.",
+          { requestId: request.id, status: "expired" }
+        );
+      }
+    }
+
+    if (expiredCount > 0) {
+      console.log(`[BACKGROUND JOBS] Expired ${expiredCount} van request(s) with deposit release`);
+    }
+    return { expiredCount };
   } catch (error) {
     console.error("[BACKGROUND JOBS] Error expiring van requests:", error);
     return { expiredCount: 0 };

@@ -42,6 +42,7 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email,
   password: z.string().min(1, "Password is required").max(128),
+  mfaCode: z.string().trim().min(4).max(12).optional(),
 }).strict();
 
 export const refreshSchema = z.object({

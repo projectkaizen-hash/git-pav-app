@@ -9,6 +9,12 @@ export const consentTypes = z.enum([
   "marketing",
   "clinical_records",
   "payment_processing",
+  "treatment_data_processing",
+  "marketing_communications",
+  "research_participation",
+  "photo_video_usage",
+  "third_party_sharing",
+  "emergency_contact",
 ]);
 
 export const lawfulBasisTypes = z.enum([
@@ -38,6 +44,8 @@ export const consentHistoryQuerySchema = z.object({
 }).strict();
 
 export const dataAccessRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+  format: z.enum(["json", "csv"]).optional(),
   ipAddress: z.string().ip().optional(),
 }).strict();
 

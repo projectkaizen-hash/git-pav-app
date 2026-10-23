@@ -1,10 +1,10 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, EmptyState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useMyAppointments } from "@/features/hooks/use-dental-api";
-import { useCurrentUser } from "@/features/auth/auth-store";
+import { useCurrentUser, useAuthStore } from "@/features/auth/auth-store";
 
 export default function ClinicianScheduleScreen() {
   const router = useRouter();
@@ -15,49 +15,19 @@ export default function ClinicianScheduleScreen() {
     ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
     : "Dr. Tariq Pav";
 
-  const defaultSessions = [
-    {
-      id: "cs_1",
-      time: "10:00 – 10:15 AM",
-      type: "video",
-      patientName: "Sarah Jenkins (34y)",
-      chiefComplaint: "Severe LR7 throbbing pain upon cold liquids",
-      photosAttached: 4,
-      status: "ready_to_connect",
-    },
-    {
-      id: "cs_2",
-      time: "10:30 – 11:00 AM",
-      type: "clinic",
-      patientName: "David Miller (48y)",
-      chiefComplaint: "Routine 6-Month Scale & Polish + Bite Exam",
-      photosAttached: 0,
-      status: "scheduled",
-    },
-    {
-      id: "cs_3",
-      time: "11:30 – 12:15 PM",
-      type: "clinic",
-      patientName: "Emily Watson (29y)",
-      chiefComplaint: "Composite Restoration Tooth #14 (MOD)",
-      photosAttached: 2,
-      status: "scheduled",
-    },
-  ];
-
   const sessions = (liveAppointments && liveAppointments.length > 0)
     ? liveAppointments.map((a: any) => ({
         id: a.id,
         time: new Date(a.startTimeUtc).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
         type: a.channel || "video",
         patientName: a.patient
-          ? `${a.patient.firstName} ${a.patient.lastName}`
+          ? `${a.patient.firstName} ${a.patient.lastName}${a.patient.age ? ` (${a.patient.age}y)` : ""}`
           : (a.patientName || "Verified Patient"),
         chiefComplaint: a.service?.name || a.serviceName || "Dental Consultation",
         photosAttached: a.intraoralPhotos?.length || 0,
         status: a.status === "confirmed" ? "ready_to_connect" : a.status,
       }))
-    : defaultSessions;
+    : [];
 
   return (
     <View style={styles.container}>
@@ -88,63 +58,113 @@ export default function ClinicianScheduleScreen() {
             Today's Consultations & Visits ({sessions.length} Patient{sessions.length !== 1 ? "s" : ""})
           </ThemedText>
 
-          <View style={styles.sessionList}>
-            {sessions.map((s: any) => {
-              const isVideo = s.type === "video";
-              const isReady = s.status === "ready_to_connect";
-              return (
-                <Card
-                  key={s.id}
-                  elevation="raised"
-                  style={[styles.card, isReady && styles.cardReady]}
-                >
-                  <View style={styles.cardTop}>
-                    <Badge
-                      label={isVideo ? "VIDEO CONSULT" : "IN-CLINIC"}
-                      variant={isVideo ? "info" : "default"}
-                    />
-                    <ThemedText variant="headline" style={styles.timeVal}>
-                      {s.time}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.patientBlock}>
-                    <ThemedText variant="headline" style={styles.patientName}>
-                      {s.patientName}
-                    </ThemedText>
-                    <ThemedText variant="caption" style={styles.complaint}>
-                      🦷 {s.chiefComplaint}
-                    </ThemedText>
-                    {s.photosAttached > 0 ? (
-                      <ThemedText variant="caption" style={styles.photoTag}>
-                        📸 {s.photosAttached} Intraoral photos submitted
-                      </ThemedText>
-                    ) : null}
-                  </View>
-
-                  {isReady ? (
-                    <View style={styles.actionRow}>
-                      <Button
-                        title="Open Video Consult Room ›"
-                        size="md"
-                        onPress={() =>
-                          router.push({
-                            pathname: "/(clinician)/consult-room" as any,
-                            params: {
-                              appointmentId: s.id,
-                              patientName: s.patientName,
-                              chiefComplaint: s.chiefComplaint,
-                            },
-                          })
-                        }
+          {sessions.length === 0 ? (
+            <EmptyState
+              heading="No consultations scheduled"
+              body="Appointments booked by patients will appear here."
+              icon="calendar"
+            />
+          ) : (
+            <View style={styles.sessionList}>
+              {sessions.map((s: any) => {
+                const isVideo = s.type === "video";
+                const isReady = s.status === "ready_to_connect";
+                return (
+                  <Card
+                    key={s.id}
+                    elevation="raised"
+                    style={[styles.card, isReady && styles.cardReady]}
+                  >
+                    <View style={styles.cardTop}>
+                      <Badge
+                        label={isVideo ? "VIDEO CONSULT" : "IN-CLINIC"}
+                        variant={isVideo ? "info" : "default"}
                       />
+                      <ThemedText variant="headline" style={styles.timeVal}>
+                        {s.time}
+                      </ThemedText>
                     </View>
-                  ) : null}
-                </Card>
-              );
-            })}
-          </View>
+
+                    <View style={styles.patientBlock}>
+                      <ThemedText variant="headline" style={styles.patientName}>
+                        {s.patientName}
+                      </ThemedText>
+                      <ThemedText variant="caption" style={styles.complaint}>
+                        {s.chiefComplaint}
+                      </ThemedText>
+                      {s.photosAttached > 0 ? (
+                        <View style={styles.photoTagRow}>
+                          <AppIcon name="camera" size={12} color={colors.secondaryLabel} />
+                          <ThemedText variant="caption" style={styles.photoTag}>
+                            {s.photosAttached} intraoral photos submitted
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {isReady ? (
+                      <View style={styles.actionRow}>
+                        <Button
+                          title="Open Video Consult Room ›"
+                          size="md"
+                          onPress={() =>
+                            router.push({
+                              pathname: "/(clinician)/consult-room" as any,
+                              params: {
+                                appointmentId: s.id,
+                                patientName: s.patientName,
+                                chiefComplaint: s.chiefComplaint,
+                              },
+                            })
+                          }
+                        />
+                      </View>
+                    ) : null}
+                  </Card>
+                );
+              })}
+            </View>
+          )}
         </View>
+
+        {/* Portal Role Switcher for Simulator Verification (development opt-in only) */}
+        {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (
+          <Card elevation="raised" style={styles.roleCard}>
+            <ThemedText variant="caption" style={styles.roleHint}>
+              🔄 Switch Mobile Portal (Demo Verification)
+            </ThemedText>
+            <View style={styles.roleBtnRow}>
+              <Button
+                title="‹ Patient Portal"
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  useAuthStore.getState().updateUser({
+                    role: "patient",
+                    email: "monika@pavdental.com",
+                    firstName: "Monika",
+                    lastName: "Grabowska",
+                  });
+                  router.replace("/(patient)/(tabs)/home" as any);
+                }}
+              />
+              <Button
+                title="Operator Van ›"
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  useAuthStore.getState().updateUser({
+                    role: "operator",
+                    email: "van@pavdental.com",
+                    firstName: "Dave",
+                    lastName: "Miller",
+                  });
+                  router.replace("/(operator)/route" as any);
+                }}
+              />
+            </View>
+          </Card>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -159,14 +179,14 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 22,
     height: 44,
     justifyContent: "center",
     width: 44,
   },
   avatarText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   card: {
@@ -175,7 +195,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardReady: {
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderWidth: 2,
   },
   cardTop: {
@@ -224,8 +244,13 @@ const styles = StyleSheet.create({
   patientName: {
     color: colors.label,
   },
+  photoTagRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
   photoTag: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -239,6 +264,26 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   timeVal: {
-    color: colors.brand,
+    color: colors.ink,
+  },
+  roleCard: {
+    backgroundColor: colors.secondaryBackground,
+    borderCurve: "continuous",
+    borderColor: colors.separator,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  roleHint: {
+    color: colors.secondaryLabel,
+    fontWeight: "600",
+  },
+  roleBtnRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
   },
 });

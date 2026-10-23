@@ -1,11 +1,14 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemedText, Card, Badge, Button } from "@/components";
 import { colors, spacing } from "@/theme";
-import { fetchCurrentShift, updatePhase } from "@/features/van/van-api";
+import { fetchCurrentShift, updatePhase, optimizeRoute, reorderQueue } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
+import { openDrivingDirections } from "@/features/van/nav-links";
+import { useOperatorLocation } from "@/features/van/use-operator-location";
+import { useAuthStore } from "@/features/auth/auth-store";
 
 export default function OperatorRouteScreen() {
   const router = useRouter();
@@ -21,6 +24,29 @@ export default function OperatorRouteScreen() {
   const van = data?.van;
   const queue: VanServiceRequest[] = data?.queue ?? [];
 
+  // Real device GPS: keeps the backend's live position current (patient ETAs)
+  // and origin-anchors turn-by-turn links. Falls back to the van's last
+  // reported position when the device has no fix yet.
+  const isOnShift = shift?.status === "online" || shift?.status === "paused";
+  const { fix, error: gpsError, gpsActive } = useOperatorLocation({ enabled: isOnShift });
+
+  const handleNavigate = (stop: VanServiceRequest, patientName: string) => {
+    const destination = {
+      lat: stop.patientLat,
+      lng: stop.patientLng,
+    };
+    const label = `${patientName} — ${stop.accessDetails?.addressLine1 ?? "stop"}`;
+    // Origin: live device fix if available, else the van's last reported fix.
+    const origin =
+      fix ?? (shift?.lastLat != null && shift?.lastLng != null
+        ? { lat: shift.lastLat, lng: shift.lastLng }
+        : undefined);
+
+    openDrivingDirections(destination, label, origin).catch((err: any) => {
+      Alert.alert("Navigation Failed", err?.message || "Could not open maps.");
+    });
+  };
+
   const phaseMutation = useMutation({
     mutationFn: ({ id, phase }: { id: string; phase: VanStopPhase | "no_show" }) =>
       updatePhase(id, phase),
@@ -32,6 +58,53 @@ export default function OperatorRouteScreen() {
     },
   });
 
+  // Server-side minimum-driving-time ordering (routing matrix). In-progress
+  // stops are pinned server-side; only queued stops are sequenced.
+  const optimizeMutation = useMutation({
+    mutationFn: optimizeRoute,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["operator-shift"] });
+      Alert.alert(
+        result.reordered > 0 ? "Route Optimized" : "Already Optimal",
+        result.message
+      );
+    },
+    onError: (err: any) => {
+      Alert.alert("Optimization Failed", err.message || "Could not optimize the route");
+    },
+  });
+
+  // Manual reorder: move a queued stop up/down. Only queued (not yet
+  // started) stops are movable — in-progress stops are pinned.
+  const reorderMutation = useMutation({
+    mutationFn: reorderQueue,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator-shift"] });
+    },
+    onError: (err: any) => {
+      Alert.alert("Reorder Failed", err.message || "Could not reorder the queue");
+      queryClient.invalidateQueries({ queryKey: ["operator-shift"] });
+    },
+  });
+
+  const moveStop = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= queue.length) return;
+    // Both positions must hold movable (queued-phase) stops — the server
+    // enforces this too; the check keeps the buttons honest in the UI.
+    if (queue[index].phase !== "queued" || queue[target].phase !== "queued") return;
+
+    // The server validates the payload as a permutation of the QUEUED stops
+    // only (in-progress stops are pinned server-side), so the payload must
+    // contain just the queued subset — sending in-progress ids 409s.
+    const queued = queue.filter((s) => s.phase === "queued");
+    const ids = queued.map((s) => s.id);
+    const from = ids.indexOf(queue[index].id);
+    const to = ids.indexOf(queue[target].id);
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    reorderMutation.mutate(ids);
+  };
+
   const getPhaseBadge = (phase: VanStopPhase) => {
     switch (phase) {
       case "en_route":
@@ -41,7 +114,7 @@ export default function OperatorRouteScreen() {
       case "in_treatment":
         return <Badge label="🦷 IN TREATMENT" variant="success" />;
       default:
-        return <Badge label="⏳ QUEUED" variant="default" />;
+        return <Badge label="QUEUED" variant="default" />;
     }
   };
 
@@ -54,10 +127,39 @@ export default function OperatorRouteScreen() {
             <ThemedText variant="caption" style={styles.shiftText}>
               Status: {shift?.status?.toUpperCase() ?? "OFFLINE"}
             </ThemedText>
+            {isOnShift ? (
+              <Badge
+                label={gpsActive ? "GPS LIVE" : "GPS WAIT"}
+                variant={gpsActive ? "success" : "default"}
+              />
+            ) : null}
           </View>
-          <ThemedText variant="largeTitle" style={styles.title}>
-            Live Queue ({queue.length} Stop{queue.length !== 1 ? "s" : ""})
-          </ThemedText>
+          <View style={styles.titleRow}>
+            <ThemedText variant="largeTitle" style={styles.title}>
+              Live Queue ({queue.length} Stop{queue.length !== 1 ? "s" : ""})
+            </ThemedText>
+            {queue.filter((s) => s.phase === "queued").length > 1 ? (
+              <Button
+                title="Optimize"
+                size="sm"
+                variant="secondary"
+                loading={optimizeMutation.isPending}
+                onPress={() => optimizeMutation.mutate()}
+              />
+            ) : null}
+          </View>
+          {queue.filter((s) => s.phase === "queued").length > 1 ? (
+            <ThemedText variant="caption" style={styles.hintText}>
+              Tip: Optimize sequences the remaining stops for minimum driving time. You can also drag stops with the arrows.
+            </ThemedText>
+          ) : null}
+          {gpsError ? (
+            <View style={styles.gpsWarning}>
+              <ThemedText variant="caption" style={styles.gpsWarningText}>
+                ⚠️ {gpsError}
+              </ThemedText>
+            </View>
+          ) : null}
         </View>
 
         {queue.length === 0 ? (
@@ -78,6 +180,7 @@ export default function OperatorRouteScreen() {
           <View style={styles.stopList}>
             {queue.map((s, index) => {
               const isCurrent = index === 0;
+              const isPinned = s.phase !== "queued"; // in-treatment stops can't move
               const patientName = `${s.patient?.firstName ?? "Patient"} ${s.patient?.lastName ?? ""}`.trim();
               const address = `${s.accessDetails?.addressLine1}, ${s.accessDetails?.postcode}`;
 
@@ -88,10 +191,44 @@ export default function OperatorRouteScreen() {
                   style={[styles.card, isCurrent && styles.cardNext]}
                 >
                   <View style={styles.stopTop}>
-                    <View style={styles.stopBadge}>
-                      <ThemedText variant="caption" style={styles.stopNum}>
-                        STOP #{index + 1}
-                      </ThemedText>
+                    <View style={styles.stopBadgeRow}>
+                      <View style={styles.stopBadge}>
+                        <ThemedText variant="caption" style={styles.stopNum}>
+                          STOP #{index + 1}
+                        </ThemedText>
+                      </View>
+                      {!isPinned ? (
+                        <View style={styles.reorderRow}>
+                          <Pressable
+                            hitSlop={8}
+                            disabled={index === 0 || reorderMutation.isPending}
+                            onPress={() => moveStop(index, -1)}
+                          >
+                            <ThemedText
+                              variant="caption"
+                              style={[styles.reorderArrow, (index === 0 || reorderMutation.isPending) && styles.reorderDisabled]}
+                            >
+                              ▲
+                            </ThemedText>
+                          </Pressable>
+                          <Pressable
+                            hitSlop={8}
+                            disabled={index === queue.length - 1 || reorderMutation.isPending}
+                            onPress={() => moveStop(index, 1)}
+                          >
+                            <ThemedText
+                              variant="caption"
+                              style={[styles.reorderArrow, (index === queue.length - 1 || reorderMutation.isPending) && styles.reorderDisabled]}
+                            >
+                              ▼
+                            </ThemedText>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <ThemedText variant="caption" style={styles.pinnedLabel}>
+                          🔒 pinned
+                        </ThemedText>
+                      )}
                     </View>
                     {getPhaseBadge(s.phase)}
                   </View>
@@ -101,16 +238,24 @@ export default function OperatorRouteScreen() {
                       {patientName}
                     </ThemedText>
                     <ThemedText variant="caption" style={styles.address}>
-                      📍 {address}
+                      {address}
                     </ThemedText>
                     <ThemedText variant="caption" style={styles.parking}>
                       🅿️ {s.accessDetails?.parkingType?.replace("_", " ")}
                       {s.accessDetails?.gateCode ? ` · Gate: ${s.accessDetails.gateCode}` : ""}
                     </ThemedText>
                     <ThemedText variant="caption" style={styles.procedure}>
-                      🦷 {s.service?.name} ({s.service?.durationMinutes ?? 45}m block)
+                      {s.service?.name} ({s.service?.durationMinutes ?? 45}m block)
                     </ThemedText>
                   </View>
+
+                  {/* Turn-by-turn: hands off to the native maps app */}
+                  <Button
+                    title="Navigate with Maps ›"
+                    size="sm"
+                    variant="secondary"
+                    onPress={() => handleNavigate(s, patientName)}
+                  />
 
                   {/* Phase Progression Actions (current stop only) */}
                   {isCurrent && (
@@ -189,6 +334,45 @@ export default function OperatorRouteScreen() {
             })}
           </View>
         )}
+
+        {/* Portal Role Switcher for Simulator Verification (development opt-in only) */}
+        {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (
+          <Card elevation="raised" style={styles.roleCard}>
+            <ThemedText variant="caption" style={styles.roleHint}>
+              🔄 Switch Mobile Portal (Demo Verification)
+            </ThemedText>
+            <View style={styles.roleBtnRow}>
+              <Button
+                title="‹ Patient Portal"
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  useAuthStore.getState().updateUser({
+                    role: "patient",
+                    email: "monika@pavdental.com",
+                    firstName: "Monika",
+                    lastName: "Grabowska",
+                  });
+                  router.replace("/(patient)/(tabs)/home" as any);
+                }}
+              />
+              <Button
+                title="Clinician Portal ›"
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  useAuthStore.getState().updateUser({
+                    role: "clinician",
+                    email: "doctor@pavdental.com",
+                    firstName: "Tariq",
+                    lastName: "Pav",
+                  });
+                  router.replace("/(clinician)/schedule" as any);
+                }}
+              />
+            </View>
+          </Card>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -211,12 +395,38 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardNext: {
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderWidth: 2,
   },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
+  },
+  hintText: {
+    color: colors.secondaryLabel,
+  },
+  pinnedLabel: {
+    color: colors.secondaryLabel,
+  },
+  reorderArrow: {
+    color: colors.ink,
+  },
+  reorderDisabled: {
+    color: colors.separator,
+  },
+  reorderRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  stopBadgeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   content: {
     gap: spacing.md,
@@ -236,6 +446,15 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: colors.label,
   },
+  gpsWarning: {
+    backgroundColor: colors.warningSubtle,
+    borderRadius: 8,
+    padding: spacing.sm,
+  },
+  gpsWarningText: {
+    color: colors.warning,
+    lineHeight: 16,
+  },
   header: {
     gap: spacing.xs,
   },
@@ -249,7 +468,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   procedure: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -281,5 +500,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
+  },
+  roleCard: {
+    backgroundColor: colors.secondaryBackground,
+    borderCurve: "continuous",
+    borderColor: colors.separator,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  roleHint: {
+    color: colors.secondaryLabel,
+    fontWeight: "600",
+  },
+  roleBtnRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
   },
 });

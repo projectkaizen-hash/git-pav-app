@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { ThemedText } from "./themed-text";
+import { AppIcon } from "./app-icon";
 import { colors, spacing } from "../theme";
 
 interface DailyVideoViewProps {
@@ -32,9 +33,7 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
       {/* Remote Clinician Stream (Simulated WebRTC Canvas Frame) */}
       <View style={styles.remoteStream}>
         <View style={styles.clinicianAvatar}>
-          <ThemedText variant="title" style={styles.avatarSymbol}>
-            👨‍⚕️
-          </ThemedText>
+          <AppIcon name="profile" size={40} color={colors.alwaysWhite} />
         </View>
         <ThemedText variant="headline" style={styles.streamLabel}>
           Dr. Tariq Pav (Clinical Consultation)
@@ -69,9 +68,11 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
           onPress={() => setIsMuted(!isMuted)}
           style={[styles.toolBtn, isMuted && styles.toolBtnActive]}
         >
-          <ThemedText variant="headline" style={styles.toolIcon}>
-            {isMuted ? "🎙️" : "🎤"}
-          </ThemedText>
+          <AppIcon
+            name={isMuted ? "micOff" : "mic"}
+            size={18}
+            color={isMuted ? colors.alwaysWhite : colors.label}
+          />
           <ThemedText variant="caption" style={styles.toolLabel}>
             {isMuted ? "Unmute" : "Mute"}
           </ThemedText>
@@ -81,9 +82,11 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
           onPress={() => setIsVideoOff(!isVideoOff)}
           style={[styles.toolBtn, isVideoOff && styles.toolBtnActive]}
         >
-          <ThemedText variant="headline" style={styles.toolIcon}>
-            {isVideoOff ? "🙈" : "📹"}
-          </ThemedText>
+          <AppIcon
+            name={isVideoOff ? "video" : "video"}
+            size={18}
+            color={isVideoOff ? colors.alwaysWhite : colors.label}
+          />
           <ThemedText variant="caption" style={styles.toolLabel}>
             {isVideoOff ? "Start Video" : "Stop Video"}
           </ThemedText>
@@ -93,9 +96,7 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
           onPress={onLeaveCall}
           style={[styles.toolBtn, styles.endCallBtn]}
         >
-          <ThemedText variant="headline" style={styles.endIcon}>
-            📞
-          </ThemedText>
+          <AppIcon name="phone" size={20} color={colors.alwaysWhite} />
           <ThemedText variant="caption" style={styles.endLabel}>
             End Call
           </ThemedText>
@@ -106,12 +107,9 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
 }
 
 const styles = StyleSheet.create({
-  avatarSymbol: {
-    fontSize: 40,
-  },
   clinicianAvatar: {
     alignItems: "center",
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
     borderRadius: 44,
     height: 88,
     justifyContent: "center",
@@ -150,7 +148,7 @@ const styles = StyleSheet.create({
   },
   localPip: {
     backgroundColor: "#222B3E",
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderRadius: 12,
     borderWidth: 2,
     height: 130,
@@ -204,9 +202,6 @@ const styles = StyleSheet.create({
   },
   toolBtnActive: {
     backgroundColor: "#EB5757",
-  },
-  toolIcon: {
-    fontSize: 20,
   },
   toolLabel: {
     color: "#FFFFFF",

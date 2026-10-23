@@ -1,0 +1,283 @@
+import React, { useState } from "react";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText, Button, AppIcon, Toast, EmptyState } from "@/components";
+import { colors, spacing } from "@/theme";
+import { useMyAppointments } from "@/features/hooks/use-dental-api";
+import { completeAppointmentCheckIn } from "@/features/records/records-api";
+import type { AppIconName } from "@/components";
+
+// ─── Digital check-in / pre-visit tasks (Mobbin Zocdoc checklist pattern) ─────
+// Forms, consent, insurance and balance — done before arrival so the visit
+// itself starts on time.
+
+const PRE_ARRIVAL_TASKS: Array<{
+  id: string;
+  title: string;
+  description: string;
+  kind: "form" | "consent" | "insurance" | "balance";
+}> = [
+  {
+    id: "task_medical_history",
+    title: "Confirm medical history",
+    description: "Verify any changes to your medications or allergies.",
+    kind: "form",
+  },
+  {
+    id: "task_consent",
+    title: "Sign clinical consent",
+    description: "Authorise dental examination and diagnostic radiographs.",
+    kind: "consent",
+  },
+  {
+    id: "task_insurance",
+    title: "Verify insurance or self-pay",
+    description: "Confirm your dental plan details or payment preference.",
+    kind: "insurance",
+  },
+  {
+    id: "task_covid",
+    title: "Pre-arrival health declaration",
+    description: "Confirm you are free of acute respiratory symptoms.",
+    kind: "balance",
+  },
+];
+
+const taskIcon: Record<string, AppIconName> = {
+  form: "fileText",
+  consent: "shield",
+  balance: "creditCard",
+  insurance: "image",
+};
+
+export default function CheckInScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { data: apiAppointments } = useMyAppointments();
+
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+
+  const source = (apiAppointments ?? []) as any[];
+  const booking = (appointmentId ? source.find((b) => b.id === appointmentId) : source[0]) ?? null;
+  const start = booking ? new Date(booking.startTimeUtc) : null;
+  const whenLine =
+    start &&
+    `${start.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })} at ${start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+
+  if (!booking) {
+    return (
+      <View style={styles.container}>
+        <EmptyState
+          heading="Nothing to check in for"
+          body="Check-in opens 24 hours before your appointment."
+          actionLabel="Back to bookings"
+          onAction={() => router.replace("/(patient)/(tabs)/appointments" as never)}
+          icon="clipboard"
+        />
+      </View>
+    );
+  }
+
+  const doneCount = PRE_ARRIVAL_TASKS.filter((t) => doneIds.has(t.id)).length;
+  const allDone = doneCount === PRE_ARRIVAL_TASKS.length;
+
+  const complete = async () => {
+    try {
+      await completeAppointmentCheckIn(booking.id, {
+        medicalHistoryConfirmed: true,
+        consentConfirmed: true,
+        insuranceVerified: true,
+        covidScreened: true,
+      });
+      setToast({ message: "Checked in — see you soon!", tone: "success" });
+      router.replace({ pathname: "/(patient)/appointments/[id]" as never, params: { id: booking.id } });
+    } catch (err: any) {
+      setToast({
+        message: err?.message || "Could not complete check-in. Please try again.",
+        tone: "error",
+      });
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {toast ? <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
+
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <ThemedText variant="overline">Pre-visit check-in</ThemedText>
+          <ThemedText variant="largeTitle" style={styles.title}>
+            You're nearly there
+          </ThemedText>
+          <ThemedText variant="subhead" style={styles.subtitle}>
+            {booking.service?.name || "Appointment"} · {whenLine}
+          </ThemedText>
+        </View>
+
+        {/* Progress */}
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${(doneCount / PRE_ARRIVAL_TASKS.length) * 100}%` }]} />
+          </View>
+          <ThemedText variant="caption" style={styles.progressLabel}>
+            {doneCount} of {PRE_ARRIVAL_TASKS.length} done
+          </ThemedText>
+        </View>
+
+        {/* Task checklist */}
+        <View style={styles.taskList}>
+          {PRE_ARRIVAL_TASKS.map((task) => {
+            const done = doneIds.has(task.id);
+            return (
+              <Pressable
+                key={task.id}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: done }}
+                accessibilityLabel={`${task.title}, ${task.description}`}
+                onPress={() =>
+                  setDoneIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(task.id)) next.delete(task.id);
+                    else next.add(task.id);
+                    return next;
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.taskCard,
+                  done && styles.taskCardDone,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <View style={styles.taskIconTile}>
+                  <AppIcon name={taskIcon[task.kind]} size={18} color={done ? colors.success : colors.ink} />
+                </View>
+                <View style={styles.taskInfo}>
+                  <ThemedText variant="subhead" style={done ? styles.taskTitleDone : styles.taskTitle}>
+                    {task.title}
+                  </ThemedText>
+                  <ThemedText variant="caption" style={styles.taskDesc}>
+                    {task.description}
+                  </ThemedText>
+                </View>
+                <AppIcon
+                  name={done ? "checkCircle" : "chevronRight"}
+                  size={18}
+                  color={done ? colors.success : colors.tertiaryLabel}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <ThemedText variant="caption" style={styles.hint}>
+          Complete each task before you arrive — reception won't need a single paper form.
+        </ThemedText>
+      </ScrollView>
+
+      <View style={[styles.footerBar, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
+        <Button
+          title={allDone ? "Check in" : "Check in (finish tasks first)"}
+          size="lg"
+          disabled={!allDone}
+          onPress={complete}
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+  },
+  content: {
+    gap: spacing.md,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  footerBar: {
+    backgroundColor: colors.systemBackground,
+    borderTopColor: colors.separator,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md,
+  },
+  header: {
+    gap: 2,
+  },
+  hint: {
+    color: colors.secondaryLabel,
+    lineHeight: 16,
+  },
+  progressFill: {
+    backgroundColor: colors.ink,
+    borderRadius: 3,
+    height: "100%",
+  },
+  progressLabel: {
+    color: colors.secondaryLabel,
+    minWidth: 70,
+    textAlign: "right",
+  },
+  progressRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  progressTrack: {
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 3,
+    flex: 1,
+    height: 6,
+    overflow: "hidden",
+  },
+  subtitle: {
+    color: colors.secondaryLabel,
+  },
+  taskCard: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  taskCardDone: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+  },
+  taskDesc: {
+    color: colors.secondaryLabel,
+    lineHeight: 16,
+  },
+  taskIconTile: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  taskInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  taskList: {
+    gap: spacing.sm,
+  },
+  taskTitle: {
+    color: colors.label,
+    fontWeight: "700",
+  },
+  taskTitleDone: {
+    color: colors.secondaryLabel,
+  },
+  title: {
+    color: colors.label,
+  },
+});

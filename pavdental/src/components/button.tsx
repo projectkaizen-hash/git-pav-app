@@ -3,23 +3,25 @@ import {
   ActivityIndicator,
   StyleProp,
   ViewStyle,
+  View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { colors, spacing, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 
 // ─── Variant map ──────────────────────────────────────────────────────────────
 const variants = {
   primary: {
-    backgroundColor: colors.brand,
-    color: colors.onBrand,
+    backgroundColor: colors.ink,
+    color: colors.onInk,
   },
   secondary: {
-    backgroundColor: colors.brandSubtle,
-    color: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    color: colors.ink,
   },
   ghost: {
     backgroundColor: "transparent",
-    color: colors.brand,
+    color: colors.ink,
   },
   destructive: {
     backgroundColor: colors.dangerSubtle,
@@ -57,6 +59,12 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   /** Accessibility label override — defaults to title */
   accessibilityLabel?: string;
+  /** Optional icon to render alongside the title */
+  icon?: React.ReactNode;
+  /** Position of the icon relative to title (default "left") */
+  iconPosition?: "left" | "right";
+  /** Trigger light haptic on press (defaults to true) */
+  haptic?: boolean;
 }
 
 /**
@@ -72,10 +80,21 @@ export function Button({
   disabled = false,
   style,
   accessibilityLabel,
+  icon,
+  iconPosition = "left",
+  haptic = true,
 }: ButtonProps) {
   const v = variants[variant];
   const s = sizes[size];
   const isDisabled = disabled || loading;
+
+  const handlePress = () => {
+    if (isDisabled) return;
+    if (haptic) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    onPress?.();
+  };
 
   return (
     <Pressable
@@ -83,7 +102,7 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      onPress={onPress}
+      onPress={handlePress}
       style={({ pressed }) => [
         {
           backgroundColor: v.backgroundColor,
@@ -93,7 +112,9 @@ export function Button({
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
+          gap: spacing.xs,
           opacity: isDisabled ? 0.45 : pressed ? 0.75 : 1,
+          transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
           ...s,
         },
         style,
@@ -102,14 +123,18 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={v.color as string} />
       ) : (
-        <ThemedText
-          variant="headline"
-          style={{ color: v.color }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        >
-          {title}
-        </ThemedText>
+        <>
+          {icon && iconPosition === "left" ? <View>{icon}</View> : null}
+          <ThemedText
+            variant="headline"
+            style={{ color: v.color }}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            {title}
+          </ThemedText>
+          {icon && iconPosition === "right" ? <View>{icon}</View> : null}
+        </>
       )}
     </Pressable>
   );

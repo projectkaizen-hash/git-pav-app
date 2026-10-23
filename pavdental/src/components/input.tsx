@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   TextInput,
   TextInputProps,
@@ -33,14 +34,17 @@ export function Input({
   hint,
   disabled = false,
   containerStyle,
+  onFocus,
+  onBlur,
   ...props
 }: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
   const hasError = !!error;
 
   const borderColor = hasError
     ? colors.danger
-    : disabled
-    ? colors.separator
+    : isFocused
+    ? colors.ink
     : colors.separator;
 
   return (
@@ -58,9 +62,21 @@ export function Input({
         accessibilityLabel={label}
         accessibilityHint={hint}
         accessibilityState={{ disabled }}
+        onFocus={(e) => {
+          setIsFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          onBlur?.(e);
+        }}
         style={[
           styles.input,
-          { borderColor, opacity: disabled ? 0.5 : 1 },
+          {
+            borderColor,
+            backgroundColor: isFocused ? colors.systemBackground : colors.secondaryBackground,
+            opacity: disabled ? 0.5 : 1,
+          },
         ]}
       />
 
@@ -94,9 +110,9 @@ const styles = StyleSheet.create({
   },
   input: {
     ...type.body,
-    minHeight: 44, // WCAG 2.2 tap target
+    minHeight: 48, // Comfortable 48pt touch target
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.secondaryBackground,
     borderRadius: radius.md,
     // @ts-ignore

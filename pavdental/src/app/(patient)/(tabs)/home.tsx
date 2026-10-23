@@ -1,15 +1,90 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { ThemedText, Card, Badge, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
+import {
+  ThemedText,
+  Card,
+  Button,
+  Badge,
+  AppIcon,
+  ServiceHeroCard,
+  EmergencyTriageModal,
+  type AppIconName,
+} from "@/components";
+import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { fetchActiveVanRequest } from "@/features/van/van-api";
+import { useBookingStore } from "@/features/booking/booking-store";
+import { useServices } from "@/features/hooks/use-dental-api";
+import { DentalService } from "@/features/booking/booking-types";
+import { formatGbp } from "@/features/booking/booking-api";
+
+type CategoryKey = "all" | "checkup" | "hygiene" | "emergency" | "restorative" | "cosmetic";
+
+interface CategoryFilter {
+  key: CategoryKey;
+  label: string;
+  icon: AppIconName;
+}
+
+const CATEGORIES: CategoryFilter[] = [
+  { key: "all", label: "All", icon: "grid" },
+  { key: "checkup", label: "Checkup", icon: "profile" },
+  { key: "hygiene", label: "Hygiene", icon: "sparkle" },
+  { key: "emergency", label: "Emergency", icon: "alert" },
+  { key: "restorative", label: "Surgery", icon: "activity" },
+  { key: "cosmetic", label: "Aesthetics", icon: "smile" },
+];
+
+const FEATURED_FALLBACK_SERVICES: DentalService[] = [
+  {
+    id: "srv_implant",
+    name: "Dental Implants",
+    category: "restorative",
+    pricePence: 125000,
+    depositPence: 25000,
+    durationMinutes: 60,
+    supportedChannels: ["clinic"],
+    description: "Titanium implant placement and restorative crown.",
+  },
+  {
+    id: "srv_smile_restoration",
+    name: "Surgical Smile Restoration",
+    category: "cosmetic",
+    pricePence: 85000,
+    depositPence: 20000,
+    durationMinutes: 45,
+    supportedChannels: ["clinic"],
+    description: "Bespoke aesthetic ceramic restoration.",
+  },
+];
+
+function getHeroImage(category?: string, name?: string) {
+  const lower = `${category || ""} ${name || ""}`.toLowerCase();
+  if (lower.includes("implant") || lower.includes("restor") || lower.includes("emerg")) {
+    return require("../../../../assets/images/implant.jpg");
+  }
+  return require("../../../../assets/images/smile-restoration.jpg");
+}
 
 export default function PatientHomeScreen() {
   const router = useRouter();
   const user = useCurrentUser();
+  const { setService } = useBookingStore();
+  const params = useLocalSearchParams<{ triageModal?: string }>();
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey>("all");
+  const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
+
+  const { data: apiServices } = useServices();
+
+  useEffect(() => {
+    if (params.triageModal === "true") {
+      setShowEmergencyModal(true);
+    }
+  }, [params.triageModal]);
 
   const { data: activeVanRequest } = useQuery({
     queryKey: ["active-van-request"],
@@ -17,247 +92,488 @@ export default function PatientHomeScreen() {
     refetchInterval: 10000,
   });
 
+  const userName = user?.firstName || "Patient";
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+
+  const displayedServices = useMemo(() => {
+    const source: DentalService[] =
+      apiServices && (apiServices as DentalService[]).length > 0
+        ? (apiServices as DentalService[])
+        : FEATURED_FALLBACK_SERVICES;
+    if (selectedCategory === "all") return source;
+    return source.filter(
+      (s) => (s.category || "").toLowerCase() === selectedCategory
+    );
+  }, [apiServices, selectedCategory]);
+
+  const handleBookService = (srv: DentalService) => {
+    setService({
+      ...srv,
+      id: srv.id,
+      name: srv.name,
+      pricePence: srv.pricePence,
+      depositPence: srv.depositPence ?? Math.round((srv.pricePence || 0) * 0.25),
+    });
+    router.push("/(patient)/booking/clinic-picker" as never);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Welcome Banner */}
-      <View style={styles.header}>
-        <ThemedText variant="largeTitle" style={styles.greeting}>
-          Hello, {user?.firstName || "Patient"} 👋
-        </ThemedText>
-        <ThemedText variant="subhead" style={styles.subtitle}>
-          How would you like to receive care today?
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Top Header Row: Avatar + Greeting + Notification Bell */}
+      <View style={styles.topBar}>
+        <View style={styles.userRow}>
+          <Image
+            source={require("../../../../assets/images/avatar.jpg")}
+            style={styles.avatar}
+            contentFit="cover"
+          />
+          <View style={styles.userTextGroup}>
+            <ThemedText variant="caption" style={styles.greetingCaption}>
+              {greeting}
+            </ThemedText>
+            <ThemedText variant="headline" style={styles.userName}>
+              {userName}
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.topRightActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Rewards & Perks"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              router.push("/(patient)/perks" as never);
+            }}
+            style={({ pressed }) => [styles.pointsPill, pressed && { opacity: 0.8 }]}
+          >
+            <AppIcon name="sparkles" size={13} color="#F59E0B" />
+            <ThemedText variant="caption" style={styles.pointsText}>
+              1,450 pts
+            </ThemedText>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              router.push("/(patient)/(tabs)/messages" as never);
+            }}
+            style={({ pressed }) => [styles.bellBtn, pressed && { opacity: 0.7 }]}
+          >
+            <AppIcon name="bell" size={18} color={colors.ink} />
+            <View style={styles.bellDot} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Screen Title */}
+      <View style={styles.titleSection}>
+        <ThemedText variant="largeTitle" style={styles.mainTitle}>
+          Select Your{"\n"}Preferred Service
         </ThemedText>
       </View>
 
-      {/* Active Van Dispatch Tracker Banner */}
+      {/* Horizontal Category Filter Pills (Reference 1 & 2) */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryScroll}
+      >
+        {CATEGORIES.map((cat) => {
+          const isActive = selectedCategory === cat.key;
+          return (
+            <Pressable
+              key={cat.key}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setSelectedCategory(cat.key);
+              }}
+              style={({ pressed }) => [
+                styles.categoryPill,
+                isActive ? styles.categoryPillActive : styles.categoryPillInactive,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <AppIcon
+                name={cat.icon}
+                size={14}
+                color={isActive ? colors.alwaysWhite : colors.ink}
+              />
+              <ThemedText
+                variant="subhead"
+                style={[
+                  styles.categoryText,
+                  isActive ? styles.categoryTextActive : styles.categoryTextInactive,
+                ]}
+              >
+                {cat.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Active Van Dispatch banner (if running) */}
       {activeVanRequest && (
-        <Card elevation="raised" style={styles.activeDispatchCard}>
-          <View style={styles.activeDispatchHeader}>
-            <View style={styles.activeDispatchPulseRow}>
-              <View style={styles.activeGreenDot} />
-              <ThemedText variant="headline" style={styles.activeDispatchTitle}>
-                Active Van Dispatch
+        <Card elevation="raised" style={styles.dispatchCard}>
+          <View style={styles.dispatchHeader}>
+            <View style={styles.dispatchTitleRow}>
+              <View style={styles.liveDot} />
+              <ThemedText variant="headline" style={styles.dispatchTitle}>
+                Van Visit {activeVanRequest.phase?.replace("_", " ") || "En Route"}
               </ThemedText>
             </View>
-            <Badge
-              label={
-                activeVanRequest.status === "pending"
-                  ? "⏳ Awaiting Review"
-                  : activeVanRequest.phase.replace("_", " ").toUpperCase()
-              }
-              variant={activeVanRequest.status === "accepted" ? "success" : "warning"}
-            />
+            {activeVanRequest.etaLabel ? (
+              <ThemedText variant="mono" style={styles.dispatchEta}>
+                {activeVanRequest.etaLabel}
+              </ThemedText>
+            ) : null}
           </View>
-          <ThemedText variant="caption" style={styles.activeDispatchSub}>
-            Destination: {activeVanRequest.accessDetails?.addressLine1} · {activeVanRequest.service?.name}
+          <ThemedText variant="subhead" style={styles.dispatchSub}>
+            {activeVanRequest.service?.name} · {activeVanRequest.accessDetails?.addressLine1}
           </ThemedText>
           <Button
-            title="Open Live Van Map & ETA Tracker ›"
+            title="Track live on map"
+            variant="secondary"
             size="sm"
             onPress={() =>
               router.push({
-                pathname: "/(patient)/van/live-track" as any,
+                pathname: "/(patient)/van/live-track" as never,
                 params: { requestId: activeVanRequest.id },
               })
             }
+            style={styles.dispatchCta}
           />
         </Card>
       )}
 
-      {/* 3 Channels Quick-Book */}
-      <View style={styles.section}>
-        <ThemedText variant="headline" style={styles.sectionTitle}>
-          Choose Care Channel
-        </ThemedText>
-
-        <View style={styles.channelGrid}>
-          {/* Mobile Van */}
-          <Pressable
-            onPress={() => router.push("/(patient)/van/service-area" as any)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Card elevation="raised" style={styles.channelCard}>
-              <View style={styles.channelIconBox}>
-                <ThemedText variant="title">🚐</ThemedText>
-              </View>
-              <View style={styles.channelInfo}>
-                <View style={styles.rowBetween}>
-                  <ThemedText variant="headline">Mobile Van</ThemedText>
-                  <Badge label="Popular" variant="success" />
-                </View>
-                <ThemedText variant="caption" style={styles.channelDesc}>
-                  Fully equipped clinical van visits your driveway or office.
-                </ThemedText>
-              </View>
-            </Card>
-          </Pressable>
-
-          {/* Video Consultation */}
-          <Pressable
-            onPress={() => router.push("/(patient)/video/intake" as any)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Card elevation="raised" style={styles.channelCard}>
-              <View style={styles.channelIconBox}>
-                <ThemedText variant="title">🎥</ThemedText>
-              </View>
-              <View style={styles.channelInfo}>
-                <View style={styles.rowBetween}>
-                  <ThemedText variant="headline">Video Consult</ThemedText>
-                  <Badge label="Fast Triage" variant="info" />
-                </View>
-                <ThemedText variant="caption" style={styles.channelDesc}>
-                  Speak to a dentist in 15 mins for pain, prescriptions & advice.
-                </ThemedText>
-              </View>
-            </Card>
-          </Pressable>
-
-          {/* Clinic Visit */}
-          <Pressable
-            onPress={() => router.push("/(patient)/clinic/clinic-picker" as any)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Card elevation="raised" style={styles.channelCard}>
-              <View style={styles.channelIconBox}>
-                <ThemedText variant="title">🏥</ThemedText>
-              </View>
-              <View style={styles.channelInfo}>
-                <View style={styles.rowBetween}>
-                  <ThemedText variant="headline">In-Clinic Practice</ThemedText>
-                </View>
-                <ThemedText variant="caption" style={styles.channelDesc}>
-                  Traditional modern practice for surgery, hygiene & implants.
-                </ThemedText>
-              </View>
-            </Card>
-          </Pressable>
-        </View>
+      {/* Hero Visual Service Cards (Filtered by Category) */}
+      <View style={styles.serviceStack}>
+        {displayedServices.map((srv) => (
+          <ServiceHeroCard
+            key={srv.id}
+            title={srv.name}
+            badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
+            image={getHeroImage(srv.category, srv.name)}
+            actionLabel="Book Appointment"
+            onPressAction={() => handleBookService(srv)}
+            onPressChat={() => router.push("/(patient)/(tabs)/messages" as never)}
+            onPressInfo={() => router.push("/(patient)/booking/service-catalog" as never)}
+          />
+        ))}
       </View>
 
-      {/* Emergency Triage Notice */}
-      <Card style={styles.emergencyCard}>
-        <View style={styles.emergencyIcon}>
-          <ThemedText variant="title">🚨</ThemedText>
-        </View>
-        <View style={styles.emergencyContent}>
-          <ThemedText variant="headline" style={styles.emergencyTitle}>
-            Severe Pain or Swelling?
+      {/* Quick Action Tiles: Video Triage & 3D Chart */}
+      <View style={styles.quickGrid}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Speak to a dentist via video"
+          onPress={() => router.push("/(patient)/video/intake" as never)}
+          style={({ pressed }) => [styles.quickTile, pressed && { opacity: 0.85 }]}
+        >
+          <View style={styles.quickIconWrap}>
+            <AppIcon name="video" size={20} color={colors.ink} />
+          </View>
+          <ThemedText variant="headline" style={styles.quickTitle}>
+            Video Consult
           </ThemedText>
-          <ThemedText variant="caption" style={styles.emergencySub}>
-            If you have difficulty breathing, swallowing, or severe bleeding, please call 999 immediately.
+          <ThemedText variant="caption" style={styles.quickSub}>
+            In 15 mins for pain & Rx
           </ThemedText>
-        </View>
-      </Card>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View 3D Clean Progress Chart"
+          onPress={() => router.push("/(patient)/records/odontogram" as never)}
+          style={({ pressed }) => [styles.quickTile, pressed && { opacity: 0.85 }]}
+        >
+          <View style={styles.quickIconWrap}>
+            <AppIcon name="activity" size={20} color={colors.ink} />
+          </View>
+          <ThemedText variant="headline" style={styles.quickTitle}>
+            Clean Progress
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.quickSub}>
+            3D Dental arch & gauges
+          </ThemedText>
+        </Pressable>
+      </View>
+
+      {/* Emergency triage card (Frame 6) */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Emergency dental triage"
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          setShowEmergencyModal(true);
+        }}
+        style={({ pressed }) => [pressed && { opacity: 0.85 }]}
+      >
+        <Card style={styles.emergencyCard}>
+          <View style={styles.emergencyIconWrap}>
+            <AppIcon name="alert" size={18} color={colors.danger} />
+          </View>
+          <View style={styles.emergencyTextWrap}>
+            <View style={styles.emergencyHeaderRow}>
+              <ThemedText variant="headline" style={styles.emergencyTitle}>
+                Severe pain or acute swelling?
+              </ThemedText>
+              <Badge label="24/7 AI" variant="danger" />
+            </View>
+            <ThemedText variant="caption" style={styles.emergencySub}>
+              Tap for instant clinical triage guidance & same-day slots.
+            </ThemedText>
+          </View>
+        </Card>
+      </Pressable>
+
+      {/* Emergency AI Triage Modal */}
+      <EmergencyTriageModal
+        visible={showEmergencyModal}
+        onClose={() => setShowEmergencyModal(false)}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  channelCard: {
+  avatar: {
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
+    height: 44,
+    width: 44,
+  },
+  topRightActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  pointsPill: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: radius.full,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  channelDesc: {
-    color: colors.secondaryLabel,
+  pointsText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: "700",
   },
-  channelGrid: {
-    gap: spacing.sm,
-  },
-  activeDispatchCard: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
-    borderWidth: 1.5,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  activeDispatchHeader: {
+  bellBtn: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: "center",
+    position: "relative",
+    width: 42,
   },
-  activeDispatchPulseRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  activeDispatchSub: {
-    color: colors.secondaryLabel,
-    marginVertical: 2,
-  },
-  activeDispatchTitle: {
-    color: colors.brand,
-  },
-  activeGreenDot: {
-    backgroundColor: colors.success,
+  bellDot: {
+    backgroundColor: colors.danger,
+    borderColor: colors.systemBackground,
     borderRadius: 4,
+    borderWidth: 1.5,
     height: 8,
+    position: "absolute",
+    right: 10,
+    top: 10,
     width: 8,
   },
-  channelIconBox: {
+  categoryPill: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: 24,
-    height: 48,
-    justifyContent: "center",
-    width: 48,
+    borderRadius: radius.full,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  channelInfo: {
-    flex: 1,
-    gap: spacing.xxs,
+  categoryPillActive: {
+    backgroundColor: colors.ink,
+  },
+  categoryPillInactive: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderWidth: 1,
+  },
+  categoryScroll: {
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  categoryTextActive: {
+    color: colors.alwaysWhite,
+  },
+  categoryTextInactive: {
+    color: colors.label,
   },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
   },
   content: {
-    gap: spacing.lg,
-    padding: spacing.md,
+    gap: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  emergencyCard: {
-    alignItems: "center",
-    backgroundColor: colors.dangerSubtle,
-    flexDirection: "row",
-    gap: spacing.sm,
+  dispatchCard: {
+    backgroundColor: colors.ink,
+    gap: spacing.xs,
+    marginHorizontal: spacing.md,
     padding: spacing.md,
   },
-  emergencyContent: {
-    flex: 1,
-    gap: 2,
+  dispatchCta: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
   },
-  emergencyIcon: {
-    padding: spacing.xs,
+  dispatchEta: {
+    color: colors.alwaysWhite,
   },
-  emergencySub: {
-    color: colors.danger,
-    opacity: 0.9,
-  },
-  emergencyTitle: {
-    color: colors.danger,
-  },
-  greeting: {
-    color: colors.label,
-  },
-  header: {
-    gap: spacing.xxs,
-  },
-  rowBetween: {
+  dispatchHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  section: {
+  dispatchSub: {
+    color: colors.alwaysWhite,
+    opacity: 0.75,
+  },
+  dispatchTitle: {
+    color: colors.alwaysWhite,
+  },
+  dispatchTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  emergencyCard: {
+    alignItems: "center",
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: 18,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
+  },
+  emergencyHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  emergencyIconWrap: {
+    alignItems: "center",
+    backgroundColor: "#FEE2E2",
+    borderRadius: radius.full,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  emergencySub: {
+    color: colors.danger,
+    opacity: 0.85,
+  },
+  emergencyTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  emergencyTitle: {
+    color: colors.danger,
+    fontSize: 14,
+  },
+  greetingCaption: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+  },
+  liveDot: {
+    backgroundColor: colors.success,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  mainTitle: {
+    color: colors.label,
+    fontSize: 28,
+    fontWeight: "700",
+    lineHeight: 34,
+  },
+  quickGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  quickIconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.md,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  quickSub: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+  },
+  quickTile: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    gap: 4,
+    padding: spacing.md,
+  },
+  quickTitle: {
+    color: colors.label,
+    fontSize: 15,
+  },
+  serviceStack: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  titleSection: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  topBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  userName: {
+    color: colors.label,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  userRow: {
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.sm,
   },
-  sectionTitle: {
-    color: colors.label,
-  },
-  subtitle: {
-    color: colors.secondaryLabel,
+  userTextGroup: {
+    gap: 1,
   },
 });
-

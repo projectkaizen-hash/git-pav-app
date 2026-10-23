@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { accountApi, PaymentMethodItem, DependantItem } from "./account-api";
 import { useAuthStore } from "../auth/auth-store";
+import { tokenStore } from "@/lib/token-store";
 
 export function useChangePasswordMutation() {
   return useMutation({
@@ -23,7 +24,8 @@ export function useDeleteAccountMutation() {
     mutationFn: async (params?: { reason?: string; confirmPassword?: string }) => {
       return accountApi.deleteAccount(params?.reason, params?.confirmPassword);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await tokenStore.deleteRefreshToken();
       clearAuth();
     },
   });

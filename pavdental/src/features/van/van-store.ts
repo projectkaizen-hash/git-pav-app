@@ -14,6 +14,7 @@ interface VanDispatchDraftState {
   serviceName: string;
   servicePricePence: number;
   serviceDurationMinutes: number;
+  serviceDepositPence: number | null;
 
   // Property & Parking Access
   addressLine1: string;
@@ -39,6 +40,7 @@ interface VanDispatchDraftState {
     serviceName: string;
     servicePricePence: number;
     serviceDurationMinutes: number;
+    serviceDepositPence?: number | null;
   }) => void;
   setAccessDetails: (details: Partial<{
     addressLine1: string;
@@ -64,6 +66,7 @@ export const useVanStore = create<VanDispatchDraftState>((set, get) => ({
   serviceName: "Routine Examination & Oral Health Check",
   servicePricePence: 8500,
   serviceDurationMinutes: 45,
+  serviceDepositPence: null,
 
   addressLine1: "",
   addressLine2: "",
@@ -80,11 +83,25 @@ export const useVanStore = create<VanDispatchDraftState>((set, get) => ({
   setActiveRequestId: (id) => set({ activeRequestId: id }),
   getAccessDetailsPayload: () => {
     const s = get();
+    // Normalize postcode to ensure space format
+    const normalizePostcode = (postcode: string) => {
+      const cleaned = postcode.toUpperCase().replace(/\s/g, '');
+      if (cleaned.length >= 5) {
+        const inward = cleaned.slice(-3);
+        const outward = cleaned.slice(0, -3);
+        return `${outward} ${inward}`;
+      }
+      return cleaned;
+    };
+    
     return {
-      addressLine1: s.addressLine1 || "10 Downing Street",
-      addressLine2: s.addressLine2 || undefined,
-      city: s.city || "London",
-      postcode: s.postcode || "SW1A 2AA",
+      // No demo fallbacks: blank required fields must reach the API as empty
+      // strings so zod validation stops the dispatch instead of silently
+      // sending the van to a placeholder address.
+      addressLine1: s.addressLine1.trim(),
+      addressLine2: s.addressLine2.trim() || undefined,
+      city: s.city.trim(),
+      postcode: normalizePostcode(s.postcode.trim()),
       lat: s.lat,
       lng: s.lng,
       parkingType: s.parkingType,
@@ -103,6 +120,7 @@ export const useVanStore = create<VanDispatchDraftState>((set, get) => ({
       serviceName: "Routine Examination & Oral Health Check",
       servicePricePence: 8500,
       serviceDurationMinutes: 45,
+      serviceDepositPence: null,
       addressLine1: "",
       addressLine2: "",
       city: "London",

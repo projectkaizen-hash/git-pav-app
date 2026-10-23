@@ -44,7 +44,7 @@ export default function MedicalHistoryScreen() {
   if (isLoadingProfile) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={colors.ink} />
       </View>
     );
   }

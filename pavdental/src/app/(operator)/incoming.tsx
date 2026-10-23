@@ -85,16 +85,16 @@ export default function OperatorIncomingScreen() {
             return (
               <Card key={req.id} elevation="raised" style={styles.requestCard}>
                 <View style={styles.cardHeader}>
-                  <Badge label={`⏱ Expires in ~${timeRemaining}m`} variant="warning" />
+                  <Badge label={`Expires in ~${timeRemaining}m`} variant="warning" />
                   <ThemedText variant="caption" style={styles.procedure}>
-                    🦷 {req.service?.name}
+                    {req.service?.name}
                   </ThemedText>
                 </View>
 
                 <View style={styles.details}>
                   <ThemedText variant="headline">{patientName}</ThemedText>
                   <ThemedText variant="caption" style={styles.detail}>
-                    📍 {req.accessDetails?.addressLine1}, {req.accessDetails?.postcode}
+                    {req.accessDetails?.addressLine1}, {req.accessDetails?.postcode}
                   </ThemedText>
                   <ThemedText variant="caption" style={styles.detail}>
                     🅿️ Parking: {req.accessDetails?.parkingType?.replace("_", " ")}
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   eta: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   header: {
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   procedure: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   requestCard: {

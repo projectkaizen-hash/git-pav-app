@@ -1,4 +1,5 @@
 import { verifyAuditIntegrity, applyAuditRetentionPolicy, checkAuditFailures } from "./audit-integrity";
+import { communicationService } from "./communication-service";
 
 // Audit monitoring configuration
 const AUDIT_CONFIG = {
@@ -22,7 +23,12 @@ export function startAuditMonitoring() {
       const result = await verifyAuditIntegrity(1000);
       if (!result.verified) {
         console.error("[AUDIT INTEGRITY] Integrity check failed:", result.issues);
-        // TODO: Send alert to operations team
+        await communicationService.sendEmail({
+          to: "ops@pavdental.com",
+          subject: "[AUDIT INTEGRITY] Hash Chain Verification Failed",
+          html: `<p>Audit log integrity verification failed:</p><pre>${JSON.stringify(result.issues, null, 2)}</pre>`,
+          text: `Audit log integrity verification failed: ${JSON.stringify(result.issues)}`,
+        }).catch(() => {});
       } else {
         console.log(`[AUDIT INTEGRITY] Verified ${result.checkedCount} audit logs`);
       }
@@ -47,7 +53,12 @@ export function startAuditMonitoring() {
       const result = await checkAuditFailures();
       if (result.thresholdExceeded) {
         console.error(`[AUDIT FAILURES] High failure rate detected: ${result.failureCount} failures in 24h`);
-        // TODO: Send alert to operations team
+        await communicationService.sendEmail({
+          to: "ops@pavdental.com",
+          subject: `[AUDIT FAILURES] ${result.failureCount} failures in 24h`,
+          html: `<p>Audit failure threshold exceeded: ${result.failureCount} events in 24 hours.</p>`,
+          text: `Audit failure threshold exceeded: ${result.failureCount} events in 24 hours.`,
+        }).catch(() => {});
       }
     } catch (error) {
       console.error("[AUDIT FAILURES] Failure check error:", error);

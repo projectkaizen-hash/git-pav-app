@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import * as LocalAuthentication from "expo-local-authentication";
-import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
+import { tokenStore, BIOMETRIC_LOCK_KEY } from "@/lib/token-store";
+import { useAppLockStore } from "@/features/app-lock/app-lock-store";
 
-const BIOMETRIC_LOCK_KEY = "pavdental_biometric_app_lock_enabled";
+export { BIOMETRIC_LOCK_KEY };
 
 export function useBiometrics() {
   const [isSupported, setIsSupported] = useState<boolean>(false);
@@ -36,8 +37,9 @@ export function useBiometrics() {
       }
 
       // Check stored preference
-      const storedPref = await SecureStore.getItemAsync(BIOMETRIC_LOCK_KEY);
-      setIsBiometricLockEnabled(storedPref === "true");
+      const enabled = await tokenStore.getBiometricEnabled();
+      setIsBiometricLockEnabled(enabled);
+      useAppLockStore.getState().setRequiresBiometric(enabled);
     } catch {
       // Fallback
     } finally {
@@ -76,8 +78,9 @@ export function useBiometrics() {
     }
 
     try {
-      await SecureStore.setItemAsync(BIOMETRIC_LOCK_KEY, enable ? "true" : "false");
+      await tokenStore.setBiometricEnabled(enable);
       setIsBiometricLockEnabled(enable);
+      useAppLockStore.getState().setRequiresBiometric(enable);
       return true;
     } catch {
       Alert.alert("Error", "Could not save biometric preference.");

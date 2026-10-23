@@ -43,10 +43,12 @@ export const mockOdontogram: any[] = [
   { number: 32, name: "LR Wisdom (48)", arch: "lower", quadrant: "LR", condition: "missing" },
 ];
 
-export const mockTreatmentPlan: TreatmentPlan = {
+export const mockTreatmentPlan: any = {
   id: "plan_101",
   title: "Comprehensive Restorative & Gum Health Plan",
   clinicianName: "Dr. Tariq Pav (GDC #248912)",
+  clinician: { fullName: "Dr. Tariq Pav", roleTitle: "Principal Surgeon" },
+  createdAt: "2026-09-19T10:00:00Z",
   createdAtFormatted: "19 Sep 2026",
   status: "pending_acceptance",
   totalCostPence: 20500, // £205.00

@@ -12,7 +12,12 @@ export default function RecordsLayout() {
     >
       <Stack.Screen name="odontogram" options={{ title: "Dental Odontogram" }} />
       <Stack.Screen name="plans" options={{ title: "Treatment Plans" }} />
+      <Stack.Screen name="plans/[id]" options={{ title: "Plan Details" }} />
+      <Stack.Screen name="prescriptions" options={{ title: "Prescriptions & Meds" }} />
+      <Stack.Screen name="prescriptions/[id]" options={{ title: "Prescription Details" }} />
       <Stack.Screen name="vault" options={{ title: "Document Vault" }} />
+      <Stack.Screen name="financing" options={{ title: "0% Dental Financing" }} />
+      <Stack.Screen name="insights" options={{ title: "Oral Health Insights" }} />
     </Stack>
   );
 }

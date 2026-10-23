@@ -1,40 +1,140 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
-import { ThemedText, Card, Button, Badge } from "@/components";
+import { useStripe } from "@stripe/stripe-react-native";
+import { ThemedText, Card, Button, Badge, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
-import { createVanRequest } from "@/features/van/van-api";
+import {
+  createVanRequest,
+  cancelVanRequest,
+  retryDepositAuthorization,
+  presentVanDepositSheet,
+  DepositCanceledError,
+} from "@/features/van/van-api";
 import { useVanStore } from "@/features/van/van-store";
 
 export default function VanConfirmScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const store = useVanStore();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const accessPayload = store.getAccessDetailsPayload();
   const etaLabel = store.availability?.etaLabel || "~20–30 min";
 
-  const requestMutation = useMutation({
-    mutationFn: () =>
-      createVanRequest({
+  /**
+   * Create the request, then — when the backend is in real-Stripe mode —
+   * present PaymentSheet so the patient authorizes the manual-capture
+   * deposit hold. The deposit is captured server-side only if an operator
+   * accepts; if the request is declined or times out the backend releases
+   * the hold automatically.
+   */
+  const submitRequest = async () => {
+    setIsSubmitting(true);
+    let requestId: string | null = null;
+    try {
+      const request = await createVanRequest({
         serviceId: store.serviceId || "srv_checkup",
         accessDetails: accessPayload,
-      }),
-    onSuccess: (request) => {
+      });
+      requestId = request.id;
+
+      if (request.isMockPayment || !request.clientSecret) {
+        // Mock-Stripe backend (or no deposit configured) — straight to tracking.
+        store.setActiveRequestId(request.id);
+        router.replace({
+          pathname: "/(patient)/van/live-track" as any,
+          params: { requestId: request.id },
+        });
+        return;
+      }
+
+      await presentVanDepositSheet(request.clientSecret, {
+        initPaymentSheet,
+        presentPaymentSheet,
+      });
+
+      // Authorized. The webhook stamps the request server-side.
       store.setActiveRequestId(request.id);
       router.replace({
         pathname: "/(patient)/van/live-track" as any,
         params: { requestId: request.id },
       });
-    },
-    onError: (err: any) => {
+    } catch (err: any) {
+      if (err instanceof DepositCanceledError) {
+        // Patient dismissed the sheet — offer retry or release the hold.
+        Alert.alert(
+          "Deposit Not Authorized",
+          "Your request is on hold, but the deposit hasn't been authorized yet. The van team can only dispatch once it is.",
+          [
+            {
+              text: "Cancel Request",
+              style: "destructive",
+              onPress: () => {
+                if (requestId) {
+                  cancelVanRequest(requestId)
+                    .then(() => store.resetDraft())
+                    .catch(() => {});
+                }
+              },
+            },
+            { text: "Try Again", onPress: () => submitRequestRetry(requestId) },
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
         "Request Failed",
-        err.message || "Could not dispatch van. Check that a van is online in your area."
+        err?.message || "Could not dispatch van. Check that a van is online in your area."
       );
-    },
-  });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  /** Retry just the PaymentSheet step after a dismissal (request already created). */
+  const submitRequestRetry = async (requestId: string | null) => {
+    if (!requestId) return;
+    setIsSubmitting(true);
+    try {
+      // Re-fetch the intent secret server-side rather than reusing the stale one.
+      const retry = await retryDepositAuthorization(requestId);
+      if (retry.alreadyAuthorized || !retry.clientSecret) {
+        store.setActiveRequestId(requestId);
+        router.replace({
+          pathname: "/(patient)/van/live-track" as any,
+          params: { requestId },
+        });
+        return;
+      }
+      await presentVanDepositSheet(retry.clientSecret, {
+        initPaymentSheet,
+        presentPaymentSheet,
+      });
+      store.setActiveRequestId(requestId);
+      router.replace({
+        pathname: "/(patient)/van/live-track" as any,
+        params: { requestId },
+      });
+    } catch {
+      // Still not authorized — the live-track banner offers another retry.
+      store.setActiveRequestId(requestId);
+      router.replace({
+        pathname: "/(patient)/van/live-track" as any,
+        params: { requestId },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const requestMutation = useMutation({
+    mutationFn: () => submitRequest(),
+  });
   const fullAddress = [
     accessPayload.addressLine1,
     accessPayload.addressLine2,
@@ -57,7 +157,7 @@ export default function VanConfirmScreen() {
         {/* Banner */}
         <View style={styles.holdBanner}>
           <ThemedText variant="caption" style={styles.holdText}>
-            ⚡ Live Dispatch · Operator Accepts Within 4 Minutes
+            Live dispatch · operator accepts within 4 minutes
           </ThemedText>
         </View>
 
@@ -97,7 +197,7 @@ export default function VanConfirmScreen() {
               Clinical Procedure:
             </ThemedText>
             <ThemedText variant="body" style={styles.val}>
-              🦷 {store.serviceName || "Routine Dental Examination"} ({store.serviceDurationMinutes || 45} min clinical block)
+              {store.serviceName || "Routine Dental Examination"} ({store.serviceDurationMinutes || 45} min clinical block)
             </ThemedText>
           </View>
 
@@ -106,7 +206,7 @@ export default function VanConfirmScreen() {
               Vehicle & Unit:
             </ThemedText>
             <ThemedText variant="caption" style={styles.subVal}>
-              🚐 Mercedes Sprinter Mobile Surgical Suite (Low-dose X-Ray on board)
+              Mercedes Sprinter Mobile Surgical Suite (Low-dose X-Ray on board)
             </ThemedText>
           </View>
         </Card>
@@ -129,27 +229,27 @@ export default function VanConfirmScreen() {
           <View style={styles.rowBetween}>
             <ThemedText variant="headline">Deposit Due on Accept:</ThemedText>
             <ThemedText variant="title" style={styles.depositPrice}>
-              £25.00
+              £{(((store.serviceDepositPence ?? 0) || 2500) / 100).toFixed(2)}
             </ThemedText>
           </View>
 
           <View style={styles.policyBox}>
             <ThemedText variant="caption" style={styles.policyNote}>
-              ✓ No charge right now. You will be prompted to confirm your deposit only after the mobile clinical team accepts your request.
+              No charge right now. You will be prompted to confirm your deposit only after the mobile clinical team accepts your request.
             </ThemedText>
             <ThemedText variant="caption" style={styles.policyNote}>
-              ✓ If the request times out or is declined, you pay nothing.
+              If the request times out or is declined, you pay nothing.
             </ThemedText>
           </View>
         </Card>
       </ScrollView>
 
       {/* Action Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title={requestMutation.isPending ? "Dispatching..." : "Confirm & Request Van Visit ›"}
+          title={isSubmitting ? "Dispatching..." : "Confirm & Request Van Visit ›"}
           size="lg"
-          loading={requestMutation.isPending}
+          loading={isSubmitting}
           onPress={() => requestMutation.mutate()}
         />
       </View>
@@ -159,7 +259,7 @@ export default function VanConfirmScreen() {
 
 const styles = StyleSheet.create({
   brandVal: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
     marginTop: 2,
   },
@@ -183,7 +283,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   depositPrice: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   footer: {
@@ -194,12 +294,12 @@ const styles = StyleSheet.create({
   },
   holdBanner: {
     alignItems: "center",
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: colors.inkSubtle,
     borderRadius: 8,
     padding: spacing.sm,
   },
   holdText: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   item: {

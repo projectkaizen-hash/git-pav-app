@@ -1,18 +1,41 @@
 import React, { useState } from "react";
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { ThemedText, Input, Button, AppIcon, SwipeToStart } from "@/components";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
+import { useAuthStore } from "@/features/auth/auth-store";
+import { getMobilePortalPath } from "@/features/auth/auth-routing";
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [showEmailSheet, setShowEmailSheet] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleContinue = async () => {
+  const handleStart = () => {
+    const { user, accessToken } = useAuthStore.getState();
+    if (user && accessToken) {
+      router.push(getMobilePortalPath(user.role) as any);
+      return;
+    }
+    setShowEmailSheet(true);
+  };
+
+  const handleContinueWithEmail = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setError("Please enter your email address.");
@@ -29,17 +52,14 @@ export default function WelcomeScreen() {
       setLoading(true);
       setError(null);
 
-      // Check if email exists in database
       const result = await authApi.checkEmail(trimmedEmail);
 
       if (result.exists) {
-        // User exists -> Show Password screen (Sign In)
         router.push({
           pathname: "/(auth)/sign-in",
           params: { email: trimmedEmail },
         });
       } else {
-        // User doesn't exist -> Show Registration details screen (Sign Up)
         router.push({
           pathname: "/(auth)/sign-up",
           params: { email: trimmedEmail },
@@ -53,157 +73,330 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.hero}>
-            <View style={styles.logoMark} />
-            <ThemedText variant="largeTitle" style={styles.headline}>
-              Your dental care,{"\n"}wherever you are.
-            </ThemedText>
-            <ThemedText variant="subhead" style={styles.sub}>
-              Enter your email to sign in or create an account.
+
+      {/* Full-bleed photography */}
+      <Image
+        source={require("../../../assets/images/welcome-hero.jpg")}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        priority="high"
+      />
+
+      {/* Dark gradient for text readability and cinematic depth */}
+      <LinearGradient
+        colors={[
+          "rgba(0,0,0,0.55)",
+          "transparent",
+          "rgba(0,0,0,0.3)",
+          "rgba(0,0,0,0.92)",
+        ]}
+        locations={[0, 0.25, 0.6, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <SafeAreaView style={styles.safe}>
+        {/* Top Header: Logo + Menu pill */}
+        <View style={styles.topHeader}>
+          <View style={styles.brandGroup}>
+            <View style={styles.brandIconBox}>
+              <AppIcon name="plus" size={16} color={colors.alwaysWhite} />
+            </View>
+            <ThemedText variant="headline" style={styles.brandName}>
+              Pav Dental
             </ThemedText>
           </View>
 
-          {error ? (
-            <View style={styles.errorBox} accessibilityRole="alert">
-              <ThemedText variant="caption" style={styles.errorText}>
-                {error}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign in with email"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowEmailSheet((prev) => !prev);
+            }}
+            style={styles.pillBtn}
+          >
+            <ThemedText variant="caption" style={styles.pillBtnText}>
+              {showEmailSheet ? "Back" : "Sign In"}
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        {/* Interactive Clinical Callout Annotation */}
+        {!showEmailSheet ? (
+          <View style={styles.annotationBox}>
+            <View style={styles.calloutTag}>
+              <ThemedText variant="caption" style={styles.calloutText}>
+                Veneers Installation
               </ThemedText>
             </View>
-          ) : null}
-
-          {/* Quick Demo 1-Tap Fillers */}
-          <View style={styles.demoRow}>
-            <ThemedText variant="caption" style={styles.demoLabel}>Demo Quick Email:</ThemedText>
-            <View style={styles.demoPills}>
-              {[
-                { label: "Existing Patient", email: "patient@pavdental.com" },
-                { label: "New User", email: `new_${Date.now().toString().slice(-4)}@pavdental.com` },
-              ].map((demo) => (
-                <Pressable
-                  key={demo.label}
-                  onPress={() => {
-                    setEmail(demo.email);
-                    if (error) setError(null);
-                  }}
-                  style={styles.demoPill}
-                >
-                  <ThemedText variant="caption" style={styles.demoPillText}>{demo.label}</ThemedText>
-                </Pressable>
-              ))}
+            <View style={styles.pointerLine} />
+            <View style={styles.pointerTarget}>
+              <View style={styles.targetInner} />
             </View>
           </View>
+        ) : null}
 
-          <View style={styles.form}>
-            <Input
-              label="Email address"
-              placeholder="name@example.co.uk"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (error) setError(null);
-              }}
-            />
-          </View>
+        {/* Bottom Container: Either the Hero Swipe to Start, or the Email Sheet */}
+        {!showEmailSheet ? (
+          <View style={[styles.bottomContent, { paddingBottom: Math.max(spacing.lg, insets.bottom) }]}>
+            <ThemedText variant="largeTitle" style={styles.heroTitle}>
+              Oral Wellness{"\n"}& Aesthetic Dentistry
+            </ThemedText>
 
-          <View style={styles.actions}>
-            <Button
-              title="Continue"
-              size="lg"
-              loading={loading}
-              onPress={handleContinue}
-            />
+            <ThemedText variant="body" style={styles.heroSub}>
+              Track daily brushing habits and improve overall oral care.
+            </ThemedText>
+
+            {/* Slider pill */}
+            <View style={styles.sliderWrap}>
+              <SwipeToStart label="Swipe To Start" onComplete={handleStart} />
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowEmailSheet(true)}
+              style={styles.emailOption}
+            >
+              <ThemedText variant="caption" style={styles.emailOptionText}>
+                Or sign in with email address ›
+              </ThemedText>
+            </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.sheetContainer}
+          >
+            <ScrollView
+              contentContainerStyle={styles.sheetScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ThemedText variant="largeTitle" style={styles.sheetTitle}>
+                Welcome back
+              </ThemedText>
+              <ThemedText variant="subhead" style={styles.sheetSub}>
+                Enter your email to sign in or create an account.
+              </ThemedText>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <ThemedText variant="caption" style={styles.errorText}>
+                    {error}
+                  </ThemedText>
+                </View>
+              ) : null}
+
+              {/* Dev Quick Fillers */}
+              {__DEV__ ? (
+                <View style={styles.demoPills}>
+                  {[
+                    { label: "Patient", email: "patient@pavdental.com" },
+                    { label: "New User", email: `user_${Date.now().toString().slice(-4)}@pavdental.com` },
+                  ].map((demo) => (
+                    <Pressable
+                      key={demo.label}
+                      onPress={() => {
+                        setEmail(demo.email);
+                        if (error) setError(null);
+                      }}
+                      style={styles.demoPill}
+                    >
+                      <ThemedText variant="caption" style={styles.demoPillText}>
+                        {demo.label}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              <Input
+                label="Email address"
+                placeholder="name@example.co.uk"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (error) setError(null);
+                }}
+              />
+
+              <Button
+                title="Continue"
+                size="lg"
+                loading={loading}
+                onPress={handleContinueWithEmail}
+                style={styles.continueBtn}
+              />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: {
-    gap: spacing.xs,
-    marginTop: spacing.xl,
+  annotationBox: {
+    alignItems: "flex-end",
+    position: "absolute",
+    right: 32,
+    top: "36%",
   },
-  demoLabel: {
-    color: colors.secondaryLabel,
+  bottomContent: {
+    gap: spacing.md,
+    marginTop: "auto",
+    paddingHorizontal: spacing.lg,
+  },
+  brandGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  brandIconBox: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    borderRadius: radius.md,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  brandName: {
+    color: colors.alwaysWhite,
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  calloutTag: {
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    borderColor: "rgba(255, 255, 255, 0.25)",
+    borderRadius: radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  calloutText: {
+    color: colors.alwaysWhite,
+    fontSize: 11,
     fontWeight: "600",
   },
+  container: {
+    backgroundColor: colors.alwaysBlack,
+    flex: 1,
+  },
+  continueBtn: {
+    marginTop: spacing.md,
+  },
   demoPill: {
-    backgroundColor: colors.brandSubtle,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
   demoPillText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
+    color: colors.alwaysWhite,
+    fontWeight: "600",
   },
   demoPills: {
     flexDirection: "row",
     gap: spacing.xs,
+    marginBottom: spacing.xs,
   },
-  demoRow: {
-    gap: spacing.xxs,
-    marginBottom: spacing.md,
+  emailOption: {
+    alignItems: "center",
+    paddingVertical: spacing.xs,
+  },
+  emailOptionText: {
+    color: "rgba(255, 255, 255, 0.75)",
+    fontSize: 13,
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
     borderRadius: 8,
-    marginBottom: spacing.md,
     padding: spacing.sm,
   },
   errorText: {
     color: colors.danger,
   },
-  flex: {
-    flex: 1,
+  heroSub: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 15,
+    lineHeight: 22,
   },
-  form: {
-    gap: spacing.md,
+  heroTitle: {
+    color: colors.alwaysWhite,
+    fontSize: 32,
+    fontWeight: "700",
+    lineHeight: 38,
   },
-  headline: {
-    color: colors.label,
-    textAlign: "center",
+  pillBtn: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderRadius: radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
   },
-  hero: {
+  pillBtnText: {
+    color: colors.alwaysWhite,
+    fontWeight: "600",
+  },
+  pointerLine: {
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    height: 36,
+    marginRight: 24,
+    width: 1.5,
+  },
+  pointerTarget: {
     alignItems: "center",
-    gap: spacing.md,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    borderRadius: radius.full,
+    borderWidth: 2,
+    height: 20,
     justifyContent: "center",
-    marginBottom: spacing.xl,
-  },
-  logoMark: {
-    backgroundColor: colors.brandSubtle,
-    borderRadius: 24,
-    height: 70,
-    width: 70,
+    marginRight: 15,
+    width: 20,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
     flex: 1,
+    justifyContent: "space-between",
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
+  sheetContainer: {
+    backgroundColor: "rgba(20, 20, 24, 0.94)",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: "auto",
+    padding: spacing.lg,
+  },
+  sheetScroll: {
+    gap: spacing.sm,
+  },
+  sheetSub: {
+    color: "rgba(255, 255, 255, 0.7)",
+    marginBottom: spacing.xs,
+  },
+  sheetTitle: {
+    color: colors.alwaysWhite,
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  sliderWrap: {
+    marginTop: spacing.xs,
+  },
+  targetInner: {
+    backgroundColor: colors.alwaysWhite,
+    borderRadius: radius.full,
+    height: 8,
+    width: 8,
+  },
+  topHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-  },
-  sub: {
-    color: colors.secondaryLabel,
-    paddingHorizontal: spacing.md,
-    textAlign: "center",
+    paddingTop: spacing.xs,
   },
 });

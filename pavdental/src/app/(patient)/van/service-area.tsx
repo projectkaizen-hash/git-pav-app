@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ThemedText, Input, Button, Card, Badge } from "@/components";
+import { ThemedText, Input, Button, Card, Badge, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { checkVanCoverage } from "@/features/booking/booking-api";
 import { fetchVanAvailability } from "@/features/van/van-api";
@@ -82,7 +82,7 @@ export default function VanServiceAreaScreen() {
       }
 
       setLocationCoverage({
-        postcode: result.matchedSector || "SW1A 1AA",
+        postcode: result.activeSector || "GPS Location",
         lat: coords.lat,
         lng: coords.lng,
         isCovered: result.isCovered,
@@ -109,9 +109,16 @@ export default function VanServiceAreaScreen() {
       setCoverageResult(result);
       setChecked(true);
 
-      // Coordinates for London center/sector fallback
-      const lat = 51.5074;
-      const lng = -0.1278;
+      // Use actual coordinates from server response
+      if (!result.coordinates) {
+        Alert.alert("Geocoding Error", "Unable to get coordinates for this postcode. Please try a different postcode or use GPS.");
+        setChecked(false);
+        setLoading(false);
+        return;
+      }
+
+      const lat = result.coordinates.lat;
+      const lng = result.coordinates.lng;
       let avail: VanAvailability | null = null;
 
       if (result.isCovered) {
@@ -124,7 +131,7 @@ export default function VanServiceAreaScreen() {
       }
 
       setLocationCoverage({
-        postcode: postcode.toUpperCase().trim(),
+        postcode: result.activeSector || postcode.toUpperCase().trim(),
         lat,
         lng,
         isCovered: result.isCovered,
@@ -178,7 +185,7 @@ export default function VanServiceAreaScreen() {
         {Platform.OS !== "web" && (
           <View style={styles.gpsSection}>
             <Button
-              title={currentLocation ? "📍 Refresh GPS Location" : "📍 Enable GPS Location"}
+              title={currentLocation ? "Refresh GPS location" : "Use my current location"}
               variant="secondary"
               onPress={handleUseGPS}
               disabled={loading}
@@ -223,11 +230,11 @@ export default function VanServiceAreaScreen() {
             <Card elevation="raised" style={styles.coveredCard}>
               <View style={styles.badgeRow}>
                 <Badge
-                  label={isVanOnline ? "⚡ VAN ON SHIFT" : "○ VAN OFF DUTY"}
+                  label={isVanOnline ? "VAN ON SHIFT" : "VAN OFF DUTY"}
                   variant={isVanOnline ? "success" : "default"}
                 />
                 <ThemedText variant="caption" style={styles.vanUnit}>
-                  🚐 {coverageResult?.assignedVan || "Pav Dental Van #1"}
+                  {coverageResult?.assignedVan || "Pav Dental Van #1"}
                 </ThemedText>
               </View>
 
@@ -235,7 +242,7 @@ export default function VanServiceAreaScreen() {
               {isVanOnline ? (
                 <View style={styles.dispatchOnlineBanner}>
                   <ThemedText variant="headline" style={styles.dispatchEtaTitle}>
-                    ⚡ Estimated Arrival: {availability?.etaLabel || "~20–30 min"}
+                    Estimated arrival: {availability?.etaLabel || "~20–30 min"}
                   </ThemedText>
                   <ThemedText variant="caption" style={styles.dispatchEtaSub}>
                     {availability?.queueLength === 0
@@ -253,13 +260,13 @@ export default function VanServiceAreaScreen() {
                   </ThemedText>
                   <View style={styles.alternativeButtons}>
                     <Button
-                      title="Book Central Practice Clinic ›"
+                      title="Book central practice clinic"
                       variant="primary"
                       size="sm"
                       onPress={() => router.push("/(patient)/booking/clinic-picker" as any)}
                     />
                     <Button
-                      title="Instant Video Consult (15 min) ›"
+                      title="Instant video consult (15 min)"
                       variant="secondary"
                       size="sm"
                       onPress={() => router.push("/(patient)/video/intake" as any)}
@@ -273,15 +280,24 @@ export default function VanServiceAreaScreen() {
               </ThemedText>
 
               <View style={styles.features}>
-                <ThemedText variant="caption" style={styles.featItem}>
-                  ✓ Full GDC Clinical Surgical Suite on Board
-                </ThemedText>
-                <ThemedText variant="caption" style={styles.featItem}>
-                  ✓ Digital Low-Dose X-Ray & AirFlow Hygiene
-                </ThemedText>
-                <ThemedText variant="caption" style={styles.featItem}>
-                  ✓ Live GPS Tracking & Automatic Phase Updates
-                </ThemedText>
+                <View style={styles.featRow}>
+                  <AppIcon name="check" size={13} color={colors.ink} />
+                  <ThemedText variant="caption" style={styles.featItem}>
+                    Full GDC clinical surgical suite on board
+                  </ThemedText>
+                </View>
+                <View style={styles.featRow}>
+                  <AppIcon name="check" size={13} color={colors.ink} />
+                  <ThemedText variant="caption" style={styles.featItem}>
+                    Digital low-dose X-ray & AirFlow hygiene
+                  </ThemedText>
+                </View>
+                <View style={styles.featRow}>
+                  <AppIcon name="check" size={13} color={colors.ink} />
+                  <ThemedText variant="caption" style={styles.featItem}>
+                    Live GPS tracking & automatic phase updates
+                  </ThemedText>
+                </View>
               </View>
             </Card>
           ) : (
@@ -292,15 +308,21 @@ export default function VanServiceAreaScreen() {
               <ThemedText variant="caption" style={styles.outBody}>
                 Our mobile surgery van does not currently cover this postcode. You can book an appointment at our central clinic practice or schedule a video consult.
               </ThemedText>
-              <View style={styles.alternativeButtons}>
+            <View style={styles.alternativeButtons}>
                 <Button
-                  title="Try Different Postcode"
+                  title="See why & alternatives"
                   variant="secondary"
+                  size="sm"
+                  onPress={() => router.push("/(patient)/van/not-covered" as any)}
+                />
+                <Button
+                  title="Try different postcode"
+                  variant="ghost"
                   size="sm"
                   onPress={handleChangeLocation}
                 />
                 <Button
-                  title="View Clinics Instead"
+                  title="View clinics instead"
                   variant="ghost"
                   size="sm"
                   onPress={() => router.push("/(patient)/booking/clinic-picker" as any)}
@@ -315,7 +337,7 @@ export default function VanServiceAreaScreen() {
       {checked && isCovered && isVanOnline && (
         <View style={styles.footer}>
           <Button
-            title="Continue to Access & Parking Details ›"
+            title="Continue to access & parking details"
             size="lg"
             onPress={handleProceed}
           />
@@ -350,18 +372,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   coveredCard: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
     borderWidth: 1.5,
     gap: spacing.xs,
     padding: spacing.md,
   },
   dispatchEtaSub: {
-    color: colors.brand,
+    color: colors.ink,
     marginTop: 2,
   },
   dispatchEtaTitle: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   dispatchOfflineBanner: {
@@ -373,7 +395,7 @@ const styles = StyleSheet.create({
   },
   dispatchOnlineBanner: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.brand,
+    borderColor: colors.ink,
     borderRadius: 8,
     borderWidth: 1.5,
     gap: 2,
@@ -381,11 +403,16 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   featItem: {
-    color: colors.brand,
-    fontWeight: "600",
+    color: colors.ink,
+    flex: 1,
+  },
+  featRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xxs,
   },
   features: {
-    borderTopColor: colors.brand,
+    borderTopColor: colors.ink,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 4,
     marginTop: spacing.xs,
@@ -440,7 +467,7 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   vanUnit: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
 });

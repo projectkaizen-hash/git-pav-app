@@ -3,8 +3,9 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
-import { ThemedText, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import * as Haptics from "expo-haptics";
+import { ThemedText, Button, AppIcon, Card } from "@/components";
+import { colors, spacing, radius } from "@/theme";
 import { useAuthStore } from "@/features/auth/auth-store";
 
 export default function BiometricUnlockScreen() {
@@ -28,15 +29,18 @@ export default function BiometricUnlockScreen() {
   const authenticate = async () => {
     try {
       setError(null);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Unlock Pav Dental with Face ID / Biometrics",
         fallbackLabel: "Use Passcode",
       });
 
       if (result.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setBiometricUnlocked(true);
         router.replace("/(patient)/(tabs)/home");
       } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
         setError("Authentication was canceled or not recognized.");
       }
     } catch {
@@ -48,21 +52,25 @@ export default function BiometricUnlockScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         <View style={styles.centerBox}>
-          <View style={styles.iconPlaceholder}>
-            <ThemedText variant="largeTitle">🔒</ThemedText>
-          </View>
-          <ThemedText variant="title" style={styles.title}>
-            App Locked
-          </ThemedText>
-          <ThemedText variant="subhead" style={styles.subtitle}>
-            Please authenticate to view your sensitive dental and health records.
-          </ThemedText>
-
-          {error ? (
-            <ThemedText variant="caption" style={styles.errorText}>
-              {error}
+          <Card variant="outline" style={styles.cardWrapper}>
+            <View style={styles.iconCircle}>
+              <AppIcon name="lock" size={32} color={colors.ink} />
+            </View>
+            <ThemedText variant="title" style={styles.title}>
+              App Locked
             </ThemedText>
-          ) : null}
+            <ThemedText variant="subhead" style={styles.subtitle}>
+              Authenticate with Face ID or biometrics to protect your confidential dental charts and health history.
+            </ThemedText>
+
+            {error ? (
+              <View style={styles.errorBox}>
+                <ThemedText variant="caption" style={styles.errorText}>
+                  {error}
+                </ThemedText>
+              </View>
+            ) : null}
+          </Card>
         </View>
 
         <View style={styles.actions}>
@@ -70,9 +78,16 @@ export default function BiometricUnlockScreen() {
             <Button
               title="Unlock with Biometrics"
               size="lg"
+              icon={<AppIcon name="shieldCheck" size={20} color={colors.onInk} />}
               onPress={authenticate}
             />
-          ) : null}
+          ) : (
+            <Button
+              title="Unlock Account"
+              size="lg"
+              onPress={authenticate}
+            />
+          )}
 
           <Button
             title="Sign Out"
@@ -89,44 +104,61 @@ export default function BiometricUnlockScreen() {
 const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  cardWrapper: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    width: "100%",
   },
   centerBox: {
     alignItems: "center",
     flex: 1,
-    gap: spacing.md,
     justifyContent: "center",
+    paddingHorizontal: spacing.lg,
   },
   container: {
     flex: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xxl,
+  },
+  errorBox: {
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: radius.md,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   errorText: {
     color: colors.danger,
     textAlign: "center",
   },
-  iconPlaceholder: {
+  iconCircle: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 40,
-    height: 80,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 36,
+    height: 72,
     justifyContent: "center",
-    marginBottom: spacing.xs,
-    width: 80,
+    marginBottom: spacing.md,
+    width: 72,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.secondaryBackground,
     flex: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,
-    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
     textAlign: "center",
   },
   title: {
     color: colors.label,
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
   },
 });
 

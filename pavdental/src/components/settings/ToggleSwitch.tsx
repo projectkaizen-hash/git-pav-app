@@ -55,7 +55,7 @@ export function ToggleSwitch({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: colors.separator, true: colors.brand }}
+        trackColor={{ false: colors.separator, true: colors.ink }}
         thumbColor={colors.systemBackground}
       />
     </Pressable>

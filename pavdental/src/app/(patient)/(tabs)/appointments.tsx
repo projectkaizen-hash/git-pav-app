@@ -1,214 +1,285 @@
-import React from "react";
-import { View, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, EmptyState, ErrorState, Skeleton, ChipPill, ConfirmSheet, Toast, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useMyAppointments, useCancelAppointmentMutation } from "@/features/hooks/use-dental-api";
 
+// ─── Bookings — upcoming/past grouping with clear status per card ─────────────
+
+interface Booking {
+  id: string;
+  status: string;
+  channel: string;
+  startTimeUtc: string;
+  service?: { name?: string };
+  clinician?: { fullName?: string };
+  clinic?: { name?: string };
+  van?: { name?: string };
+}
+
+function BookingCard({
+  booking,
+  past,
+  onCancel,
+}: {
+  booking: Booking;
+  past: boolean;
+  onCancel: (id: string) => void;
+}) {
+  const router = useRouter();
+  const start = new Date(booking.startTimeUtc);
+  const weekday = start.toLocaleDateString("en-GB", { weekday: "short" });
+  const day = start.getDate();
+  const month = start.toLocaleDateString("en-GB", { month: "short" });
+  const time = start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const locationName = booking.clinic?.name || booking.van?.name || "Video Consultation";
+  const clinicianName = booking.clinician?.fullName || "Assigned Practitioner";
+  const cancelled = booking.status === "cancelled";
+
+  return (
+    <Card
+      elevation={past ? "flat" : "raised"}
+      style={styles.card}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open details for ${booking.service?.name || "appointment"} on ${day} ${month}`}
+        onPress={() => router.push({ pathname: "/(patient)/appointments/[id]" as never, params: { id: booking.id } })}
+        style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+      >
+      <View style={styles.cardBody}>
+        {/* Date block */}
+        <View style={styles.dateBlock}>
+          <ThemedText variant="caption" style={styles.dateWeekday}>
+            {weekday.toUpperCase()}
+          </ThemedText>
+          <ThemedText variant="title" style={styles.dateDay}>
+            {day}
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.dateMonth}>
+            {month}
+          </ThemedText>
+        </View>
+
+        <View style={styles.cardMain}>
+          <View style={styles.cardTop}>
+            <ThemedText variant="headline" numberOfLines={1} style={styles.serviceTitle}>
+              {booking.service?.name || "Dental Treatment"}
+            </ThemedText>
+            {!past && !cancelled ? (
+              <Badge label={booking.status.toUpperCase()} variant={booking.status === "confirmed" ? "success" : "default"} />
+            ) : null}
+          </View>
+
+          <ChipPill label={`${time} · ${booking.channel.toUpperCase()}`} tone={past || cancelled ? "neutral" : "info"} />
+
+          <View style={styles.metaRow}>
+            <AppIcon name="profile" size={13} color={colors.secondaryLabel} />
+            <ThemedText variant="caption" style={styles.metaText} numberOfLines={1}>
+              {clinicianName}
+            </ThemedText>
+          </View>
+          <View style={styles.metaRow}>
+            <AppIcon name="mapPin" size={13} color={colors.secondaryLabel} />
+            <ThemedText variant="caption" style={styles.metaText} numberOfLines={1}>
+              {locationName}
+            </ThemedText>
+          </View>
+
+          {cancelled ? <Badge label="CANCELLED" variant="danger" /> : null}
+        </View>
+      </View>
+      </Pressable>
+      {cancelled ? null : !past ? (
+        <Button
+          title="Cancel booking"
+          variant="ghost"
+          size="sm"
+          accessibilityLabel={`Cancel ${booking.service?.name || "appointment"} on ${day} ${month}`}
+          onPress={() => onCancel(booking.id)}
+          style={styles.cancelBtn}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
 export default function PatientAppointmentsScreen() {
   const router = useRouter();
-  const { data: appointments, isLoading, isError, refetch } = useMyAppointments();
+  const { data: apiAppointments, isLoading, isError, refetch } = useMyAppointments();
   const cancelMutation = useCancelAppointmentMutation();
+  const [pendingCancel, setPendingCancel] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
-  const handleCancel = (appointmentId: string) => {
-    Alert.alert(
-      "Cancel Appointment",
-      "Are you sure you want to cancel this appointment?",
-      [
-        { text: "Keep Booking", style: "cancel" },
-        {
-          text: "Cancel Appointment",
-          style: "destructive",
-          onPress: () => {
-            cancelMutation.mutate(appointmentId, {
-              onSuccess: () => {
-                Alert.alert("Cancelled", "Your appointment has been cancelled.");
-              },
-              onError: (err: any) => {
-                Alert.alert("Error", err.message || "Failed to cancel appointment");
-              },
-            });
-          },
-        },
-      ]
-    );
+  const { upcoming, past } = useMemo(() => {
+    const now = Date.now();
+    const bookings: Booking[] = (apiAppointments ?? []) as Booking[];
+    const upcoming = bookings
+      .filter((b) => b.status !== "cancelled" && new Date(b.startTimeUtc).getTime() >= now)
+      .sort((a, b) => +new Date(a.startTimeUtc) - +new Date(b.startTimeUtc));
+    const past = bookings
+      .filter((b) => !upcoming.includes(b))
+      .sort((a, b) => +new Date(b.startTimeUtc) - +new Date(a.startTimeUtc));
+    return { upcoming, past };
+  }, [apiAppointments]);
+
+  const confirmCancel = () => {
+    if (!pendingCancel) return;
+    const id = pendingCancel;
+    setPendingCancel(null);
+    cancelMutation.mutate(id, {
+      onSuccess: () => setToast({ message: "Appointment cancelled", tone: "success" }),
+      onError: (err: Error) =>
+        setToast({ message: err.message || "Could not cancel the appointment", tone: "error" }),
+    });
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.list}>
-        <View style={styles.sectionHeader}>
-          <ThemedText variant="headline">Upcoming Appointments</ThemedText>
-          <ThemedText variant="caption" style={styles.sub}>
-            Live appointments from Pav Dental Practice Gateway.
-          </ThemedText>
-        </View>
+      {toast ? (
+        <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
+      ) : null}
 
+      <ScrollView contentContainerStyle={styles.list}>
         {isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.brand} />
-            <ThemedText variant="caption" style={styles.loadingText}>
-              Loading your appointments...
-            </ThemedText>
+          <View style={styles.stack}>
+            <Skeleton height={110} borderRadius={16} />
+            <Skeleton height={110} borderRadius={16} />
+            <Skeleton height={110} borderRadius={16} />
           </View>
         ) : isError ? (
-          <Card style={styles.emptyCard}>
-            <ThemedText variant="headline" style={{ color: colors.danger }}>
-              Unable to load appointments
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.emptySub}>
-              Check your network connection and try again.
-            </ThemedText>
-            <Button title="Retry" variant="secondary" size="sm" onPress={() => refetch()} />
-          </Card>
-        ) : !appointments || appointments.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <ThemedText variant="headline">No Active Appointments</ThemedText>
-            <ThemedText variant="caption" style={styles.emptySub}>
-              You don't have any upcoming dental consultations scheduled.
-            </ThemedText>
-          </Card>
-        ) : (
-          appointments.map((b: any) => {
-            const formattedDate = new Date(b.startTimeUtc).toLocaleDateString("en-GB", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const locationName = b.clinic?.name || b.van?.name || "Video Consultation";
-            const clinicianName = b.clinician?.fullName || "Assigned Practitioner";
-
-            return (
-              <Card key={b.id} elevation="raised" style={styles.bookingCard}>
-                <View style={styles.cardTop}>
-                  <Badge
-                    label={String(b.status).toUpperCase()}
-                    variant={b.status === "confirmed" ? "success" : b.status === "cancelled" ? "danger" : "default"}
-                  />
-                  <ThemedText variant="caption" style={styles.channelLabel}>
-                    {String(b.channel).toUpperCase()}
-                  </ThemedText>
-                </View>
-
-                <ThemedText variant="headline" style={styles.serviceTitle}>
-                  {b.service?.name || "Dental Treatment"}
-                </ThemedText>
-
-                <ThemedText variant="body" style={styles.timeHighlight}>
-                  📅 {formattedDate}
-                </ThemedText>
-
-                <View style={styles.footerDetails}>
-                  <ThemedText variant="caption" style={styles.detailText}>
-                    👨‍⚕️ {clinicianName}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.detailText}>
-                    📍 {locationName}
-                  </ThemedText>
-                </View>
-
-                {b.status !== "cancelled" && (
-                  <View style={styles.actionRow}>
-                    <Button
-                      title="Cancel Booking"
-                      variant="destructive"
-                      size="sm"
-                      onPress={() => handleCancel(b.id)}
-                    />
-                  </View>
-                )}
-              </Card>
-            );
-          })
-        )}
-
-        <View style={styles.newBookingSection}>
-          <Button
-            title="+ Book Another Appointment"
-            size="lg"
-            onPress={() => router.push("/(patient)/booking/service-catalog" as any)}
+          <ErrorState
+            message="Could not load your appointments. Please try again."
+            onRetry={() => refetch()}
           />
-        </View>
+        ) : upcoming.length === 0 && past.length === 0 ? (
+          <EmptyState
+            heading="No appointments yet"
+            body="Book a clinic visit, video consult, or mobile van in a few taps."
+            actionLabel="Book an appointment"
+            onAction={() => router.push("/(patient)/booking/service-catalog" as never)}
+            icon="calendar"
+          />
+        ) : (
+          <>
+            {upcoming.length > 0 ? (
+              <View style={styles.group}>
+                <ThemedText variant="overline">Upcoming</ThemedText>
+                <View style={styles.stack}>
+                  {upcoming.map((b) => (
+                    <BookingCard key={b.id} booking={b} past={false} onCancel={setPendingCancel} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {past.length > 0 ? (
+              <View style={styles.group}>
+                <ThemedText variant="overline">Past</ThemedText>
+                <View style={styles.stack}>
+                  {past.map((b) => (
+                    <BookingCard key={b.id} booking={b} past={true} onCancel={setPendingCancel} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            <Button
+              title="Book another appointment"
+              size="lg"
+              onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
+              style={styles.bookAgain}
+            />
+          </>
+        )}
       </ScrollView>
+
+      {pendingCancel ? (
+        <ConfirmSheet
+          title="Cancel this appointment?"
+          message="Your slot will be released immediately. Any deposit hold will be refunded by your bank within 5 working days."
+          confirmLabel="Cancel Appointment"
+          cancelLabel="Keep Booking"
+          variant="destructive"
+          onConfirm={confirmCancel}
+          onCancel={() => setPendingCancel(null)}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+  cancelBtn: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xxs,
   },
-  bookingCard: {
-    backgroundColor: colors.systemBackground,
-    gap: spacing.xs,
+  card: {
     padding: spacing.md,
+  },
+  cardBody: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  cardMain: {
+    flex: 1,
+    gap: spacing.xs,
   },
   cardTop: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  channelLabel: {
-    color: colors.secondaryLabel,
-    fontWeight: "600",
+    gap: spacing.xs,
   },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
   },
-  detailText: {
-    color: colors.secondaryLabel,
-  },
-  emptyCard: {
+  dateBlock: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
-    gap: spacing.xs,
-    padding: spacing.lg,
+    borderRadius: 12,
+    gap: 1,
+    minWidth: 56,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    alignSelf: "flex-start",
   },
-  emptySub: {
+  dateDay: {
+    color: colors.ink,
+    lineHeight: 26,
+  },
+  dateMonth: {
     color: colors.secondaryLabel,
-    textAlign: "center",
   },
-  footerDetails: {
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 2,
-    marginTop: spacing.xxs,
-    paddingTop: spacing.xs,
+  dateWeekday: {
+    color: colors.secondaryLabel,
+  },
+  group: {
+    gap: spacing.xs,
   },
   list: {
-    gap: spacing.md,
+    gap: spacing.lg,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  loadingBox: {
+  metaRow: {
     alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.xl,
+    flexDirection: "row",
+    gap: spacing.xxs,
   },
-  loadingText: {
+  metaText: {
     color: colors.secondaryLabel,
-  },
-  newBookingSection: {
-    marginTop: spacing.md,
-  },
-  sectionHeader: {
-    gap: 2,
-    marginBottom: spacing.xs,
+    flex: 1,
   },
   serviceTitle: {
-    color: colors.label,
-    marginTop: 2,
+    flex: 1,
   },
-  sub: {
-    color: colors.secondaryLabel,
+  stack: {
+    gap: spacing.sm,
   },
-  timeHighlight: {
-    color: colors.brand,
-    fontWeight: "600",
+  bookAgain: {
+    marginTop: spacing.xs,
   },
 });

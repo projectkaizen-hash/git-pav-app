@@ -1,6 +1,23 @@
+import { View, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
 import { colors } from "@/theme";
-import { ThemedText } from "@/components";
+import { AppIcon, type AppIconName } from "@/components";
+
+// ─── Patient tab shell — 5 destinations, pill-active icons ────────────────────
+// Reference pattern: active tab gets a soft pill behind the icon (works for
+// colour-blind users — state is never colour-only). Labels always visible.
+
+function TabIcon({ name, focused }: { name: AppIconName; focused: boolean }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <AppIcon
+        name={name}
+        size={18}
+        color={focused ? colors.ink : colors.secondaryLabel}
+      />
+    </View>
+  );
+}
 
 export default function PatientTabsLayout() {
   return (
@@ -19,8 +36,9 @@ export default function PatientTabsLayout() {
           backgroundColor: colors.systemBackground,
           borderTopColor: colors.separator,
         },
-        tabBarActiveTintColor: colors.brand,
+        tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.secondaryLabel,
+        tabBarLabelStyle: styles.tabLabel,
       }}
     >
       <Tabs.Screen
@@ -28,7 +46,7 @@ export default function PatientTabsLayout() {
         options={{
           title: "Home",
           tabBarLabel: "Home",
-          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>🏠</ThemedText>,
+          tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -36,7 +54,7 @@ export default function PatientTabsLayout() {
         options={{
           title: "Appointments",
           tabBarLabel: "Bookings",
-          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>📅</ThemedText>,
+          tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -44,15 +62,15 @@ export default function PatientTabsLayout() {
         options={{
           title: "Dental Records",
           tabBarLabel: "Records",
-          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>🦷</ThemedText>,
+          tabBarIcon: ({ focused }) => <TabIcon name="records" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="account"
+        name="messages"
         options={{
-          title: "Account",
-          tabBarLabel: "Account",
-          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>👤</ThemedText>,
+          title: "Messages",
+          tabBarLabel: "Messages",
+          tabBarIcon: ({ focused }) => <TabIcon name="message" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -61,10 +79,28 @@ export default function PatientTabsLayout() {
           title: "Profile & Settings",
           tabBarLabel: "Profile",
           headerShown: false,
-          tabBarIcon: ({ color }) => <ThemedText style={{ color }}>👤</ThemedText>,
+          tabBarIcon: ({ focused }) => <TabIcon name="profile" focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
 
+const styles = StyleSheet.create({
+  iconWrap: {
+    alignItems: "center",
+    borderRadius: 999,
+    justifyContent: "center",
+    minHeight: 28,
+    minWidth: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  iconWrapActive: {
+    backgroundColor: colors.inkSubtle,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});

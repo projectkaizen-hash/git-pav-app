@@ -1,0 +1,242 @@
+import crypto from "crypto";
+import { Router, Response } from "express";
+import { z } from "zod";
+import { prisma } from "../lib/prisma";
+import { requireAuth, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
+import { pseudonymiseIp } from "../lib/audit-security";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+
+const router = Router();
+
+const DEFAULT_WEEKLY_BRUSHING = [
+  { day: "Mon", am: true, pm: true, durationSec: 245 },
+  { day: "Tue", am: true, pm: true, durationSec: 250 },
+  { day: "Wed", am: true, pm: true, durationSec: 240 },
+  { day: "Thu", am: true, pm: true, durationSec: 260 },
+  { day: "Fri", am: true, pm: true, durationSec: 240 },
+  { day: "Sat", am: true, pm: true, durationSec: 240 },
+  { day: "Sun", am: true, pm: false, durationSec: 120 },
+];
+
+const REWARDS_CATALOG = [
+  {
+    id: "rw_1",
+    title: "Philips Sonicare Heads (3-Pack)",
+    category: "Preventative",
+    pointsCost: 800,
+    description: "C3 Premium Plaque Defence replacement brush heads with RFID sync.",
+    icon: "sparkles",
+    inStock: true,
+  },
+  {
+    id: "rw_2",
+    title: "AirFlow® Stain Removal Booster",
+    category: "In-Clinic Upgrade",
+    pointsCost: 1200,
+    description: "Complimentary high-pressure sodium bicarbonate polish at your next hygiene visit.",
+    icon: "zap",
+    inStock: true,
+  },
+  {
+    id: "rw_3",
+    title: "Boutique Whitening Refill Syringe",
+    category: "Cosmetic",
+    pointsCost: 1800,
+    description: "16% Carbamide Peroxide overnight home top-up syringe (requires custom trays).",
+    icon: "star",
+    inStock: true,
+  },
+  {
+    id: "rw_4",
+    title: "£25 Practice Treatment Credit",
+    category: "Voucher",
+    pointsCost: 2500,
+    description: "Direct credit voucher applied to any filling, crown, or dental checkup.",
+    icon: "check",
+    inStock: true,
+  },
+];
+
+const redeemRewardSchema = z.object({
+  rewardId: z.string().trim().min(1).max(50),
+}).strict();
+
+const logBrushingSchema = z.object({
+  day: z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).optional(),
+  session: z.enum(["am", "pm"]),
+  durationSec: z.number().int().min(30).max(600),
+}).strict();
+
+async function getOrCreateMetrics(userId: string) {
+  let metric = await prisma.oralHealthMetric.findUnique({ where: { userId } });
+  if (!metric) {
+    metric = await prisma.oralHealthMetric.create({
+      data: {
+        userId,
+        pointsBalance: 1450,
+        streakDays: 14,
+        plaqueIndexPercent: 12,
+        bleedingPercent: 4,
+        recallDaysRemaining: 42,
+        practitionerAdvice:
+          "Focus gentle circular motions on the distal aspect of Tooth #31 (LR7) to prevent early enamel demineralisation from progressing into the dentine. Continue daily interdental brushing.",
+        weeklyBrushing: DEFAULT_WEEKLY_BRUSHING,
+      },
+    });
+  }
+  return metric;
+}
+
+// ─── GET /api/rewards ─────────────────────────────────────────────────────────
+router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.sub;
+  const [metric, redemptions] = await Promise.all([
+    getOrCreateMetrics(userId),
+    prisma.rewardRedemption.findMany({
+      where: { userId },
+      orderBy: { redeemedAt: "desc" },
+    }),
+  ]);
+
+  return res.json({
+    pointsBalance: metric.pointsBalance,
+    streakDays: metric.streakDays,
+    nextTierPoints: 2000,
+    catalog: REWARDS_CATALOG,
+    redemptions,
+  });
+});
+
+// ─── POST /api/rewards/redeem ─────────────────────────────────────────────────
+router.post("/redeem", requireAuth, validateBody(redeemRewardSchema), async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.sub;
+  const { rewardId } = req.body;
+
+  const item = REWARDS_CATALOG.find((r) => r.id === rewardId);
+  if (!item) {
+    return res.status(404).json({ error: "Reward item not found" });
+  }
+
+  await getOrCreateMetrics(userId);
+
+  const voucherCode = `PAV-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+
+  const txResult = await prisma.$transaction(async (tx) => {
+    const decremented = await tx.oralHealthMetric.updateMany({
+      where: {
+        userId,
+        pointsBalance: { gte: item.pointsCost },
+      },
+      data: {
+        pointsBalance: { decrement: item.pointsCost },
+      },
+    });
+
+    if (decremented.count === 0) {
+      const current = await tx.oralHealthMetric.findUnique({ where: { userId } });
+      return {
+        insufficient: true as const,
+        pointsBalance: current?.pointsBalance ?? 0,
+      };
+    }
+
+    const updatedMetric = await tx.oralHealthMetric.findUniqueOrThrow({
+      where: { userId },
+    });
+
+    const redemption = await tx.rewardRedemption.create({
+      data: {
+        userId,
+        rewardId: item.id,
+        rewardTitle: item.title,
+        pointsCost: item.pointsCost,
+        voucherCode,
+      },
+    });
+
+    return {
+      insufficient: false as const,
+      updatedMetric,
+      redemption,
+    };
+  });
+
+  if (txResult.insufficient) {
+    return res.status(422).json({
+      error: `Insufficient points balance. Need ${item.pointsCost - txResult.pointsBalance} more points.`,
+    });
+  }
+
+  const { updatedMetric, redemption } = txResult;
+
+  await createAuditLogWithIntegrity({
+    action: "rewards.perk_redeemed",
+    actorId: userId,
+    resourceId: redemption.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { rewardId: item.id, pointsCost: item.pointsCost, voucherCode },
+  });
+
+  return res.status(201).json({
+    pointsBalance: updatedMetric.pointsBalance,
+    redemption,
+    voucherCode,
+  });
+});
+
+// ─── GET /api/rewards/insights ────────────────────────────────────────────────
+router.get("/insights", requireAuth, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.sub;
+  const metric = await getOrCreateMetrics(userId);
+
+  return res.json({
+    plaqueIndexPercent: metric.plaqueIndexPercent,
+    bleedingPercent: metric.bleedingPercent,
+    recallDaysRemaining: metric.recallDaysRemaining,
+    streakDays: metric.streakDays,
+    pointsBalance: metric.pointsBalance,
+    practitionerAdvice: metric.practitionerAdvice,
+    weeklyBrushing: metric.weeklyBrushing ?? DEFAULT_WEEKLY_BRUSHING,
+    updatedAt: metric.updatedAt,
+  });
+});
+
+// ─── POST /api/rewards/brushing-log ───────────────────────────────────────────
+router.post("/brushing-log", requireAuth, validateBody(logBrushingSchema), async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.sub;
+  const { day = "Sun", session, durationSec } = req.body;
+  const metric = await getOrCreateMetrics(userId);
+
+  const currentWeekly = Array.isArray(metric.weeklyBrushing)
+    ? (metric.weeklyBrushing as Array<{ day: string; am: boolean; pm: boolean; durationSec: number }>)
+    : DEFAULT_WEEKLY_BRUSHING;
+
+  const updatedWeekly = currentWeekly.map((entry) =>
+    entry.day === day
+      ? {
+          ...entry,
+          [session]: true,
+          durationSec: Math.min(300, entry.durationSec + durationSec),
+        }
+      : entry
+  );
+
+  const updated = await prisma.oralHealthMetric.update({
+    where: { userId },
+    data: {
+      pointsBalance: { increment: 25 },
+      streakDays: { increment: 1 },
+      weeklyBrushing: updatedWeekly,
+    },
+  });
+
+  return res.json({
+    pointsBalance: updated.pointsBalance,
+    streakDays: updated.streakDays,
+    weeklyBrushing: updated.weeklyBrushing,
+  });
+});
+
+export default router;

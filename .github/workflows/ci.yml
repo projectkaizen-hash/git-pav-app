@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend — typecheck, jest, e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_USER: pavdental
+          POSTGRES_PASSWORD: pavdental_ci
+          POSTGRES_DB: pavdental_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pavdental"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://pavdental:pavdental_ci@localhost:5432/pavdental_db?schema=public
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: development
+      PORT: "3000"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Apply migrations
+        run: |
+          echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin
+          npx prisma migrate deploy
+
+      - name: Seed baseline data
+        run: npm run prisma:seed
+
+      - name: Unit tests (jest)
+        run: PORT=3000 npx jest
+
+      - name: E2E suite (mock Stripe)
+        run: npm test
+
+  mobile:
+    name: Mobile — typecheck + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pavdental
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: pavdental/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Content and routing tests
+        run: npm run test:all

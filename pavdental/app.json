@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Pav Dental (Prototype)",
+    "name": "Pav Dental",
     "slug": "pavdental",
     "version": "1.0.0",
     "scheme": "pavdental",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,7 +15,13 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.pavdental.app"
+      "bundleIdentifier": "com.pavdental.app",
+      "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSCameraUsageDescription": "Pav Dental needs camera access for video consultations and capturing intraoral triage photos.",
+        "NSMicrophoneUsageDescription": "Pav Dental needs microphone access for live audio during video dental consultations.",
+        "NSPhotoLibraryUsageDescription": "Pav Dental needs photo library access so you can attach dental photos and clinical documents."
+      }
     },
     "android": {
       "package": "com.pavdental.app",
@@ -35,6 +41,12 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Pav Dental to use your location to share the mobile dental van's live position with patients and navigate to visit addresses."
+        }
+      ],
+      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Use Face ID to unlock your Pav Dental account"
@@ -45,8 +57,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "stage": "prototype",
-      "status": "Not for production use with patient data"
+      "stage": "production",
+      "status": "Production release"
     }
   }
 }

@@ -3,9 +3,10 @@ import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ThemedText } from "../themed-text";
+import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 
 import {
   emergencyContactSchema,
@@ -64,7 +65,7 @@ export function EmergencyContactForm({
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.infoBanner}>
-        <ThemedText style={styles.infoIcon}>🆘</ThemedText>
+        <AppIcon name="heart" size={20} color={colors.ink} />
         <ThemedText variant="caption" style={styles.infoText}>
           Your designated emergency contact will only be contacted in urgent situations during clinical or mobile dental appointments.
         </ThemedText>
@@ -165,8 +166,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   fieldLabel: {
-    color: colors.label,
-    fontSize: 13,
     fontWeight: "600",
   },
   infoBanner: {
@@ -177,8 +176,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
   },
-  infoIcon: {
-    fontSize: 22,
+  infoIconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
   },
   infoText: {
     color: colors.secondaryLabel,
@@ -194,15 +198,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   pillActive: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
   },
   pillText: {
     color: colors.secondaryLabel,
     fontWeight: "500",
   },
   pillTextActive: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "700",
   },
   pillsWrap: {
@@ -217,10 +221,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...type.overline,
     marginBottom: spacing.xs,
   },
 });

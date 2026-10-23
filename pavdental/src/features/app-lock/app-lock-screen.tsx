@@ -2,6 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/button';
+import { AppIcon } from '@/components/app-icon';
+import { colors } from '@/theme';
 import { useAppLockStore } from './app-lock-store';
 
 export function AppLockScreen() {
@@ -19,7 +21,7 @@ export function AppLockScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ThemedText style={styles.icon}>🔒</ThemedText>
+        <AppIcon name="lock" size={48} color={colors.alwaysWhite} />
         <ThemedText variant="title" style={styles.title}>
           App Locked
         </ThemedText>
@@ -49,22 +51,18 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   icon: {
-    fontSize: 64,
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.alwaysWhite,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
-    fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
+    color: colors.alwaysWhite,
     marginBottom: 32,
-    lineHeight: 24,
+    opacity: 0.7,
+    textAlign: 'center',
   },
   button: {
     width: '100%',

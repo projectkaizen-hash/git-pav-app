@@ -3,7 +3,11 @@ import {
   processExpiredSlotHolds,
   processDueScheduledNotifications,
   scheduleAppointmentReminderLadder,
+  processExpiredVanRequests,
+  startBackgroundJobs,
+  stopBackgroundJobs,
 } from "../lib/background-jobs";
+import { verifyAuditIntegrity } from "../lib/audit-integrity";
 
 describe("Background Jobs Integration Tests", () => {
   let testUserId: string;
@@ -107,7 +111,7 @@ describe("Background Jobs Integration Tests", () => {
       });
       expect(checkedActive?.status).toBe("draft_hold");
 
-      // Verify audit log entry
+      // Verify audit log entry has integrityHash and passes chain verification
       const auditLog = await prisma.auditLog.findFirst({
         where: {
           resourceId: expiredAppt.id,
@@ -115,6 +119,10 @@ describe("Background Jobs Integration Tests", () => {
         },
       });
       expect(auditLog).not.toBeNull();
+      expect(auditLog?.integrityHash).toBeTruthy();
+
+      const chainCheck = await verifyAuditIntegrity(1000);
+      expect(chainCheck.valid).toBe(true);
     });
   });
 
@@ -175,6 +183,17 @@ describe("Background Jobs Integration Tests", () => {
       });
       expect(updated?.status).toBe("sent");
       expect(updated?.sentAt).not.toBeNull();
+    });
+  });
+
+  describe("processExpiredVanRequests & worker lifecycle", () => {
+    it("should cleanly run processExpiredVanRequests and start/stop background job timers", async () => {
+      const vanSweep = await processExpiredVanRequests();
+      expect(typeof vanSweep.expiredCount).toBe("number");
+      expect(vanSweep.expiredCount).toBeGreaterThanOrEqual(0);
+
+      startBackgroundJobs();
+      stopBackgroundJobs();
     });
   });
 });

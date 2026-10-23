@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Switch, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,14 +10,13 @@ import {
   endShift,
   pauseShift,
   resumeShift,
-  sendLocationPing,
 } from "@/features/van/van-api";
+import { useOperatorLocation } from "@/features/van/use-operator-location";
 
 export default function OperatorShiftScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [gpsActive, setGpsActive] = useState(false);
-  const locationIntervalRef = useRef<any>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["operator-shift"],
@@ -33,38 +32,22 @@ export default function OperatorShiftScreen() {
   const isPaused = shift?.status === "paused";
   const isOnShift = isOnline || isPaused;
 
-  // GPS ping simulation / real loop
+  // Real device GPS: watches position while on shift and pings the backend,
+  // so patient-side ETAs and live tracking use the van's true location.
+  // (Replaces the earlier mock drift loop.)
+  const {
+    fix,
+    error: gpsError,
+    gpsActive: gpsHookActive,
+  } = useOperatorLocation({ enabled: isOnShift });
+
+  // Keep the existing state flag in sync with the hook (existing UI reads it).
   useEffect(() => {
-    if (isOnShift && !locationIntervalRef.current) {
-      setGpsActive(true);
-      // Mock London coordinates for dev; replace with Location.watchPositionAsync in production
-      let mockLat = 51.5074;
-      let mockLng = -0.1278;
-      locationIntervalRef.current = setInterval(async () => {
-        try {
-          // slight drift simulation
-          mockLat += (Math.random() - 0.5) * 0.001;
-          mockLng += (Math.random() - 0.5) * 0.001;
-          await sendLocationPing({ lat: mockLat, lng: mockLng, accuracyM: 10 });
-        } catch {
-          // Location ping errors are non-fatal
-        }
-      }, 20000); // every 20s
-    } else if (!isOnShift && locationIntervalRef.current) {
-      clearInterval(locationIntervalRef.current);
-      locationIntervalRef.current = null;
-      setGpsActive(false);
-    }
-    return () => {
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-        locationIntervalRef.current = null;
-      }
-    };
-  }, [isOnShift]);
+    setGpsActive(gpsHookActive);
+  }, [gpsHookActive]);
 
   const startMutation = useMutation({
-    mutationFn: () => startShift({ lat: 51.5074, lng: -0.1278 }),
+    mutationFn: () => startShift(fix ?? { lat: 51.5074, lng: -0.1278 }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operator-shift"] });
       Alert.alert("Shift Started", "Your van is now online and accepting requests.");
@@ -119,7 +102,7 @@ export default function OperatorShiftScreen() {
   };
 
   const getStatusBadge = () => {
-    if (isOnline) return <Badge label="● ONLINE · ACCEPTING" variant="success" />;
+    if (isOnline) return <Badge label="ONLINE · ACCEPTING" variant="success" />;
     if (isPaused) return <Badge label="❚❚ PAUSED · NOT ACCEPTING" variant="warning" />;
     return <Badge label="○ OFFLINE" variant="default" />;
   };
@@ -144,13 +127,18 @@ export default function OperatorShiftScreen() {
               value={isOnShift}
               onValueChange={handleToggleShift}
               disabled={startMutation.isPending || endMutation.isPending}
-              trackColor={{ false: colors.secondaryBackground, true: colors.brand }}
+              trackColor={{ false: colors.secondaryBackground, true: colors.ink }}
             />
           </View>
           <View style={styles.badgeRow}>
             {getStatusBadge()}
-            {gpsActive && <Badge label="📍 GPS ACTIVE" variant="info" />}
+            {gpsActive && <Badge label="GPS ACTIVE" variant="info" />}
           </View>
+          {gpsError ? (
+            <ThemedText variant="caption" style={styles.gpsWarning}>
+              ⚠️ {gpsError}
+            </ThemedText>
+          ) : null}
         </Card>
 
         {/* Pause / Resume Controls (only when on shift) */}
@@ -181,7 +169,7 @@ export default function OperatorShiftScreen() {
           <Card elevation="raised" style={styles.incomingBanner}>
             <View style={styles.incomingRow}>
               <ThemedText variant="headline" style={styles.incomingTitle}>
-                🔔 {incoming.length} New Request{incoming.length > 1 ? "s" : ""}
+                {incoming.length} New Request{incoming.length > 1 ? "s" : ""}
               </ThemedText>
               <Button
                 title="Review ›"
@@ -231,10 +219,10 @@ export default function OperatorShiftScreen() {
                 {stop.patient?.firstName} {stop.patient?.lastName}
               </ThemedText>
               <ThemedText variant="caption" style={styles.address}>
-                📍 {stop.accessDetails?.addressLine1}, {stop.accessDetails?.postcode}
+                {stop.accessDetails?.addressLine1}, {stop.accessDetails?.postcode}
               </ThemedText>
               <ThemedText variant="caption" style={styles.service}>
-                🦷 {stop.service?.name}
+                {stop.service?.name}
               </ThemedText>
             </Card>
           ))
@@ -262,6 +250,11 @@ export default function OperatorShiftScreen() {
 const styles = StyleSheet.create({
   address: {
     color: colors.secondaryLabel,
+  },
+  gpsWarning: {
+    color: colors.warning,
+    lineHeight: 16,
+    marginTop: spacing.xs,
   },
   badgeRow: {
     flexDirection: "row",
@@ -294,8 +287,8 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   incomingBanner: {
-    backgroundColor: colors.brandSubtle,
-    borderColor: colors.brand,
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
     borderWidth: 1.5,
     padding: spacing.md,
   },
@@ -305,10 +298,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   incomingTitle: {
-    color: colors.brand,
+    color: colors.ink,
   },
   phaseLabel: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   plate: {
@@ -324,7 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   service: {
-    color: colors.brand,
+    color: colors.ink,
     fontWeight: "600",
   },
   statusCard: {

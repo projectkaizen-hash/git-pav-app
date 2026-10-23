@@ -1,7 +1,18 @@
 import { z } from "zod";
 
 const uuid = z.string().uuid();
-const postcode = z.string().trim().regex(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i, "Invalid UK postcode");
+const postcode = z.string().trim().transform(val => {
+  // Normalize postcode format: ensure space in the right place
+  const cleaned = val.toUpperCase().replace(/\s/g, '');
+  if (cleaned.length >= 5) {
+    const inward = cleaned.slice(-3);
+    const outward = cleaned.slice(0, -3);
+    return `${outward} ${inward}`;
+  }
+  return cleaned;
+}).refine(val => /^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(val), {
+  message: "Invalid UK postcode format"
+});
 
 // Coverage check accepts either GPS coordinates OR postcode
 export const vanCoverageCheckSchema = z.object({

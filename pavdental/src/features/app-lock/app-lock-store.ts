@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { tokenStore } from '@/lib/token-store';
 
 interface AppLockState {
   isLocked: boolean;
@@ -9,6 +10,8 @@ interface AppLockState {
 
   lock: () => void;
   unlock: () => Promise<boolean>;
+  setRequiresBiometric: (enabled: boolean) => void;
+  hydrateBiometricPreference: () => Promise<void>;
   checkLockRequired: () => boolean;
   setBackgrounded: () => void;
   setForegrounded: () => void;
@@ -18,9 +21,20 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
   isLocked: false,
   backgroundedAt: null,
   lockTimeoutMs: 60 * 1000, // 1 minute default
-  requiresBiometric: true,
+  requiresBiometric: false,
 
   lock: () => set({ isLocked: true }),
+
+  setRequiresBiometric: (enabled: boolean) => set({ requiresBiometric: enabled }),
+
+  hydrateBiometricPreference: async () => {
+    try {
+      const enabled = await tokenStore.getBiometricEnabled();
+      set({ requiresBiometric: enabled });
+    } catch {
+      set({ requiresBiometric: false });
+    }
+  },
 
   unlock: async () => {
     try {
@@ -53,12 +67,8 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
   },
 
   checkLockRequired: () => {
-    const { backgroundedAt, lockTimeoutMs } = get();
-    
-    // If never backgrounded, no lock required
-    if (!backgroundedAt) return false;
-    
-    // If backgrounded for longer than timeout, lock required
+    const { backgroundedAt, lockTimeoutMs, requiresBiometric } = get();
+    if (!requiresBiometric || !backgroundedAt) return false;
     const timeInBackground = Date.now() - backgroundedAt;
     return timeInBackground > lockTimeoutMs;
   },
@@ -66,16 +76,19 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
   setBackgrounded: () => set({ backgroundedAt: Date.now() }),
 
   setForegrounded: () => {
-    const { backgroundedAt, lockTimeoutMs } = get();
-    
-    // If backgrounded for longer than timeout, lock required
-    if (backgroundedAt) {
+    const { backgroundedAt, lockTimeoutMs, requiresBiometric } = get();
+
+    // If biometric lock is enabled and app was backgrounded longer than timeout, lock
+    if (requiresBiometric && backgroundedAt) {
       const timeInBackground = Date.now() - backgroundedAt;
       if (timeInBackground > lockTimeoutMs) {
         set({ isLocked: true });
       }
     }
-    
+
     set({ backgroundedAt: null });
   },
 }));
+
+// Hydrate stored biometric preference on module load
+useAppLockStore.getState().hydrateBiometricPreference();

@@ -16,7 +16,20 @@ import {
   updateOdontogram,
   fetchTreatmentPlans,
   createTreatmentPlan,
+  signTreatmentPlan,
+  declineTreatmentPlan,
+  fetchPatientPrescriptions,
   fetchDocuments,
+  fetchMessageThreads,
+  createMessageThread,
+  replyToMessageThread,
+  markMessageThreadRead,
+  fetchFinancing,
+  applyForFinancing,
+  fetchRewards,
+  redeemReward,
+  fetchOralHealthInsights,
+  logBrushingSession,
 } from "../records/records-api";
 
 // ─── Dental Catalogue Hooks ──────────────────────────────────────────────────
@@ -150,10 +163,138 @@ export function useCreateTreatmentPlanMutation(userId: string) {
   });
 }
 
+export function useSignTreatmentPlanMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      planId,
+      signerName,
+      signatureData,
+    }: {
+      planId: string;
+      signerName: string;
+      signatureData?: string;
+    }) => signTreatmentPlan(userId, planId, { signerName, consentConfirmed: true, signatureData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["treatment-plans", userId] });
+      queryClient.invalidateQueries({ queryKey: ["document-vault", userId] });
+    },
+  });
+}
+
+export function useDeclineTreatmentPlanMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) => declineTreatmentPlan(userId, planId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["treatment-plans", userId] });
+    },
+  });
+}
+
+export function usePatientPrescriptions(userId: string) {
+  return useQuery({
+    queryKey: ["patient-prescriptions", userId],
+    queryFn: () => fetchPatientPrescriptions(userId),
+    enabled: !!userId,
+  });
+}
+
 export function useDocumentVault(userId: string) {
   return useQuery({
     queryKey: ["document-vault", userId],
     queryFn: () => fetchDocuments(userId),
     enabled: !!userId,
+  });
+}
+
+// ─── Messages, Financing, Rewards & Insights Hooks ────────────────────────────
+export function useMessageThreads() {
+  return useQuery({
+    queryKey: ["message-threads"],
+    queryFn: fetchMessageThreads,
+  });
+}
+
+export function useCreateMessageThreadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createMessageThread,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["message-threads"] });
+    },
+  });
+}
+
+export function useReplyMessageThreadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ threadId, body }: { threadId: string; body: string }) =>
+      replyToMessageThread(threadId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["message-threads"] });
+    },
+  });
+}
+
+export function useMarkMessageThreadReadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: string) => markMessageThreadRead(threadId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["message-threads"] });
+    },
+  });
+}
+
+export function useFinancing() {
+  return useQuery({
+    queryKey: ["financing"],
+    queryFn: fetchFinancing,
+  });
+}
+
+export function useApplyFinancingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: applyForFinancing,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["financing"] });
+    },
+  });
+}
+
+export function useRewards() {
+  return useQuery({
+    queryKey: ["rewards"],
+    queryFn: fetchRewards,
+  });
+}
+
+export function useRedeemRewardMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: redeemReward,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rewards"] });
+    },
+  });
+}
+
+export function useOralHealthInsights() {
+  return useQuery({
+    queryKey: ["oral-health-insights"],
+    queryFn: fetchOralHealthInsights,
+  });
+}
+
+export function useLogBrushingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: logBrushingSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["oral-health-insights"] });
+      queryClient.invalidateQueries({ queryKey: ["rewards"] });
+    },
   });
 }

@@ -2,17 +2,38 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
+import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 export default function OnboardingProfileScreen() {
   const router = useRouter();
   const [dob, setDob] = useState("");
+  const [dobError, setDobError] = useState<string | null>(null);
   const [gender, setGender] = useState("");
   const [emergencyContact, setEmergencyContact] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
+  const setProfile = useOnboardingStore((s) => s.setProfile);
+
+  /** DD/MM/YYYY → ISO YYYY-MM-DD (backend contract) */
+  const toIsoDob = (value: string): string | null => {
+    const m = value.trim().match(/^(\d{2})\s*\/\s*(\d{2})\s*\/\s*(\d{4})$/);
+    if (!m) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  };
 
   const handleNext = () => {
+    const isoDob = toIsoDob(dob);
+    if (!isoDob) {
+      setDobError("Please enter your date of birth as DD / MM / YYYY (e.g. 15/04/1990)");
+      return;
+    }
+    setProfile({
+      dob: isoDob,
+      gender: gender.trim(),
+      emergencyContactName: emergencyContact.trim(),
+      emergencyContactPhone: emergencyPhone.trim(),
+    });
     router.push("/(onboarding)/address");
   };
 
@@ -27,9 +48,7 @@ export default function OnboardingProfileScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <ThemedText variant="caption" style={styles.stepBadge}>
-              STEP 1 OF 4
-            </ThemedText>
+            <ProgressPills total={5} current={1} />
             <ThemedText variant="largeTitle" style={styles.title}>
               Personal Details
             </ThemedText>
@@ -44,7 +63,11 @@ export default function OnboardingProfileScreen() {
               placeholder="DD / MM / YYYY"
               keyboardType="numbers-and-punctuation"
               value={dob}
-              onChangeText={setDob}
+              error={dobError ?? undefined}
+              onChangeText={(val) => {
+                setDob(val);
+                if (dobError) setDobError(null);
+              }}
             />
 
             <Input
@@ -107,11 +130,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  stepBadge: {
-    color: colors.brand,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,

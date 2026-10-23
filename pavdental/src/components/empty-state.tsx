@@ -1,7 +1,8 @@
-import { View, StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { Button } from "./button";
+import { AppIcon, type AppIconName } from "./app-icon";
 
 interface EmptyStateProps {
   /** Short, empathetic heading */
@@ -11,19 +12,21 @@ interface EmptyStateProps {
   /** Primary CTA label */
   actionLabel?: string;
   onAction?: () => void;
+  /** Icon inside the branded mark */
+  icon?: AppIconName;
 }
 
 /**
  * EmptyState — never show a blank list.
  * Always explain *why* it is empty and offer the relevant next action.
- * To add branded illustrations: add SVG/PNG files to assets/illustrations/
- * and import them here (e.g., import emptyImage from '@/assets/illustrations/empty.png')
+ * Branded line-art mark echoes the reference's soft blob treatment.
  */
 export function EmptyState({
   heading,
   body,
   actionLabel,
   onAction,
+  icon = "check",
 }: EmptyStateProps) {
   return (
     <View
@@ -31,8 +34,9 @@ export function EmptyState({
       accessibilityRole="none"
       accessibilityLabel={`${heading}${body ? `. ${body}` : ""}`}
     >
-      {/* TODO: replace with branded illustration from assets/illustrations/ */}
-      <View style={styles.illustrationPlaceholder} />
+      <View style={styles.illustration}>
+        <AppIcon name={icon} size={36} color={colors.ink} />
+      </View>
 
       <ThemedText variant="title" style={styles.heading}>
         {heading}
@@ -45,11 +49,7 @@ export function EmptyState({
       ) : null}
 
       {actionLabel && onAction ? (
-        <Button
-          title={actionLabel}
-          onPress={onAction}
-          style={styles.cta}
-        />
+        <Button title={actionLabel} onPress={onAction} style={styles.cta} />
       ) : null}
     </View>
   );
@@ -74,12 +74,13 @@ const styles = StyleSheet.create({
   heading: {
     textAlign: "center",
   },
-  illustrationPlaceholder: {
-    backgroundColor: colors.secondaryBackground,
+  illustration: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
     borderRadius: 60,
     height: 120,
+    justifyContent: "center",
     marginBottom: spacing.xs,
     width: 120,
   },
 });
-

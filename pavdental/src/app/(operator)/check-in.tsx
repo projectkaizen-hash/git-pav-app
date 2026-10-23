@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
+import { authFetch } from "@/features/auth/auth-api";
 
 export default function OperatorCheckInScreen() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function OperatorCheckInScreen() {
 
   const handleStartTreatment = async () => {
     if (params.stopId && params.stopId.length > 5) {
-      fetch(`${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api/van/stops/${params.stopId}/check-in`, {
+      await authFetch(`/api/van/stops/${params.stopId}/check-in`, {
         method: "POST",
       }).catch(() => {});
     }
@@ -95,7 +96,7 @@ export default function OperatorCheckInScreen() {
             <Badge label="Allergies Recorded" variant="warning" />
           </View>
           <ThemedText variant="caption" style={styles.flagText}>
-            ⚠️ Penicillin allergy noted on file.
+            Penicillin allergy noted on file.
           </ThemedText>
           <ThemedText variant="caption" style={styles.flagText}>
             🦷 Chief complaint: Occlusal sensitivity on LR7.

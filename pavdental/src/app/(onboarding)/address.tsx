@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
+import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 export default function OnboardingAddressScreen() {
   const router = useRouter();
@@ -11,9 +12,27 @@ export default function OnboardingAddressScreen() {
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
   const [city, setCity] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const setAddress = useOnboardingStore((s) => s.setAddress);
 
   const handleNext = () => {
-    router.push("/(onboarding)/medical-history");
+    const errs: Record<string, string> = {};
+    if (!postcode.trim()) errs.postcode = "Postcode is required.";
+    if (!addressLine1.trim()) errs.addressLine1 = "Address line 1 is required.";
+    if (!city.trim()) errs.city = "City is required.";
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+
+    setAddress({
+      postcode: postcode.trim().toUpperCase(),
+      addressLine1: addressLine1.trim(),
+      addressLine2: addressLine2.trim() || undefined,
+      city: city.trim(),
+    } as any);
+    router.push("/(onboarding)/insurance");
   };
 
   return (
@@ -27,9 +46,7 @@ export default function OnboardingAddressScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <ThemedText variant="caption" style={styles.stepBadge}>
-              STEP 2 OF 4
-            </ThemedText>
+            <ProgressPills total={5} current={2} />
             <ThemedText variant="largeTitle" style={styles.title}>
               Home Address
             </ThemedText>
@@ -44,14 +61,22 @@ export default function OnboardingAddressScreen() {
               placeholder="e.g. SW1A 1AA"
               autoCapitalize="characters"
               value={postcode}
-              onChangeText={setPostcode}
+              error={errors.postcode}
+              onChangeText={(val) => {
+                setPostcode(val);
+                if (errors.postcode) setErrors((prev) => ({ ...prev, postcode: "" }));
+              }}
             />
 
             <Input
               label="Address Line 1"
               placeholder="House number & street name"
               value={addressLine1}
-              onChangeText={setAddressLine1}
+              error={errors.addressLine1}
+              onChangeText={(val) => {
+                setAddressLine1(val);
+                if (errors.addressLine1) setErrors((prev) => ({ ...prev, addressLine1: "" }));
+              }}
             />
 
             <Input
@@ -65,13 +90,17 @@ export default function OnboardingAddressScreen() {
               label="Town / City"
               placeholder="e.g. London"
               value={city}
-              onChangeText={setCity}
+              error={errors.city}
+              onChangeText={(val) => {
+                setCity(val);
+                if (errors.city) setErrors((prev) => ({ ...prev, city: "" }));
+              }}
             />
           </View>
 
           <View style={styles.actions}>
             <Button
-              title="Continue to Medical History"
+              title="Continue to Insurance"
               size="lg"
               onPress={handleNext}
             />
@@ -106,11 +135,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  stepBadge: {
-    color: colors.brand,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,
