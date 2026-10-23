@@ -30,3 +30,14 @@ npm run hours:defaults   # from backend/; safe to run again
 ```
 
 It gives each clinic without hours the default hours (decisions log #12) and each clinician without a rota the same weekly rota. Replace those with the real rota as soon as it's known.
+
+## After deploying `20261024010000_user_foreign_keys`
+
+The migration adds foreign keys from five newer tables to `users` as `NOT VALID`, so it never scans or fails on existing rows. Then, from `backend/`:
+
+```bash
+npm run db:check-orphans               # counts rows whose user no longer exists
+npm run db:check-orphans -- --validate # only when every count is 0
+```
+
+The script never deletes anything. If it finds orphaned rows, leave them for review and don't validate until they're resolved.

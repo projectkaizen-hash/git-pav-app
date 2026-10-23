@@ -40,6 +40,11 @@ model User {
   scheduledNotifications  ScheduledNotification[]
   erasureRequests         ErasureRequest[]         @relation("ErasureRequestUser")
   erasureRequestsHandled  ErasureRequest[]         @relation("ErasureRequestHandler")
+  messageThreads          MessageThread[]
+  financingApplications   FinancingApplication[]
+  rewardRedemptions       RewardRedemption[]
+  rewardPointsAwards      RewardPointsAward[]
+  oralHealthMetric        OralHealthMetric?
 
   @@map("users")
 }
@@ -709,6 +714,7 @@ model MessageThread {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   messages      Message[]
+  patientUser   User      @relation(fields: [patientUserId], references: [id], onDelete: Restrict)
 
   @@index([patientUserId, updatedAt])
   @@map("message_threads")
@@ -738,6 +744,7 @@ model FinancingApplication {
   status             String   @default("pre_approved") @db.VarChar(40)
   agreementRef       String   @unique @map("agreement_ref") @db.VarChar(60)
   createdAt          DateTime @default(now()) @map("created_at")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@map("financing_applications")
@@ -757,6 +764,7 @@ model RewardRedemption {
   /// The booking the voucher is on. It frees up again if that booking is cancelled.
   appointmentId String?      @unique @map("appointment_id") @db.Uuid
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, redeemedAt])
   @@map("reward_redemptions")
@@ -770,6 +778,7 @@ model RewardPointsAward {
   points        Int
   createdAt     DateTime    @default(now()) @map("created_at")
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@map("reward_points_awards")
@@ -788,6 +797,7 @@ model OralHealthMetric {
   practitionerAdvice  String?  @map("practitioner_advice")
   weeklyBrushing      Json?    @map("weekly_brushing")
   updatedAt           DateTime @updatedAt @map("updated_at")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("oral_health_metrics")
 }
