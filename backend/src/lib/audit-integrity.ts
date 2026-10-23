@@ -85,6 +85,7 @@ export async function createAuditLogWithIntegrity(data: {
 
   const resultPromise = auditWriteQueue.then(run, run);
   auditWriteQueue = resultPromise.catch(() => {});
+  (globalThis as { __pavAuditWriteQueue?: Promise<unknown> }).__pavAuditWriteQueue = auditWriteQueue;
   return resultPromise;
 }
 
