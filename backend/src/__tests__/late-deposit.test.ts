@@ -23,6 +23,10 @@ describe("late deposits", () => {
   let service: { id: string; depositPence: number; durationMinutes: number };
   const createdIds: string[] = [];
   let piCounter = 0;
+  const originalEnv = {
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  };
 
   beforeAll(async () => {
     // Must be set before the app (and env.ts) is loaded.
@@ -55,6 +59,11 @@ describe("late deposits", () => {
   afterAll(async () => {
     await prisma.appointment.deleteMany({ where: { id: { in: createdIds } } });
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    // process.env is shared by later test files in this jest worker.
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   });
 
   beforeEach(() => {

@@ -19,9 +19,11 @@ describe("PATCH /api/booking/appointments/:id/confirm (non-mock Stripe)", () => 
   let patientId: string;
   let service: { id: string; depositPence: number; durationMinutes: number };
   const createdIds: string[] = [];
+  let originalStripeKey: string | undefined;
 
   beforeAll(async () => {
     // Must be set before the app (and env.ts) is loaded.
+    originalStripeKey = process.env.STRIPE_SECRET_KEY;
     process.env.STRIPE_SECRET_KEY = "sk_test_unit_not_a_real_key";
     const serverModule = require("../server");
     const app = serverModule.default ?? serverModule;
@@ -51,6 +53,9 @@ describe("PATCH /api/booking/appointments/:id/confirm (non-mock Stripe)", () => 
   afterAll(async () => {
     await prisma.appointment.deleteMany({ where: { id: { in: createdIds } } });
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    // process.env is shared by later test files in this jest worker.
+    if (originalStripeKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = originalStripeKey;
   });
 
   beforeEach(() => mockRetrieve.mockReset());

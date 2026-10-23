@@ -16,6 +16,8 @@ describe("appointment cancellation", () => {
   let serviceId = "";
 
   beforeAll(async () => {
+    // Mock Stripe: make sure no earlier test file in this worker left a key set.
+    delete process.env.STRIPE_SECRET_KEY;
     const serverModule = require("../server");
     const app = serverModule.default ?? serverModule;
     prisma = require("../lib/prisma").prisma;
