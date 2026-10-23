@@ -1,36 +1,68 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, StyleSheet, ActivityIndicator, Linking } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { ThemedText, AppIcon } from "@/components";
+import { ThemedText, Card, Button, AppIcon } from "@/components";
 import { colors, spacing, radius } from "@/theme";
+import { authFetch } from "@/features/auth/auth-api";
+
+// The call itself runs in Daily's private room in the phone's browser: the app
+// asks the server for this appointment's room and a meeting token, and the
+// token is what lets the patient in (CS-07).
+type Room = { url: string; token: string };
 
 export default function VideoCallScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const [room, setRoom] = useState<Room | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [opened, setOpened] = useState(false);
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  // Elapsed time since this screen opened, not a made-up call length.
-  const [seconds, setSeconds] = useState(0);
+  const loadRoom = useCallback(async () => {
+    if (!appointmentId) {
+      setError("We couldn't find this consultation. Please go back and open it from your appointments.");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authFetch("/api/video/rooms", {
+        method: "POST",
+        body: JSON.stringify({ appointmentId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url || !data?.token) {
+        setError(data?.error || "We couldn't open the video room. Please try again.");
+        setRoom(null);
+      } else {
+        setRoom({ url: data.url, token: data.token });
+      }
+    } catch {
+      setError("You seem to be offline. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [appointmentId]);
+
   useEffect(() => {
-    const timer = setInterval(() => setSeconds((prev) => prev + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const elapsed = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    loadRoom();
+  }, [loadRoom]);
 
-  const handleEndCall = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+  const joinCall = async () => {
+    if (!room) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      await Linking.openURL(`${room.url}?t=${encodeURIComponent(room.token)}`);
+      setOpened(true);
+    } catch {
+      setError("Your phone couldn't open the video call. Please try again.");
+    }
+  };
+
+  const finish = () => {
     router.replace({
       pathname: "/(patient)/video/summary" as never,
       params: { appointmentId: appointmentId || "" },
@@ -38,258 +70,119 @@ export default function VideoCallScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Upper Half: Live Video Call Feed with Controls */}
-      <View style={styles.videoContainer}>
-        <Image
-          source={require("../../../../assets/images/doctor.jpg")}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-        />
-
-        {/* Top Video Header: Back + Duration Pill */}
-        <View style={styles.videoTopBar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Minimize call"
-            onPress={() => router.back()}
-            style={styles.backCircle}
-          >
-            <AppIcon name="chevronLeft" size={16} color={colors.alwaysWhite} />
-          </Pressable>
-
-          <View style={styles.timerBadge}>
-            <View style={styles.recordDot} />
-            <ThemedText variant="caption" style={styles.timerText}>
-              {elapsed}
-            </ThemedText>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <View style={styles.center}>
+          <View style={styles.iconCircle}>
+            {loading ? <ActivityIndicator size="large" color={colors.ink} /> : <AppIcon name="video" size={28} color={colors.ink} />}
           </View>
+
+          <ThemedText variant="largeTitle" style={styles.title}>
+            {loading ? "Opening your room" : error ? "Can't join yet" : "Your clinician is ready"}
+          </ThemedText>
+
+          {error ? (
+            <ThemedText variant="subhead" style={styles.subtitle} accessibilityRole="alert">
+              {error}
+            </ThemedText>
+          ) : (
+            !loading && (
+              <ThemedText variant="subhead" style={styles.subtitle}>
+                The call opens in your browser. Allow camera and microphone access when asked. Come back to this app when the call ends.
+              </ThemedText>
+            )
+          )}
+
+          {!loading && !error && (
+            <Card elevation="raised" style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <AppIcon name="lock" size={14} color={colors.secondaryLabel} />
+                <ThemedText variant="caption" style={styles.muted}>
+                  Private room: only you and your clinician can join this call
+                </ThemedText>
+              </View>
+            </Card>
+          )}
         </View>
 
-        {/* Picture-in-Picture Patient View (Matches Reference 3) */}
-        <View style={styles.pipContainer}>
-          <Image
-            source={require("../../../../assets/images/avatar.jpg")}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-        </View>
-
-        {/* Floating Translucent Glass Controls Bar (Matches Reference 1 & 3) */}
-        <View style={styles.floatingControls}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isMuted ? "Unmute mic" : "Mute mic"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setIsMuted((prev) => !prev);
-            }}
-            style={[styles.glassBtn, isMuted && styles.glassBtnActive]}
-          >
-            <AppIcon
-              name="mic"
-              size={18}
-              color={isMuted ? colors.danger : colors.alwaysWhite}
+        <View style={styles.actions}>
+          {error ? (
+            <Button title="Try again" size="lg" onPress={loadRoom} />
+          ) : (
+            <Button
+              title={opened ? "Rejoin video call" : "Join video call"}
+              size="lg"
+              disabled={!room}
+              loading={loading}
+              onPress={joinCall}
             />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isSpeakerOn ? "Speaker on" : "Speaker off"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setIsSpeakerOn((prev) => !prev);
-            }}
-            style={[styles.glassBtn, !isSpeakerOn && styles.glassBtnActive]}
-          >
-            <AppIcon name="phone" size={18} color={colors.alwaysWhite} />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isVideoOn ? "Camera on" : "Camera off"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setIsVideoOn((prev) => !prev);
-            }}
-            style={[styles.glassBtn, !isVideoOn && styles.glassBtnActive]}
-          >
-            <AppIcon name="video" size={18} color={colors.alwaysWhite} />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="End consultation"
-            onPress={handleEndCall}
-            style={styles.endCallBtn}
-          >
-            <AppIcon name="phone" size={20} color={colors.alwaysWhite} />
-          </Pressable>
+          )}
+          {opened && <Button title="I've finished the call" variant="secondary" size="md" onPress={finish} />}
+          <Button title="Back" variant="ghost" size="md" onPress={() => router.back()} />
         </View>
       </View>
-
-      {/* Lower Half: Interactive Chat & Prescription Sheet (Matches Reference 1) */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.sheetWrap}
-      >
-        <View style={styles.sheetHeader}>
-          <Image
-            source={require("../../../../assets/images/doctor.jpg")}
-            style={styles.sheetAvatar}
-            contentFit="cover"
-          />
-          <View>
-            <ThemedText variant="caption" style={styles.sheetLabel}>
-              Chat Call
-            </ThemedText>
-            <ThemedText variant="headline" style={styles.sheetDoctor}>
-              Your clinician
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={[styles.messageContent, { paddingBottom: Math.max(spacing.xs, insets.bottom) }]}>
-          {/* In-call chat isn't connected to a backend yet, so nothing typed here would reach the clinician. */}
-          <ThemedText variant="body" style={styles.bubbleTextDoctor}>
-            Talk to your clinician on the call. Any prescription or notes they record will appear in your records afterwards.
-          </ThemedText>
-        </View>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  backCircle: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    borderRadius: radius.full,
-    height: 36,
-    justifyContent: "center",
-    width: 36,
+  actions: {
+    gap: spacing.xs,
   },
-  bubbleTextDoctor: {
-    color: colors.label,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  endCallBtn: {
+  center: {
     alignItems: "center",
-    backgroundColor: colors.danger,
-    borderRadius: radius.full,
-    height: 44,
-    justifyContent: "center",
-    transform: [{ rotate: "135deg" }],
-    width: 44,
-  },
-  floatingControls: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: radius.full,
-    borderWidth: 1,
-    bottom: 16,
-    flexDirection: "row",
+    flex: 1,
     gap: spacing.sm,
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    position: "absolute",
   },
-  glassBtn: {
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  iconCircle: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
-    borderRadius: radius.full,
-    height: 40,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 40,
+    height: 72,
     justifyContent: "center",
-    width: 40,
-  },
-  glassBtnActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.35)",
-  },
-  messageContent: {
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  pipContainer: {
-    borderColor: colors.alwaysWhite,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    height: 96,
-    overflow: "hidden",
-    position: "absolute",
-    right: 16,
-    top: 16,
+    marginBottom: spacing.xxs,
     width: 72,
   },
-  recordDot: {
-    backgroundColor: colors.danger,
-    borderRadius: radius.full,
-    height: 7,
-    width: 7,
+  infoCard: {
+    borderCurve: "continuous",
+    borderColor: colors.separator,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    width: "100%",
   },
-  safe: {
-    backgroundColor: colors.alwaysBlack,
-    flex: 1,
-  },
-  sheetAvatar: {
-    borderRadius: radius.full,
-    height: 36,
-    width: 36,
-  },
-  sheetDoctor: {
-    color: colors.label,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  sheetHeader: {
+  infoRow: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderBottomColor: colors.separator,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
   },
-  sheetLabel: {
+  muted: {
     color: colors.secondaryLabel,
-    fontSize: 11,
+    flex: 1,
   },
-  sheetWrap: {
+  safe: {
     backgroundColor: colors.systemBackground,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
     flex: 1,
-    overflow: "hidden",
   },
-  timerBadge: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    borderRadius: radius.full,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  timerText: {
-    color: colors.alwaysWhite,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  videoContainer: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "flex-start",
-    position: "relative",
-  },
-  videoTopBar: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
+  subtitle: {
+    color: colors.secondaryLabel,
+    lineHeight: 20,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    width: "100%",
+    textAlign: "center",
+  },
+  title: {
+    color: colors.label,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    textAlign: "center",
   },
 });

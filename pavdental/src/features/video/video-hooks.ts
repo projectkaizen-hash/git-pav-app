@@ -10,6 +10,7 @@ interface VideoRoomResponse {
   roomName: string;
   url: string;
   token: string;
+  isOwner: boolean;
   expiresAt: string;
   isMock: boolean;
 }

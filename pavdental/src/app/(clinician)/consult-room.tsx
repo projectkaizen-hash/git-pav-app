@@ -4,12 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
-import { useCurrentUser } from "@/features/auth/auth-store";
 import { authFetch } from "@/features/auth/auth-api";
 
 export default function ClinicianConsultRoomScreen() {
   const router = useRouter();
-  const currentUser = useCurrentUser();
   const params = useLocalSearchParams<{
     patientName?: string;
     appointmentId?: string;
@@ -21,20 +19,16 @@ export default function ClinicianConsultRoomScreen() {
   const appointmentId = params.appointmentId;
   const chiefComplaint = params.chiefComplaint?.trim() || null;
 
-  const clinicianName = currentUser?.firstName
-    ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
-    : "You";
-
   const [activeTab, setActiveTab] = useState<"video" | "triage" | "chart">("video");
   const [selectedTooth, setSelectedTooth] = useState<number>(1);
-  const [roomUrl, setRoomUrl] = useState<string | null>(null);
-  const [roomName, setRoomName] = useState<string | null>(null);
+  // The private Daily room for this appointment and the clinician's owner
+  // token. The call runs in the browser; the token is what lets them in.
+  const [joinUrl, setJoinUrl] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [admitted, setAdmitted] = useState(false);
+  const [admitting, setAdmitting] = useState(false);
 
-  // Initialize WebRTC room from backend
   useEffect(() => {
     async function initRoom() {
       if (!appointmentId) return;
@@ -43,12 +37,11 @@ export default function ClinicianConsultRoomScreen() {
           method: "POST",
           body: JSON.stringify({ appointmentId }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setRoomUrl(data.url);
-          setRoomName(data.roomName);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.url && data?.token) {
+          setJoinUrl(`${data.url}?t=${encodeURIComponent(data.token)}`);
         } else {
-          setRoomError("Could not open the video room. Try again from your schedule.");
+          setRoomError(data?.error || "Could not open the video room. Try again from your schedule.");
         }
       } catch {
         setRoomError("Could not open the video room. Check your connection and try again.");
@@ -56,6 +49,26 @@ export default function ClinicianConsultRoomScreen() {
     }
     initRoom();
   }, [appointmentId]);
+
+  const admitPatient = async () => {
+    if (!appointmentId) return;
+    setAdmitting(true);
+    try {
+      const res = await authFetch("/api/video/admit-patient", {
+        method: "POST",
+        body: JSON.stringify({ appointmentId }),
+      });
+      if (res.ok) setAdmitted(true);
+      else {
+        const data = await res.json().catch(() => ({}));
+        setRoomError(data?.error || "Could not let the patient in. Please try again.");
+      }
+    } catch {
+      setRoomError("Could not let the patient in. Check your connection and try again.");
+    } finally {
+      setAdmitting(false);
+    }
+  };
 
   // Live Call Timer
   useEffect(() => {
@@ -156,75 +169,34 @@ export default function ClinicianConsultRoomScreen() {
         {activeTab === "video" ? (
           <View style={styles.videoArea}>
             <View style={styles.streamBox}>
-              <AppIcon
-                name={isCameraOff ? "micOff" : "video"}
-                size={44}
-                color={colors.tertiaryLabel}
-              />
+              <AppIcon name="video" size={44} color={colors.tertiaryLabel} />
               <ThemedText variant="headline" style={styles.streamText}>
                 {patientName}
               </ThemedText>
+              <ThemedText variant="caption" style={styles.roomTag}>
+                {admitted ? "Patient let in. They can join the call now." : "The patient is kept in the waiting room until you let them in."}
+              </ThemedText>
               {roomError && (
-                <ThemedText variant="caption" style={styles.roomTag}>
+                <ThemedText variant="caption" style={styles.roomError} accessibilityRole="alert">
                   {roomError}
                 </ThemedText>
               )}
-              {roomName && (
-                <ThemedText variant="caption" style={styles.roomTag}>
-                  Room: {roomName}
-                </ThemedText>
-              )}
-
-              {roomUrl && (
-                <Pressable
-                  onPress={() => Linking.openURL(roomUrl)}
-                  style={styles.openWebRtcBtn}
-                >
-                  <ThemedText variant="caption" style={styles.openWebRtcText}>
-                    Open video room
-                  </ThemedText>
-                </Pressable>
-              )}
             </View>
 
-            {/* Self Picture-in-Picture */}
-            <View style={styles.smallSelfPip}>
-              <ThemedText variant="caption" style={styles.pipLabel}>
-                {clinicianName}
-              </ThemedText>
-            </View>
-
-            {/* In-Call Controls Bar */}
-            <View style={styles.callControlsRow}>
-              <Pressable
-                onPress={() => setIsMuted(!isMuted)}
-                style={[styles.controlBtn, isMuted && styles.controlBtnActive]}
-              >
-                <AppIcon name={isMuted ? "micOff" : "mic"} size={18} color={colors.label} />
-                <ThemedText variant="caption" style={styles.controlText}>
-                  {isMuted ? "Unmute" : "Mute"}
-                </ThemedText>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setIsCameraOff(!isCameraOff)}
-                style={[styles.controlBtn, isCameraOff && styles.controlBtnActive]}
-              >
-                <AppIcon name="video" size={18} color={colors.label} />
-                <ThemedText variant="caption" style={styles.controlText}>
-                  {isCameraOff ? "Start Video" : "Stop Video"}
-                </ThemedText>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setActiveTab("chart")}
-                style={styles.controlBtn}
-              >
-                <ThemedText variant="headline">🦷</ThemedText>
-                <ThemedText variant="caption" style={styles.controlText}>
-                  Chart
-                </ThemedText>
-              </Pressable>
+            <View style={styles.callActions}>
+              <Button
+                title="Join video call"
+                disabled={!joinUrl}
+                loading={!joinUrl && !roomError}
+                onPress={() => joinUrl && Linking.openURL(joinUrl).catch(() => setRoomError("Couldn't open the video call."))}
+              />
+              <Button
+                title={admitted ? "Patient let in" : "Let patient in"}
+                variant="secondary"
+                disabled={admitted || !joinUrl}
+                loading={admitting}
+                onPress={admitPatient}
+              />
             </View>
           </View>
         ) : activeTab === "triage" ? (
@@ -341,30 +313,14 @@ export default function ClinicianConsultRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  callControlsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "center",
+  callActions: {
+    gap: spacing.xs,
     marginTop: spacing.md,
+    width: "100%",
   },
   container: {
     flex: 1,
     justifyContent: "space-between",
-  },
-  controlBtn: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
-    gap: 2,
-    height: 64,
-    justifyContent: "center",
-    width: 72,
-  },
-  controlBtnActive: {
-    backgroundColor: colors.dangerSubtle,
-  },
-  controlText: {
-    color: colors.label,
   },
   controls: {
     backgroundColor: colors.systemBackground,
@@ -380,17 +336,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: "600",
   },
-  openWebRtcBtn: {
-    backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  openWebRtcText: {
-    color: colors.ink,
-    fontWeight: "700",
-  },
   patientBadge: {
     alignItems: "center",
     flexDirection: "row",
@@ -399,27 +344,19 @@ const styles = StyleSheet.create({
   patientName: {
     color: colors.label,
   },
-  pipLabel: {
-    color: colors.label,
-    fontWeight: "600",
+  roomError: {
+    color: colors.danger,
+    paddingHorizontal: spacing.md,
+    textAlign: "center",
   },
   roomTag: {
     color: colors.secondaryLabel,
+    paddingHorizontal: spacing.md,
+    textAlign: "center",
   },
   safe: {
     backgroundColor: colors.systemBackground,
     flex: 1,
-  },
-  smallSelfPip: {
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    position: "absolute",
-    right: spacing.xl,
-    top: spacing.xl,
   },
   streamBox: {
     alignItems: "center",

@@ -29,6 +29,10 @@ interface ApiError {
   isTimeout: boolean;
 }
 
+function isApiError(error: unknown): error is ApiError {
+  return !!error && typeof error === 'object' && !(error instanceof Error) && 'isRetryable' in error;
+}
+
 const DEFAULT_CONFIG: ApiClientConfig = {
   baseUrl: '',
   timeout: 30000, // 30 seconds default
@@ -101,7 +105,9 @@ class ApiClient {
       } catch (error) {
         clearTimeout(timeoutId);
 
-        const apiError = this.handleFetchError(error);
+        // An HTTP error thrown above keeps its status code; anything else is
+        // a fetch failure.
+        const apiError = isApiError(error) ? error : this.handleFetchError(error);
         
         if (!apiError.isRetryable || attempt === this.config.retries) {
           throw apiError;

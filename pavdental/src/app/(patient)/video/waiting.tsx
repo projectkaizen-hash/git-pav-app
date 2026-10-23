@@ -9,7 +9,7 @@ import { authFetch } from "@/features/auth/auth-api";
 export default function WaitingRoomScreen() {
   const router = useRouter();
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
-  const [statusLabel, setStatusLabel] = useState("Ready to Connect");
+  const [statusLabel, setStatusLabel] = useState("Waiting");
 
   useEffect(() => {
     let active = true;
@@ -23,7 +23,7 @@ export default function WaitingRoomScreen() {
           setStatusLabel("Clinician Admitted You");
           router.replace({
             pathname: "/(patient)/video/call" as any,
-            params: { appointmentId, roomUrl: data?.roomUrl || "" },
+            params: { appointmentId },
           });
         }
       } catch {
@@ -60,7 +60,7 @@ export default function WaitingRoomScreen() {
               <ThemedText variant="headline" style={styles.queueCardTitle}>
                 Consultation Ready
               </ThemedText>
-              <Badge label={statusLabel} variant="success" />
+              <Badge label={statusLabel} />
             </View>
 
             <View style={styles.checklist}>
@@ -83,17 +83,12 @@ export default function WaitingRoomScreen() {
           <View style={styles.reassuranceBox}>
             <AppIcon name="lock" size={14} color={colors.secondaryLabel} />
             <ThemedText variant="caption" style={styles.reassuranceText}>
-              256-bit WebRTC end-to-end encrypted · NHS Digital & CQC compliant
+              Private room: only you and your clinician can join this call
             </ThemedText>
           </View>
         </View>
 
         <View style={styles.actions}>
-          <Button
-            title="Join Call Now ›"
-            size="lg"
-            onPress={() => router.replace("/(patient)/video/call" as any)}
-          />
           <Button
             title="Cancel & Leave Waiting Room"
             variant="ghost"
