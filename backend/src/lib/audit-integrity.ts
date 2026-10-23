@@ -9,6 +9,8 @@ let auditWriteQueue: Promise<unknown> = Promise.resolve();
 // can never chain off the same "last" entry (AU-1). The in-process queue above
 // still stops one process from queueing many connections on the lock.
 const AUDIT_CHAIN_LOCK_KEY = 7_201_884_310;
+const AUDIT_TX_MAX_WAIT_MS = 10_000;
+const AUDIT_TX_TIMEOUT_MS = 20_000;
 
 // Audit log integrity using hash chains
 // Each log entry contains a hash of the previous entry to detect tampering
@@ -69,10 +71,16 @@ export async function createAuditLogWithIntegrity(data: {
 
   const run = () =>
     typeof prisma.$transaction === "function"
-      ? prisma.$transaction(async (tx) => {
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY}::bigint)`;
-          return append(tx);
-        })
+      ? prisma.$transaction(
+          async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY}::bigint)`;
+            return append(tx);
+          },
+          // Time spent waiting for the chain lock counts against the timeout.
+          // Prisma's 5 s default dropped entries when another process held the
+          // lock for a while under load, so allow a longer queue.
+          { maxWait: AUDIT_TX_MAX_WAIT_MS, timeout: AUDIT_TX_TIMEOUT_MS }
+        )
       : append(prisma);
 
   const resultPromise = auditWriteQueue.then(run, run);
