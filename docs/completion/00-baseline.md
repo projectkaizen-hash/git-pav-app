@@ -205,9 +205,12 @@ EXPO_PUBLIC_DSPT_MODE, which no code reads.
   token / project).
 - **Expo plugin MCP** (`plugin:expo:expo`): failed to connect (proxy 403 on tunnel).
 - **Local MCP** (`expo-mcp` dev dependency + `EXPO_UNSTABLE_MCP_SERVER=1 npx expo start`):
-  not installed. Installing it changes `package.json`/lockfile, so I'm holding it for your
-  OK. It also needs a local iOS simulator or Android emulator, and this Linux container has
-  neither (no `xcrun`, `adb` or `emulator`).
+  `expo-mcp@0.2.4` added as a dev dependency (approved 2026-10-23). Installing it also
+  resynced `package-lock.json`, so `npm ci` now succeeds in `pavdental/` (typecheck and
+  both mobile suites still pass). Starting it fails here: the CLI opens a tunnel to
+  `mcp.expo.dev`, which this sandbox's egress proxy does not resolve. It also needs a local
+  iOS simulator or Android emulator, and this Linux container has neither (no `xcrun`,
+  `adb` or `emulator`). It should work on a developer machine.
 - **Fallback that works now:** `npx expo export --platform web` bundles fine, so Phase 1
   screen checks can use Playwright screenshots of the web build. They are useful for states
   and layout but are not a substitute for native screenshots. Native verification moves to
