@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { clearAppSession, pavApi, pavApiUrl } from "@/lib/pav-api.server";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -7,6 +9,11 @@ const CORS_HEADERS = {
 };
 
 export async function POST() {
+  // End the app session too, so the stored tokens can't be reused.
+  if (pavApiUrl()) {
+    await pavApi("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    await clearAppSession();
+  }
   const response = NextResponse.json({ success: true }, { headers: CORS_HEADERS });
   response.cookies.set("admin_token", "", {
     httpOnly: true,

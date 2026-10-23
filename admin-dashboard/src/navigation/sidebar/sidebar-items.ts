@@ -1,8 +1,10 @@
 import {
   Banknote,
   Calendar,
+  CalendarClock,
   ChartBar,
   CheckSquare,
+  Clock,
   FileText,
   Fingerprint,
   Folder,
@@ -77,6 +79,18 @@ export const sidebarItems: NavGroup[] = [
         title: "Bookings",
         url: "/dashboard/bookings",
         icon: Calendar,
+      },
+      {
+        id: "pav-opening-hours",
+        title: "Opening Hours",
+        url: "/dashboard/opening-hours",
+        icon: Clock,
+      },
+      {
+        id: "pav-rota",
+        title: "Rota",
+        url: "/dashboard/rota",
+        icon: CalendarClock,
       },
       {
         id: "pav-patients",

@@ -6,14 +6,13 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldContent, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
   email: z.email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  remember: z.boolean().optional(),
+  mfaCode: z.string().trim().optional(),
 });
 
 import React, { useState } from "react";
@@ -23,12 +22,14 @@ import { useRouter } from "next/navigation";
 export function LoginForm() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  // Set when the account has two-step sign-in: the code was sent by SMS or email.
+  const [mfaRequired, setMfaRequired] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "admin@pavdental.com",
+      email: "",
       password: "",
-      remember: true,
+      mfaCode: "",
     },
   });
 
@@ -38,11 +39,20 @@ export function LoginForm() {
       const res = await fetch("/api/v1/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, password: data.password }),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          ...(mfaRequired && data.mfaCode ? { mfaCode: data.mfaCode } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json.error || "Login failed");
+      }
+      if (json.mfaRequired) {
+        setMfaRequired(true);
+        toast.info("We've sent you a sign-in code. Enter it to continue.");
+        return;
       }
       toast.success("Logged in successfully");
       router.push("/dashboard/bookings");
@@ -93,27 +103,26 @@ export function LoginForm() {
             </Field>
           )}
         />
-        <Controller
-          control={form.control}
-          name="remember"
-          render={({ field, fieldState }) => (
-            <Field orientation="horizontal" data-invalid={fieldState.invalid}>
-              <Checkbox
-                id="login-remember"
-                name={field.name}
-                checked={field.value}
-                onCheckedChange={(checked) => field.onChange(Boolean(checked))}
-                aria-invalid={fieldState.invalid}
-              />
-              <FieldContent>
-                <FieldLabel htmlFor="login-remember" className="font-normal">
-                  Remember me for 30 days
-                </FieldLabel>
+        {mfaRequired && (
+          <Controller
+            control={form.control}
+            name="mfaCode"
+            render={({ field, fieldState }) => (
+              <Field className="gap-1.5" data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="login-mfa">Sign-in code</FieldLabel>
+                <Input
+                  {...field}
+                  id="login-mfa"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  aria-invalid={fieldState.invalid}
+                />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </FieldContent>
-            </Field>
-          )}
-        />
+              </Field>
+            )}
+          />
+        )}
       </FieldGroup>
       <Button className="w-full" type="submit" disabled={submitting}>
         {submitting ? "Signing in..." : "Login"}

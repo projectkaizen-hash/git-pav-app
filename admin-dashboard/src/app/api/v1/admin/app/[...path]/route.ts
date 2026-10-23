@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server";
+
+import { requireAdmin } from "@/lib/auth/middleware";
+import { pavApi } from "@/lib/pav-api.server";
+
+// Passes the dashboard's opening hours and rota screens through to the app
+// backend's /api/admin endpoints, as the signed-in staff member. Only the
+// routes below are forwarded; anything else is a 404.
+const SEG = "[A-Za-z0-9_-]{1,64}";
+const DATE = "\\d{4}-\\d{2}-\\d{2}";
+const ALLOWED: Record<string, RegExp[]> = {
+  GET: [/^clinics$/, /^clinicians$/, new RegExp(`^clinicians/${SEG}/overrides$`)],
+  PUT: [
+    new RegExp(`^clinics/${SEG}/hours$`),
+    new RegExp(`^clinicians/${SEG}/rota$`),
+    new RegExp(`^clinicians/${SEG}/overrides/${DATE}$`),
+  ],
+  POST: [new RegExp(`^clinics/${SEG}/closures$`)],
+  DELETE: [new RegExp(`^clinics/${SEG}/closures/${DATE}$`), new RegExp(`^clinicians/${SEG}/overrides/${DATE}$`)],
+};
+
+type Context = { params: Promise<{ path: string[] }> };
+
+async function forward(request: Request, { params }: Context) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
+  const path = (await params).path.join("/");
+  if (!ALLOWED[request.method]?.some((pattern) => pattern.test(path))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const query = new URL(request.url).search;
+  const body = request.method === "GET" || request.method === "DELETE" ? undefined : await request.text();
+  try {
+    const res = await pavApi(`/api/admin/${path}${query}`, { method: request.method, body });
+    if (res.status === 204) return new NextResponse(null, { status: 204 });
+    const data = await res.json().catch(() => ({ error: "Unexpected response from the app backend" }));
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error(`[${request.method} /api/v1/admin/app]`, error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "The app backend couldn't be reached" }, { status: 502 });
+  }
+}
+
+export { forward as DELETE, forward as GET, forward as POST, forward as PUT };
