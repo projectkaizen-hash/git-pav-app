@@ -76,6 +76,8 @@ export async function presentVanDepositSheet(
     initPaymentSheet: (params: {
       merchantDisplayName: string;
       paymentIntentClientSecret: string;
+      customerId?: string;
+      customerEphemeralKeySecret?: string;
       returnURL?: string;
       allowsDelayedPaymentMethods?: boolean;
       appearance?: { colors?: Record<string, string> };
@@ -83,11 +85,16 @@ export async function presentVanDepositSheet(
     presentPaymentSheet: () => Promise<{
       error?: { code?: string; message?: string } | null;
     }>;
-  }
+  },
+  // The patient's saved cards, and the option to save this one (decisions log #15).
+  customer?: { customerId?: string; customerEphemeralKeySecret?: string }
 ): Promise<void> {
   const { error: initError } = await stripe.initPaymentSheet({
     merchantDisplayName: "Pav Dental",
     paymentIntentClientSecret: clientSecret,
+    ...(customer?.customerId && customer.customerEphemeralKeySecret
+      ? { customerId: customer.customerId, customerEphemeralKeySecret: customer.customerEphemeralKeySecret }
+      : {}),
     returnURL: "pavdental://stripe-return",
     allowsDelayedPaymentMethods: true,
     appearance: {

@@ -11,12 +11,14 @@ import { createPaymentIntentSchema } from "../schemas/payments";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { sendPatientNotification } from "../lib/patient-push";
 import { applyDepositVoucher, depositDuePence } from "../lib/rewards";
+import { customerEphemeralKey, ensureStripeCustomer } from "../lib/stripe-customer";
 
 const router = Router();
 const isMockStripe = env.isMockStripe;
 const stripe = new Stripe(env.stripeSecretKey, {
   apiVersion: "2025-02-24.acacia" as never,
 });
+
 
 // The server derives the deposit from the appointment's service. A mobile client
 // can never submit an amount, currency, or payment confirmation.
@@ -59,22 +61,31 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
       publishableKey: env.stripePublishableKey,
       amountPence,
       discountPence: appointment.depositDiscountPence,
+      customerId: null,
+      customerEphemeralKeySecret: null,
       isMock: true,
     });
   }
 
   // The amount is part of the key: a voucher added after a first attempt
   // needs a new PaymentIntent for the lower amount.
+  // Paying as the patient's Stripe Customer lets the sheet offer their saved
+  // cards, and a "save this card" box they can tick (decisions log #15).
+  const customerId = await ensureStripeCustomer(stripe, req.user!.sub);
+  if (!customerId) return res.status(404).json({ error: "Patient profile not found" });
+  const customerEphemeralKeySecret = await customerEphemeralKey(stripe, customerId);
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amountPence,
     currency: "gbp",
+    customer: customerId,
     metadata: {
       appointmentId: appointment.id,
       patientUserId: req.user!.sub,
       serviceName: appointment.service.name,
     },
     automatic_payment_methods: { enabled: true },
-  }, { idempotencyKey: `appointment-deposit:${appointment.id}:${amountPence}` });
+  }, { idempotencyKey: `appointment-deposit:${appointment.id}:${amountPence}:${customerId}` });
 
   await prisma.appointment.update({
     where: { id: appointment.id },
@@ -87,6 +98,8 @@ router.post("/create-intent", requireAuth, validateBody(createPaymentIntentSchem
     publishableKey: env.stripePublishableKey,
     amountPence,
     discountPence: appointment.depositDiscountPence,
+    customerId,
+    customerEphemeralKeySecret,
     isMock: false,
   });
 });
@@ -103,35 +116,13 @@ router.post("/setup-intent", requireAuth, async (req: AuthRequest, res: Response
     });
   }
 
-  // Find or create a Stripe Customer for this user
-  let stripeCustomerId: string | null = null;
-  const profile = await prisma.patientProfile.findUnique({
-    where: { userId: req.user!.sub },
-    select: { id: true, stripeCustomerId: true, firstName: true, lastName: true },
-  });
-
-  if (profile?.stripeCustomerId) {
-    stripeCustomerId = profile.stripeCustomerId;
-  } else if (profile) {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.sub },
-      select: { email: true },
-    });
-    const customer = await stripe.customers.create({
-      email: user?.email,
-      name: `${profile.firstName} ${profile.lastName}`,
-      metadata: { userId: req.user!.sub },
-    });
-    stripeCustomerId = customer.id;
-    await prisma.patientProfile.update({
-      where: { id: profile.id },
-      data: { stripeCustomerId },
-    });
-  }
+  const stripeCustomerId = await ensureStripeCustomer(stripe, req.user!.sub);
+  if (!stripeCustomerId) return res.status(404).json({ error: "Patient profile not found" });
 
   const setupIntent = await stripe.setupIntents.create({
-    customer: stripeCustomerId ?? undefined,
+    customer: stripeCustomerId,
     payment_method_types: ["card"],
+    usage: "on_session",
     metadata: { userId: req.user!.sub },
   });
 
@@ -158,7 +149,8 @@ router.post("/methods/attach", requireAuth, async (req: AuthRequest, res: Respon
     select: { stripeCustomerId: true },
   });
   const pmCustomerId = typeof pm.customer === "string" ? pm.customer : pm.customer?.id;
-  if (!isMockStripe && pmCustomerId && profile?.stripeCustomerId && pmCustomerId !== profile.stripeCustomerId) {
+  // Only a card already saved to this patient's own Customer can be listed.
+  if (!pmCustomerId || !profile?.stripeCustomerId || pmCustomerId !== profile.stripeCustomerId) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
@@ -188,6 +180,18 @@ router.post("/methods/attach", requireAuth, async (req: AuthRequest, res: Respon
 // ─── GET /api/payments/methods ────────────────────────────────────────────────
 // Returns the user's saved payment methods for display in the profile screen.
 router.get("/methods", requireAuth, async (req: AuthRequest, res: Response) => {
+  // Cards saved while paying a deposit are attached in Stripe, not here, so
+  // the list follows the patient's Customer in Stripe (decisions log #15).
+  if (!isMockStripe) {
+    const profile = await prisma.patientProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { stripeCustomerId: true },
+    });
+    if (profile?.stripeCustomerId) {
+      await syncSavedCards(req.user!.sub, profile.stripeCustomerId);
+    }
+  }
+
   const methods = await prisma.savedPaymentMethod.findMany({
     where: { userId: req.user!.sub },
     orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
@@ -205,6 +209,29 @@ router.get("/methods", requireAuth, async (req: AuthRequest, res: Response) => {
   );
 });
 
+async function syncSavedCards(userId: string, customerId: string) {
+  const cards = await stripe.customers.listPaymentMethods(customerId, { type: "card", limit: 100 });
+  const ids = cards.data.map((pm) => pm.id);
+  for (const pm of cards.data) {
+    if (!pm.card) continue;
+    await prisma.savedPaymentMethod.upsert({
+      where: { stripePaymentMethodId: pm.id },
+      update: { expMonth: pm.card.exp_month, expYear: pm.card.exp_year },
+      create: {
+        stripePaymentMethodId: pm.id,
+        userId,
+        brand: pm.card.brand,
+        last4: pm.card.last4,
+        expMonth: pm.card.exp_month,
+        expYear: pm.card.exp_year,
+        isDefault: false,
+      },
+    });
+  }
+  // Cards removed in Stripe (or by the sheet) disappear from the list too.
+  await prisma.savedPaymentMethod.deleteMany({ where: { userId, stripePaymentMethodId: { notIn: ids } } });
+}
+
 // ─── PATCH /api/payments/methods/:id/default ──────────────────────────────────
 router.patch("/methods/:id/default", requireAuth, async (req: AuthRequest, res: Response) => {
   const id = String(req.params.id);
@@ -213,6 +240,19 @@ router.patch("/methods/:id/default", requireAuth, async (req: AuthRequest, res: 
     where: { id, userId: req.user!.sub },
   });
   if (!method) return res.status(404).json({ error: "Payment method not found" });
+
+  // Also Stripe's default for the Customer, so the choice isn't only cosmetic.
+  if (!isMockStripe) {
+    const profile = await prisma.patientProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { stripeCustomerId: true },
+    });
+    if (profile?.stripeCustomerId) {
+      await stripe.customers.update(profile.stripeCustomerId, {
+        invoice_settings: { default_payment_method: method.stripePaymentMethodId },
+      });
+    }
+  }
 
   // Clear all defaults then set the new one
   await prisma.$transaction([

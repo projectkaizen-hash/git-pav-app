@@ -55,7 +55,7 @@ export default function VanConfirmScreen() {
       await presentVanDepositSheet(request.clientSecret, {
         initPaymentSheet,
         presentPaymentSheet,
-      });
+      }, request);
 
       // Authorized. The webhook stamps the request server-side.
       store.setActiveRequestId(request.id);
@@ -114,7 +114,7 @@ export default function VanConfirmScreen() {
       await presentVanDepositSheet(retry.clientSecret, {
         initPaymentSheet,
         presentPaymentSheet,
-      });
+      }, retry);
       store.setActiveRequestId(requestId);
       router.replace({
         pathname: "/(patient)/van/live-track" as any,

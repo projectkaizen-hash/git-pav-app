@@ -35,6 +35,7 @@ import {
   VanDepositReleaseStatus,
 } from "../lib/van-payments";
 import { sendPatientNotification } from "../lib/patient-push";
+import { customerEphemeralKey, ensureStripeCustomer } from "../lib/stripe-customer";
 
 const router = Router();
 const isMockStripe = env.isMockStripe;
@@ -894,15 +895,21 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
   // Create Stripe PaymentIntent for deposit (manual capture)
   let paymentIntentId: string | null = null;
   let clientSecret: string | null = null;
-  
+  let customerId: string | null = null;
+  let customerEphemeralKeySecret: string | null = null;
+
   if (isMockStripe) {
     paymentIntentId = `pi_mock_van_${Date.now()}`;
     clientSecret = `${paymentIntentId}_secret_mock`;
   } else {
     try {
+      // As the patient's Customer, so the sheet offers saved cards (decisions log #15).
+      customerId = await ensureStripeCustomer(stripe, req.user!.sub);
+      if (customerId) customerEphemeralKeySecret = await customerEphemeralKey(stripe, customerId);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: service.depositPence,
         currency: "gbp",
+        ...(customerId ? { customer: customerId } : {}),
         capture_method: "manual", // Capture when operator accepts
         metadata: {
           vanServiceRequestId: "pending", // Will be updated after request creation
@@ -967,6 +974,7 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
     paymentRequired: true,
     depositAmount: service.depositPence,
     ...(clientSecret && { clientSecret }),
+    ...(customerId && customerEphemeralKeySecret && { customerId, customerEphemeralKeySecret }),
     ...(paymentIntentId && { paymentIntentId }),
     isMockPayment: isMockStripe,
   });
@@ -1160,12 +1168,17 @@ router.post("/requests/:id/payment-retry", requireAuth, validateParams(vanReques
     });
   }
 
+  // The intent's own Customer, so the sheet shows that patient's saved cards.
+  const customerId = typeof intent.customer === "string" ? intent.customer : intent.customer?.id ?? null;
+  const customerEphemeralKeySecret = customerId ? await customerEphemeralKey(stripe, customerId) : null;
+
   return res.json({
     clientSecret: intent.client_secret,
     paymentIntentId: request.paymentIntentId,
     depositAmount: request.service.depositPence,
     alreadyAuthorized: false,
     isMockPayment: false,
+    ...(customerId && customerEphemeralKeySecret && { customerId, customerEphemeralKeySecret }),
   });
 });
 

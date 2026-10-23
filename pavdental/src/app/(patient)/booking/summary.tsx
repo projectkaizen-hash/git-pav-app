@@ -88,6 +88,10 @@ export default function BookingSummaryScreen() {
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: "Pav Dental",
         paymentIntentClientSecret: intent.clientSecret,
+        // Saved cards appear in the sheet, which also offers to save a new one.
+        ...(intent.customerId && intent.customerEphemeralKeySecret
+          ? { customerId: intent.customerId, customerEphemeralKeySecret: intent.customerEphemeralKeySecret }
+          : {}),
         returnURL: "pavdental://stripe-return",
         // Allow customers to pay within your app
         allowsDelayedPaymentMethods: true,

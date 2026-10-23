@@ -120,7 +120,7 @@ export default function PaymentMethodsScreen() {
           SAVED PAYMENT METHODS
         </ThemedText>
         <ThemedText variant="caption" style={styles.headerDesc}>
-          Cards saved here will be used for deposit authorizations and appointment checkouts. Powered securely by Stripe.
+          Your saved cards appear when you pay a deposit, so you can pick one instead of typing it in. You can also tick "save card" while paying. Payments are handled by Stripe.
         </ThemedText>
       </View>
 
