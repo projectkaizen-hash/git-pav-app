@@ -23,6 +23,18 @@ function pid(req: AuthRequest) {
   return String(req.params.id);
 }
 
+// CS-09 (PT-1, PT-2): a patient's own details, and their answer to a treatment
+// plan, are the patient's alone. A clinician with access to the record can
+// read them but can't change the login phone or accept a plan on their behalf.
+function requirePatientSelf(req: AuthRequest, res: Response, action: string): boolean {
+  if (req.user!.role === "patient") return true;
+  res.status(403).json({ error: `Only the patient can ${action}` });
+  return false;
+}
+
+// A plan can be accepted or declined once, while it's waiting for an answer.
+const OPEN_PLAN_STATUSES = ["pending_acceptance", "proposed"];
+
 // ─── GET /api/patients/:id/profile ───────────────────────────────────────────
 router.get("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), async (req: AuthRequest, res: Response) => {
   const requestedId = pid(req);
@@ -68,6 +80,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
   const requestedId = pid(req);
   const profile = await requirePatientRecordAccess(req, res);
   if (!profile) return;
+  if (!requirePatientSelf(req, res, "change their own details")) return;
 
   const {
     firstName, lastName, dob, gender,
@@ -232,9 +245,12 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const profile = await requirePatientRecordAccess(req, res);
     if (!profile) return;
+    if (!requirePatientSelf(req, res, "accept their treatment plan")) return;
 
     const planId = String(req.params.planId);
-    const { signerName, signatureData } = req.body;
+    const { signatureData } = req.body;
+    // The signer is the signed-in patient, whatever name the client sends.
+    const signerName = `${profile.firstName} ${profile.lastName}`.trim();
 
     const plan = await prisma.treatmentPlan.findFirst({
       where: { id: planId, patientId: profile.id },
@@ -243,6 +259,9 @@ router.post(
 
     if (!plan) {
       return res.status(404).json({ error: "Treatment plan not found" });
+    }
+    if (!OPEN_PLAN_STATUSES.includes(plan.status)) {
+      return res.status(409).json({ error: "This plan has already been answered", code: "PLAN_NOT_OPEN" });
     }
 
     const signedAt = new Date();
@@ -263,13 +282,20 @@ router.post(
       signedAtIso: signedAt.toISOString(),
     });
 
-    const updatedPlan = await prisma.treatmentPlan.update({
-      where: { id: plan.id },
+    // Conditional on the status, so two answers sent at once can't both apply.
+    const { count } = await prisma.treatmentPlan.updateMany({
+      where: { id: plan.id, status: { in: OPEN_PLAN_STATUSES } },
       data: {
         status: "accepted",
         patientSignature: storedSignature,
         patientSignedAt: signedAt,
       },
+    });
+    if (count === 0) {
+      return res.status(409).json({ error: "This plan has already been answered", code: "PLAN_NOT_OPEN" });
+    }
+    const updatedPlan = await prisma.treatmentPlan.findUniqueOrThrow({
+      where: { id: plan.id },
       include: { items: true, clinician: { select: { fullName: true, roleTitle: true, gdcNumber: true } } },
     });
 
@@ -297,7 +323,6 @@ router.post(
       sessionId: req.user!.sessionId,
       ipHash: pseudonymiseIp(req.ip || ""),
       metadata: {
-        signerName,
         signatureHash,
         totalCostPence: plan.totalCostPence,
       },
@@ -320,6 +345,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const profile = await requirePatientRecordAccess(req, res);
     if (!profile) return;
+    if (!requirePatientSelf(req, res, "decline their treatment plan")) return;
 
     const planId = String(req.params.planId);
     const plan = await prisma.treatmentPlan.findFirst({
@@ -330,9 +356,15 @@ router.post(
       return res.status(404).json({ error: "Treatment plan not found" });
     }
 
-    const updatedPlan = await prisma.treatmentPlan.update({
-      where: { id: plan.id },
+    const { count } = await prisma.treatmentPlan.updateMany({
+      where: { id: plan.id, status: { in: OPEN_PLAN_STATUSES } },
       data: { status: "declined" },
+    });
+    if (count === 0) {
+      return res.status(409).json({ error: "This plan has already been answered", code: "PLAN_NOT_OPEN" });
+    }
+    const updatedPlan = await prisma.treatmentPlan.findUniqueOrThrow({
+      where: { id: plan.id },
       include: { items: true },
     });
 
