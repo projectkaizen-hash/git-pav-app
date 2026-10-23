@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import crypto from "crypto";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { awardVisitPoints } from "../lib/rewards";
 import { requireAuth, AuthRequest } from "../middleware/auth";
@@ -201,6 +202,28 @@ async function getTotalQueueCount(shiftId: string): Promise<number> {
   });
 }
 
+/** True for a write refused by a unique index, such as the one-open-shift rule. */
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+/**
+ * Renumbers a shift's accepted and in-progress stops 1..n in one statement,
+ * keeping their current order (VR-8).
+ */
+async function renumberQueue(db: Prisma.TransactionClient | typeof prisma, shiftId: string, orderBy: "accepted_at" | "queue_position") {
+  const order = orderBy === "accepted_at" ? Prisma.sql`"accepted_at"` : Prisma.sql`"queue_position"`;
+  await db.$executeRaw`
+    UPDATE "van_service_requests" AS r
+    SET "queue_position" = ranked.position
+    FROM (
+      SELECT "id", ROW_NUMBER() OVER (ORDER BY ${order} ASC NULLS LAST, "id") AS position
+      FROM "van_service_requests"
+      WHERE "shift_id" = ${shiftId}::uuid AND "status" IN ('accepted', 'in_progress')
+    ) AS ranked
+    WHERE r."id" = ranked."id" AND r."queue_position" IS DISTINCT FROM ranked.position`;
+}
+
 // Local pointInPolygon removed — unified coverage checking lives in
 // lib/van-coverage.ts (PostGIS-first with JS fallback).
 
@@ -243,16 +266,26 @@ router.post("/shift/start", requireAuth, requireRole("operator"), validateBody(s
 
   const { lat, lng, accuracyM } = req.body;
 
-  const shift = await prisma.vanShift.create({
-    data: {
-      vanId: van.id,
-      operatorId: opProfile.id,
-      status: "online",
-      lastLat: lat ?? null,
-      lastLng: lng ?? null,
-      lastLocationAt: lat != null ? new Date() : null,
-    },
-  });
+  // The checks above give a helpful message; the partial unique indexes on
+  // open shifts stop two starts that race past them (VR-6).
+  let shift;
+  try {
+    shift = await prisma.vanShift.create({
+      data: {
+        vanId: van.id,
+        operatorId: opProfile.id,
+        status: "online",
+        lastLat: lat ?? null,
+        lastLng: lng ?? null,
+        lastLocationAt: lat != null ? new Date() : null,
+      },
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: "Shift already active", message: "This operator or van already has an open shift." });
+    }
+    throw error;
+  }
 
   if (lat != null && lng != null) {
     await prisma.vanLocationPing.create({
@@ -469,6 +502,14 @@ router.get("/queue", requireAuth, requireRole("operator"), async (req: AuthReque
 });
 
 // POST /api/van/requests/:id/accept
+//
+// Safe to tap twice or retry (VR-1). Accepts on one shift run one at a time
+// under a transaction-scoped advisory lock, so the queue-depth check and
+// position can't race. The request moves pending -> accepted with a
+// compare-and-set in the same transaction that creates the appointment, so
+// exactly one appointment exists. The deposit capture is keyed per request,
+// and an intent that is already captured counts as captured, so a retry
+// after a lost response succeeds instead of failing as "not authorised".
 router.post("/requests/:id/accept", requireAuth, requireRole("operator"), validateParams(vanRequestIdParamsSchema), async (req: AuthRequest, res: Response) => {
   const opProfile = await getOperatorProfile(req.user!.sub);
 
@@ -477,134 +518,79 @@ router.post("/requests/:id/accept", requireAuth, requireRole("operator"), valida
   if (shift.status === "paused") return res.status(409).json({ error: "Shift is paused. Resume before accepting." });
 
   const requestId = String(req.params.id);
-  const request = await prisma.vanServiceRequest.findUnique({ where: { id: requestId } });
-  if (!request) return res.status(404).json({ error: "Request not found" });
-  if (request.shiftId !== shift.id) return res.status(403).json({ error: "Request not on your shift" });
-  if (request.status !== "pending") return res.status(409).json({ error: `Request is already ${request.status}` });
-  
-  // Check if request has expired
-  if (request.expiresAt && new Date() > request.expiresAt) {
-    return res.status(409).json({ error: "Request expired", message: "This request has expired. The patient may submit a new request." });
-  }
+  const outcome = await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`van-accept:${shift.id}`}))`;
 
-  // Check queue depth (accepted/in_progress only)
-  const acceptedCount = await prisma.vanServiceRequest.count({
-    where: { shiftId: shift.id, status: { in: ["accepted", "in_progress"] } },
-  });
-  if (acceptedCount >= MAX_QUEUE_DEPTH) {
-    return res.status(409).json({ error: "Queue full", message: `Maximum ${MAX_QUEUE_DEPTH} stops allowed.` });
-  }
+      const request = await tx.vanServiceRequest.findUnique({ where: { id: requestId } });
+      if (!request) return { status: 404, body: { error: "Request not found" } };
+      if (request.shiftId !== shift.id) return { status: 403, body: { error: "Request not on your shift" } };
+      // A repeat of an accept that already went through.
+      if (request.status === "accepted" && request.appointmentId) return { status: 200, body: request, alreadyAccepted: true };
+      if (request.status !== "pending") return { status: 409, body: { error: `Request is already ${request.status}` } };
 
-  const nextPosition = acceptedCount + 1;
-
-  // Capture payment if PaymentIntent exists
-  if (request.paymentIntentId && !isMockStripe) {
-    // The intent must be in the authorised (capturable) state before we can
-    // capture — i.e. the patient completed PaymentSheet. A pre-capture check
-    // gives the operator an actionable message instead of a raw Stripe error.
-    let intent: Stripe.PaymentIntent;
-    try {
-      intent = await stripe.paymentIntents.retrieve(request.paymentIntentId);
-    } catch (error) {
-      console.error("Failed to retrieve PaymentIntent for capture:", error);
-      return res.status(502).json({
-        error: "Payment service unavailable",
-        message: "Could not verify the deposit before acceptance. Please try again.",
-      });
-    }
-
-    if (intent.status !== "requires_capture") {
-      return res.status(409).json({
-        error: "Deposit not authorized",
-        message:
-          intent.status === "canceled"
-            ? "The patient's deposit hold was released. Please decline this request."
-            : `The patient has not completed deposit authorization (status: ${intent.status}). Ask them to authorize the deposit, then accept.`,
-      });
-    }
-
-    try {
-      // Keyed per request id: a retried accept (e.g. network drop after the
-      // Stripe call) reuses the same key instead of re-capturing blind.
-      const paymentIntent = await stripe.paymentIntents.capture(
-        request.paymentIntentId,
-        undefined,
-        { idempotencyKey: `van-deposit-capture:${request.id}` }
-      );
-      if (paymentIntent.status !== "succeeded") {
-        console.error(`Payment capture failed for intent ${request.paymentIntentId}: ${paymentIntent.status}`);
-        return res.status(409).json({ 
-          error: "Payment capture failed", 
-          message: "The payment could not be captured. Please ask the patient to try again." 
-        });
+      if (request.expiresAt && new Date() > request.expiresAt) {
+        return { status: 409, body: { error: "Request expired", message: "This request has expired. The patient may submit a new request." } };
       }
-    } catch (error) {
-      console.error("Failed to capture payment:", error);
-      return res.status(409).json({ 
-        error: "Payment capture failed", 
-        message: "The payment could not be captured. Please ask the patient to try again." 
+
+      const acceptedCount = await tx.vanServiceRequest.count({
+        where: { shiftId: shift.id, status: { in: ["accepted", "in_progress"] } },
       });
-    }
+      if (acceptedCount >= MAX_QUEUE_DEPTH) {
+        return { status: 409, body: { error: "Queue full", message: `Maximum ${MAX_QUEUE_DEPTH} stops allowed.` } };
+      }
+
+      const service = await tx.service.findUnique({ where: { id: request.serviceId } });
+      if (!service) return { status: 404, body: { error: "Service not found" } };
+
+      if (request.paymentIntentId && !isMockStripe) {
+        const captureFailure = await captureVanDeposit(request.id, request.paymentIntentId);
+        if (captureFailure) return captureFailure;
+      }
+
+      const claimed = await tx.vanServiceRequest.updateMany({
+        where: { id: request.id, status: "pending" },
+        data: { status: "accepted", phase: "queued", queuePosition: acceptedCount + 1, acceptedAt: new Date() },
+      });
+      if (claimed.count !== 1) return { status: 409, body: { error: "Request changed while accepting. Refresh and try again." } };
+
+      const etaSeconds = request.etaSecondsSnapshot || 1800; // Default 30 min if no snapshot
+      const startTime = new Date(Date.now() + etaSeconds * 1000);
+      const appointment = await tx.appointment.create({
+        data: {
+          patientId: request.patientId,
+          serviceId: request.serviceId,
+          channel: "van",
+          vanId: request.vanId,
+          startTimeUtc: startTime,
+          endTimeUtc: new Date(startTime.getTime() + service.durationMinutes * 60 * 1000),
+          status: "confirmed",
+          accessDetails: request.accessDetails as any,
+          totalPricePence: service.pricePence,
+          depositPaidPence: request.paymentIntentId ? service.depositPence : 0,
+          stripePaymentId: request.paymentIntentId,
+        },
+      });
+      await tx.vanServiceRequest.update({ where: { id: request.id }, data: { appointmentId: appointment.id } });
+      await renumberQueue(tx, shift.id, "accepted_at");
+
+      return { status: 200, body: await tx.vanServiceRequest.findUniqueOrThrow({ where: { id: request.id } }) };
+    },
+    // Holds the lock across the Stripe capture; a timeout rolls back and the
+    // retry finds the deposit already captured.
+    { maxWait: 10_000, timeout: 30_000 }
+  );
+
+  if (outcome.status !== 200 || "alreadyAccepted" in outcome) {
+    return res.status(outcome.status).json(outcome.body);
   }
+  const updated = outcome.body as { id: string; patientId: string };
 
-  // Create corresponding Appointment record
-  const service = await prisma.service.findUnique({ where: { id: request.serviceId } });
-  if (!service) return res.status(404).json({ error: "Service not found" });
-
-  // Calculate appointment times based on ETA
-  const now = new Date();
-  const etaSeconds = request.etaSecondsSnapshot || 1800; // Default 30 min if no snapshot
-  const startTime = new Date(now.getTime() + etaSeconds * 1000);
-  const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
-
-  const appointment = await prisma.appointment.create({
-    data: {
-      patientId: request.patientId,
-      serviceId: request.serviceId,
-      channel: "van",
-      vanId: request.vanId,
-      startTimeUtc: startTime,
-      endTimeUtc: endTime,
-      status: "confirmed",
-      accessDetails: request.accessDetails as any,
-      totalPricePence: service.pricePence,
-      depositPaidPence: request.paymentIntentId ? service.depositPence : 0,
-      stripePaymentId: request.paymentIntentId,
-    },
-  });
-
-  const updated = await prisma.vanServiceRequest.update({
-    where: { id: request.id },
-    data: {
-      status: "accepted",
-      phase: "queued",
-      queuePosition: nextPosition,
-      acceptedAt: new Date(),
-      appointmentId: appointment.id,
-    },
-  });
-
-  // Renumber queue to ensure unique positions
-  await prisma.$transaction(async (tx) => {
-    const allAccepted = await tx.vanServiceRequest.findMany({
-      where: { shiftId: shift.id, status: { in: ["accepted", "in_progress"] } },
-      orderBy: { acceptedAt: "asc" },
-    });
-    
-    for (let i = 0; i < allAccepted.length; i++) {
-      await tx.vanServiceRequest.update({
-        where: { id: allAccepted[i].id },
-        data: { queuePosition: i + 1 },
-      });
-    }
-  });
-
-  // Send notification to patient
   await sendPatientNotification(
-    request.patientId,
+    updated.patientId,
     "Van Request Accepted",
     "Your van visit request has been accepted. The van is on its way!",
-    { requestId: request.id, status: "accepted" }
+    { requestId: updated.id, status: "accepted" }
   );
 
   // Seed the patient's first live ETA immediately (bypasses drift/throttle
@@ -615,6 +601,56 @@ router.post("/requests/:id/accept", requireAuth, requireRole("operator"), valida
 
   return res.json(updated);
 });
+
+/**
+ * Captures a van deposit, or confirms it was already captured. Returns the
+ * error response to send, or null when the deposit is captured.
+ */
+async function captureVanDeposit(requestId: string, paymentIntentId: string): Promise<{ status: number; body: Record<string, string> } | null> {
+  // The intent must be authorised (the patient completed PaymentSheet). A
+  // pre-capture check gives the operator an actionable message instead of a
+  // raw Stripe error.
+  let intent: Stripe.PaymentIntent;
+  try {
+    intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  } catch (error) {
+    console.error("Failed to retrieve PaymentIntent for capture:", error);
+    return { status: 502, body: { error: "Payment service unavailable", message: "Could not verify the deposit before acceptance. Please try again." } };
+  }
+
+  // Captured by an earlier attempt whose response was lost.
+  if (intent.status === "succeeded") return null;
+
+  if (intent.status !== "requires_capture") {
+    return {
+      status: 409,
+      body: {
+        error: "Deposit not authorized",
+        message:
+          intent.status === "canceled"
+            ? "The patient's deposit hold was released. Please decline this request."
+            : `The patient has not completed deposit authorization (status: ${intent.status}). Ask them to authorize the deposit, then accept.`,
+      },
+    };
+  }
+
+  const failed = { status: 409, body: { error: "Payment capture failed", message: "The payment could not be captured. Please ask the patient to try again." } };
+  try {
+    // Keyed per request id: a retried accept reuses the same key instead of
+    // capturing blind.
+    const captured = await stripe.paymentIntents.capture(paymentIntentId, undefined, {
+      idempotencyKey: `van-deposit-capture:${requestId}`,
+    });
+    if (captured.status !== "succeeded") {
+      console.error(`Payment capture failed for intent ${paymentIntentId}: ${captured.status}`);
+      return failed;
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to capture payment:", error);
+    return failed;
+  }
+}
 
 // POST /api/van/requests/:id/decline
 router.post("/requests/:id/decline", requireAuth, requireRole("operator"), validateParams(vanRequestIdParamsSchema), async (req: AuthRequest, res: Response) => {
@@ -742,16 +778,7 @@ router.post("/requests/:id/phase", requireAuth, requireRole("operator"), validat
 
   // Renumber queue after completion
   if (phase === "completed" || phase === "no_show") {
-    const remaining = await prisma.vanServiceRequest.findMany({
-      where: { shiftId: shift.id, status: { in: ["accepted", "in_progress"] } },
-      orderBy: { queuePosition: "asc" },
-    });
-    for (let i = 0; i < remaining.length; i++) {
-      await prisma.vanServiceRequest.update({
-        where: { id: remaining[i].id },
-        data: { queuePosition: i + 1 },
-      });
-    }
+    await renumberQueue(prisma, shift.id, "queue_position");
   }
 
   // Queue shape changed (advance, completion, or no-show) — every remaining
@@ -919,6 +946,10 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service) return res.status(404).json({ error: "Service not found" });
 
+  // The id is chosen up front so the deposit intent carries it from the
+  // start; no follow-up metadata update can fail and leave "pending" (VR-11).
+  const requestId = crypto.randomUUID();
+
   // Create Stripe PaymentIntent for deposit (manual capture)
   let paymentIntentId: string | null = null;
   let clientSecret: string | null = null;
@@ -939,7 +970,7 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
         ...(customerId ? { customer: customerId } : {}),
         capture_method: "manual", // Capture when operator accepts
         metadata: {
-          vanServiceRequestId: "pending", // Will be updated after request creation
+          vanServiceRequestId: requestId,
           patientUserId: req.user!.sub,
           serviceName: service.name,
           channel: "van",
@@ -961,30 +992,31 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
     }
   }
 
-  const request = await prisma.vanServiceRequest.create({
-    data: {
-      shiftId: bestShift.id,
-      vanId: bestShift.vanId,
-      patientId: patientProfile.id,
-      serviceId,
-      patientLat: patientPoint.lat,
-      patientLng: patientPoint.lng,
-      accessDetails: encryptedAccessDetails,
-      expiresAt: new Date(Date.now() + REQUEST_TIMEOUT_MS),
-      etaSecondsSnapshot: Math.round(bestEta),
-      paymentIntentId,
-    },
-  });
-
-  // Update PaymentIntent metadata with the actual request ID
-  if (!isMockStripe && paymentIntentId) {
-    try {
-      await stripe.paymentIntents.update(paymentIntentId, {
-        metadata: { vanServiceRequestId: request.id },
-      });
-    } catch (error) {
-      console.error("Failed to update PaymentIntent metadata:", error);
+  let request;
+  try {
+    request = await prisma.vanServiceRequest.create({
+      data: {
+        id: requestId,
+        shiftId: bestShift.id,
+        vanId: bestShift.vanId,
+        patientId: patientProfile.id,
+        serviceId,
+        patientLat: patientPoint.lat,
+        patientLng: patientPoint.lng,
+        accessDetails: encryptedAccessDetails,
+        expiresAt: new Date(Date.now() + REQUEST_TIMEOUT_MS),
+        etaSecondsSnapshot: Math.round(bestEta),
+        paymentIntentId,
+      },
+    });
+  } catch (error) {
+    // A second request that raced past the open-request check above: the
+    // unique index refuses it. Its unconfirmed intent is cancelled.
+    if (isUniqueViolation(error)) {
+      if (paymentIntentId) await releaseVanDeposit(paymentIntentId, "duplicate_request");
+      return res.status(409).json({ error: "You already have an active van request" });
     }
+    throw error;
   }
 
   // Send notification to patient about request creation
@@ -1237,10 +1269,17 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
     }
   }
 
-  const updated = await prisma.vanServiceRequest.update({
-    where: { id: request.id },
+  // Only if nothing changed since it was read: an operator accepting in the
+  // meantime has created an appointment this request doesn't know about yet.
+  // The deposit step above is safe to repeat, so the patient can retry.
+  const cancelled = await prisma.vanServiceRequest.updateMany({
+    where: { id: request.id, status: request.status, appointmentId: request.appointmentId },
     data: { status: "cancelled", phase: "cancelled" },
   });
+  if (cancelled.count !== 1) {
+    return res.status(409).json({ error: "Request changed while cancelling. Please try again." });
+  }
+  const updated = await prisma.vanServiceRequest.findUniqueOrThrow({ where: { id: request.id } });
 
   // Cancel linked appointment if it exists
   if (request.appointmentId) {
@@ -1252,16 +1291,7 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
 
   // Renumber queue if this was an accepted stop
   if (request.status === "accepted" || request.status === "in_progress") {
-    const remaining = await prisma.vanServiceRequest.findMany({
-      where: { shiftId: request.shiftId, status: { in: ["accepted", "in_progress"] } },
-      orderBy: { queuePosition: "asc" },
-    });
-    for (let i = 0; i < remaining.length; i++) {
-      await prisma.vanServiceRequest.update({
-        where: { id: remaining[i].id },
-        data: { queuePosition: i + 1 },
-      });
-    }
+    await renumberQueue(prisma, request.shiftId, "queue_position");
   }
 
   // Cancellation shortens everyone else's chain — recompute their ETAs.

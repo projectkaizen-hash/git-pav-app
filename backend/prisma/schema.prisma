@@ -649,6 +649,8 @@ model VanShift {
 
   @@index([vanId, status])
   @@index([operatorId, status])
+  // Also partial unique indexes on operator_id and van_id WHERE ended_at IS
+  // NULL (migrations 20261024030000/030100); Prisma can't declare them.
   @@map("van_shifts")
 }
 
@@ -703,6 +705,8 @@ model VanServiceRequest {
   @@index([vanId, status])
   @@index([patientId, status])
   @@index([shiftId, queuePosition])
+  // Also a partial unique index on patient_id for open requests (migration
+  // 20261024030200); Prisma can't declare it.
   @@map("van_service_requests")
 }
 
