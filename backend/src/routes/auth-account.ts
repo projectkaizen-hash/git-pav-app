@@ -26,55 +26,10 @@ import {
 import { communicationService } from "../lib/communication-service";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { pseudonymiseIp } from "../lib/audit-security";
+import { revokeSessions } from "../lib/session-revocation";
+import { toAuthUser } from "./auth";
 
 const router = Router();
-
-// Local copies of auth.ts private helpers (kept in sync deliberately —
-// importing would require exporting internals from a 600-line file).
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-type UserWithProfiles = {
-  id: string;
-  email: string;
-  phone?: string | null;
-  role: string;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  mfaEnabled: boolean;
-  patientProfile?: { id: string; firstName: string; lastName: string } | null;
-  clinicianProfile?: { id: string; fullName: string } | null;
-};
-
-function toAuthUser(user: UserWithProfiles) {
-  const clinicianName = user.clinicianProfile?.fullName?.trim().split(/\s+/) ?? [];
-  const clinicianLastName = clinicianName.slice(1).join(" ") || undefined;
-  const firstName = user.patientProfile?.firstName ?? clinicianName[0] ?? "";
-  const lastName = user.patientProfile?.lastName ?? clinicianLastName ?? "";
-
-  const profileId =
-    user.role === "patient"
-      ? user.patientProfile?.id
-      : user.role === "clinician"
-        ? user.clinicianProfile?.id
-        : undefined;
-
-  return {
-    id: user.id,
-    sub: user.id,
-    role: user.role as "patient" | "clinician" | "operator" | "admin",
-    email: user.email,
-    firstName: firstName || undefined,
-    lastName: lastName || undefined,
-    phone: user.phone || undefined,
-    emailVerified: user.emailVerified,
-    phoneVerified: user.phoneVerified ?? false,
-    isMfaEnabled: user.mfaEnabled,
-    mfaEnabled: user.mfaEnabled,
-    profileId,
-  };
-}
 
 // ─── GET /api/auth/account ────────────────────────────────────────────────
 // Account summary for the mobile profile/account screens, any role.
@@ -152,16 +107,11 @@ router.delete("/", requireAuth, async (req: AuthRequest, res: Response) => {
     }
   }
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: { isActive: false },
-    }),
-    prisma.authSession.updateMany({
-      where: { userId: user.id, revokedAt: null },
-      data: { revokedAt: new Date() },
-    }),
-  ]);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { isActive: false },
+  });
+  await revokeSessions({ userId: user.id });
 
   await createAuditLogWithIntegrity({
     action: "account.deletion_requested",
@@ -227,16 +177,11 @@ router.post("/change-password", requireAuth, async (req: AuthRequest, res: Respo
 
   const passwordHash = await argon2.hash(newPassword);
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash },
-    }),
-    prisma.authSession.updateMany({
-      where: { userId: user.id, revokedAt: null, id: { not: req.user!.sessionId } },
-      data: { revokedAt: new Date() },
-    }),
-  ]);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  });
+  await revokeSessions({ userId: user.id, id: { not: req.user!.sessionId } });
 
   await createAuditLogWithIntegrity({
     action: "account.password_changed",

@@ -5,30 +5,34 @@ import { prisma } from "../lib/prisma";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
-import { loginSchema, refreshSchema, registerSchema, authResponseSchema } from "../schemas/auth";
+import { checkEmailSchema, loginSchema, refreshSchema, registerSchema, authResponseSchema } from "../schemas/auth";
 import { emailVerificationService, passwordResetService, rateLimiter, otpService } from "../lib/otp-service";
 import { communicationService } from "../lib/communication-service";
+import { revokeSessions } from "../lib/session-revocation";
+import { redis } from "../lib/redis";
+import { pseudonymiseIp } from "../lib/audit-security";
 import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
 
 const router = Router();
+
+/** How long a just-rotated refresh token still gets the new one (AT-5). */
+const REFRESH_GRACE_SECONDS = 30;
 
 // Roles that always sign in with a one-time code as well as a password (CS-08).
 export const MFA_REQUIRED_ROLES: string[] = ["clinician", "admin"];
 
 // ─── POST /api/auth/check-email ────────────────────────────────────────────────
-router.post("/check-email", async (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ error: "Email is required" });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
+router.post("/check-email", validateBody(checkEmailSchema), async (req: Request, res: Response) => {
+  const normalizedEmail = String(req.body.email).trim().toLowerCase();
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    select: { id: true, role: true },
+    select: { id: true },
   });
 
-  return res.json({ exists: !!user, email: normalizedEmail, role: user?.role ?? null });
+  // Onboarding only needs to know whether to show sign-in or sign-up. The
+  // account's role isn't returned: it let anyone pick out staff accounts
+  // (CS-08, AT-3). The auth rate limiter applies to this route.
+  return res.json({ exists: !!user, email: normalizedEmail });
 });
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
@@ -109,12 +113,10 @@ router.post("/login", validateBody(loginSchema), async (req: Request, res: Respo
   }
 
   // Check for account lockout
+  // A locked account answers exactly like a wrong password, so the response
+  // doesn't confirm that the email has an account (AT-7).
   if (user.lockedUntil && new Date() < user.lockedUntil) {
-    const remainingMinutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-    return res.status(429).json({ 
-      error: "Account temporarily locked",
-      retryAfterMinutes: remainingMinutes 
-    });
+    return res.status(401).json({ error: "Invalid credentials" });
   }
 
   const valid = await argon2.verify(user.passwordHash, password);
@@ -228,27 +230,49 @@ router.post("/refresh", validateBody(refreshSchema), async (req: Request, res: R
     return;
   }
 
-  const validHash = session.refreshTokenHash === tokenHash;
-  if (!validHash) {
-    await prisma.authSession.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date() },
+  // Two refreshes with the same token can race (parallel requests after the
+  // access token expires). The first rotates; one that arrives within
+  // REFRESH_GRACE_SECONDS gets the same new refresh token instead of being
+  // treated as token theft (CS-08, AT-5). Outside that window, or if Redis is
+  // unavailable, reuse revokes the session as before.
+  const graceKey = `refresh-grace:${tokenHash}`;
+  let newRefreshToken: string;
+  if (session.refreshTokenHash === tokenHash) {
+    const candidate = signRefreshToken({
+      sub: session.user.id,
+      sessionId: session.id,
     });
-    return res.status(401).json({ error: "Invalid refresh token — session revoked" });
+    // Claim the rotation in Redis first, so a racing refresh always finds
+    // the winner's token there. null: another refresh claimed it first.
+    const claimed = await redis
+      .set(graceKey, candidate, "EX", REFRESH_GRACE_SECONDS, "NX")
+      .catch(() => "unavailable" as const);
+    if (claimed === null) {
+      const winner = await redis.get(graceKey).catch(() => null);
+      if (!winner) return res.status(401).json({ error: "Session expired or revoked" });
+      newRefreshToken = winner;
+    } else {
+      const rotated = await prisma.authSession.updateMany({
+        where: { id: session.id, refreshTokenHash: tokenHash, revokedAt: null },
+        data: {
+          refreshTokenHash: hashToken(candidate),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+      if (rotated.count !== 1) return res.status(401).json({ error: "Session expired or revoked" });
+      newRefreshToken = candidate;
+    }
+  } else {
+    // Only while the token handed out then is still the session's current
+    // one: an older token gets nothing from the grace window.
+    const cached = await redis.get(graceKey).catch(() => null);
+    const winner = cached && hashToken(cached) === session.refreshTokenHash ? cached : null;
+    if (!winner) {
+      await revokeSessions({ id: session.id });
+      return res.status(401).json({ error: "Invalid refresh token — session revoked" });
+    }
+    newRefreshToken = winner;
   }
-
-  // Rotate refresh token
-  const newRefreshToken = signRefreshToken({
-    sub: session.user.id,
-    sessionId: session.id,
-  });
-  const newHash = hashToken(newRefreshToken);
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-  await prisma.authSession.update({
-    where: { id: session.id },
-    data: { refreshTokenHash: newHash, expiresAt },
-  });
 
   const accessToken = signAccessToken({
     sub: session.user.id,
@@ -272,10 +296,7 @@ router.post("/refresh", validateBody(refreshSchema), async (req: Request, res: R
 router.post("/logout", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: "Unauthorised" });
 
-  await prisma.authSession.updateMany({
-    where: { id: req.user.sessionId, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
+  await revokeSessions({ id: req.user.sessionId });
 
   return res.json({ message: "Logged out" });
 });
@@ -302,10 +323,7 @@ router.get("/sessions", requireAuth, async (req: AuthRequest, res: Response) => 
 router.delete("/sessions/:id", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: "Unauthorised" });
 
-  await prisma.authSession.updateMany({
-    where: { id: String(req.params.id), userId: req.user.sub },
-    data: { revokedAt: new Date() },
-  });
+  await revokeSessions({ id: String(req.params.id), userId: req.user.sub });
 
   return res.json({ message: "Session revoked" });
 });
@@ -490,10 +508,7 @@ router.post("/password-reset/confirm", async (req: Request, res: Response) => {
   });
 
   // Revoke all sessions
-  await prisma.authSession.updateMany({
-    where: { userId: resetToken.userId },
-    data: { revokedAt: new Date() },
-  });
+  await revokeSessions({ userId: resetToken.userId });
 
   return res.json({ message: "Password reset successfully" });
 });
@@ -570,7 +585,8 @@ async function createSession(userId: string, req: Request) {
       refreshTokenHash: "",
       expiresAt,
       deviceInfo: req.headers["user-agent"] || null,
-      ipAddressHash: hashIp(req.ip || ""),
+      // Keyed HMAC, not a bare hash: an unsalted IPv4 hash is reversible (AT-7).
+      ipAddressHash: pseudonymiseIp(req.ip || ""),
     },
   });
 
@@ -596,10 +612,6 @@ async function createSession(userId: string, req: Request) {
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function hashIp(ip: string): string {
-  return crypto.createHash("sha256").update(ip).digest("hex");
 }
 
 type UserWithProfiles = {

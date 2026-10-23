@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { env } from "../config/env";
 import { prisma } from "./prisma";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
+import { denySessions } from "./session-revocation";
 
 // Erasure (UK GDPR Art. 17, CS-23). The clinical record is kept for the
 // statutory period (decisions log #9, draft pending legal review): 11 years
@@ -142,6 +143,7 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
     today: now,
   });
 
+  const sessionIds = (await prisma.authSession.findMany({ where: { userId }, select: { id: true } })).map((s) => s.id);
   const counts = await prisma.$transaction(async (tx) => {
     const removed = {
       sessions: (await tx.authSession.deleteMany({ where: { userId } })).count,
@@ -205,6 +207,8 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
     }
     return removed;
   });
+  // Access tokens for the deleted sessions stop working now, not in 15 minutes.
+  await denySessions(sessionIds);
 
   await createAuditLogWithIntegrity({
     action: "gdpr.erasure_completed",
