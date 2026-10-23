@@ -25,6 +25,10 @@ evidence and a proposed fix. Line numbers refer to `main` @ 07e372e.
 | BJ-2 | high | Reminder times are formatted in the server's time zone (UTC), so during BST every reminder shows the wrong time (1 hour early) |
 | PP-1 | high | Patients who never opened notification settings get **no** van/ETA push notifications (missing preferences row is treated as "push disabled", while the API reports the default as enabled) |
 | VR-1 | high | Van accept is not atomic: double-tap/concurrent accept creates two appointments; a retried accept after a successful capture is rejected as "deposit not authorised", and the request later expires and is refunded |
+| CF-1 | high | If `NODE_ENV` is anything other than exactly `production`/`staging`, the API silently runs with **public default JWT secrets** (forgeable tokens for any role) and mock Stripe |
+| SD-1 | high | The seed has no environment guard, creates an admin with the published password `Password123!`, and ships in the production image |
+| SV-1 | high | The production rate limit (200 requests / 15 min / IP) is lower than the app's own polling, and with no `trust proxy` setting every user behind a load balancer shares one bucket |
+| DB-1 / DB-2 | high | Erasure can't work at DB level (Restrict FKs, new tables with no FK), and there are no DB constraints against double-booking or duplicate shifts and requests |
 
 ---
 
@@ -283,3 +287,67 @@ Audit: in-process `setInterval` workers, started on every API process.
 | PV-1 | low | reliability | `public-van.ts` has its own `postcodeToCoordinates` with no timeout; an outage reports "outside our service area". | `public-van.ts:76-93` | Use `lib/geo.ts`; return "couldn't check" on failure. |
 | VS-1 | low | consistency | `POST /api/van/stops/:id/check-in` sets `on_site` without the "Van has arrived" push or ETA re-broadcast that the phase endpoint sends. | `van-stops.ts:60-66` vs `van.ts:674-680` | Share one transition function. |
 | DS-1 | ok | — | DSPT report is honest ("PROTOTYPE — NOT FOR PRODUCTION USE WITH PATIENT DATA"). Keep it that way until the assessment is done. | `dspt-audit.ts:44-50` | — |
+
+---
+
+## Backend: `prisma/`
+
+### `prisma/schema.prisma`
+
+Audit: data model. Good: verification, reset and MFA tokens are stored hashed (`auth.ts:69`, `:409`, `otp-service.ts:324`). Most foreign keys are indexed. Money is integer pence.
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| DB-1 | high | GDPR / data model | Erasure can't work at the database level. `Appointment`, `TreatmentPlan`, `VanServiceRequest` and `Prescription` reference the patient or clinician with the default `Restrict`, so deleting a `User` fails once they have any booking. The newer tables (`MessageThread`, `FinancingApplication`, `RewardRedemption`, `OralHealthMetric`, `WaitlistEntry`) have **no foreign key** to `users`, so a deleted or erased user leaves orphaned PHI behind. | `schema.prisma:236-262`, `:289-304`, `:565-596`, `:606-678`; `:439-450` | Decide on an erasure model with the retention decision (CO-2/AT-6): pseudonymise the profile, keep the clinical records you're legally required to retain, and add FKs with explicit `onDelete` to the new tables. This is a migration, so it needs review before it runs. |
+| DB-2 | high | data integrity | No database-level guard against the races found in the routes. Nothing stops overlapping appointments for a clinician or van (BK-2), two open shifts per operator or van, or two active van requests per patient (VR-1). Every guard is a read-then-write check in the application. | `schema.prisma:236-272`, `:530-548`, `:565-603` | Use `btree_gist` with an `EXCLUDE USING gist (clinician_id WITH =, tstzrange(start,end) WITH &&) WHERE status IN ('draft_hold','confirmed','in_progress')` (and the same for `van_id`). Add a partial unique index on `van_shifts(operator_id) WHERE ended_at IS NULL`, and another on `van_service_requests(patient_id) WHERE status IN ('pending','accepted','in_progress')`. Clean up existing duplicates first. |
+| DB-3 | medium | PHI at rest | `medicalHistory`, `triageData`, `accessDetails` (key-safe codes, door notes), `Message.body` and van `notes` are stored as plaintext. The envelope-encryption library exists, but only `routes/van.ts` uses it. `ConsentRecord.ipAddress` stores a raw IP, and `consents.ts:60,106,269` lets the **client choose** that IP (`ipAddress \|\| req.ip`), which weakens the consent evidence. | `schema.prisma:131`, `:248-249`, `:577`, `:627`; `consents.ts:22,60` | Encrypt the clinical free-text fields at the application layer (after EN-1 is fixed), or document that you rely on disk encryption. Always record the server-observed IP, hashed (HMAC) like the audit log. |
+| DB-4 | medium | data model | There are untyped strings where the code relies on fixed values. `TreatmentPlan.status`, `ScheduledNotification.status`, `NotificationHistory.status`, `FinancingApplication.status`, `ConsentRecord.consentType`/`lawfulBasis` and `Dependant.relationship` are free text. `Dependant.dob` and `WaitlistEntry.preferredDate` are `VarChar(10)` instead of `Date`. `DocumentVault.fileSizeBytes` is a `String`. `Clinic.operatingHours` is a string, so it can't drive slots (BK-1). | `schema.prisma:294`, `:343`, `:404-405`, `:428-429`, `:443`, `:459`, `:476`, `:643` | Use enums or CHECK constraints for status and type fields, and `@db.Date` for dates. Use a structured opening-hours table (see the BK-1 decision). |
+| DB-5 | medium | clinical safety | The fabricated defaults are in the schema too. `OralHealthMetric` defaults to 1,450 points, a 14-day streak, a 12 % plaque index, 4 % bleeding and 42 days to recall. `FinancingApplication` defaults to `status = 'pre_approved'` and a £4,000 limit. `Prescription.dispatchedAt` defaults to `now()`, so every row claims it was sent. | `schema.prisma:666-678`, `:636-644`, `:326` | Remove the defaults (0 or null) as part of the RW-1, FN-1 and RX-1 fixes, and add a nullable `dispatchedAt` set only after a real transmission. |
+| DB-6 | low | performance | Some indexes are missing for hot queries: the dispatcher polls `scheduled_notifications` by `(status, scheduled_for)` every minute, and `push_tokens(user_id)`, `auth_sessions(user_id)` and `notification_history(user_id)` aren't indexed. Some indexes are redundant because they duplicate unique ones: `patient_profiles(user_id)`, `clinician_profiles(gdc_number)` and `vans(registration_plate)`. | `background-jobs.ts:81-85`; `schema.prisma:144`, `:167`, `:201`, `:372-383` | Add the composite or FK indexes and drop the duplicates in a single additive migration. |
+| DB-7 | low | data model | The PostGIS `polygon` column and its trigger exist only in SQL, so Prisma doesn't know about them, which is why `migrate dev` wants to drop them (P0-1). | `20260921030000_add_postgis_geometry`, `20260926130000_add_polygon_geometry_column` | Declare `polygon Unsupported("geometry(Polygon,4326)")?` in `VanServicePolygon` so the diff is clean. |
+
+### `prisma/migrations/` (16)
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| MG-1 | blocker | data integrity | This is P0-1. The migration history doesn't produce the schema the code uses (5 tables and 3 columns missing). It needs one new additive migration generated with `migrate diff` against a shadow DB, plus a CI check (CI-1). | 00-baseline §1.1 | Covered by P0-1. |
+| MG-2 | medium | process | The newest migration (`20261023000000_add_messages_financing_rewards`) uses `CREATE TABLE/INDEX IF NOT EXISTS` throughout, and `20260921030000` wrapped its DDL in a conditional `DO` block that silently did nothing on fresh databases. Idempotent DDL hides drift: a migration "succeeds" against a database whose tables have a different shape. `fix_notification_relations` drops `audit_logs.integrity_hash`, which the next migration adds back, so any environment that ran the first without the second lost hashes. | migration files listed | Generate migrations with `prisma migrate dev --create-only`, review them with the migration-safety checklist, and don't use `IF NOT EXISTS` except for extensions. Add the drift check (CI-1). Leave the history as it is: those migrations are already applied wherever they ran. |
+
+### `prisma/seed.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| SD-1 | high | security | The seed has no environment guard. It creates **admin, clinician and operator accounts with the published password `Password123!`**, prints them, and runs `deleteMany` on the seeded patient's plans and documents. `tsconfig` includes `prisma/**`, so the compiled seed ships in the production image (`dist/prisma/seed.js`). One mistaken run against production creates a known-password admin. | `seed.ts:17`, `:247-372`, `:440`, `:469`, `:568-572`; `tsconfig.json:15` | Refuse to run when `NODE_ENV` is `production` or `staging` unless an explicit `ALLOW_SEED=demo` is set. Read demo passwords from env, or generate and print them once. Exclude `prisma/seed.ts` from the production build. Split reference data (services, vans) from demo users. |
+| SD-2 | low | data hygiene | The seeded GDC numbers (`248912`, `281034`) are realistic and may belong to real registrants. The phone numbers are correctly taken from Ofcom's drama ranges. | `seed.ts:310`, `:385` | Use numbers outside the issued range, or prefix them so they're obviously fake, and note this in the seed. |
+
+---
+
+## Backend: server, config, Docker, CI
+
+### `src/server.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| SV-1 | high | reliability | Rate limiting will lock out real users in production. The global limiter allows **200 requests per 15 minutes per IP**, but the app's own polling exceeds that. The operator app polls incoming requests every 5 s, the shift every 10 s and the route every 10 s, which is about 360 requests per 15 minutes before location pings. The patient's live-track screen (5 s) plus home (10 s) is about 270. In addition, `trust proxy` is never set, so behind a load balancer **every user shares the LB's IP** and the whole app gets 200 requests per 15 minutes, and 20 auth attempts, in total. The limiter's in-memory store also isn't shared across instances. | `server.ts:75-88`; no `trust proxy` anywhere; `(operator)/incoming.tsx:16`, `shift.tsx:24`, `route.tsx:20`, `(patient)/van/live-track.tsx:28`, `(tabs)/home.tsx:92` | Set `app.set("trust proxy", <hop count>)` for the real deployment. Key the limiters by user id when authenticated, and keep IP keys for auth endpoints. Use a Redis store (`rate-limit-redis`, since Redis is already a dependency). Size limits from measured polling, or move live updates to push or SSE. |
+| SV-2 | medium | reliability | There's no graceful shutdown. On SIGTERM (every deploy), the process doesn't stop accepting connections, drain in-flight requests (some of them in the middle of a Stripe capture), stop the background-job intervals, or disconnect Prisma and Redis. `unhandledRejection` is logged and swallowed. | `server.ts:216-249` | Add a SIGTERM handler: `server.close()`, then stop the jobs, then `prisma.$disconnect()` and `redis.quit()`, with a timeout. Treat unhandled rejections as errors to report. |
+| SV-3 | medium | observability | Request IDs don't line up. `server.ts` sets a random `x-request-id` on the **response**, the error handler reads the **request** header (or makes another random one), and the audit middleware reads the response header. One failing request produces two unrelated ids. `structured-logging.ts` expects `req.id`, which is never set. There is no error tracking (Sentry etc.). | `server.ts:70-73`; `error-handler.ts:71,99,114`; `audit.ts:90`; `structured-logging.ts:210` | Set one id per request (honour an inbound header from a trusted proxy), store it on `req`, echo it, and use it everywhere. Error tracking is a new third-party service, so that's your decision (Sentry is a paid service). |
+| SV-4 | low | correctness | All of `/`, `/health`, `/healthz` and `/readyz` are the same readiness check, and they return `dsptMode: "active"`, which overstates compliance (DS-1 says the opposite). `/livez` is correct. | `server.ts:96-124` | Keep `/livez` and `/readyz`, and drop the `dsptMode` field. |
+
+### `src/config/env.ts`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| CF-1 | high | security | Config fails open. Secret validation only runs when `NODE_ENV` is exactly `production` or `staging`. Any other value (unset, `prod`, `Production`, `test`) silently uses **public default secrets**: `dev_access_secret_change_me` for JWTs (so anyone can forge tokens for any role), the dev encryption key, and the mock Stripe key (which turns off payment checks, see VP-1 and BK-5). It also relaxes CORS. The docker-compose `api` service runs with `NODE_ENV: development`. | `env.ts:7-10`, `:63`, `:172-178`; `docker-compose.yml` | Fail closed. Only use defaults when `NODE_ENV` is `development` or `test` **and** an explicit `ALLOW_DEV_DEFAULTS=1` is set, and reject unknown `NODE_ENV` values. In production, reject `sk_test_mock*` and `pk_test_placeholder`, and require Daily, Postmark/Twilio, S3 and `APP_URL` too (today they're unchecked and degrade silently, see OS-1). |
+
+### `backend/Dockerfile`, `docker-compose.yml`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| DK-1 | medium | security / ops | There's no `.dockerignore`, so `COPY . .` sends `backend/.env` (real secrets) and `backend/uploads/` (patient files in dev) into the build stage and its layer cache. The runtime image copies the full `node_modules` (including dev dependencies) and the seed (SD-1). There's no `HEALTHCHECK`, no migration step or documented release command, and uploads go to a container-local directory (OS-1). | `Dockerfile:10-24` | Add a `.dockerignore` (`.env*`, `uploads`, `node_modules`, `testsprite_tests`) and `npm prune --omit=dev`. Make `prisma` a runtime dependency or add a separate migrate image, and document `prisma migrate deploy` as the release step. Add `HEALTHCHECK` on `/livez`. |
+| DK-2 | low | security | Compose publishes Postgres and Redis on all host interfaces (`5432`, `6379`), with a password-less Redis and a committed DB password. That's fine for local dev, but it shouldn't be the template for any shared host. | `docker-compose.yml` | Bind to `127.0.0.1:` and add a comment that compose is dev-only. |
+
+### `.github/workflows/ci.yml`
+
+| ID | Sev | Category | Finding | Evidence | Proposed fix |
+|---|---|---|---|---|---|
+| CI-1 | high | process | This is P0-2, plus coverage gaps. `prisma db execute --stdin` without `--schema`/`--url` fails, and the e2e suite calls Daily and postcodes.io live. There is no **drift check**, which is how P0-1 got in. CI doesn't run lint, the Docker build, `expo-doctor`, or the three mobile jest files (see baseline §2: jest isn't installed and they test inline copies). | `ci.yml` "Apply migrations", "E2E suite"; 00-baseline | Add `--schema prisma/schema.prisma` to `db execute`. Add `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url … --exit-code`. Stub Daily and postcodes in e2e (a test-only fetch preload, like the one used for the baseline). Add a `docker build` job, and make lint warn-only until the 208 problems are fixed. |
