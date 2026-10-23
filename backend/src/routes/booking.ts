@@ -20,6 +20,7 @@ import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
+import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 
 const router = Router();
 
@@ -130,12 +131,12 @@ router.post("/hold-slot", requireAuth, validateBody(holdSlotSchema), async (req:
 // ─── POST /api/booking/appointments ──────────────────────────────────────────
 router.post("/appointments", requireAuth, validateBody(createAppointmentSchema), async (req: AuthRequest, res: Response) => {
   const {
-    serviceId, channel, clinicianId, clinicId, vanId,
+    serviceId, channel, clinicianId, clinicId, vanId, dependantId,
     startTimeUtc, endTimeUtc, slotId, accessDetails, triageData,
   } = req.body;
   const patientId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("create-appointment", { 
-    patientId, serviceId, startTimeUtc, endTimeUtc 
+  const idempotencyKey = generateIdempotencyKey("create-appointment", {
+    patientId, serviceId, startTimeUtc, endTimeUtc, dependantId: dependantId ?? null,
   });
 
   return withIdempotency(idempotencyKey, async () => {
@@ -145,6 +146,22 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     });
     if (!profile) {
       return { error: "Patient profile not found", status: 404 };
+    }
+
+    // Only the child's own guardian books for them, and only while under 16.
+    if (dependantId) {
+      const dependant = await prisma.dependant.findFirst({
+        where: { id: dependantId, guardianId: profile.id },
+        select: { dob: true },
+      });
+      if (!dependant) return { error: "Dependant not found", status: 404 };
+      const childDob = parseIsoDate(dependant.dob);
+      if (!childDob || ageInYears(childDob) >= DEPENDANT_MAX_AGE) {
+        return {
+          error: "This child is now 16 or over and needs to book from their own account.",
+          status: 422,
+        };
+      }
     }
 
     const service = await prisma.service.findUnique({ where: { id: serviceId } });
@@ -213,6 +230,7 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     const appointment = await prisma.appointment.create({
       data: {
         patientId: profile.id,
+        dependantId: dependantId || null,
         clinicianId: clinicianId || null,
         serviceId,
         channel,
@@ -231,6 +249,7 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
         service: true,
         clinician: { select: { fullName: true } },
         clinic: { select: { name: true, address: true } },
+        dependant: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -275,6 +294,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
         clinician: { select: { fullName: true, photoUrl: true } },
         clinic: { select: { name: true, address: true } },
         patient: { select: { id: true, firstName: true, lastName: true, dob: true } },
+        dependant: { select: { id: true, firstName: true, lastName: true, dob: true } },
       },
       orderBy: { startTimeUtc: "asc" },
     });
@@ -282,6 +302,16 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     return res.json(
       schedule.map((a) => ({
         ...a,
+        // When a guardian booked for their child, the child is the one seen;
+        // the guardian stays as the account holder.
+        dependant: a.dependant
+          ? {
+              id: a.dependant.id,
+              firstName: a.dependant.firstName,
+              lastName: a.dependant.lastName,
+              age: ageInYears(new Date(a.dependant.dob)),
+            }
+          : null,
         patient: a.patient
           ? {
               id: a.patient.id,
@@ -308,6 +338,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
       service: { select: { name: true, durationMinutes: true } },
       clinician: { select: { fullName: true, photoUrl: true } },
       clinic: { select: { name: true, address: true } },
+      dependant: { select: { id: true, firstName: true, lastName: true } },
     },
     orderBy: { startTimeUtc: "desc" },
   });
@@ -336,6 +367,7 @@ router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clini
           medicalHistory: true,
         },
       },
+      dependant: { select: { id: true, firstName: true, lastName: true, dob: true } },
     },
   });
   if (!appointment) return res.status(404).json({ error: "Appointment not found" });
@@ -350,6 +382,20 @@ router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clini
   });
 
   const p = appointment.patient;
+  const address = [p.addressLine1, p.addressLine2, p.city, p.postcode].filter(Boolean).join(", ") || null;
+  const child = appointment.dependant;
+  if (child) {
+    // The child is the patient. The guardian's own medical history must not
+    // be shown as the child's, and the child has none recorded yet.
+    return res.json({
+      appointmentId: appointment.id,
+      startTimeUtc: appointment.startTimeUtc,
+      patient: { id: child.id, firstName: child.firstName, lastName: child.lastName, dob: child.dob, address },
+      guardian: { id: p.id, firstName: p.firstName, lastName: p.lastName },
+      medicalHistory: null,
+    });
+  }
+
   return res.json({
     appointmentId: appointment.id,
     startTimeUtc: appointment.startTimeUtc,
@@ -358,8 +404,9 @@ router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clini
       firstName: p.firstName,
       lastName: p.lastName,
       dob: p.dob,
-      address: [p.addressLine1, p.addressLine2, p.city, p.postcode].filter(Boolean).join(", ") || null,
+      address,
     },
+    guardian: null,
     // As recorded by the patient; the app shows "Not recorded" when null.
     medicalHistory: p.medicalHistory ?? null,
   });

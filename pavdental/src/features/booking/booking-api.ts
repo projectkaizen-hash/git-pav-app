@@ -83,6 +83,8 @@ export async function createAppointment(data: {
   clinicianId?: string;
   clinicId?: string;
   vanId?: string;
+  // Booking for the guardian's child (decisions log #17).
+  dependantId?: string;
   startTimeUtc: string;
   endTimeUtc: string;
   slotId?: string;

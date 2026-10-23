@@ -127,6 +127,14 @@ router.delete("/:id", requireAuth, validateParams(dependantIdParamsSchema), asyn
     return res.status(404).json({ error: "Dependant not found" });
   }
 
+  // Visits booked for the child stay linked to them as clinical records.
+  const visits = await prisma.appointment.count({ where: { dependantId: existing.id } });
+  if (visits > 0) {
+    return res.status(409).json({
+      error: "This child has bookings or visit records, so their profile can't be removed. Please contact the practice.",
+    });
+  }
+
   await prisma.dependant.delete({ where: { id: existing.id } });
   return res.json({ success: true });
 });

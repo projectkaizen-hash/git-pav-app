@@ -494,7 +494,7 @@ export default function TreatmentPlanDetailScreen() {
                 </View>
                 <View style={styles.sigDisplayRow}>
                   <ThemedText variant="title" style={styles.cursiveSignature}>
-                    {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Monika Rostova"}
+                    {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Patient"}
                   </ThemedText>
                 </View>
                 <View style={styles.sigBaseline} />

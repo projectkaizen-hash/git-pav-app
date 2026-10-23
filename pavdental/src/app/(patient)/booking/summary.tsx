@@ -8,6 +8,7 @@ import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent } from "@/features/booking/booking-api";
 import { useRewards } from "@/features/hooks/use-dental-api";
+import { useDependants } from "@/features/account/account-hooks";
 
 export default function BookingSummaryScreen() {
   const router = useRouter();
@@ -21,6 +22,9 @@ export default function BookingSummaryScreen() {
   const { data: rewardsData } = useRewards();
   const voucher: { voucherCode: string; discountPence: number } | undefined = rewardsData?.vouchers?.[0];
   const [useVoucher, setUseVoucher] = useState(false);
+  // A parent or guardian can book for their child (decisions log #17).
+  const { data: dependants = [] } = useDependants();
+  const [dependantId, setDependantId] = useState<string | null>(null);
   const depositPence = service?.depositPence || 2000;
   const voucherFits = !!voucher && voucher.discountPence < depositPence;
   const depositDuePence = useVoucher && voucherFits ? depositPence - voucher!.discountPence : depositPence;
@@ -69,6 +73,7 @@ export default function BookingSummaryScreen() {
         startTimeUtc: startTime,
         endTimeUtc: endTime,
         slotId: slot?.id,
+        dependantId: dependantId ?? undefined,
       });
 
       // 2. Create PaymentIntent on the server — amount is server-authoritative
@@ -140,6 +145,34 @@ export default function BookingSummaryScreen() {
             Slot reserved for {formatTimer(secondsRemaining)}. Complete payment to secure.
           </ThemedText>
         </View>
+
+        {dependants.length > 0 && (
+          <Card elevation="raised" style={styles.card}>
+            <ThemedText variant="headline" style={styles.sectionTitle}>
+              Who is this appointment for?
+            </ThemedText>
+            <View style={styles.whoRow}>
+              {[{ id: null as string | null, label: "Me" }, ...dependants.map((d) => ({ id: d.id as string | null, label: d.firstName }))].map(
+                (option) => {
+                  const selected = dependantId === option.id;
+                  return (
+                    <Pressable
+                      key={option.id ?? "me"}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => setDependantId(option.id)}
+                      style={[styles.whoPill, selected && styles.whoPillSelected]}
+                    >
+                      <ThemedText variant="caption" style={selected ? styles.whoTextSelected : styles.label}>
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                }
+              )}
+            </View>
+          </Card>
+        )}
 
         {/* Appointment Breakdown Card */}
         <Card elevation="raised" style={styles.card}>
@@ -381,6 +414,26 @@ const styles = StyleSheet.create({
   timerText: {
     color: colors.warning,
     flex: 1,
+    fontWeight: "600",
+  },
+  whoPill: {
+    borderColor: colors.separator,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  whoPillSelected: {
+    backgroundColor: colors.inkSubtle,
+    borderColor: colors.ink,
+  },
+  whoRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  whoTextSelected: {
+    color: colors.ink,
     fontWeight: "600",
   },
   walletButton: {

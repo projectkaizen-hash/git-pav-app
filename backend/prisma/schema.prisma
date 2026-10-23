@@ -265,6 +265,9 @@ model Appointment {
   van                  Van?               @relation(fields: [vanId], references: [id])
   prescriptions        Prescription[]
   vanServiceRequest    VanServiceRequest?
+  /// Set when a guardian booked this visit for their child (decisions log #17).
+  dependantId          String?            @map("dependant_id") @db.Uuid
+  dependant            Dependant?         @relation(fields: [dependantId], references: [id], onDelete: Restrict)
   pointsAward          RewardPointsAward?
   rewardVoucher        RewardRedemption?
 
@@ -275,6 +278,7 @@ model Appointment {
   @@index([status])
   @@index([holdExpiresAt])
   @@index([stripePaymentId])
+  @@index([dependantId])
   @@map("appointments")
 }
 
@@ -437,6 +441,7 @@ model Dependant {
   consentSigned Boolean        @default(false) @map("consent_signed")
   createdAt     DateTime       @default(now()) @map("created_at")
   guardian      PatientProfile @relation("GuardianDependants", fields: [guardianId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
 
   @@index([guardianId])
   @@map("dependants")

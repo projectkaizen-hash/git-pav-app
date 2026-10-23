@@ -11,6 +11,8 @@ import { summariseMedicalHistory, describeList } from "@/features/clinical/medic
 interface ClinicalContext {
   appointmentId: string;
   patient: { id: string; firstName: string; lastName: string; dob: string | null; address: string | null };
+  // Set when a parent or guardian booked this visit for their child.
+  guardian?: { id: string; firstName: string; lastName: string } | null;
   medicalHistory: Record<string, unknown> | null;
 }
 
@@ -118,6 +120,11 @@ export default function ClinicianRxDispenseScreen() {
           <ThemedText variant="body">
             {patient.firstName} {patient.lastName}
           </ThemedText>
+          {context.data.guardian ? (
+            <ThemedText variant="caption" style={styles.address}>
+              Child, booked by parent or guardian {context.data.guardian.firstName} {context.data.guardian.lastName}
+            </ThemedText>
+          ) : null}
           <ThemedText variant="caption" style={styles.address}>
             {patient.address ?? "Address not recorded"}
           </ThemedText>

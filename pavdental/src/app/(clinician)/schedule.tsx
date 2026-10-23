@@ -20,7 +20,10 @@ export default function ClinicianScheduleScreen() {
         id: a.id,
         time: new Date(a.startTimeUtc).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
         type: a.channel || "video",
-        patientName: a.patient
+        // A child booked by their guardian is the one being seen.
+        patientName: a.dependant
+          ? `${a.dependant.firstName} ${a.dependant.lastName} (${a.dependant.age}y)${a.patient ? `, with ${a.patient.firstName} ${a.patient.lastName}` : ""}`
+          : a.patient
           ? `${a.patient.firstName} ${a.patient.lastName}${a.patient.age ? ` (${a.patient.age}y)` : ""}`
           : (a.patientName || "Verified Patient"),
         chiefComplaint: a.service?.name || a.serviceName || "Dental Consultation",
@@ -138,9 +141,9 @@ export default function ClinicianScheduleScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "patient",
-                    email: "monika@pavdental.com",
-                    firstName: "Monika",
-                    lastName: "Grabowska",
+                    email: "patient@example.test",
+                    firstName: "Test",
+                    lastName: "Patient",
                   });
                   router.replace("/(patient)/(tabs)/home" as any);
                 }}
@@ -152,9 +155,9 @@ export default function ClinicianScheduleScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "operator",
-                    email: "van@pavdental.com",
-                    firstName: "Dave",
-                    lastName: "Miller",
+                    email: "operator@example.test",
+                    firstName: "Test",
+                    lastName: "Operator",
                   });
                   router.replace("/(operator)/route" as any);
                 }}

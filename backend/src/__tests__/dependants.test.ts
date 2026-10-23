@@ -13,6 +13,7 @@ describe("dependants", () => {
   const tag = crypto.randomUUID().slice(0, 8);
   const userIds: string[] = [];
   const profileIds: string[] = [];
+  const appointmentIds: string[] = [];
 
   const yearsAgo = (years: number, days = 0) => {
     const d = new Date();
@@ -45,6 +46,8 @@ describe("dependants", () => {
   });
 
   afterAll(async () => {
+    await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
+    await prisma.clinicianProfile.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.dependant.deleteMany({ where: { guardianId: { in: profileIds } } });
     await prisma.patientProfile.deleteMany({ where: { id: { in: profileIds } } });
     await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -97,6 +100,68 @@ describe("dependants", () => {
       });
     expect((await put(yearsAgo(14))).status).toBe(422);
     expect((await put(yearsAgo(16))).status).toBe(200);
+  });
+
+  it("lets a guardian book for their own child only, and shows the child to the clinician", async () => {
+    const guardian = await makePatient("booker", yearsAgo(38));
+    const stranger = await makePatient("stranger", yearsAgo(38));
+    const child = await (await addChild(guardian.token, { firstName: "Synthetic", lastName: "Child" })).json() as any;
+
+    const clinicianUser = await prisma.user.create({
+      data: { email: `dep-clinician-${tag}@example.test`, passwordHash: "x", role: "clinician" },
+    });
+    userIds.push(clinicianUser.id);
+    const clinician = await prisma.clinicianProfile.create({
+      data: {
+        userId: clinicianUser.id,
+        fullName: "Synthetic Clinician",
+        gdcNumber: String(900000 + crypto.randomInt(0, 99999)),
+        roleTitle: "Dentist",
+      },
+    });
+    const clinicianToken = signAccessToken({ sub: clinicianUser.id, role: "clinician", sessionId: crypto.randomUUID() });
+    const service = await prisma.service.findFirstOrThrow({ select: { id: true } });
+
+    const book = (token: string, dependantId: string, dayOffset: number) =>
+      fetch(`${baseUrl}/api/booking/appointments`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: service.id,
+          channel: "clinic",
+          clinicianId: clinician.id,
+          dependantId,
+          startTimeUtc: new Date(Date.now() + dayOffset * 86400000).toISOString(),
+        }),
+      }).then(async (r) => ({ status: r.status, body: (await r.json()) as any }));
+
+    expect((await book(stranger.token, child.id, 20)).status).toBe(404);
+    const booked = await book(guardian.token, child.id, 21);
+    expect(booked.status).toBe(201);
+    appointmentIds.push(booked.body.id);
+    expect(booked.body.dependant).toMatchObject({ id: child.id, firstName: "Synthetic" });
+
+    // Confirm it so it appears on the clinician's schedule.
+    await prisma.appointment.update({ where: { id: booked.body.id }, data: { status: "confirmed" } });
+    const schedule = (await (await fetch(`${baseUrl}/api/booking/appointments`, {
+      headers: { Authorization: `Bearer ${clinicianToken}` },
+    })).json()) as any[];
+    expect(schedule.find((a) => a.id === booked.body.id)?.dependant).toMatchObject({ id: child.id, age: 8 });
+
+    // The clinician sees the child as the patient, not the guardian's history.
+    const context = (await (await fetch(`${baseUrl}/api/booking/appointments/${booked.body.id}/clinical-context`, {
+      headers: { Authorization: `Bearer ${clinicianToken}` },
+    })).json()) as any;
+    expect(context.patient).toMatchObject({ id: child.id, lastName: "Child" });
+    expect(context.guardian).toMatchObject({ id: guardian.profileId });
+    expect(context.medicalHistory).toBeNull();
+
+    // A child with visit records can't be unlinked.
+    const unlink = await fetch(`${baseUrl}/api/patients/dependants/${child.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${guardian.token}` },
+    });
+    expect(unlink.status).toBe(409);
   });
 
   it("counts age in whole years", () => {

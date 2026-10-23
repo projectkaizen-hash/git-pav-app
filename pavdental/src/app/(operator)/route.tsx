@@ -349,9 +349,9 @@ export default function OperatorRouteScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "patient",
-                    email: "monika@pavdental.com",
-                    firstName: "Monika",
-                    lastName: "Grabowska",
+                    email: "patient@example.test",
+                    firstName: "Test",
+                    lastName: "Patient",
                   });
                   router.replace("/(patient)/(tabs)/home" as any);
                 }}
@@ -363,7 +363,7 @@ export default function OperatorRouteScreen() {
                 onPress={() => {
                   useAuthStore.getState().updateUser({
                     role: "clinician",
-                    email: "doctor@pavdental.com",
+                    email: "clinician@example.test",
                     firstName: "Demo",
                     lastName: "Clinician",
                   });
