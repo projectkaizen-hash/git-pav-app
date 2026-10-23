@@ -116,7 +116,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
 
   const handleCallHotline = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Linking.openURL("tel:0800728336").catch(() => {});
+    Linking.openURL("tel:08001938786").catch(() => {});
   };
 
   return (
@@ -282,7 +282,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
                   Need urgent advice by phone?
                 </ThemedText>
                 <ThemedText variant="subhead" style={styles.hotlineNumber}>
-                  Call the practice (0800 728 336) ›
+                  Call the practice (0800 1938 786) ›
                 </ThemedText>
               </View>
             </Pressable>

@@ -238,5 +238,5 @@ export const env = Object.freeze({
   // Printed on prescriptions as the prescriber's practice address.
   practiceName: readOptional("PRACTICE_NAME") ?? "Pav Dental",
   practiceAddress: readOptional("PRACTICE_ADDRESS"),
-  practicePhone: readOptional("PRACTICE_PHONE") ?? "0800 728 336",
+  practicePhone: readOptional("PRACTICE_PHONE") ?? "0800 1938 786",
 });
