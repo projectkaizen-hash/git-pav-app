@@ -1,57 +1,99 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Input, Button, Card } from "@/components";
+import { useQuery } from "@tanstack/react-query";
+import { ThemedText, Input, Button, Card, ErrorState, ToggleSwitch } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
-
 import { authFetch } from "@/features/auth/auth-api";
+import { summariseMedicalHistory, describeList } from "@/features/clinical/medical-summary";
 
+interface ClinicalContext {
+  appointmentId: string;
+  patient: { id: string; firstName: string; lastName: string; dob: string | null; address: string | null };
+  medicalHistory: Record<string, unknown> | null;
+}
+
+async function fetchClinicalContext(appointmentId: string): Promise<ClinicalContext> {
+  const res = await authFetch(`/api/booking/appointments/${encodeURIComponent(appointmentId)}/clinical-context`);
+  if (!res.ok) throw new Error(res.status === 404 ? "not_found" : "failed");
+  return res.json();
+}
+
+// Prescribing is only possible against a real appointment: the patient, their
+// address and their recorded allergies all come from the API. Nothing is
+// pre-filled, and a missing record says "Not recorded", never "none" (MC-1).
 export default function ClinicianRxDispenseScreen() {
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const params = useLocalSearchParams<{
-    patientName?: string;
-    appointmentId?: string;
-    patientAddress?: string;
-  }>();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
 
-  const patientName = params.patientName || "Alexander Wright";
-  const patientAddress = params.patientAddress || "14 Harley Street, Marylebone, London, W1G 9PQ";
-  const clinicianName = currentUser?.firstName
-    ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
-    : "Dr. Tariq Pav";
+  const context = useQuery({
+    queryKey: ["clinical-context", appointmentId],
+    queryFn: () => fetchClinicalContext(appointmentId!),
+    enabled: !!appointmentId,
+  });
 
-  const [medication, setMedication] = useState("Amoxicillin 500mg Capsules");
-  const [dosageInstructions, setDosageInstructions] = useState("1 capsule three times daily for 5 days.");
-  const [pharmacyName, setPharmacyName] = useState("Boots Pharmacy (Harley Street, London)");
+  const [medication, setMedication] = useState("");
+  const [dosageInstructions, setDosageInstructions] = useState("");
+  const [pharmacyName, setPharmacyName] = useState("");
+  const [allergiesChecked, setAllergiesChecked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDispatched, setIsDispatched] = useState(false);
+
+  const clinicianName = currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : null;
+
+  if (!appointmentId) {
+    return (
+      <View style={styles.centered}>
+        <ErrorState message="Open a prescription from a patient's appointment. There is no patient selected." />
+      </View>
+    );
+  }
+  if (context.isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator accessibilityLabel="Loading patient record" />
+      </View>
+    );
+  }
+  if (context.isError || !context.data) {
+    return (
+      <View style={styles.centered}>
+        <ErrorState
+          message="Couldn't load this patient's record, so a prescription can't be written."
+          onRetry={() => context.refetch()}
+        />
+      </View>
+    );
+  }
+
+  const { patient } = context.data;
+  const summary = summariseMedicalHistory(context.data.medicalHistory);
+  const hasAllergyWarning = summary.allergies === null || summary.allergies.length > 0;
+  const canSubmit =
+    medication.trim() !== "" && dosageInstructions.trim() !== "" && pharmacyName.trim() !== "" && allergiesChecked;
 
   const handleSignAndSend = async () => {
+    if (!canSubmit) return;
     setIsSubmitting(true);
     try {
       const res = await authFetch("/api/prescriptions", {
         method: "POST",
         body: JSON.stringify({
-          appointmentId:
-            params.appointmentId && params.appointmentId.length > 10
-              ? params.appointmentId
-              : undefined,
-          medicationName: medication,
-          dosageInstructions,
-          dispensingPharmacy: pharmacyName,
+          appointmentId,
+          medicationName: medication.trim(),
+          dosageInstructions: dosageInstructions.trim(),
+          dispensingPharmacy: pharmacyName.trim(),
         }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to dispatch prescription");
+        throw new Error(err.error || "The prescription wasn't saved");
       }
-      setIsDispatched(true);
+      Alert.alert("Prescription saved", "The prescription has been recorded against this appointment.");
       router.replace("/(clinician)/schedule");
     } catch (err: any) {
-      console.warn("[Rx dispatch error]", err);
-      Alert.alert("Prescription Dispatch Failed", err?.message || "Failed to dispatch prescription");
+      Alert.alert("Prescription not saved", err?.message || "The prescription wasn't saved");
     } finally {
       setIsSubmitting(false);
     }
@@ -62,61 +104,66 @@ export default function ClinicianRxDispenseScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Electronic Prescription (EPS)
+            Prescription
           </ThemedText>
-          <ThemedText variant="subhead" style={styles.subtitle}>
-            Prescribing clinician: {clinicianName} · GDC #248912
-          </ThemedText>
+          {clinicianName ? (
+            <ThemedText variant="subhead" style={styles.subtitle}>
+              Prescriber: {clinicianName}
+            </ThemedText>
+          ) : null}
         </View>
 
-        {/* Patient Recipient Card */}
         <Card elevation="raised" style={styles.card}>
-          <ThemedText variant="headline">Patient Information</ThemedText>
-          <ThemedText variant="body">{patientName}</ThemedText>
-          <ThemedText variant="caption" style={styles.address}>
-            {patientAddress}
+          <ThemedText variant="headline">Patient</ThemedText>
+          <ThemedText variant="body">
+            {patient.firstName} {patient.lastName}
           </ThemedText>
-          <ThemedText variant="caption" style={styles.allergyWarning}>
-            Known allergy: Penicillin — check before dispensing
+          <ThemedText variant="caption" style={styles.address}>
+            {patient.address ?? "Address not recorded"}
           </ThemedText>
         </Card>
 
-        {/* Prescription Form */}
+        <Card elevation="raised" style={[styles.card, hasAllergyWarning && styles.warningCard]}>
+          <ThemedText variant="headline">Allergies</ThemedText>
+          <ThemedText
+            variant="body"
+            style={hasAllergyWarning ? styles.allergyWarning : undefined}
+            accessibilityRole={hasAllergyWarning ? "alert" : undefined}
+          >
+            {describeList(summary.allergies, "No known allergies (as reported by the patient)")}
+          </ThemedText>
+          <ThemedText variant="headline" style={styles.sectionGap}>
+            Current medications
+          </ThemedText>
+          <ThemedText variant="body">{describeList(summary.medications, "None reported")}</ThemedText>
+          {summary.conditions.length > 0 ? (
+            <>
+              <ThemedText variant="headline" style={styles.sectionGap}>
+                Conditions
+              </ThemedText>
+              <ThemedText variant="body">{summary.conditions.join(", ")}</ThemedText>
+            </>
+          ) : null}
+        </Card>
+
         <View style={styles.form}>
-          <Input
-            label="Prescribed Drug & Formulation"
-            value={medication}
-            onChangeText={setMedication}
-          />
-
-          <Input
-            label="Dosage & Frequency"
-            value={dosageInstructions}
-            onChangeText={setDosageInstructions}
-          />
-
-          <Input
-            label="Nominated Dispensing Pharmacy"
-            value={pharmacyName}
-            onChangeText={setPharmacyName}
+          <Input label="Medicine, strength and form" value={medication} onChangeText={setMedication} />
+          <Input label="Dose and frequency" value={dosageInstructions} onChangeText={setDosageInstructions} />
+          <Input label="Dispensing pharmacy" value={pharmacyName} onChangeText={setPharmacyName} />
+          <ToggleSwitch
+            label="I have checked this prescription against the patient's allergies and medications"
+            value={allergiesChecked}
+            onValueChange={setAllergiesChecked}
           />
         </View>
-
-        {isDispatched ? (
-          <View style={styles.successBox}>
-            <ThemedText variant="caption" style={styles.successText}>
-              ✓ Digitally signed with GDC credentials and transmitted to NHS Spine / EPS. Returning to schedule...
-            </ThemedText>
-          </View>
-        ) : null}
       </ScrollView>
 
-      {/* Footer Action */}
       <View style={styles.footer}>
         <Button
-          title={isSubmitting ? "Digitally Signing..." : "Sign & Dispatch E-Prescription (EPS) ✍️"}
+          title={isSubmitting ? "Saving..." : "Sign and save prescription"}
           size="lg"
           loading={isSubmitting}
+          disabled={!canSubmit || isSubmitting}
           onPress={handleSignAndSend}
         />
       </View>
@@ -132,6 +179,13 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: "600",
     marginTop: 2,
+  },
+  centered: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+    justifyContent: "center",
+    padding: spacing.md,
   },
   card: {
     backgroundColor: colors.systemBackground,
@@ -159,18 +213,15 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xxs,
   },
+  sectionGap: {
+    marginTop: spacing.sm,
+  },
   subtitle: {
     color: colors.secondaryLabel,
   },
-  successBox: {
-    alignItems: "center",
-    backgroundColor: colors.successSubtle,
-    borderRadius: 8,
-    padding: spacing.sm,
-  },
-  successText: {
-    color: colors.success,
-    fontWeight: "600",
+  warningCard: {
+    borderColor: colors.danger,
+    borderWidth: 1,
   },
   title: {
     color: colors.label,

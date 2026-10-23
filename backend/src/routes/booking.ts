@@ -3,7 +3,9 @@ import Stripe from "stripe";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { redis } from "../lib/redis";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { pseudonymiseIp } from "../lib/audit-security";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import {
   appointmentIdParamsSchema,
@@ -308,6 +310,56 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
   });
 
   return res.json(appointments);
+});
+
+// ─── GET /api/booking/appointments/:id/clinical-context ──────────────────────
+// What a clinician needs on screen to prescribe or treat for this appointment:
+// who the patient is and their recorded allergies, medications and conditions.
+// Only the appointment's own clinician may read it, and every read is audited.
+router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clinician"), validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const clinician = await prisma.clinicianProfile.findUnique({
+    where: { userId: req.user!.sub },
+    select: { id: true },
+  });
+  if (!clinician) return res.status(403).json({ error: "Clinician profile required" });
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: String(req.params.id), clinicianId: clinician.id },
+    include: {
+      patient: {
+        select: {
+          id: true, firstName: true, lastName: true, dob: true,
+          addressLine1: true, addressLine2: true, city: true, postcode: true,
+          medicalHistory: true,
+        },
+      },
+    },
+  });
+  if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+  await createAuditLogWithIntegrity({
+    action: "clinical_record.read.appointment_context",
+    actorId: req.user!.sub,
+    resourceId: appointment.patient.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { appointmentId: appointment.id },
+  });
+
+  const p = appointment.patient;
+  return res.json({
+    appointmentId: appointment.id,
+    startTimeUtc: appointment.startTimeUtc,
+    patient: {
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      dob: p.dob,
+      address: [p.addressLine1, p.addressLine2, p.city, p.postcode].filter(Boolean).join(", ") || null,
+    },
+    // As recorded by the patient; the app shows "Not recorded" when null.
+    medicalHistory: p.medicalHistory ?? null,
+  });
 });
 
 // ─── PATCH /api/booking/appointments/:id/confirm ─────────────────────────────

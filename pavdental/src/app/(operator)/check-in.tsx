@@ -1,41 +1,78 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Card, Button, Badge } from "@/components";
+import { useQuery } from "@tanstack/react-query";
+import { ThemedText, Card, Button, ErrorState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
+import { fetchCurrentShift } from "@/features/van/van-api";
+import { VanServiceRequest } from "@/features/van/van-types";
 
+// The stop (patient, address, procedure) comes from the operator's live shift
+// queue, never from defaults (MC-2). Operators have no clinical-record access,
+// so this screen shows no clinical flags; the clinician sees those.
 export default function OperatorCheckInScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    stopId?: string;
-    patientName?: string;
-    address?: string;
-    procedure?: string;
-  }>();
+  const { stopId } = useLocalSearchParams<{ stopId?: string }>();
 
-  const patientName = params.patientName || "Alexander Wright";
-  const address = params.address || "14 Harley Street, London, W1G 9PQ";
-  const procedure = params.procedure || "Comprehensive Exam & AirFlow Hygiene";
+  const shiftQuery = useQuery({
+    queryKey: ["operator-shift"],
+    queryFn: fetchCurrentShift,
+    enabled: !!stopId,
+  });
 
   const [vanParked, setVanParked] = useState(false);
   const [patientBoarded, setPatientBoarded] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
+  if (!stopId) {
+    return (
+      <View style={styles.centered}>
+        <ErrorState message="Open check-in from a stop on your route. No stop is selected." />
+      </View>
+    );
+  }
+  if (shiftQuery.isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator accessibilityLabel="Loading stop" />
+      </View>
+    );
+  }
+  const stop = (shiftQuery.data?.queue as VanServiceRequest[] | undefined)?.find((s) => s.id === stopId);
+  if (shiftQuery.isError || !stop) {
+    return (
+      <View style={styles.centered}>
+        <ErrorState
+          message="This stop isn't on your current shift, so it can't be checked in."
+          onRetry={() => shiftQuery.refetch()}
+        />
+      </View>
+    );
+  }
+
+  const patientName = [stop.patient?.firstName, stop.patient?.lastName].filter(Boolean).join(" ") || "Patient";
+  const address =
+    [stop.accessDetails?.addressLine1, stop.accessDetails?.postcode].filter(Boolean).join(", ") || "Address not recorded";
+  const procedure = stop.service?.name ?? "Procedure not recorded";
 
   const handleStartTreatment = async () => {
-    if (params.stopId && params.stopId.length > 5) {
-      await authFetch(`/api/van/stops/${params.stopId}/check-in`, {
-        method: "POST",
-      }).catch(() => {});
+    setIsCheckingIn(true);
+    try {
+      const res = await authFetch(`/api/van/stops/${encodeURIComponent(stop.id)}/check-in`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Check-in failed");
+      }
+      router.push({
+        pathname: "/(operator)/offline-capture" as any,
+        params: { stopId: stop.id, patientName, procedure },
+      });
+    } catch (err: any) {
+      Alert.alert("Check-in failed", err?.message || "Check-in failed");
+    } finally {
+      setIsCheckingIn(false);
     }
-
-    router.push({
-      pathname: "/(operator)/offline-capture" as any,
-      params: {
-        stopId: params.stopId,
-        patientName,
-        procedure,
-      },
-    });
   };
 
   return (
@@ -46,7 +83,7 @@ export default function OperatorCheckInScreen() {
             Arrival & Patient Boarding
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            {address} · {patientName}
+            {address} · {patientName} · {procedure}
           </ThemedText>
         </View>
 
@@ -89,27 +126,15 @@ export default function OperatorCheckInScreen() {
           </View>
         </Card>
 
-        {/* Patient Clinical Profile Snapshot */}
-        <Card elevation="raised" style={styles.card}>
-          <View style={styles.rowBetween}>
-            <ThemedText variant="headline">Patient Clinical Flags</ThemedText>
-            <Badge label="Allergies Recorded" variant="warning" />
-          </View>
-          <ThemedText variant="caption" style={styles.flagText}>
-            Penicillin allergy noted on file.
-          </ThemedText>
-          <ThemedText variant="caption" style={styles.flagText}>
-            🦷 Chief complaint: Occlusal sensitivity on LR7.
-          </ThemedText>
-        </Card>
       </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
         <Button
-          title="Commence Treatment & Open Chart ›"
+          title="Check in and start treatment"
           size="lg"
-          disabled={!vanParked || !patientBoarded}
+          loading={isCheckingIn}
+          disabled={!vanParked || !patientBoarded || isCheckingIn}
           onPress={handleStartTreatment}
         />
       </View>
@@ -125,6 +150,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.label,
+  },
+  centered: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+    justifyContent: "center",
+    padding: spacing.md,
   },
   checkInfo: {
     flex: 1,
@@ -146,10 +178,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  flagText: {
-    color: colors.label,
-    fontWeight: "500",
-  },
   footer: {
     backgroundColor: colors.systemBackground,
     borderTopColor: colors.separator,
@@ -158,11 +186,6 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.xxs,
-  },
-  rowBetween: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
   separator: {
     backgroundColor: colors.separator,
