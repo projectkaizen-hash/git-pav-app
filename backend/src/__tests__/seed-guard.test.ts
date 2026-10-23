@@ -1,0 +1,54 @@
+import { spawnSync } from "child_process";
+import path from "path";
+import { planSeed } from "../lib/seed-guard";
+
+describe("planSeed", () => {
+  it("uses the well-known local password in development and test", () => {
+    expect(planSeed({ NODE_ENV: "development" })).toEqual({ demoPassword: "Password123!", printPassword: true });
+    expect(planSeed({ NODE_ENV: "test" }).demoPassword).toBe("Password123!");
+  });
+
+  it("uses SEED_DEMO_PASSWORD locally when set, without printing it", () => {
+    expect(planSeed({ NODE_ENV: "development", SEED_DEMO_PASSWORD: "local-only-pass" })).toEqual({
+      demoPassword: "local-only-pass",
+      printPassword: false,
+    });
+  });
+
+  it.each(["production", "staging", "", "prod", undefined])("refuses NODE_ENV=%p without ALLOW_SEED=demo", (nodeEnv) => {
+    expect(() => planSeed({ NODE_ENV: nodeEnv, SEED_DEMO_PASSWORD: "a-long-unique-password" })).toThrow(
+      /Refusing to seed/
+    );
+  });
+
+  it("refuses demo seeding of a deployed database with a missing, short or published password", () => {
+    for (const password of [undefined, "short", "Password123!"]) {
+      expect(() =>
+        planSeed({ NODE_ENV: "staging", ALLOW_SEED: "demo", SEED_DEMO_PASSWORD: password })
+      ).toThrow(/SEED_DEMO_PASSWORD/);
+    }
+  });
+
+  it("allows an explicit demo seed with a unique password", () => {
+    expect(
+      planSeed({ NODE_ENV: "staging", ALLOW_SEED: "demo", SEED_DEMO_PASSWORD: "a-long-unique-password" })
+    ).toEqual({ demoPassword: "a-long-unique-password", printPassword: false });
+  });
+});
+
+describe("prisma/seed.ts", () => {
+  jest.setTimeout(60_000);
+
+  it("exits before touching the database when NODE_ENV=production", () => {
+    const result = spawnSync("npx", ["tsx", "prisma/seed.ts"], {
+      cwd: path.resolve(__dirname, "../.."),
+      // An unreachable database: if the guard didn't stop it first, the
+      // failure would be a connection error instead of the refusal.
+      env: { ...process.env, NODE_ENV: "production", DATABASE_URL: "postgresql://nobody@127.0.0.1:1/none" },
+      encoding: "utf8",
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr + result.stdout).toMatch(/Refusing to seed/);
+    expect(result.stdout).not.toContain("Seeding");
+  });
+});

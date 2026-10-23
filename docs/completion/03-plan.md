@@ -148,6 +148,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 - **Skills:** none specific
 - **Tests:** the seed refuses to run in production or staging without `ALLOW_SEED=demo`
 - **Acceptance:** the compiled seed isn't in the image
+- **Note:** delivered with a separate `tsconfig.build.json` (application code only) and `.dockerignore`. Splitting reference data from demo users changes which rows a seed creates, so it waits for your decision on the seeded rows.
 - **Depends on:** none
 - **Size:** S
 

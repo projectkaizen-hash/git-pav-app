@@ -6,3 +6,5 @@ test
 .env.*
 !.env.example
 *.log
+prisma/seed.ts
+dump.rdb

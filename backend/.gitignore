@@ -7,3 +7,4 @@ testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
 .env*
 !.env.example
+dump.rdb
