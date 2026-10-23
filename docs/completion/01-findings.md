@@ -9,7 +9,7 @@ evidence and a proposed fix. Line numbers refer to `main` @ 07e372e.
 
 | ID | Sev | Summary |
 |---|---|---|
-| BK-5 | **blocker** | `PATCH /api/booking/appointments/:id/confirm` confirms an appointment **without payment**: no payment id → no check at all; any client-sent id starting `pi_e2e_` / `pi_mock_` skips Stripe even with live keys; any succeeded intent (any amount, any appointment) is accepted; `depositPaidPence` is taken from the request body |
+| BK-5 | **blocker** | `PATCH /api/booking/appointments/:id/confirm` confirms an appointment **without payment**: no payment id → no check at all; any client-sent id starting `pi_e2e_` / `pi_mock_` skips Stripe even with live keys; any succeeded intent (any amount, any appointment) is accepted; `depositPaidPence` is taken from the request body. **Reproduced locally** with a non-mock `sk_test_` key: a new patient confirmed a clinic appointment with an empty payment and `depositPaidPence: 999999` → 200 `confirmed` |
 | WH-1 | high | A clinic deposit that succeeds after the 10-minute hold has expired is kept: the webhook matches 0 rows, the appointment stays cancelled, and nothing refunds or alerts |
 | MF-1 | high | MFA is never enforced: `requireMFA` exists but no route uses it, and phone-OTP login lets clinicians/admins in with an SMS code alone |
 | P0-1 | blocker | Schema/migration drift: `migrate deploy` produces a DB the code can't run against; `migrate dev` would drop the PostGIS column (see 00-baseline §1.1) |
