@@ -17,6 +17,7 @@ import {
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { env } from "../config/env";
+import { deriveSubKey } from "./encryption";
 
 export interface StorageConfig {
   provider: "s3" | "cloudinary" | "local";
@@ -205,7 +206,7 @@ class ObjectStorage {
 
     const payload = `${key}:${expiresAtMs}`;
     const signature = crypto
-      .createHmac("sha256", env.encryptionKey)
+      .createHmac("sha256", deriveSubKey("signed-url:v1"))
       .update(payload)
       .digest("hex");
 
@@ -229,7 +230,7 @@ class ObjectStorage {
     const key = this.sanitizeKey(rawKey);
     const payload = `${key}:${expiresAtMs}`;
     const expected = crypto
-      .createHmac("sha256", env.encryptionKey)
+      .createHmac("sha256", deriveSubKey("signed-url:v1"))
       .update(payload)
       .digest("hex");
 
