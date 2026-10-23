@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -13,6 +13,11 @@ import { authApi } from "@/features/auth/auth-api";
 import { useAppLockStore } from "@/features/app-lock/app-lock-store";
 import { AppLockScreen } from "@/features/app-lock/app-lock-screen";
 import { useNotificationManager } from "@/features/notifications/notification-hooks";
+import { initErrorTracking, reportError } from "@/lib/error-tracking";
+import { ThemedText, Button } from "@/components";
+import { colors, spacing } from "@/theme";
+
+initErrorTracking();
 
 const STRIPE_PUBLISHABLE_KEY =
   process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_STRIPE_PK ?? "";
@@ -43,6 +48,37 @@ function NotificationSetup() {
 
   return null;
 }
+
+// ─── Error boundary ───────────────────────────────────────────────────────────
+// Expo Router renders this when a screen throws. The error is reported
+// (scrubbed, see lib/error-tracking) and the person can try again.
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  useEffect(() => {
+    reportError(error, "error-boundary");
+  }, [error]);
+
+  return (
+    <View style={errorStyles.container}>
+      <ThemedText variant="headline">Something went wrong</ThemedText>
+      <ThemedText variant="body" style={errorStyles.body}>
+        Please try again. If it keeps happening, call us on 0800 1938 786.
+      </ThemedText>
+      <Button title="Try again" onPress={() => retry()} />
+    </View>
+  );
+}
+
+const errorStyles = StyleSheet.create({
+  body: { color: colors.secondaryLabel, textAlign: "center" },
+  container: {
+    alignItems: "center",
+    backgroundColor: colors.systemBackground,
+    flex: 1,
+    gap: spacing.md,
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+});
 
 // ─── Root layout ──────────────────────────────────────────────────────────────
 // Hydrates auth state from SecureStore before rendering any route.

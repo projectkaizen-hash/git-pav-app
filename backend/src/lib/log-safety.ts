@@ -15,6 +15,20 @@ export function maskPhone(phone: string): string {
   return digits.length >= 4 ? `***${digits.slice(-4)}` : "***";
 }
 
+const PATTERNS: [RegExp, string][] = [
+  [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]"],
+  [/\b(?:Bearer\s+)?eyJ[\w-]+\.[\w-]+\.[\w-]+/g, "[token]"],
+  [/\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+/g, "[key]"],
+  [/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi, "[postcode]"],
+  [/(?:\+44\s?|\b0)(?:\d\s?){9,10}\b/g, "[phone]"],
+  [/\b\d{3}\s?\d{3}\s?\d{4}\b/g, "[number]"],
+];
+
+/** Replaces emails, tokens, keys, postcodes and phone or NHS-style numbers. */
+export function scrubText(text: string): string {
+  return PATTERNS.reduce((out, [pattern, label]) => out.replace(pattern, label), text);
+}
+
 /**
  * An error reduced to fields that are safe to log. Prisma error messages can
  * quote the values a query was called with (names, notes, emails), so for
@@ -28,5 +42,5 @@ export function safeError(err: unknown): { name: string; code?: string; message?
     const frames = err.stack?.split("\n").filter((line) => line.trimStart().startsWith("at ")).join("\n");
     return { name: err.name, code, stack: frames };
   }
-  return { name: err.name, code, message: err.message, stack: err.stack };
+  return { name: err.name, code, message: scrubText(err.message), stack: err.stack && scrubText(err.stack) };
 }

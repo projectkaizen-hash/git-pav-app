@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { safeError } from "../lib/log-safety";
+import { reportError } from "../lib/error-tracking";
 
 /**
  * Error carrying an intended HTTP status. Thrown by helpers (e.g. missing
@@ -41,6 +42,11 @@ export function errorHandler(
   // an internal failure and only exposes its message outside production.
   const isHttpError = err instanceof HttpError;
   const status = isHttpError ? err.status : 500;
+  if (status >= 500) {
+    // The route pattern (":id"), never the URL with its ids and query.
+    const route = req.route?.path ? `${req.baseUrl}${req.route.path}` : req.baseUrl || "unmatched";
+    reportError(err, { requestId, method: req.method, route });
+  }
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   res.status(status).json({

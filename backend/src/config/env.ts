@@ -242,4 +242,8 @@ export const env = Object.freeze({
   // Retention sweeps only report until this is "true" (CS-23); then van
   // location history older than 30 days is deleted daily.
   retentionEnforce: readOptional("RETENTION_ENFORCE") === "true",
+  // Error tracking (CS-44). Off unless a DSN is set; see lib/error-tracking.ts.
+  sentryDsn: readOptional("SENTRY_DSN"),
+  sentryEnvironment: readOptional("SENTRY_ENVIRONMENT") ?? nodeEnv,
+  sentryRelease: readOptional("SENTRY_RELEASE"),
 });
