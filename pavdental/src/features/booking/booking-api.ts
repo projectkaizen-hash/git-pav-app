@@ -129,6 +129,9 @@ export async function createPaymentIntent(appointmentId: string, voucherCode?: s
     publishableKey: string;
     amountPence: number;
     discountPence: number;
+    // The patient's Stripe Customer, so the sheet can show saved cards.
+    customerId: string | null;
+    customerEphemeralKeySecret: string | null;
     isMock: boolean;
   }>;
 }

@@ -30,91 +30,117 @@ const upload = multer({
 });
 
 // ─── POST /api/video/rooms ───────────────────────────────────────────────────
-// Creates a Daily.co WebRTC room for tele-dentistry consultation
-router.post("/rooms", requireAuth, validateBody(createVideoRoomSchema), async (req: AuthRequest, res: Response) => {
-  const { appointmentId } = req.body;
+// Joins the private Daily room for one video appointment. There is one room
+// per appointment, and only that appointment's clinician and patient get a
+// meeting token for it; the patient only once the clinician has admitted them.
+// A room URL on its own lets nobody in.
+const ROOM_GRACE_SECONDS = 30 * 60;
+const ROOM_LATE_LIMIT_MS = 2 * 60 * 60 * 1000;
 
+const roomNameFor = (appointmentId: string) => `pav-${appointmentId}`;
+
+async function getOrCreatePrivateRoom(name: string, expSeconds: number) {
+  const headers = { Authorization: `Bearer ${DAILY_API_KEY}` };
   try {
-    let existingAppointment: {
-      id: string;
-      accessDetails: unknown;
-      patient: { userId: string };
-      clinician: { userId: string } | null;
-    } | null = null;
+    return await dailyApiClient.get<{ name: string; url: string; privacy?: string }>(`/rooms/${name}`, { headers });
+  } catch (err: any) {
+    if (err?.statusCode !== 404) throw err;
+  }
+  return dailyApiClient.post<{ name: string; url: string; privacy?: string }>(
+    "/rooms",
+    {
+      name,
+      privacy: "private",
+      properties: {
+        exp: expSeconds,
+        eject_at_room_exp: true,
+        enable_chat: true,
+        enable_screenshare: false,
+        enable_prejoin_ui: false,
+        start_video_off: false,
+        start_audio_off: false,
+      },
+    },
+    { headers }
+  );
+}
 
-    if (appointmentId) {
-      existingAppointment = await prisma.appointment.findUnique({
-        where: { id: appointmentId },
-        include: { patient: true, clinician: true },
-      });
+router.post("/rooms", requireAuth, validateBody(createVideoRoomSchema), async (req: AuthRequest, res: Response) => {
+  const { appointmentId } = req.body as { appointmentId: string };
 
-      if (!existingAppointment) {
-        return res.status(404).json({ error: "Appointment not found" });
-      }
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      patient: { select: { userId: true, firstName: true } },
+      clinician: { select: { userId: true, fullName: true } },
+    },
+  });
+  const isPatient = !!appointment && req.user!.sub === appointment.patient.userId;
+  const isClinician = !!appointment && !!appointment.clinician && req.user!.sub === appointment.clinician.userId;
+  // Same answer for "no such appointment" and "not yours".
+  if (!appointment || (!isPatient && !isClinician)) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
+  if (appointment.channel !== "video") {
+    return res.status(409).json({ error: "This appointment isn't a video consultation" });
+  }
+  if (appointment.status !== "confirmed" && appointment.status !== "in_progress") {
+    return res.status(409).json({ error: "This consultation isn't open" });
+  }
+  if (Date.now() > appointment.endTimeUtc.getTime() + ROOM_LATE_LIMIT_MS) {
+    return res.status(409).json({ error: "This consultation has ended" });
+  }
+  const triage = (appointment.triageData as Record<string, unknown>) || {};
+  const admitted = appointment.status === "in_progress" || Boolean(triage.admittedAt);
+  if (isPatient && !admitted) {
+    return res.status(409).json({ error: "Your clinician hasn't let you in yet. Please wait in the waiting room." });
+  }
 
-      const isAuthorized =
-        req.user!.sub === existingAppointment.patient.userId ||
-        req.user!.sub === existingAppointment.clinician?.userId ||
-        req.user!.role === "admin";
+  if (DAILY_API_KEY === "daily_dev_placeholder" || !DAILY_API_KEY) {
+    return res.status(503).json({ error: "Video consultations aren't set up yet. Please contact the practice." });
+  }
 
-      if (!isAuthorized) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-    }
-
-    const roomName = `pav-consult-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    if (DAILY_API_KEY === "daily_dev_placeholder" || !DAILY_API_KEY) {
-      return res.status(503).json({
-        error: "Daily.co API is not configured. Please set DAILY_API_KEY environment variable.",
-      });
-    }
-
-    const roomData = await dailyApiClient.post<{ name: string; url: string; config?: { token: string } }>(
-      "/rooms",
+  const expSeconds = Math.floor(Math.max(Date.now(), appointment.endTimeUtc.getTime()) / 1000) + ROOM_GRACE_SECONDS;
+  try {
+    const room = await getOrCreatePrivateRoom(roomNameFor(appointment.id), expSeconds);
+    const { token } = await dailyApiClient.post<{ token: string }>(
+      "/meeting-tokens",
       {
-        name: roomName,
         properties: {
-          exp: Math.floor(Date.now() / 1000) + 3600,
-          enable_chat: true,
-          enable_screenshare: true,
-          start_video_off: false,
-          start_audio_off: false,
+          room_name: room.name,
+          is_owner: isClinician,
+          // First name for the patient, full name for the clinician: what the
+          // other person sees in the call.
+          user_name: isClinician ? appointment.clinician!.fullName : appointment.patient.firstName,
+          exp: expSeconds,
+          eject_at_token_exp: true,
         },
       },
-      {
-        headers: {
-          Authorization: `Bearer ${DAILY_API_KEY}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${DAILY_API_KEY}` } }
     );
 
-    if (existingAppointment) {
-      await prisma.appointment.update({
-        where: { id: existingAppointment.id },
-        data: {
-          accessDetails: {
-            ...((existingAppointment.accessDetails as Record<string, unknown>) || {}),
-            roomName: roomData.name,
-            roomUrl: roomData.url,
-            createdAt: new Date().toISOString(),
-          },
+    await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: {
+        accessDetails: {
+          ...((appointment.accessDetails as Record<string, unknown>) || {}),
+          roomName: room.name,
+          roomUrl: room.url,
         },
-      });
-    }
+      },
+    });
 
     return res.status(201).json({
-      roomName: roomData.name,
-      url: roomData.url,
-      token: roomData.config?.token ?? null,
-      expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+      roomName: room.name,
+      url: room.url,
+      token,
+      isOwner: isClinician,
+      expiresAt: new Date(expSeconds * 1000).toISOString(),
       isMock: false,
     });
   } catch (err: any) {
-    console.error("[VIDEO ROOM ERROR]", err.message);
-    return res.status(500).json({
-      error: "Failed to create video room. Please check Daily.co API configuration.",
-    });
+    console.error("[VIDEO ROOM ERROR]", err?.statusCode ?? "network", err?.message);
+    return res.status(502).json({ error: "The video service didn't respond. Please try again." });
   }
 });
 
@@ -364,6 +390,10 @@ router.post("/admit-patient", requireAuth, validateBody(admitPatientSchema), asy
 
     if (appointment.clinicianId !== clinician.id) {
       return { error: "Not assigned to this clinician", status: 403 };
+    }
+
+    if (appointment.channel !== "video" || (appointment.status !== "confirmed" && appointment.status !== "in_progress")) {
+      return { error: "Only an open video consultation can be joined", status: 409 };
     }
 
     const updated = await prisma.appointment.update({

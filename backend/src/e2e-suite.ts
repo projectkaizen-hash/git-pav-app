@@ -165,18 +165,23 @@ async function runE2ESuite() {
     );
     console.log("✓ PASSED: Appointment Booking & Deposit Confirmation Flow (unpaid, tampered and foreign confirms refused)");
 
-    // Step 7: Create WebRTC Video Consultation Room
-    const videoRes = await fetch(`${baseUrl}/api/video/rooms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ appointmentId: apptData.id }),
-    });
-    const videoData = (await videoRes.json()) as any;
-    assert(videoData.url != null, "Video room creation failed");
-    console.log(`✓ PASSED: Daily.co WebRTC Video Consult Room Generated (${videoData.url})`);
+    // Step 7: Video rooms belong to one video appointment (CS-07). A room
+    // can't be opened for a clinic visit, and a room with no appointment is
+    // refused outright. The admitted-patient path is in video-rooms.test.ts.
+    const openRoom = (body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/api/video/rooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+    const clinicRoomRes = await openRoom({ appointmentId: apptData.id });
+    assert(clinicRoomRes.status === 409, `Video room for a clinic visit must be refused (got ${clinicRoomRes.status})`);
+    const looseRoomRes = await openRoom({});
+    assert(looseRoomRes.status === 400, `Video room without an appointment must be refused (got ${looseRoomRes.status})`);
+    console.log("✓ PASSED: Video rooms only open for a video appointment");
 
     // Step 8: Stripe Payment Intent Creation (mock path — deterministic).
     // create-intent only serves appointments still in draft_hold with an

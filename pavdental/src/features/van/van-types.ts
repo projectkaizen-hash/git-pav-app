@@ -122,6 +122,10 @@ export type VanAvailability = {
 export type CreateVanRequestResponse = VanServiceRequest & {
   /** Present when the patient must authorize the deposit via PaymentSheet */
   clientSecret?: string | null;
+  // Present when the deposit is paid as the patient's Stripe Customer, so the
+  // sheet can show their saved cards.
+  customerId?: string;
+  customerEphemeralKeySecret?: string;
   paymentIntentId?: string | null;
   depositAmount?: number;
   paymentRequired?: boolean;
@@ -133,6 +137,8 @@ export type CreateVanRequestResponse = VanServiceRequest & {
 export type DepositRetryResponse = {
   /** Null when the deposit is already authorized — nothing to present */
   clientSecret: string | null;
+  customerId?: string;
+  customerEphemeralKeySecret?: string;
   paymentIntentId: string;
   depositAmount: number;
   alreadyAuthorized: boolean;

@@ -100,7 +100,7 @@ export default function VanLiveTrackScreen() {
       await presentVanDepositSheet(retry.clientSecret, {
         initPaymentSheet,
         presentPaymentSheet,
-      });
+      }, retry);
       // Authorized — poll will pick up the stamped request.
       queryClient.invalidateQueries({ queryKey: ["van-request-live"] });
     } catch (err: any) {

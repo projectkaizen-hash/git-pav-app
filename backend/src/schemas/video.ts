@@ -2,8 +2,9 @@ import { z } from "zod";
 
 const uuid = z.string().uuid();
 
+// A room always belongs to one video appointment.
 export const createVideoRoomSchema = z.object({
-  appointmentId: uuid.optional(),
+  appointmentId: uuid,
 }).strict();
 
 export const submitTriageSchema = z.object({
