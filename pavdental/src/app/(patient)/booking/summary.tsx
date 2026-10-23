@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Alert, Pressable, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +6,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { ThemedText, Card, Button, AppIcon, ProgressPills } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
-import { formatGbp, createAppointment, createPaymentIntent } from "@/features/booking/booking-api";
+import { formatGbp, createAppointment, createPaymentIntent, newBookingAttemptKey } from "@/features/booking/booking-api";
 import { useRewards } from "@/features/hooks/use-dental-api";
 import { useDependants } from "@/features/account/account-hooks";
 
@@ -58,6 +58,9 @@ export default function BookingSummaryScreen() {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
+  // One key per visit to this screen: retries of the same booking reuse it.
+  const attemptKey = useRef(newBookingAttemptKey());
+
   const handlePayDeposit = async () => {
     setIsProcessing(true);
     try {
@@ -75,7 +78,7 @@ export default function BookingSummaryScreen() {
         endTimeUtc: endTime,
         slotId: slot?.id,
         dependantId: dependantId ?? undefined,
-      });
+      }, attemptKey.current);
 
       // 2. Create PaymentIntent on the server — amount is server-authoritative
       const intent = await createPaymentIntent(appt.id, useVoucher && voucherFits ? voucher!.voucherCode : undefined);

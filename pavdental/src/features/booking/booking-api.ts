@@ -83,10 +83,15 @@ export async function createAppointment(data: {
   slotId?: string;
   accessDetails?: Record<string, unknown>;
   triageData?: Record<string, unknown>;
-}) {
+}, idempotencyKey?: string) {
   const res = await authFetch("/api/booking/appointments", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Same key for the same booking attempt, so a retried request after a
+      // dropped connection gets the same hold back.
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -94,6 +99,11 @@ export async function createAppointment(data: {
     throw new Error(err.error ?? "Booking failed");
   }
   return res.json();
+}
+
+/** A fresh key for one booking attempt (letters, digits and dashes). */
+export function newBookingAttemptKey(): string {
+  return `booking-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 // ─── List Appointments ────────────────────────────────────────────────────────

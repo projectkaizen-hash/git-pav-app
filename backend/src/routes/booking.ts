@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { redis } from "../lib/redis";
@@ -16,7 +17,7 @@ import {
   holdSlotSchema,
   slotsQuerySchema,
 } from "../schemas/booking";
-import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
+import { idempotencyKeyFrom, withIdempotency } from "../lib/idempotency";
 import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
 import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
@@ -29,6 +30,18 @@ const SLOT_HOLD_SECONDS = 600; // 10 minutes
 // Most appointments a list returns: the newest for a patient, the next for a
 // clinician (BK-8).
 const SCHEDULE_LIMIT = 200;
+
+const appointmentInclude = {
+  service: true,
+  clinician: { select: { fullName: true } },
+  clinic: { select: { name: true, address: true } },
+  dependant: { select: { id: true, firstName: true, lastName: true } },
+} satisfies Prisma.AppointmentInclude;
+
+/** True when the insert hit the no-overlap constraint (CS-16). */
+function isClinicianOverlap(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientUnknownRequestError && error.message.includes("appointments_no_clinician_overlap");
+}
 
 function slotLockKey(slotId: string): string {
   return slotId.startsWith("slot:") ? slotId : `slot:${slotId}`;
@@ -62,7 +75,9 @@ router.get("/slots", requireAuth, validateQuery(slotsQuerySchema), async (req: A
     if (seen) seen.available ||= slot.available;
     else byStart.set(key, { startTimeUtc: slot.startTimeUtc, endTimeUtc: slot.endTimeUtc, available: slot.available });
   }
-  const rawSlots = [...byStart.values()].map((s) => ({
+  // Times that have already started aren't offered at all (BK-9).
+  const now = Date.now();
+  const rawSlots = [...byStart.values()].filter((s) => s.startTimeUtc.getTime() > now).map((s) => ({
     ...s,
     lockKey: `slot:${date}:${clinicianId || "any"}:${s.startTimeUtc.toISOString()}`,
   }));
@@ -123,12 +138,15 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     startTimeUtc, endTimeUtc, slotId, accessDetails, triageData,
   } = req.body;
   const patientId = req.user!.sub;
-  // Where and with whom are part of the request: a retry that changes them is
-  // a different booking, not a replay of a refused one.
-  const idempotencyKey = generateIdempotencyKey("create-appointment", {
-    patientId, serviceId, startTimeUtc, endTimeUtc, dependantId: dependantId ?? null,
-    channel, clinicId: clinicId ?? null, clinicianId: clinicianId ?? null,
-  });
+  // A retry is recognised by the client's Idempotency-Key, not by the booking
+  // details: rebooking the same time after cancelling is a new booking (BK-3).
+  // Without a key every call is a new attempt; the database still stops a
+  // double booking.
+  const keyHeader = idempotencyKeyFrom(req.header("Idempotency-Key"));
+  if (keyHeader === "invalid") {
+    return res.status(400).json({ error: "Idempotency-Key must be 8 to 128 letters, digits, '-', '_' or ':'" });
+  }
+  const idempotencyKey = keyHeader ? `create-appointment:${patientId}:${keyHeader}` : null;
 
   return withIdempotency(idempotencyKey, async () => {
     const profile = await prisma.patientProfile.findUnique({
@@ -197,6 +215,25 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       }
     }
 
+    // Tapping "pay" again for the same time (say after closing the payment
+    // sheet) carries on with the patient's own live hold rather than being
+    // told the slot is taken.
+    const ownHold = await prisma.appointment.findFirst({
+      where: {
+        patientId: profile.id,
+        dependantId: dependantId || null,
+        serviceId,
+        channel,
+        clinicId: clinicId || null,
+        ...(clinicianId ? { clinicianId } : {}),
+        startTimeUtc: startDate,
+        status: "draft_hold",
+        holdExpiresAt: { gt: new Date() },
+      },
+      include: appointmentInclude,
+    });
+    if (ownHold) return { appointment: ownHold, status: 201 };
+
     // Only a real free slot can be booked: inside the clinic's hours and the
     // clinician's rota (CS-30). Van visits are timed by the van dispatch flow.
     let assignedClinicianId: string | undefined = clinicianId;
@@ -223,52 +260,70 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       assignedClinicianId = bookable;
     }
 
-    if (assignedClinicianId) {
-      const overlapping = await prisma.appointment.findFirst({
-        where: {
-          clinicianId: assignedClinicianId,
-          startTimeUtc: { lt: endDate },
-          endTimeUtc: { gt: startDate },
-          OR: [
-            { status: { in: ["confirmed", "in_progress"] } },
-            { status: "draft_hold", holdExpiresAt: { gt: new Date() } },
-          ],
-        },
-        select: { id: true },
+    // The constraint on appointments is what stops a double booking (BK-2);
+    // this transaction clears expired holds in the way first, as the hold
+    // sweeper would, and turns a clash into a friendly 409.
+    let appointment;
+    let clearedHolds: string[] = [];
+    try {
+      appointment = await prisma.$transaction(async (tx) => {
+        if (assignedClinicianId) {
+          const expired = await tx.appointment.findMany({
+            where: {
+              clinicianId: assignedClinicianId,
+              status: "draft_hold",
+              holdExpiresAt: { lte: new Date() },
+              startTimeUtc: { lt: endDate },
+              endTimeUtc: { gt: startDate },
+            },
+            select: { id: true },
+          });
+          clearedHolds = expired.map((a) => a.id);
+          if (clearedHolds.length > 0) {
+            await tx.appointment.updateMany({
+              where: { id: { in: clearedHolds }, status: "draft_hold" },
+              data: { status: "cancelled" },
+            });
+          }
+        }
+        return tx.appointment.create({
+          data: {
+            patientId: profile.id,
+            dependantId: dependantId || null,
+            clinicianId: assignedClinicianId || null,
+            serviceId,
+            channel,
+            clinicId: clinicId || null,
+            vanId: vanId || null,
+            startTimeUtc: startDate,
+            endTimeUtc: endDate,
+            status: "draft_hold",
+            holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            accessDetails: accessDetails || null,
+            triageData: triageData || null,
+            totalPricePence: service.pricePence,
+            depositPaidPence: 0,
+          },
+          include: appointmentInclude,
+        });
       });
-      if (overlapping) {
-        return {
-          error: "Appointment slot is already booked for this clinician",
-          status: 409,
-        };
+    } catch (error) {
+      if (isClinicianOverlap(error)) {
+        return { error: "Appointment slot is already booked for this clinician", status: 409 };
       }
+      throw error;
     }
 
-    const appointment = await prisma.appointment.create({
-      data: {
-        patientId: profile.id,
-        dependantId: dependantId || null,
-        clinicianId: assignedClinicianId || null,
-        serviceId,
-        channel,
-        clinicId: clinicId || null,
-        vanId: vanId || null,
-        startTimeUtc: startDate,
-        endTimeUtc: endDate,
-        status: "draft_hold",
-        holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        accessDetails: accessDetails || null,
-        triageData: triageData || null,
-        totalPricePence: service.pricePence,
-        depositPaidPence: 0,
-      },
-      include: {
-        service: true,
-        clinician: { select: { fullName: true } },
-        clinic: { select: { name: true, address: true } },
-        dependant: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    for (const id of clearedHolds) {
+      await createAuditLogWithIntegrity({
+        action: "appointment.hold_expired",
+        actorId: null,
+        resourceId: id,
+        sessionId: null,
+        ipHash: pseudonymiseIp("127.0.0.1"),
+        metadata: { reason: "10-minute hold window elapsed without payment" },
+      }).catch(() => {});
+    }
 
     // Release Redis hold now that it's in DB
     if (slotId) {

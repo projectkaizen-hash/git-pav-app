@@ -53,8 +53,11 @@ describe("POST /api/booking/appointments/:id/check-in", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
+  // Each fixture gets its own half hour: one clinician can't have two live
+  // appointments at once (CS-16).
+  let fixtureSlot = 0;
   async function makeAppointment(status: "confirmed" | "cancelled" = "confirmed") {
-    const start = new Date(Date.now() + 86400000);
+    const start = new Date(Date.now() + 86400000 + fixtureSlot++ * 1800000);
     const appt = await prisma.appointment.create({
       data: {
         patientId: ids.patientProfile,

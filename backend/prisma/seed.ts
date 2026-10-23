@@ -503,6 +503,12 @@ async function main() {
   });
 
   // ─── 6. Active Bookings Across All 3 Channels ──────────────────────────────
+  // Created once: re-running the seed must not double-book the clinician,
+  // which the database refuses (CS-16).
+  const createSeedAppointmentOnce = async (args: Parameters<typeof prisma.appointment.create>[0]) => {
+    const existing = await prisma.appointment.findFirst({ where: { stripePaymentId: args.data.stripePaymentId as string } });
+    if (!existing) await prisma.appointment.create(args);
+  };
   const today = new Date();
   today.setHours(10, 0, 0, 0);
 
@@ -510,7 +516,7 @@ async function main() {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   // Clinic Appointment
-  await prisma.appointment.create({
+  await createSeedAppointmentOnce({
     data: {
       patientId: patientProfile.id,
       clinicianId: docProfile.id,
@@ -529,7 +535,7 @@ async function main() {
   // Van Appointment (for Operator Route)
   const vanApptTime = new Date(today);
   vanApptTime.setHours(12, 0, 0, 0);
-  await prisma.appointment.create({
+  await createSeedAppointmentOnce({
     data: {
       patientId: patientProfile.id,
       clinicianId: docProfile.id,
@@ -552,7 +558,7 @@ async function main() {
   // Video Consultation Appointment (for Clinician Video Consult Room)
   const videoApptTime = new Date(today);
   videoApptTime.setHours(15, 0, 0, 0);
-  await prisma.appointment.create({
+  await createSeedAppointmentOnce({
     data: {
       patientId: patientProfile.id,
       clinicianId: docProfile.id,

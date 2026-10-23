@@ -1,7 +1,6 @@
 import { Router, Response } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { prisma } from "../lib/prisma";
-import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 import { validateBody, validateQuery } from "../middleware/validate";
 import {
   registerPushTokenSchema,
@@ -16,9 +15,10 @@ router.post("/register-token", requireAuth, validateBody(registerPushTokenSchema
   const { expoPushToken, platform } = req.body;
 
   const userId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("register-push-token", { userId, expoPushToken });
 
-  return withIdempotency(idempotencyKey, async () => {
+  // Not cached: registering is naturally repeatable, and a token moved to
+  // another account or switched off must be updated every time (ID-1).
+  return (async () => {
     // Check if token already exists
     const existing = await prisma.pushToken.findFirst({
       where: { token: expoPushToken },
@@ -53,7 +53,7 @@ router.post("/register-token", requireAuth, validateBody(registerPushTokenSchema
     });
 
     return { id: pushToken.id, status: "registered", platform: pushToken.platform, httpStatus: 201 };
-  }).then((result: any) => {
+  })().then((result: any) => {
     if (result.error) {
       return res.status(result.httpStatus).json({ error: result.error });
     }
