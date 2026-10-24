@@ -1,5 +1,8 @@
 # Free test setup
 
+> [!NOTE]
+> For the active endpoints, service IDs, and current live health of the deployed test environment, see [Test Deployment Status](./test-deployment-status.md).
+
 A test copy of Pav Dental running on free tiers, for trying things out with **fake data only**. Never put real patient details into it. It isn't fit for real patients: the free hosts sleep, have no backups worth relying on, and the encryption key lives in an environment variable rather than AWS KMS.
 
 | Piece | Free service | Used by |
