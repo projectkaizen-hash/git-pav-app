@@ -81,13 +81,7 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
 
   describe("AU-2: Verification passes after retention archiving", () => {
     it("preserves an unbroken hash chain when older logs are archived", async () => {
-      // 1. Archive previous test logs to start from a clean baseline
-      await prisma.auditLog.updateMany({
-        where: { archived: false },
-        data: { archived: true, archivedAt: new Date() },
-      });
-
-      // 2. Append several audit logs
+      // 1. Append several audit logs
       const log1 = await createAuditLogWithIntegrity({
         action: "retention.test.step1",
         actorId: patientUser.id,
@@ -99,35 +93,37 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
         metadata: { step: 2 },
       });
 
-      // 3. Verify initial integrity
-      const preArchiveCheck = await verifyAuditIntegrity(100);
+      // 2. Verify initial integrity scoped to this test
+      const preArchiveCheck = await verifyAuditIntegrity({ fromId: log1.id });
       expect(preArchiveCheck.valid).toBe(true);
       expect(preArchiveCheck.checkedCount).toBeGreaterThanOrEqual(2);
 
-      // 4. Simulate retention archiving on the older log
+      // 3. Simulate retention archiving on the older log
       await prisma.auditLog.update({
         where: { id: log1.id },
         data: { archived: true, archivedAt: new Date() },
       });
 
-      // 5. Append another log after retention
-      const log3 = await createAuditLogWithIntegrity({
-        action: "retention.test.step3",
-        actorId: patientUser.id,
-        metadata: { step: 3 },
-      });
+      try {
+        // 4. Append another log after retention
+        const log3 = await createAuditLogWithIntegrity({
+          action: "retention.test.step3",
+          actorId: patientUser.id,
+          metadata: { step: 3 },
+        });
 
-      // 6. Verify integrity: log2 and log3 must verify cleanly chaining from log1
-      const postArchiveCheck = await verifyAuditIntegrity(100);
-      expect(postArchiveCheck.valid).toBe(true);
-      expect(postArchiveCheck.issues).toEqual([]);
-      expect(postArchiveCheck.checkedCount).toBeGreaterThanOrEqual(2); // log2 and log3 (plus any concurrent test logs)
-
-      // Restore log1 so the unarchived chain remains contiguous for subsequent test suites
-      await prisma.auditLog.update({
-        where: { id: log1.id },
-        data: { archived: false, archivedAt: null },
-      });
+        // 5. Verify integrity: log2 and log3 must verify cleanly chaining from archived predecessor log1
+        const postArchiveCheck = await verifyAuditIntegrity({ fromId: log2.id });
+        expect(postArchiveCheck.valid).toBe(true);
+        expect(postArchiveCheck.issues).toEqual([]);
+        expect(postArchiveCheck.checkedCount).toBeGreaterThanOrEqual(2); // log2 and log3
+      } finally {
+        // Restore log1 so the unarchived chain remains contiguous for subsequent test suites
+        await prisma.auditLog.update({
+          where: { id: log1.id },
+          data: { archived: false, archivedAt: null },
+        });
+      }
     });
   });
 
@@ -142,7 +138,7 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       });
 
       // Verification before tampering
-      let check = await verifyAuditIntegrity(1000);
+      let check = await verifyAuditIntegrity({ fromId: log.id });
       expect(check.valid).toBe(true);
 
       // Tamper with metadata directly in database
@@ -153,7 +149,7 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
 
       try {
         // Verification must immediately detect tampering
-        check = await verifyAuditIntegrity(1000);
+        check = await verifyAuditIntegrity({ fromId: log.id });
         expect(check.valid).toBe(false);
         expect(check.issues.some((issue) => issue.includes(String(log.id)))).toBe(true);
       } finally {
@@ -165,7 +161,7 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       }
 
       // Verification succeeds again
-      check = await verifyAuditIntegrity(1000);
+      check = await verifyAuditIntegrity({ fromId: log.id });
       expect(check.valid).toBe(true);
     });
 
@@ -174,13 +170,13 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       const logB = await createAuditLogWithIntegrity({ action: "chain.b" });
       const logC = await createAuditLogWithIntegrity({ action: "chain.c" });
 
-      expect((await verifyAuditIntegrity(1000)).valid).toBe(true);
+      expect((await verifyAuditIntegrity({ fromId: logA.id })).valid).toBe(true);
 
       // Delete middle row (simulating DB tampering / row deletion)
       await prisma.auditLog.delete({ where: { id: logB.id } });
 
       try {
-        const check = await verifyAuditIntegrity(1000);
+        const check = await verifyAuditIntegrity({ fromId: logA.id });
         expect(check.valid).toBe(false);
         expect(check.issues.length).toBeGreaterThanOrEqual(1);
       } finally {
