@@ -83,6 +83,8 @@ export default function SignInScreen() {
               ].map((role) => (
                 <Pressable
                   key={role.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Fill demo credentials for ${role.label}`}
                   onPress={() => {
                     setEmail(role.email);
                     setPassword("Password123!");

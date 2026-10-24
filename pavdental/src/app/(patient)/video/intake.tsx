@@ -119,6 +119,8 @@ export default function VideoIntakeScreen() {
             value={hasSwelling}
             onValueChange={setHasSwelling}
             trackColor={{ true: colors.ink, false: colors.separator }}
+            accessibilityRole="switch"
+            accessibilityLabel="Facial Swelling or Gum Boil"
           />
         </View>
 
@@ -131,6 +133,9 @@ export default function VideoIntakeScreen() {
               return (
                 <Pressable
                   key={d}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Duration: ${d}`}
+                  accessibilityState={{ selected: active }}
                   onPress={() => setDuration(d)}
                   style={[styles.durationItem, active && styles.durationItemActive]}
                 >
@@ -162,6 +167,8 @@ export default function VideoIntakeScreen() {
                 if (error) setError(null);
               }}
               trackColor={{ true: colors.ink, false: colors.separator }}
+              accessibilityRole="switch"
+              accessibilityLabel="Clinical Video Record Consent"
             />
           </View>
         </Card>

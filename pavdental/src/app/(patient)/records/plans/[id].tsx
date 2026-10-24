@@ -338,6 +338,8 @@ export default function TreatmentPlanDetailScreen() {
           </View>
           {totalCostPence > 0 ? (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ask about payment plans, learn more"
               onPress={() => router.push("/(patient)/records/financing" as never)}
               style={styles.financeBox}
             >
@@ -441,6 +443,8 @@ export default function TreatmentPlanDetailScreen() {
 
               {/* Payment plans: details live on the practice's finance page */}
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ask about payment plans"
                 onPress={() => {
                   setShowSignSheet(false);
                   router.push("/(patient)/records/financing" as never);
@@ -467,6 +471,9 @@ export default function TreatmentPlanDetailScreen() {
 
                 {/* Consent checkbox */}
                 <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityLabel="I acknowledge and accept the clinical terms and conditions"
+                  accessibilityState={{ checked: consentChecked }}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                     setConsentChecked(!consentChecked);

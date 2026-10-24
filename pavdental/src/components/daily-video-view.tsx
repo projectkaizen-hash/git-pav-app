@@ -65,6 +65,9 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
       {/* Video Call Controls Toolbar */}
       <View style={styles.toolbar}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isMuted ? "Unmute microphone" : "Mute microphone"}
+          accessibilityState={{ selected: isMuted }}
           onPress={() => setIsMuted(!isMuted)}
           style={[styles.toolBtn, isMuted && styles.toolBtnActive]}
         >
@@ -79,6 +82,9 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isVideoOff ? "Start camera" : "Stop camera"}
+          accessibilityState={{ selected: isVideoOff }}
           onPress={() => setIsVideoOff(!isVideoOff)}
           style={[styles.toolBtn, isVideoOff && styles.toolBtnActive]}
         >
@@ -93,6 +99,8 @@ export function DailyVideoView({ roomUrl: _roomUrl, userName = "Patient", onLeav
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="End call"
           onPress={onLeaveCall}
           style={[styles.toolBtn, styles.endCallBtn]}
         >
@@ -190,11 +198,13 @@ const styles = StyleSheet.create({
   toolBtn: {
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 32,
+    borderRadius: 30,
     gap: 2,
-    height: 64,
+    height: 60,
     justifyContent: "center",
-    width: 64,
+    maxWidth: 64,
+    minWidth: 54,
+    paddingHorizontal: 6,
   },
   toolBtnActive: {
     backgroundColor: "#EB5757",
@@ -209,9 +219,11 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(255,255,255,0.1)",
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
     justifyContent: "space-around",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
 });
 

@@ -57,6 +57,8 @@ export function ToggleSwitch({
         disabled={disabled}
         trackColor={{ false: colors.separator, true: colors.ink }}
         thumbColor={colors.systemBackground}
+        importantForAccessibility="no"
+        accessibilityElementsHidden={true}
       />
     </Pressable>
   );

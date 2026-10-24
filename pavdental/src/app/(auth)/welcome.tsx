@@ -156,6 +156,7 @@ export default function WelcomeScreen() {
 
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Sign in with email address"
               onPress={() => setShowEmailSheet(true)}
               style={styles.emailOption}
             >
@@ -197,6 +198,8 @@ export default function WelcomeScreen() {
                   ].map((demo) => (
                     <Pressable
                       key={demo.label}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Fill ${demo.label} demo account`}
                       onPress={() => {
                         setEmail(demo.email);
                         if (error) setError(null);

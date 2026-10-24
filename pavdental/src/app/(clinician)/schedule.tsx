@@ -251,7 +251,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   badgeWrapper: {
+    alignItems: "center",
     alignSelf: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
   },
   card: {
     backgroundColor: colors.systemBackground,
@@ -291,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    minWidth: 180,
+    minWidth: 140,
   },
   errorBody: {
     color: colors.secondaryLabel,

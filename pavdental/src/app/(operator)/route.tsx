@@ -200,6 +200,8 @@ export default function OperatorRouteScreen() {
                       {!isPinned ? (
                         <View style={styles.reorderRow}>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Move stop ${index + 1} up`}
                             hitSlop={8}
                             disabled={index === 0 || reorderMutation.isPending}
                             onPress={() => moveStop(index, -1)}
@@ -212,6 +214,8 @@ export default function OperatorRouteScreen() {
                             </ThemedText>
                           </Pressable>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Move stop ${index + 1} down`}
                             hitSlop={8}
                             disabled={index === queue.length - 1 || reorderMutation.isPending}
                             onPress={() => moveStop(index, 1)}

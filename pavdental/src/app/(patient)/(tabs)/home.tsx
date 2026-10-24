@@ -174,6 +174,7 @@ export default function PatientHomeScreen() {
             <Pressable
               key={cat.key}
               accessibilityRole="button"
+              accessibilityLabel={cat.label}
               accessibilityState={{ selected: isActive }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
