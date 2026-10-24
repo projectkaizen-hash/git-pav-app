@@ -43,7 +43,11 @@ export default function SlotPickerScreen() {
     if (slot.dateFormatted && slot.dateFormatted !== selectedDate) return false;
     if (clinician && slot.clinicianId && slot.clinicianId !== clinician.id) return false;
     if (clinic && slot.clinicId && slot.clinicId !== clinic.id) return false;
-    return slot.isAvailable;
+    if (!slot.isAvailable) return false;
+    // MB-3: defense-in-depth hide slots that have already passed in device time
+    const startIso = slot.startTimeUtc || (slot as any).start_time_utc;
+    if (startIso && new Date(startIso).getTime() <= Date.now()) return false;
+    return true;
   });
 
   const hourOf = (slot: TimeSlot) => {

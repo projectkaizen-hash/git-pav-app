@@ -181,4 +181,23 @@ describe("opening hours and rota", () => {
     }).then((r) => r.json() as Promise<any[]>);
     expect(listed.find((s) => s.startTimeUtc === nine)?.available).toBe(false);
   });
+
+  it("paginates appointment lists with limit and page (BK-8)", async () => {
+    const resPage1 = await fetch(`${baseUrl}/api/booking/appointments?limit=1&page=1`, {
+      headers: { Authorization: `Bearer ${patientToken}` },
+    });
+    expect(resPage1.status).toBe(200);
+    const data1 = (await resPage1.json()) as any[];
+    expect(data1.length).toBeLessThanOrEqual(1);
+
+    const resPage2 = await fetch(`${baseUrl}/api/booking/appointments?limit=1&page=2`, {
+      headers: { Authorization: `Bearer ${patientToken}` },
+    });
+    expect(resPage2.status).toBe(200);
+    const data2 = (await resPage2.json()) as any[];
+    expect(data2.length).toBeLessThanOrEqual(1);
+    if (data1.length > 0 && data2.length > 0) {
+      expect(data1[0].id).not.toBe(data2[0].id);
+    }
+  });
 });
