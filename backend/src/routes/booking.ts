@@ -364,6 +364,17 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
 
 // ─── GET /api/booking/appointments ───────────────────────────────────────────
 router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response) => {
+  const limitParam = req.query.limit ? Number(req.query.limit) : undefined;
+  const pageParam = req.query.page ? Number(req.query.page) : undefined;
+  const offsetParam = req.query.offset ? Number(req.query.offset) : undefined;
+
+  const take = limitParam && !isNaN(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : SCHEDULE_LIMIT;
+  const skip = offsetParam !== undefined && !isNaN(offsetParam)
+    ? Math.max(offsetParam, 0)
+    : pageParam && !isNaN(pageParam)
+    ? (Math.max(pageParam, 1) - 1) * take
+    : 0;
+
   // Clinicians get their own schedule (today forward, ascending); everyone
   // else gets their patient appointments. The mobile clinician schedule
   // screen consumes this via the same endpoint and response shape.
@@ -404,7 +415,8 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
         appointmentNote: { select: { id: true, notes: true, diagnosis: true, treatmentPlan: true, updatedAt: true } },
       },
       orderBy: { startTimeUtc: "asc" },
-      take: SCHEDULE_LIMIT,
+      take,
+      skip,
     });
 
     return res.json(
@@ -445,7 +457,10 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
   if (!profile) return res.status(404).json({ error: "Patient profile not found" });
 
   const appointments = await prisma.appointment.findMany({
-    where: { patientId: profile.id },
+    where: {
+      patientId: profile.id,
+      ...(req.query.status ? { status: String(req.query.status) as any } : {}),
+    },
     include: {
       service: { select: { name: true, durationMinutes: true } },
       clinician: { select: { fullName: true, photoUrl: true } },
@@ -453,7 +468,8 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
       dependant: { select: { id: true, firstName: true, lastName: true } },
     },
     orderBy: { startTimeUtc: "desc" },
-    take: SCHEDULE_LIMIT,
+    take,
+    skip,
   });
 
   return res.json(
