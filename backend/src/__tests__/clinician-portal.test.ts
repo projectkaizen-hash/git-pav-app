@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma";
 import { signAccessToken } from "../lib/jwt";
 import { verifyAuditIntegrity } from "../lib/audit-integrity";
+import { londonDate, londonTimeToUtc } from "../lib/availability";
 
 describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
   let server: http.Server;
@@ -100,9 +101,8 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
     clinicianToken = signAccessToken({ sub: clinicianUser.id, role: "clinician", sessionId: crypto.randomUUID() });
     otherClinicianToken = signAccessToken({ sub: otherClinicianUser.id, role: "clinician", sessionId: crypto.randomUUID() });
 
-    // 1. Create today's appointment
-    const startTimeToday = new Date();
-    startTimeToday.setHours(11, 0, 0, 0);
+    // 1. Create today's appointment. "Today" is the UK calendar day, as the API scopes it.
+    const startTimeToday = londonTimeToUtc(londonDate(new Date()), 11 * 60);
     const endTimeToday = new Date(startTimeToday.getTime() + 30 * 60 * 1000);
 
     const apptToday = await prisma.appointment.create({
@@ -121,8 +121,7 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
     ids.appointmentTodayId = apptToday.id;
 
     // 2. Create future appointment (3 days from now)
-    const startTimeFuture = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-    startTimeFuture.setHours(14, 0, 0, 0);
+    const startTimeFuture = londonTimeToUtc(londonDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)), 14 * 60);
     const endTimeFuture = new Date(startTimeFuture.getTime() + 30 * 60 * 1000);
 
     const apptFuture = await prisma.appointment.create({

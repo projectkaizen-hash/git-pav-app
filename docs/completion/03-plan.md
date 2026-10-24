@@ -1,6 +1,6 @@
 # 03: Completion plan (Phase 3)
 
-**Status: draft for your approval. No code has been changed.**
+**Status (24 Oct 2026):** approved and mostly built. CS-01 to CS-38 have merged, but a code audit (`05-audit-2026-10-24.md`) found many of them only partly done, plus new security and payment bugs. The table below is the current state; the original change set text further down is kept as written.
 
 Linear: project [Pav Dental: completion](https://linear.app/pavdental/project/pav-dental-completion-dd6261f921c6) in team ZIS. CS-NN maps to issue ZIS-(NN+4), for example CS-01 is ZIS-5 and CS-47 is ZIS-51.
 
@@ -24,6 +24,112 @@ Each change set (CS) is meant to be one small, reviewable PR (or a short series 
 - `testing-with-discernment` applies whenever tests are written.
 
 Every finding ID in `01-findings.md` maps to exactly one change set (see the coverage index at the end).
+
+---
+
+## Where things stand after the 24 Oct audit
+
+Verdicts come from the code on `main` at `6722739`, not from commit titles. Details, with file and line references, are in `05-audit-2026-10-24.md`.
+
+| CS | State | What's left (short) |
+|---|---|---|
+| CS-01 | Done | |
+| CS-02 | Partial | Query logging in dev and CI (PR-1); postcodes.io DPIA note |
+| CS-03 | Partial | Dev-defaults opt-in; require Daily, email/SMS, S3, `APP_URL` when deployed; JWT `iss`/`aud` |
+| CS-04 | Done | |
+| CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
+| CS-06 | Partial | Veneers callout; van visit summary claims work was done; check-in column and window |
+| CS-07 | Done | Remove dead `daily-video-view.tsx` |
+| CS-08 | Partial | Phone change without OTP; atomic, non-DoS lockout |
+| CS-09 | Partial | Paginate `GET /api/messages` |
+| CS-10 | Done | Clinical sign-off of wording |
+| CS-11 | Partial | ~40 raw error logs; query strings and staff emails in audit metadata |
+| CS-12 | Partial | Seed guard checks the target database; split reference and demo data |
+| CS-13 | Partial | KMS (approved, decision #18); prescription link key |
+| CS-14 | Partial | Auth limiter scope; staging limits; `TRUST_PROXY` in deploy docs |
+| CS-15 | Partial | Decline, cancel, expiry and shift end need the accept lock and a compare-and-set |
+| CS-16 | Done | |
+| CS-17 | Partial | Moved to CS-49 |
+| CS-18 | Partial | Moved to CS-49 |
+| CS-19 | Partial | Logout and revoked sessions keep pushing; receipts; stuck `sending` rows; summer quiet hours; token takeover |
+| CS-20 | Partial | Old-hash fallback undoes the HMAC; monitor checks oldest rows; 401 alert flood; weakened tamper test; AU-5 |
+| CS-21 | Partial | `fetch` lint rule; web refresh token |
+| CS-22 | Done | |
+| CS-23 | Done | Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
+| CS-24 | Partial | App copy is false; authenticated download unused; clinicians can fetch SAR bundles |
+| CS-25 | Broken in app | Moved to CS-51 |
+| CS-26 | Partial | Moved to CS-50 (plaintext notes, previews, tooth notes; S3 fallback to disk) |
+| CS-27 | Partial | Moved to CS-51 (intake never sent, device check, summary never written); in-app SDK |
+| CS-28 | Partial | `scope=today` in app; notes history and author (CS-50); time windows |
+| CS-29 | Partial | Staff inbox for practice threads; per-side read state; thread delete audit |
+| CS-30 | Done | |
+| CS-31 | Partial | Dashboard screens for onboarding clinicians, operators, vans, services; invite email; drop the dashboard `patients` table |
+| CS-32 | Done | |
+| CS-33 | Done | |
+| CS-34 | Partial | Edit screen for dependants |
+| CS-35 | Done | 🛑 which roles may prescribe |
+| CS-36 | Built, not signed off | 🛑 clinical sign-off before release |
+| CS-37 | Partial | Use `QueryState` on the screens; real tests |
+| CS-38 | Partial | Remaining labels; screen-reader checklist; real tests |
+| CS-39 to CS-43 | Not started | (CS-40: VR-2 done; CS-42: MB-3 done) |
+| CS-44 | Partial | Sentry done; shutdown, request id, health split remain |
+| CS-45 | Partial | Image prune, healthcheck, migrate step; compose ports; backups |
+| CS-46, CS-47 | Not started | |
+
+### New change sets from the audit
+
+These come first: CS-48 to CS-50 before anyone outside the team uses the test environment.
+
+### CS-48 Close the access holes
+- **Closes:** audit §2 items 1, 2, 3, 7 and 8
+- **Files:**
+  - `admin-dashboard/src/lib/auth/middleware.ts`: require a staff token (role and purpose) and remove the non-production bypass; separate signing purposes for shopper and staff tokens; drop the `*` CORS fallback
+  - `backend/src/routes/video.ts`: summary only for the patient, the appointment's clinician or a care-team clinician; scope idempotency keys to the user
+  - `backend/src/lib/encryption.ts` and callers: never store client-supplied envelopes; read admission from a server field
+  - `docs/deploy/test-deployment-status.md`: remove the published password and rotate the demo accounts; make the seed guard refuse a non-local `DATABASE_URL` without `ALLOW_SEED=demo`
+- **Skills:** `security-discipline`, `auth-and-authorization`
+- **Tests:** a shopper token gets 401 on every `/api/v1/admin/*` route; a stranger clinician gets 403 on the summary; a replayed key from another user gets nothing; a forged envelope is rejected
+- **Size:** M (two or three PRs: dashboard, backend, docs and seed)
+
+### CS-49 Money paths that can't refund twice or wrongly
+- **Closes:** audit §2 items 4 and 5; CS-17 and CS-18 remainders; CS-15 remainder
+- **Files:** `lib/late-deposit.ts` (only an expired hold is late, never a patient cancel); `routes/payments.ts` (treat any post-confirmation status as applied; claim the event row first; `charge.refunded` sets the deposit from `amount_captured - amount_refunded`); `routes/cancellations.ts` (claim before refunding, key the refund by amount); `routes/admin.ts` (allowed transitions only, cancels go through the refund path, audit from and to); `routes/booking.ts` (`/complete` and `/no-show` conditional); van decline, cancel, expiry and shift end under the accept lock with a compare-and-set
+- **Skills:** `idempotency-and-side-effects`; Stripe MCP for docs
+- **Tests:** cancel then confirm gives no extra refund; a webhook retry after completion refunds nothing; two partial refunds leave the right deposit; concurrent deliveries run once; cancel racing accept never refunds a captured visit
+- **Size:** M
+- 🛑 None of this changes what a patient is refunded under the policy; it stops refunds the policy doesn't allow. Confirm before merging, since it touches refund code.
+
+### CS-50 Health data at rest and in transit
+- **Closes:** audit §2 item 6; CS-26 and CS-28 remainders
+- **Files:** neutral message previews and encrypted subjects (with a backfill script); generic, escaped staff notification emails; `AppointmentNote` encrypted, append-only, written only by the assigned clinician with the real author recorded, FK `RESTRICT`; tooth notes encrypted; triage photos merged inside the envelope as object keys; S3 config fails at boot instead of falling back to disk; audit metadata without query strings or emails
+- **Skills:** `data-modeling-discipline`, `migration-safety`
+- **Tests:** no plaintext body text in `message_threads`; an admin can't write notes; deleting a clinician is refused while notes exist
+- **Size:** M
+- 🛑 The notes FK change and the preview backfill rewrite existing rows; approve the migrations.
+
+### CS-51 App screens that say things that aren't true
+- **Closes:** CS-25 (app), CS-27 remainders, CS-24 copy, CS-06 van summary, CS-42 plan booking
+- **Files:** consent screens (valid types, no `reason`, real state, no made-up versions); `video/photo-review.tsx` and `intake.tsx` (send the real answers and photos, show failures); `video/device-check.tsx` (real checks); clinician "complete" for video calls `/end-consult`; `van/complete.tsx`; `records/plans/[id].tsx`; SAR copy; logout sends the push token
+- **Skills:** `expo-data-fetching`
+- **Tests:** component tests for each flow against a mocked API that rejects bad input
+- **Size:** M
+
+### CS-52 Website and dashboard honesty
+- **Closes:** audit §4
+- **Files:** wire the home and emergency contact forms to the existing contact endpoint; newsletter shows failures; remove the dashboard template demo screens and sidebar entries; `/dashboard` redirects to bookings
+- **Size:** S
+- 🛑 Team page, reviews and counters: real content from you, or remove.
+
+### CS-53 Tests that tell the truth
+- **Closes:** audit §1
+- **Files:** `clinician-portal.test.ts` builds "today" in UK time; `consent-integrity.test.ts` doesn't assume `::1`; isolate fixtures so suites pass with any worker count; restore the specific tamper assertion; rewrite the mobile tests that assert constants; fix or remove the website's stray Next.js files and missing-file tests, then add website typecheck and tests to CI
+- **Skills:** `testing-with-discernment`
+- **Size:** S to M
+
+### CS-54 Auth and session leftovers
+- **Closes:** CS-08, CS-14 and CS-19 remainders
+- **Files:** phone change by OTP to the new number; atomic lockout counter and a lock that can't be used against a victim; one-time tokens redeemed with a conditional update; `register-token` takeover; auth limiter limited to login, OTP and reset, with production limits in staging; revoking a session deactivates its push tokens
+- **Size:** M
 
 ---
 
@@ -533,6 +639,8 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 ---
 
 ## Order of work
+
+**From 24 Oct:** CS-48, then CS-49 and CS-50, then CS-53 (so the suites can be trusted), CS-51, CS-52 and CS-54. After that, the remainders in the status table, then CS-39 to CS-47. The original order below is kept for reference.
 
 1. **Week 1:** CS-01, CS-02, CS-03, CS-04, CS-11, CS-12, CS-14 (small, unblock everything), then CS-06 and CS-05.
 2. **Weeks 2–3:** CS-08, CS-09, CS-07, CS-10, CS-13, CS-21, then Tier 2 (CS-15 to CS-20).
