@@ -61,17 +61,17 @@ class ApiClient {
     } = options;
 
     const fullUrl = `${this.config.baseUrl}${url}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    // Combine provided signal with timeout signal
-    const combinedSignal = signal 
-      ? this.combineSignals(signal, controller.signal)
-      : controller.signal;
-
     let lastError: ApiError | null = null;
 
     for (let attempt = 0; attempt <= this.config.retries; attempt++) {
+      // AC-1: New controller + timer per attempt so timeouts and aborts don't leak across retries
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const combinedSignal = signal 
+        ? this.combineSignals(signal, controller.signal)
+        : controller.signal;
+
       try {
         const response = await fetch(fullUrl, {
           method,
@@ -117,6 +117,8 @@ class ApiClient {
         
         const delay = this.config.retryDelay * Math.pow(2, attempt);
         await this.sleep(delay);
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 
@@ -237,28 +239,10 @@ export function createApiClient(config: Partial<ApiClientConfig> = {}): ApiClien
 }
 
 /**
- * Stripe API client configuration
- */
-export const stripeApiClient = createApiClient({
-  baseUrl: 'https://api.stripe.com/v1',
-  timeout: 30000,
-  retries: 3,
-});
-
-/**
  * Daily.co API client configuration
  */
 export const dailyApiClient = createApiClient({
   baseUrl: process.env.DAILY_DOMAIN || 'https://api.daily.co/v1',
-  timeout: 30000,
-  retries: 3,
-});
-
-/**
- * Expo API client configuration
- */
-export const expoApiClient = createApiClient({
-  baseUrl: 'https://exp.host/--/api/v2',
   timeout: 30000,
   retries: 3,
 });

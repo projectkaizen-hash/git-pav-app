@@ -2,12 +2,16 @@ import { Router, Response } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { prisma } from "../lib/prisma";
 import multer from "multer";
-import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
+import { withIdempotency, idempotencyKeyFrom } from "../lib/idempotency";
 import { validateBody } from "../middleware/validate";
 import { HttpError } from "../middleware/error-handler";
-import { createVideoRoomSchema, submitTriageSchema, admitPatientSchema } from "../schemas/video";
+import { createVideoRoomSchema, submitTriageSchema, admitPatientSchema, endConsultSchema } from "../schemas/video";
 import { dailyApiClient } from "../lib/api-client";
 import { objectStorage } from "../lib/object-storage";
+import { checkRedFlags, TriageData } from "../lib/triage-escalation";
+import { encryptField, decryptField } from "../lib/encryption";
+import { cancelAppointmentReminders } from "../lib/background-jobs";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 
 const router = Router();
 
@@ -248,7 +252,11 @@ router.post("/upload-triage-photo", requireAuth, upload.single("photo"), async (
 router.post("/submit-triage", requireAuth, validateBody(submitTriageSchema), async (req: AuthRequest, res: Response) => {
   const { appointmentId, chiefComplaint, painLevel, duration, symptoms, photos } = req.body;
   const userId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("submit-triage", { appointmentId, userId });
+  const clientKey = idempotencyKeyFrom(req.header("Idempotency-Key"));
+  if (clientKey === "invalid") {
+    return res.status(400).json({ error: "Idempotency-Key must be 8 to 128 letters, digits, '-', '_' or ':'" });
+  }
+  const idempotencyKey = clientKey ? `submit-triage:${clientKey}` : null;
 
   return withIdempotency(idempotencyKey, async () => {
     const appointment = await prisma.appointment.findUnique({
@@ -264,21 +272,49 @@ router.post("/submit-triage", requireAuth, validateBody(submitTriageSchema), asy
       return { error: "Unauthorized", status: 403 };
     }
 
-    const updated = await prisma.appointment.update({
+    // VD-2: Run red-flag symptom checking on submitted triage data
+    const symptomsList = (symptoms || []).map((s: string) => s.toLowerCase());
+    const triageInput: TriageData = {
+      chiefComplaint,
+      painLevel,
+      symptoms,
+      duration,
+      difficultyBreathing: symptomsList.some((s: string) => s.includes("breath") || s.includes("chok") || s.includes("airway")),
+      swelling: symptomsList.some((s: string) => s.includes("swell")),
+      bleeding: symptomsList.some((s: string) => s.includes("bleed")),
+      fever: symptomsList.some((s: string) => s.includes("fever") || s.includes("temperature")),
+    };
+    const redFlagResult = checkRedFlags(triageInput);
+
+    // VD-3: Merge triage data rather than replacing wholesale (preserves photos, admittedAt, etc.)
+    const currentTriage = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
+    const mergedPhotos = photos && photos.length > 0 ? photos : (currentTriage.photos || []);
+
+    const mergedTriage = {
+      ...currentTriage,
+      chiefComplaint,
+      painLevel,
+      duration,
+      symptoms,
+      photos: mergedPhotos,
+      redFlag: redFlagResult.isRedFlag ? redFlagResult : null,
+      submittedAt: new Date().toISOString(),
+    };
+
+    const encryptedTriage = await encryptField(mergedTriage);
+
+    await prisma.appointment.update({
       where: { id: appointmentId },
       data: {
-        triageData: {
-          chiefComplaint,
-          painLevel,
-          duration,
-          symptoms,
-          photos,
-          submittedAt: new Date().toISOString(),
-        },
+        triageData: encryptedTriage as any,
       },
     });
 
-    return { triageData: updated.triageData, status: 200 };
+    return {
+      triageData: mergedTriage,
+      redFlag: redFlagResult.isRedFlag ? redFlagResult : null,
+      status: 200,
+    };
   }).then((result) => {
     if (result.error) {
       return res.status(result.status).json({ error: result.error });
@@ -312,7 +348,7 @@ router.get("/status/:appointmentId", requireAuth, async (req: AuthRequest, res: 
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const triageData = (appointment.triageData as Record<string, unknown>) || {};
+  const triageData = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
   const accessDetails = (appointment.accessDetails as Record<string, unknown>) || {};
   const isAdmitted = appointment.status === "in_progress" || Boolean(triageData.admittedAt);
 
@@ -324,6 +360,7 @@ router.get("/status/:appointmentId", requireAuth, async (req: AuthRequest, res: 
     clinicianName: appointment.clinician?.fullName || "On-Call Dental Clinician",
     roomUrl: accessDetails.roomUrl || null,
     roomName: accessDetails.roomName || null,
+    consultationSummary: triageData.consultationSummary || null,
   });
 });
 
@@ -342,12 +379,14 @@ router.get("/clinician-queue", requireAuth, async (req: AuthRequest, res: Respon
     return res.status(404).json({ error: "Clinician profile not found" });
   }
 
+  // VD-4: Window from 60 minutes before start so consultation does not disappear the minute it begins
+  const queueWindowStart = new Date(Date.now() - 60 * 60 * 1000);
   const queue = await prisma.appointment.findMany({
     where: {
       clinicianId: clinician.id,
       channel: "video",
       status: { in: ["confirmed", "in_progress"] },
-      startTimeUtc: { gte: new Date() },
+      startTimeUtc: { gte: queueWindowStart },
     },
     include: {
       patient: {
@@ -358,7 +397,14 @@ router.get("/clinician-queue", requireAuth, async (req: AuthRequest, res: Respon
     orderBy: { startTimeUtc: "asc" },
   });
 
-  return res.json(queue);
+  const decryptedQueue = await Promise.all(
+    queue.map(async (item) => ({
+      ...item,
+      triageData: await decryptField(item.triageData),
+    }))
+  );
+
+  return res.json(decryptedQueue);
 });
 
 // ─── POST /api/video/admit-patient ────────────────────────────────────────────
@@ -370,7 +416,11 @@ router.post("/admit-patient", requireAuth, validateBody(admitPatientSchema), asy
 
   const { appointmentId } = req.body;
   const clinicianId = req.user!.sub;
-  const idempotencyKey = generateIdempotencyKey("admit-patient", { appointmentId, clinicianId });
+  const clientKey = idempotencyKeyFrom(req.header("Idempotency-Key"));
+  if (clientKey === "invalid") {
+    return res.status(400).json({ error: "Idempotency-Key must be 8 to 128 letters, digits, '-', '_' or ':'" });
+  }
+  const idempotencyKey = clientKey ? `admit-patient:${clientKey}` : null;
 
   return withIdempotency(idempotencyKey, async () => {
     const clinician = await prisma.clinicianProfile.findUnique({
@@ -397,24 +447,149 @@ router.post("/admit-patient", requireAuth, validateBody(admitPatientSchema), asy
       return { error: "Only an open video consultation can be joined", status: 409 };
     }
 
+    const currentTriage = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
+    const updatedTriage = {
+      ...currentTriage,
+      admittedAt: new Date().toISOString(),
+      admittedBy: clinician.id,
+    };
+    const encryptedTriage = await encryptField(updatedTriage);
+
     const updated = await prisma.appointment.update({
       where: { id: appointmentId },
       data: {
         status: "in_progress",
-        triageData: {
-          ...((appointment.triageData as Record<string, unknown>) || {}),
-          admittedAt: new Date().toISOString(),
-          admittedBy: clinician.id,
-        },
+        triageData: encryptedTriage as any,
       },
     });
 
-    return { appointment: updated, status: 200 };
+    return { appointment: { ...updated, triageData: updatedTriage }, status: 200 };
   }).then((result) => {
     if (result.error) {
       return res.status(result.status).json({ error: result.error });
     }
     return res.status(result.status).json(result);
+  });
+});
+
+// ─── POST /api/video/end-consult ──────────────────────────────────────────────
+// Clinician ends and completes a video consultation (VD-4)
+router.post("/end-consult", requireAuth, validateBody(endConsultSchema), async (req: AuthRequest, res: Response) => {
+  if (req.user!.role !== "clinician") {
+    return res.status(403).json({ error: "Clinician access required" });
+  }
+
+  const { appointmentId, notes, diagnosis, treatmentPlan, followUpRecommended } = req.body;
+  const clinician = await prisma.clinicianProfile.findUnique({
+    where: { userId: req.user!.sub },
+  });
+
+  if (!clinician) {
+    return res.status(404).json({ error: "Clinician profile not found" });
+  }
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+  });
+
+  if (!appointment) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
+
+  if (appointment.clinicianId !== clinician.id) {
+    return res.status(403).json({ error: "Not assigned to this clinician" });
+  }
+
+  if (appointment.channel !== "video" || (appointment.status !== "in_progress" && appointment.status !== "confirmed")) {
+    return res.status(409).json({ error: "Only an in-progress or confirmed video consultation can be completed" });
+  }
+
+  const currentTriage = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
+  const completedAt = new Date().toISOString();
+
+  const consultationSummary = {
+    completedAt,
+    completedBy: clinician.fullName,
+    notes: notes || null,
+    diagnosis: diagnosis || null,
+    treatmentPlan: treatmentPlan || null,
+    followUpRecommended: followUpRecommended || "none",
+  };
+
+  const updatedTriage = {
+    ...currentTriage,
+    consultationSummary,
+  };
+
+  const updated = await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      status: "completed",
+      triageData: (await encryptField(updatedTriage)) as any,
+    },
+  });
+
+  // Cancel any lingering appointment reminders since consult is completed
+  await cancelAppointmentReminders(appointmentId).catch(() => {});
+
+  // Audit completion
+  await createAuditLogWithIntegrity({
+    action: "video.consult.completed",
+    actorId: req.user!.sub,
+    resourceId: appointmentId,
+    metadata: {
+      channel: "video",
+      followUpRecommended,
+      hasDiagnosis: !!diagnosis,
+    },
+  }).catch(() => {});
+
+  return res.json({
+    appointmentId: updated.id,
+    status: updated.status,
+    completedAt,
+    summary: consultationSummary,
+  });
+});
+
+// ─── GET /api/video/summary/:appointmentId ────────────────────────────────────
+// Real consultation summary for patient and clinician (MC-3)
+router.get("/summary/:appointmentId", requireAuth, async (req: AuthRequest, res: Response) => {
+  const appointmentId = String(req.params.appointmentId);
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      clinician: { select: { fullName: true, gdcNumber: true } },
+      patient: { select: { userId: true, firstName: true, lastName: true } },
+      service: { select: { name: true } },
+    },
+  });
+
+  if (!appointment) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
+
+  const isAuthorized =
+    req.user!.sub === appointment.patient.userId ||
+    req.user!.role === "clinician" ||
+    req.user!.role === "admin";
+
+  if (!isAuthorized) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const triageData = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
+  const summary = (triageData.consultationSummary as Record<string, unknown>) || null;
+
+  return res.json({
+    appointmentId: appointment.id,
+    status: appointment.status,
+    serviceName: appointment.service.name,
+    clinicianName: appointment.clinician?.fullName || "Dental Clinician",
+    gdcNumber: appointment.clinician?.gdcNumber || null,
+    startTimeUtc: appointment.startTimeUtc,
+    endTimeUtc: appointment.endTimeUtc,
+    summary,
   });
 });
 

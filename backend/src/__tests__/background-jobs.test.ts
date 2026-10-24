@@ -60,7 +60,7 @@ describe("Background Jobs Integration Tests", () => {
     await prisma.scheduledNotification.deleteMany({ where: { userId: testUserId } });
     await prisma.notificationHistory.deleteMany({ where: { userId: testUserId } });
     await prisma.appointment.deleteMany({ where: { patientId: patientProfileId } });
-    await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+    // Keep user record so audit logs referencing it maintain integrity
   });
 
   describe("processExpiredSlotHolds", () => {
