@@ -157,4 +157,40 @@ describe("rewards", () => {
     const hold = await appointment(other.profileId, "draft_hold", 7);
     expect((await send("POST", "/api/payments/create-intent", other.token, { appointmentId: hold, voucherCode })).status).toBe(422);
   });
+
+  it("prevents points farming: self-reported brushing log never grants points (RW-2)", async () => {
+    const patient = await makePatient("brushing-farming");
+    const initialPoints = await pointsOf(patient.userId);
+    expect(initialPoints).toBe(0);
+
+    for (let i = 0; i < 5; i++) {
+      const logRes = await send("POST", "/api/rewards/brushing-log", patient.token, {
+        day: "Mon",
+        session: "am",
+        durationSec: 120,
+      });
+      expect(logRes.status).toBe(200);
+      expect(logRes.body.pointsBalance).toBe(0);
+    }
+
+    const finalPoints = await pointsOf(patient.userId);
+    expect(finalPoints).toBe(0);
+  });
+
+  it("refuses redemption of non-existent reward items", async () => {
+    const patient = await makePatient("invalid-reward");
+    const res = await send("POST", "/api/rewards/redeem", patient.token, { rewardId: "nonexistent-item" });
+    expect(res.status).toBe(404);
+  });
+
+  it("enforces financing decision (FN-1): in-app approval retired (410) and links to external provider", async () => {
+    const patient = await makePatient("finance-test");
+    const applyRes = await send("POST", "/api/financing/apply", patient.token, { amountPence: 20000 });
+    expect(applyRes.status).toBe(410);
+    expect(applyRes.body.financeInfoUrl).toBeDefined();
+
+    const getRes = await send("GET", "/api/financing", patient.token);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.financeInfoUrl).toBeDefined();
+  });
 });
