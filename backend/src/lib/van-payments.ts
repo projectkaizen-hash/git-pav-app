@@ -12,6 +12,7 @@ import Stripe from "stripe";
 import { env } from "../config/env";
 import { prisma } from "./prisma";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
+import { safeError } from "./log-safety";
 
 export const isMockStripe = env.isMockStripe;
 
@@ -166,7 +167,7 @@ async function auditRelease(
         : {}),
       ...(result.error ? { error: result.error } : {}),
     },
-  }).catch((err) => console.error("[VAN PAYMENTS] Audit log write failed:", err));
+  }).catch((err) => console.error("[VAN PAYMENTS] Audit log write failed:", safeError(err)));
 }
 
 /**

@@ -40,7 +40,12 @@ const appointmentInclude = {
 
 /** True when the insert hit the no-overlap constraint (CS-16). */
 function isClinicianOverlap(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientUnknownRequestError && error.message.includes("appointments_no_clinician_overlap");
+  return (
+    error instanceof Prisma.PrismaClientUnknownRequestError &&
+    (error.message.includes("appointments_no_clinician_overlap") ||
+      error.message.includes("deadlock detected") ||
+      error.message.includes("40P01"))
+  );
 }
 
 function slotLockKey(slotId: string): string {
