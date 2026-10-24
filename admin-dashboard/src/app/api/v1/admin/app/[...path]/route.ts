@@ -9,14 +9,28 @@ import { pavApi } from "@/lib/pav-api.server";
 const SEG = "[A-Za-z0-9_-]{1,64}";
 const DATE = "\\d{4}-\\d{2}-\\d{2}";
 const ALLOWED: Record<string, RegExp[]> = {
-  GET: [/^clinics$/, /^clinicians$/, new RegExp(`^clinicians/${SEG}/overrides$`), /^erasure-requests$/],
+  GET: [
+    /^clinics$/,
+    /^clinicians$/,
+    new RegExp(`^clinicians/${SEG}/overrides$`),
+    /^erasure-requests$/,
+    /^vans$/,
+    /^services$/,
+  ],
   PUT: [
     new RegExp(`^clinics/${SEG}/hours$`),
     new RegExp(`^clinicians/${SEG}/rota$`),
     new RegExp(`^clinicians/${SEG}/overrides/${DATE}$`),
   ],
   POST: [
+    /^clinics$/,
     new RegExp(`^clinics/${SEG}/closures$`),
+    /^clinicians$/,
+    /^operators$/,
+    /^vans$/,
+    new RegExp(`^vans/${SEG}/polygons$`),
+    new RegExp(`^vans/${SEG}/assignments$`),
+    /^services$/,
     new RegExp(`^erasure-requests/${SEG}/complete$`),
     new RegExp(`^erasure-requests/${SEG}/reject$`),
   ],

@@ -84,3 +84,64 @@ export const rotaOverrideSchema = z.union([
 export const idParamsSchema = z.object({ id: uuid }).strict();
 export const idDateParamsSchema = z.object({ id: uuid, date: calendarDate }).strict();
 export const dateRangeQuerySchema = z.object({ from: calendarDate.optional(), to: calendarDate.optional() }).strict();
+
+// ─── Back office onboarding & management (CS-31, AD-1) ──────────────────────
+export const createClinicianSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(128).optional(),
+  fullName: z.string().trim().min(2).max(100),
+  gdcNumber: z.string().trim().regex(/^\d{6}$/, "GDC number must be exactly 6 digits"),
+  roleTitle: z.string().trim().min(2).max(100),
+  specialisms: z.array(z.string().trim()).default([]),
+  bio: z.string().trim().max(1000).optional(),
+  photoUrl: z.string().url().optional(),
+  isTelehealthActive: z.boolean().default(true),
+}).strict();
+
+export const createOperatorSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(128).optional(),
+  fullName: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(5).max(30).optional(),
+}).strict();
+
+export const createClinicSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  address: z.string().trim().min(2).max(200),
+  postcode: z.string().trim().min(2).max(20),
+  city: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(5).max(30),
+  operatingHours: z.string().trim().min(2).max(200).default("Mon–Fri 09:00–17:30, Sat 09:00–13:00"),
+  isActive: z.boolean().default(true),
+}).strict();
+
+export const createVanSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  registrationPlate: z.string().trim().min(2).max(20),
+  vehicleModel: z.string().trim().min(2).max(100),
+  isActive: z.boolean().default(true),
+}).strict();
+
+export const createServiceSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(1000).default(""),
+  category: z.enum(["checkup", "hygiene", "emergency", "restorative", "cosmetic"]).default("checkup"),
+  durationMinutes: z.number().int().min(5).max(480).default(30),
+  pricePence: z.number().int().min(0),
+  depositPence: z.number().int().min(0).default(0),
+  supportedChannels: z.array(z.enum(["clinic", "van", "video"])).default(["clinic", "van", "video"]),
+  prepInstructions: z.array(z.string().trim()).default([]),
+  requiresPriorConsult: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+}).strict();
+
+export const assignVanPolygonSchema = z.object({
+  sectorName: z.string().trim().min(2).max(100),
+  polygonGeoJson: z.record(z.unknown()).optional(),
+}).strict();
+
+export const assignVanOperatorSchema = z.object({
+  operatorId: uuid,
+  startsAt: z.string().datetime().optional(),
+  endsAt: z.string().datetime().optional(),
+}).strict();
