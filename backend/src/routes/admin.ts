@@ -1,6 +1,11 @@
+import crypto from "crypto";
+import argon2 from "argon2";
 import { Router, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { awardVisitPoints } from "../lib/rewards";
+import { cancelAppointmentReminders } from "../lib/background-jobs";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { pseudonymiseIp } from "../lib/audit-security";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
 import { validateParams, validateQuery, validateBody } from "../middleware/validate";
 import {
@@ -9,6 +14,14 @@ import {
   appointmentIdParamsSchema,
   updateAppointmentStatusSchema,
   adminAuditLogsQuerySchema,
+  createClinicianSchema,
+  createOperatorSchema,
+  createClinicSchema,
+  createVanSchema,
+  createServiceSchema,
+  assignVanPolygonSchema,
+  assignVanOperatorSchema,
+  idParamsSchema,
 } from "../schemas/admin";
 
 const router = Router();
@@ -183,6 +196,11 @@ router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), vali
   // Points for a completed visit (decisions log #14); a repeat is a no-op.
   if (updated.status === "completed") await awardVisitPoints(updated.id);
 
+  // If status changed to cancelled, cancel pending reminders
+  if (updated.status === "cancelled") {
+    await cancelAppointmentReminders(appointmentId).catch(() => {});
+  }
+
   return res.json({ id: updated.id, status: updated.status, updatedAt: updated.updatedAt });
 });
 
@@ -190,12 +208,321 @@ router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), vali
 router.get("/vans", requireAuth, requireRole("admin"), async (_req: AuthRequest, res: Response) => {
   const vans = await prisma.van.findMany({
     include: {
-      servicePolygons: { select: { sectorName: true } },
+      servicePolygons: { select: { id: true, sectorName: true } },
+      assignments: {
+        include: { operator: { select: { fullName: true, phone: true } } },
+        orderBy: { startsAt: "desc" },
+        take: 5,
+      },
       _count: { select: { appointments: true } },
     },
+    orderBy: { name: "asc" },
   });
 
   return res.json(vans);
+});
+
+// ─── POST /api/admin/vans ─────────────────────────────────────────────────────
+router.post("/vans", requireAuth, requireRole("admin"), validateBody(createVanSchema), async (req: AuthRequest, res: Response) => {
+  const { name, registrationPlate, vehicleModel, isActive } = req.body;
+
+  const existingPlate = await prisma.van.findUnique({ where: { registrationPlate } });
+  if (existingPlate) {
+    return res.status(409).json({ error: "Van with this registration plate already exists" });
+  }
+
+  const van = await prisma.van.create({
+    data: {
+      name,
+      registrationPlate,
+      vehicleModel,
+      isActive: isActive ?? true,
+    },
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.van_created",
+    actorId: req.user!.sub,
+    resourceId: van.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { vanId: van.id, registrationPlate },
+  });
+
+  return res.status(201).json(van);
+});
+
+// ─── POST /api/admin/vans/:id/polygons ────────────────────────────────────────
+router.post("/vans/:id/polygons", requireAuth, requireRole("admin"), validateParams(idParamsSchema), validateBody(assignVanPolygonSchema), async (req: AuthRequest, res: Response) => {
+  const vanId = String(req.params.id);
+  const { sectorName, polygonGeoJson } = req.body;
+
+  const van = await prisma.van.findUnique({ where: { id: vanId } });
+  if (!van) {
+    return res.status(404).json({ error: "Van not found" });
+  }
+
+  const defaultGeoJson = {
+    type: "Polygon",
+    coordinates: [
+      [
+        [-0.15, 51.48],
+        [-0.15, 51.55],
+        [-0.05, 51.55],
+        [-0.05, 51.48],
+        [-0.15, 51.48],
+      ],
+    ],
+  };
+
+  const polygon = await prisma.vanServicePolygon.create({
+    data: {
+      vanId,
+      sectorName,
+      polygonGeoJson: (polygonGeoJson ?? defaultGeoJson) as any,
+    },
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.van_polygon_assigned",
+    actorId: req.user!.sub,
+    resourceId: polygon.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { vanId, sectorName, polygonId: polygon.id },
+  });
+
+  return res.status(201).json(polygon);
+});
+
+// ─── POST /api/admin/vans/:id/assignments ─────────────────────────────────────
+router.post("/vans/:id/assignments", requireAuth, requireRole("admin"), validateParams(idParamsSchema), validateBody(assignVanOperatorSchema), async (req: AuthRequest, res: Response) => {
+  const vanId = String(req.params.id);
+  const { operatorId, startsAt, endsAt } = req.body;
+
+  const [van, operator] = await Promise.all([
+    prisma.van.findUnique({ where: { id: vanId } }),
+    prisma.operatorProfile.findUnique({ where: { id: operatorId } }),
+  ]);
+
+  if (!van) return res.status(404).json({ error: "Van not found" });
+  if (!operator) return res.status(404).json({ error: "Operator not found" });
+
+  const assignment = await prisma.vanOperatorAssignment.create({
+    data: {
+      vanId,
+      operatorId,
+      startsAt: startsAt ? new Date(startsAt) : new Date(),
+      endsAt: endsAt ? new Date(endsAt) : null,
+    },
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.van_operator_assigned",
+    actorId: req.user!.sub,
+    resourceId: assignment.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { vanId, operatorId, assignmentId: assignment.id },
+  });
+
+  return res.status(201).json(assignment);
+});
+
+// ─── POST /api/admin/clinicians ───────────────────────────────────────────────
+// Onboards a clinician without direct SQL
+router.post("/clinicians", requireAuth, requireRole("admin"), validateBody(createClinicianSchema), async (req: AuthRequest, res: Response) => {
+  const { email, password, fullName, gdcNumber, roleTitle, specialisms, bio, photoUrl, isTelehealthActive } = req.body;
+
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) {
+    return res.status(409).json({ error: "User with this email already exists" });
+  }
+
+  const existingGdc = await prisma.clinicianProfile.findUnique({ where: { gdcNumber } });
+  if (existingGdc) {
+    return res.status(409).json({ error: "Clinician with this GDC number already exists" });
+  }
+
+  const pwd = password || crypto.randomUUID();
+  const passwordHash = await argon2.hash(pwd);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "clinician",
+        emailVerified: true,
+      },
+    });
+    const profile = await tx.clinicianProfile.create({
+      data: {
+        userId: user.id,
+        fullName,
+        gdcNumber,
+        roleTitle,
+        specialisms,
+        bio: bio ?? null,
+        photoUrl: photoUrl ?? null,
+        isTelehealthActive: isTelehealthActive ?? true,
+      },
+    });
+    return { user, profile };
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.clinician_created",
+    actorId: req.user!.sub,
+    resourceId: result.profile.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { clinicianId: result.profile.id, gdcNumber, email },
+  });
+
+  return res.status(201).json({
+    id: result.profile.id,
+    userId: result.user.id,
+    email: result.user.email,
+    fullName: result.profile.fullName,
+    gdcNumber: result.profile.gdcNumber,
+    roleTitle: result.profile.roleTitle,
+    specialisms: result.profile.specialisms,
+    bio: result.profile.bio,
+    photoUrl: result.profile.photoUrl,
+    isTelehealthActive: result.profile.isTelehealthActive,
+    createdAt: result.profile.createdAt,
+  });
+});
+
+// ─── POST /api/admin/operators ────────────────────────────────────────────────
+// Onboards a van operator without direct SQL
+router.post("/operators", requireAuth, requireRole("admin"), validateBody(createOperatorSchema), async (req: AuthRequest, res: Response) => {
+  const { email, password, fullName, phone } = req.body;
+
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) {
+    return res.status(409).json({ error: "User with this email already exists" });
+  }
+
+  const pwd = password || crypto.randomUUID();
+  const passwordHash = await argon2.hash(pwd);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "operator",
+        emailVerified: true,
+      },
+    });
+    const profile = await tx.operatorProfile.create({
+      data: {
+        userId: user.id,
+        fullName,
+        phone: phone ?? null,
+      },
+    });
+    return { user, profile };
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.operator_created",
+    actorId: req.user!.sub,
+    resourceId: result.profile.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { operatorId: result.profile.id, email },
+  });
+
+  return res.status(201).json({
+    id: result.profile.id,
+    userId: result.user.id,
+    email: result.user.email,
+    fullName: result.profile.fullName,
+    phone: result.profile.phone,
+    createdAt: result.profile.createdAt,
+  });
+});
+
+// ─── POST /api/admin/clinics ──────────────────────────────────────────────────
+router.post("/clinics", requireAuth, requireRole("admin"), validateBody(createClinicSchema), async (req: AuthRequest, res: Response) => {
+  const { name, address, postcode, city, phone, operatingHours, isActive } = req.body;
+
+  const clinic = await prisma.clinic.create({
+    data: {
+      name,
+      address,
+      postcode,
+      city,
+      phone,
+      operatingHours,
+      isActive: isActive ?? true,
+    },
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.clinic_created",
+    actorId: req.user!.sub,
+    resourceId: clinic.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { clinicId: clinic.id, name, postcode },
+  });
+
+  return res.status(201).json(clinic);
+});
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+router.get("/services", requireAuth, requireRole("admin"), async (_req: AuthRequest, res: Response) => {
+  const services = await prisma.service.findMany({
+    orderBy: { name: "asc" },
+  });
+  return res.json(services);
+});
+
+router.post("/services", requireAuth, requireRole("admin"), validateBody(createServiceSchema), async (req: AuthRequest, res: Response) => {
+  const {
+    name,
+    description,
+    category,
+    durationMinutes,
+    pricePence,
+    depositPence,
+    supportedChannels,
+    prepInstructions,
+    requiresPriorConsult,
+    isActive,
+  } = req.body;
+
+  const id = `srv_${crypto.randomUUID().slice(0, 8)}`;
+  const service = await prisma.service.create({
+    data: {
+      id,
+      name,
+      description,
+      category: category ?? "checkup",
+      durationMinutes,
+      pricePence,
+      depositPence,
+      supportedChannels: supportedChannels ?? ["clinic", "van", "video"],
+      prepInstructions: prepInstructions ?? [],
+      requiresPriorConsult: requiresPriorConsult ?? false,
+      isActive: isActive ?? true,
+    },
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "admin.service_created",
+    actorId: req.user!.sub,
+    resourceId: service.id,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { serviceId: service.id, name, pricePence },
+  });
+
+  return res.status(201).json(service);
 });
 
 // ─── GET /api/admin/audit-logs ────────────────────────────────────────────────
