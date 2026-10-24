@@ -359,28 +359,28 @@ export async function buildSubjectAccessRequestBundle(
   requestId: string = crypto.randomUUID()
 ): Promise<SarBundle> {
   // Execute sequentially to avoid saturating PostgreSQL connection pool
-  const user = await PATIENT_DATA_EXTRACTORS.User(prisma, ctx);
-  const profile = await PATIENT_DATA_EXTRACTORS.PatientProfile(prisma, ctx);
-  const dependants = await PATIENT_DATA_EXTRACTORS.Dependant(prisma, ctx);
-  const appointments = await PATIENT_DATA_EXTRACTORS.Appointment(prisma, ctx);
-  const odontogram = await PATIENT_DATA_EXTRACTORS.ToothRecord(prisma, ctx);
-  const treatmentPlans = await PATIENT_DATA_EXTRACTORS.TreatmentPlan(prisma, ctx);
-  const prescriptions = await PATIENT_DATA_EXTRACTORS.Prescription(prisma, ctx);
-  const documents = await PATIENT_DATA_EXTRACTORS.DocumentVault(prisma, ctx);
-  const messageThreads = await PATIENT_DATA_EXTRACTORS.MessageThread(prisma, ctx);
-  const messages = await PATIENT_DATA_EXTRACTORS.Message(prisma, ctx);
-  const vanServiceRequests = await PATIENT_DATA_EXTRACTORS.VanServiceRequest(prisma, ctx);
-  const notifications = await PATIENT_DATA_EXTRACTORS.NotificationHistory(prisma, ctx);
-  const notificationPreference = await PATIENT_DATA_EXTRACTORS.NotificationPreference(prisma, ctx);
-  const consents = await PATIENT_DATA_EXTRACTORS.ConsentRecord(prisma, ctx);
-  const savedPaymentMethods = await PATIENT_DATA_EXTRACTORS.SavedPaymentMethod(prisma, ctx);
-  const financingApplications = await PATIENT_DATA_EXTRACTORS.FinancingApplication(prisma, ctx);
-  const rewardPointsAwards = await PATIENT_DATA_EXTRACTORS.RewardPointsAward(prisma, ctx);
-  const rewardRedemptions = await PATIENT_DATA_EXTRACTORS.RewardRedemption(prisma, ctx);
-  const waitlistEntries = await PATIENT_DATA_EXTRACTORS.WaitlistEntry(prisma, ctx);
-  const oralHealthMetrics = await PATIENT_DATA_EXTRACTORS.OralHealthMetric(prisma, ctx);
-  const erasureRequests = await PATIENT_DATA_EXTRACTORS.ErasureRequest(prisma, ctx);
-  const auditLogs = await PATIENT_DATA_EXTRACTORS.AuditLog(prisma, ctx);
+  const user: any = await PATIENT_DATA_EXTRACTORS.User(prisma, ctx);
+  const profile: any = await PATIENT_DATA_EXTRACTORS.PatientProfile(prisma, ctx);
+  const dependants: any = await PATIENT_DATA_EXTRACTORS.Dependant(prisma, ctx);
+  const appointments: any = await PATIENT_DATA_EXTRACTORS.Appointment(prisma, ctx);
+  const odontogram: any = await PATIENT_DATA_EXTRACTORS.ToothRecord(prisma, ctx);
+  const treatmentPlans: any = await PATIENT_DATA_EXTRACTORS.TreatmentPlan(prisma, ctx);
+  const prescriptions: any = await PATIENT_DATA_EXTRACTORS.Prescription(prisma, ctx);
+  const documents: any = await PATIENT_DATA_EXTRACTORS.DocumentVault(prisma, ctx);
+  const messageThreads: any = await PATIENT_DATA_EXTRACTORS.MessageThread(prisma, ctx);
+  const messages: any = await PATIENT_DATA_EXTRACTORS.Message(prisma, ctx);
+  const vanServiceRequests: any = await PATIENT_DATA_EXTRACTORS.VanServiceRequest(prisma, ctx);
+  const notifications: any = await PATIENT_DATA_EXTRACTORS.NotificationHistory(prisma, ctx);
+  const notificationPreference: any = await PATIENT_DATA_EXTRACTORS.NotificationPreference(prisma, ctx);
+  const consents: any = await PATIENT_DATA_EXTRACTORS.ConsentRecord(prisma, ctx);
+  const savedPaymentMethods: any = await PATIENT_DATA_EXTRACTORS.SavedPaymentMethod(prisma, ctx);
+  const financingApplications: any = await PATIENT_DATA_EXTRACTORS.FinancingApplication(prisma, ctx);
+  const rewardPointsAwards: any = await PATIENT_DATA_EXTRACTORS.RewardPointsAward(prisma, ctx);
+  const rewardRedemptions: any = await PATIENT_DATA_EXTRACTORS.RewardRedemption(prisma, ctx);
+  const waitlistEntries: any = await PATIENT_DATA_EXTRACTORS.WaitlistEntry(prisma, ctx);
+  const oralHealthMetrics: any = await PATIENT_DATA_EXTRACTORS.OralHealthMetric(prisma, ctx);
+  const erasureRequests: any = await PATIENT_DATA_EXTRACTORS.ErasureRequest(prisma, ctx);
+  const auditLogs: any = await PATIENT_DATA_EXTRACTORS.AuditLog(prisma, ctx);
 
   return {
     requestId,
