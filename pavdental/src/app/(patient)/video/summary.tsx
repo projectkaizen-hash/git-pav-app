@@ -1,12 +1,40 @@
-import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
 import { colors, spacing } from "@/theme";
+import { authFetch } from "@/features/auth/auth-api";
 
 export default function VideoSummaryScreen() {
   const router = useRouter();
+  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSummary() {
+      if (!appointmentId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await authFetch(`/api/video/summary/${appointmentId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSummaryData(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch consult summary:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSummary();
+  }, [appointmentId]);
+
+  const summary = summaryData?.summary;
+  const hasNotesOrDiagnosis = !!(summary?.diagnosis || summary?.notes || summary?.treatmentPlan);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -24,14 +52,51 @@ export default function VideoSummaryScreen() {
             </ThemedText>
           </View>
 
-          {/* Notes and prescriptions are only shown once the clinician has recorded them. */}
+          {/* Clinician recorded summary (MC-3) */}
           <Card elevation="raised" style={styles.card}>
             <ThemedText variant="headline" style={styles.cardHeader}>
-              Notes and prescriptions
+              Clinical Summary
             </ThemedText>
-            <ThemedText variant="body" style={styles.findingText}>
-              Anything your clinician records from this consultation, including any prescription, will appear in your records.
-            </ThemedText>
+            {loading ? (
+              <ActivityIndicator color={colors.ink} />
+            ) : hasNotesOrDiagnosis ? (
+              <View style={styles.summaryDetails}>
+                {summary?.diagnosis && (
+                  <View style={styles.summaryBlock}>
+                    <ThemedText variant="subhead" style={styles.blockTitle}>
+                      Diagnosis
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.findingText}>
+                      {summary.diagnosis}
+                    </ThemedText>
+                  </View>
+                )}
+                {summary?.notes && (
+                  <View style={styles.summaryBlock}>
+                    <ThemedText variant="subhead" style={styles.blockTitle}>
+                      Clinician Notes
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.findingText}>
+                      {summary.notes}
+                    </ThemedText>
+                  </View>
+                )}
+                {summary?.treatmentPlan && (
+                  <View style={styles.summaryBlock}>
+                    <ThemedText variant="subhead" style={styles.blockTitle}>
+                      Treatment Plan
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.findingText}>
+                      {summary.treatmentPlan}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <ThemedText variant="body" style={styles.findingText}>
+                Anything your clinician records from this consultation, including any prescription, will appear in your records.
+              </ThemedText>
+            )}
             <Button
               title="View prescriptions"
               variant="secondary"
@@ -125,6 +190,20 @@ const styles = StyleSheet.create({
   findingText: {
     color: colors.secondaryLabel,
     lineHeight: 22,
+  },
+  summaryDetails: {
+    gap: spacing.sm,
+    marginVertical: spacing.xs,
+  },
+  summaryBlock: {
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 8,
+    gap: 4,
+    padding: spacing.sm,
+  },
+  blockTitle: {
+    color: colors.label,
+    fontWeight: "600",
   },
   footer: {
     backgroundColor: colors.systemBackground,

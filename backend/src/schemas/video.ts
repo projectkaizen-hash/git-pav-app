@@ -19,3 +19,11 @@ export const submitTriageSchema = z.object({
 export const admitPatientSchema = z.object({
   appointmentId: uuid,
 }).strict();
+
+export const endConsultSchema = z.object({
+  appointmentId: uuid,
+  notes: z.string().trim().max(5000).optional(),
+  diagnosis: z.string().trim().max(1000).optional(),
+  treatmentPlan: z.string().trim().max(2000).optional(),
+  followUpRecommended: z.enum(["none", "clinic", "van", "video"]).optional(),
+}).strict();
