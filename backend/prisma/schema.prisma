@@ -599,6 +599,15 @@ model SavedPaymentMethod {
   @@map("saved_payment_methods")
 }
 
+/// Deduplication log of processed Stripe webhook events (CS-17, WH-3, BJ-4)
+model ProcessedStripeEvent {
+  id        String   @id @db.VarChar(255)
+  type      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("stripe_events")
+}
+
 model OperatorProfile {
   id          String                  @id @default(uuid()) @db.Uuid
   userId      String                  @unique @map("user_id") @db.Uuid
@@ -689,6 +698,8 @@ model VanServiceRequest {
   appointmentId       String?          @unique @map("appointment_id") @db.Uuid
   paymentIntentId     String?          @map("payment_intent_id")
   depositAuthorizedAt DateTime?        @map("deposit_authorized_at")
+  depositReleaseStatus String?         @map("deposit_release_status") @db.VarChar(50)
+  depositReleasedAt    DateTime?       @map("deposit_released_at")
   /// Last ETA pushed to the patient (drives material-delta gating)
   lastEtaSeconds      Int?             @map("last_eta_seconds")
   lastEtaPushedAt     DateTime?        @map("last_eta_pushed_at")
@@ -705,6 +716,7 @@ model VanServiceRequest {
   @@index([vanId, status])
   @@index([patientId, status])
   @@index([shiftId, queuePosition])
+  @@index([status, depositReleaseStatus])
   // Also a partial unique index on patient_id for open requests (migration
   // 20261024030200); Prisma can't declare it.
   @@map("van_service_requests")

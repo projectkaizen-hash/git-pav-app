@@ -347,18 +347,32 @@ router.post("/shift/end", requireAuth, requireRole("operator"), async (req: Auth
   });
   const failedReleases: string[] = [];
   for (const pending of pendingRequests) {
+    let releaseStatus: string | null = null;
+    let releasedAt: Date | null = null;
     if (pending.paymentIntentId) {
       const release = await releaseVanDeposit(pending.paymentIntentId, "shift_ended");
-      if (release.status === "failed") failedReleases.push(pending.id);
+      releaseStatus = release.status;
+      if (release.status === "failed") {
+        failedReleases.push(pending.id);
+      } else if (["released", "already_released", "refunded"].includes(release.status)) {
+        releasedAt = new Date();
+      }
     }
     await prisma.vanServiceRequest.update({
       where: { id: pending.id },
-      data: { status: "expired" },
+      data: {
+        status: "expired",
+        depositReleaseStatus: releaseStatus,
+        depositReleasedAt: releasedAt,
+      },
     });
+    const message = releaseStatus === "failed"
+      ? "The van has ended its shift before accepting your request. We are releasing your deposit hold."
+      : "The van has ended its shift before accepting your request. No deposit was taken — please try again later.";
     await sendPatientNotification(
       pending.patientId,
       "Van Went Offline",
-      "The van has ended its shift before accepting your request. No deposit was taken — please try again later.",
+      message,
       { requestId: pending.id, status: "expired" }
     );
   }
@@ -669,21 +683,32 @@ router.post("/requests/:id/decline", requireAuth, requireRole("operator"), valid
   // its client secret can no longer be used). Failure is non-blocking: the
   // request is still declined; the sweeper retries releases on its next pass.
   let releaseStatus: VanDepositReleaseStatus | null = null;
+  let releasedAt: Date | null = null;
   if (request.paymentIntentId) {
     const release = await releaseVanDeposit(request.paymentIntentId, "operator_declined");
     releaseStatus = release.status;
+    if (["released", "already_released", "refunded"].includes(release.status)) {
+      releasedAt = new Date();
+    }
   }
 
   const updated = await prisma.vanServiceRequest.update({
     where: { id: request.id },
-    data: { status: "declined" },
+    data: {
+      status: "declined",
+      depositReleaseStatus: releaseStatus,
+      depositReleasedAt: releasedAt,
+    },
   });
 
   // Send notification to patient
+  const declineMessage = releaseStatus === "failed"
+    ? "Unfortunately, your van visit request could not be accommodated at this time. We are releasing your deposit hold."
+    : "Unfortunately, your van visit request could not be accommodated at this time. No deposit was taken — please try again later.";
   await sendPatientNotification(
     request.patientId,
     "Van Request Declined",
-    "Unfortunately, your van visit request could not be accommodated at this time. Please try again later.",
+    declineMessage,
     { requestId: request.id, status: "declined" }
   );
 
@@ -1274,7 +1299,15 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
   // The deposit step above is safe to repeat, so the patient can retry.
   const cancelled = await prisma.vanServiceRequest.updateMany({
     where: { id: request.id, status: request.status, appointmentId: request.appointmentId },
-    data: { status: "cancelled", phase: "cancelled" },
+    data: {
+      status: "cancelled",
+      phase: "cancelled",
+      depositReleaseStatus: depositOutcome,
+      depositReleasedAt:
+        ["released", "already_released", "refunded", "retained"].includes(depositOutcome ?? "")
+          ? new Date()
+          : null,
+    },
   });
   if (cancelled.count !== 1) {
     return res.status(409).json({ error: "Request changed while cancelling. Please try again." });

@@ -211,21 +211,33 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
 
       // Only schedule if the reminder time is in the future
       if (scheduledFor.getTime() > now) {
-        await prisma.scheduledNotification.create({
-          data: {
+        // BJ-4: Guard against duplicate scheduling on webhook replay or concurrent redeliveries
+        const existing = await prisma.scheduledNotification.findFirst({
+          where: {
             userId,
-            title: step.title,
-            body: step.body,
-            data: {
-              appointmentId: appointment.id,
-              type: "appointment_reminder",
-              hoursBefore: step.hoursBefore,
-              startTimeUtc: appointment.startTimeUtc.toISOString(),
-            },
             scheduledFor,
+            title: step.title,
             status: "pending",
           },
         });
+
+        if (!existing) {
+          await prisma.scheduledNotification.create({
+            data: {
+              userId,
+              title: step.title,
+              body: step.body,
+              data: {
+                appointmentId: appointment.id,
+                type: "appointment_reminder",
+                hoursBefore: step.hoursBefore,
+                startTimeUtc: appointment.startTimeUtc.toISOString(),
+              },
+              scheduledFor,
+              status: "pending",
+            },
+          });
+        }
       }
     }
 
@@ -261,26 +273,39 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
 
     let expiredCount = 0;
     for (const request of stale) {
-      // Release the deposit hold first. On failure the request stays pending
-      // so the next sweep retries both the release and the expiry.
+      // Release the deposit hold first. On failure, depositReleaseStatus is marked
+      // as 'failed' so retryFailedVanDepositReleases retries it.
+      let releaseStatus: string | null = null;
+      let releasedAt: Date | null = null;
       if (request.paymentIntentId) {
         const release = await releaseVanDeposit(request.paymentIntentId, "expired");
-        if (release.status === "failed") continue;
+        releaseStatus = release.status;
+        if (["released", "already_released", "refunded", "mock"].includes(release.status)) {
+          releasedAt = new Date();
+        }
       }
 
       // Idempotent re-check: only transition requests that are still pending
       // (an operator may have accepted/declined mid-sweep).
       const result = await prisma.vanServiceRequest.updateMany({
         where: { id: request.id, status: "pending" },
-        data: { status: "expired" },
+        data: {
+          status: "expired",
+          depositReleaseStatus: releaseStatus,
+          depositReleasedAt: releasedAt,
+        },
       });
 
       if (result.count === 1) {
         expiredCount++;
+        const message = releaseStatus === "failed"
+          ? "No operator accepted your van request in time, so it has expired. We are releasing your deposit hold."
+          : "No operator accepted your van request in time, so it has expired. No deposit was taken — please try again later.";
+
         await sendPatientNotification(
           request.patientId,
           "Van Request Expired",
-          "No operator accepted your van request in time, so it has expired. No deposit was taken — please try again later.",
+          message,
           { requestId: request.id, status: "expired" }
         );
       }
@@ -297,6 +322,59 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
 }
 
 /**
+ * Retries failed deposit releases for terminal van requests (expired, declined, cancelled).
+ * Closes VP-2.
+ */
+export async function retryFailedVanDepositReleases(): Promise<{ retriedCount: number; succeededCount: number }> {
+  try {
+    const failed = await prisma.vanServiceRequest.findMany({
+      where: {
+        status: { in: ["expired", "declined", "cancelled"] },
+        depositReleaseStatus: "failed",
+        paymentIntentId: { not: null },
+      },
+      select: {
+        id: true,
+        status: true,
+        paymentIntentId: true,
+      },
+      take: 50,
+    });
+
+    let succeededCount = 0;
+    for (const req of failed) {
+      if (!req.paymentIntentId) continue;
+      const reason =
+        req.status === "declined"
+          ? "operator_declined"
+          : req.status === "cancelled"
+            ? "patient_cancelled"
+            : "expired";
+
+      const release = await releaseVanDeposit(req.paymentIntentId, reason);
+      if (release.status !== "failed") {
+        succeededCount++;
+        await prisma.vanServiceRequest.update({
+          where: { id: req.id },
+          data: {
+            depositReleaseStatus: release.status,
+            depositReleasedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    if (failed.length > 0) {
+      console.log(`[BACKGROUND JOBS] Retried ${failed.length} failed van deposit release(s), ${succeededCount} succeeded`);
+    }
+    return { retriedCount: failed.length, succeededCount };
+  } catch (error) {
+    console.error("[BACKGROUND JOBS] Error retrying failed van deposit releases:", error);
+    return { retriedCount: 0, succeededCount: 0 };
+  }
+}
+
+/**
  * Starts all background job workers.
  */
 const RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -309,6 +387,7 @@ export function startBackgroundJobs(): void {
   processExpiredSlotHolds().catch(() => {});
   processDueScheduledNotifications().catch(() => {});
   processExpiredVanRequests().catch(() => {});
+  retryFailedVanDepositReleases().catch(() => {});
 
   // Recurring timers
   slotExpiryTimer = setInterval(() => {
@@ -324,6 +403,7 @@ export function startBackgroundJobs(): void {
 
   vanRequestExpiryTimer = setInterval(() => {
     processExpiredVanRequests().catch(() => {});
+    retryFailedVanDepositReleases().catch(() => {});
   }, VAN_REQUEST_EXPIRY_INTERVAL_MS);
 
   retentionSweepTimer = setInterval(() => {
