@@ -17,44 +17,100 @@ let notificationDispatchTimer: NodeJS.Timeout | null = null;
 let vanRequestExpiryTimer: NodeJS.Timeout | null = null;
 
 /**
+ * Checks whether the given date/time falls within quiet hours according to Europe/London local time.
+ */
+export function isInQuietHours(
+  date: Date = new Date(),
+  startStr: string = "22:00",
+  endStr: string = "08:00",
+  timeZone: string = "Europe/London"
+): boolean {
+  if (!startStr || !endStr) return false;
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value || "0", 10);
+  const currentMinutes = hour * 60 + minute;
+
+  const [startH, startM] = startStr.split(":").map((v) => parseInt(v, 10));
+  const [endH, endM] = endStr.split(":").map((v) => parseInt(v, 10));
+  const startMinutes = (startH || 0) * 60 + (startM || 0);
+  const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+  if (startMinutes === endMinutes) return false;
+
+  if (startMinutes < endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  } else {
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+}
+
+/**
+ * Returns a Date representing the next time quiet hours end in London time.
+ */
+export function getNextQuietHoursEnd(
+  date: Date = new Date(),
+  endStr: string = "08:00",
+  timeZone: string = "Europe/London"
+): Date {
+  const [endH, endM] = endStr.split(":").map((v) => parseInt(v, 10));
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const year = parseInt(parts.find((p) => p.type === "year")?.value || "1970", 10);
+  const month = parseInt(parts.find((p) => p.type === "month")?.value || "1", 10) - 1;
+  const day = parseInt(parts.find((p) => p.type === "day")?.value || "1", 10);
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value || "0", 10);
+
+  const currentMinutes = hour * 60 + minute;
+  const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+  const targetDay = currentMinutes >= endMinutes ? day + 1 : day;
+  return new Date(Date.UTC(year, month, targetDay, endH || 0, endM || 0));
+}
+
+/**
  * Sweeps expired draft_hold appointments and transitions them to cancelled.
  */
 export async function processExpiredSlotHolds(): Promise<{ expiredCount: number }> {
   const now = new Date();
 
   try {
-    // Find expired draft_hold appointments
-    const expiredHolds = await prisma.appointment.findMany({
-      where: {
-        status: "draft_hold",
-        holdExpiresAt: { lte: now },
-      },
-      select: {
-        id: true,
-        patientId: true,
-      },
-      take: 100, // Batch limit per cycle
-    });
+    // BJ-5: Atomically cancel and return only the rows that were actually updated
+    const expiredRows = await prisma.$queryRaw<Array<{ id: string }>>`
+      UPDATE appointments
+      SET status = 'cancelled'
+      WHERE id IN (
+        SELECT id FROM appointments
+        WHERE status = 'draft_hold' AND hold_expires_at <= ${now}
+        LIMIT 100
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id;
+    `;
 
-    if (expiredHolds.length === 0) {
+    if (expiredRows.length === 0) {
       return { expiredCount: 0 };
     }
 
-    const expiredIds = expiredHolds.map((a) => a.id);
-
-    // Cancel expired draft holds
-    const result = await prisma.appointment.updateMany({
-      where: {
-        id: { in: expiredIds },
-        status: "draft_hold", // Ensure atomic update
-      },
-      data: {
-        status: "cancelled",
-      },
-    });
-
-    // Audit log each cancellation
-    for (const appt of expiredHolds) {
+    // Audit log only the cancelled rows
+    for (const appt of expiredRows) {
       await createAuditLogWithIntegrity({
         action: "appointment.hold_expired",
         actorId: null,
@@ -63,10 +119,12 @@ export async function processExpiredSlotHolds(): Promise<{ expiredCount: number 
         ipHash: pseudonymiseIp("127.0.0.1"),
         metadata: { reason: "10-minute hold window elapsed without payment" },
       }).catch(() => {});
+
+      await cancelAppointmentReminders(appt.id).catch(() => {});
     }
 
-    console.log(`[BACKGROUND JOBS] Expired ${result.count} draft holds`);
-    return { expiredCount: result.count };
+    console.log(`[BACKGROUND JOBS] Expired ${expiredRows.length} draft holds`);
+    return { expiredCount: expiredRows.length };
   } catch (error) {
     console.error("[BACKGROUND JOBS] Error processing expired slot holds:", error);
     return { expiredCount: 0 };
@@ -80,11 +138,29 @@ export async function processDueScheduledNotifications(): Promise<{ dispatchedCo
   const now = new Date();
 
   try {
+    // BJ-3: Multi-replica atomic claim step using FOR UPDATE SKIP LOCKED
+    const claimedRows = await prisma.$queryRaw<Array<{ id: string }>>`
+      UPDATE scheduled_notifications
+      SET status = 'sending'
+      WHERE id IN (
+        SELECT id
+        FROM scheduled_notifications
+        WHERE status = 'pending'
+          AND scheduled_for <= ${now}
+        ORDER BY scheduled_for ASC
+        LIMIT 50
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id;
+    `;
+
+    if (claimedRows.length === 0) {
+      return { dispatchedCount: 0 };
+    }
+
+    const claimedIds = claimedRows.map((r) => r.id);
     const dueNotifications = await prisma.scheduledNotification.findMany({
-      where: {
-        status: "pending",
-        scheduledFor: { lte: now },
-      },
+      where: { id: { in: claimedIds } },
       include: {
         user: {
           include: {
@@ -93,21 +169,33 @@ export async function processDueScheduledNotifications(): Promise<{ dispatchedCo
           },
         },
       },
-      take: 50, // Batch size
     });
-
-    if (dueNotifications.length === 0) {
-      return { dispatchedCount: 0 };
-    }
 
     let dispatchedCount = 0;
 
     for (const notification of dueNotifications) {
       const { user } = notification;
 
-      // Check user preferences
+      // BJ-1: Re-verify appointment status before dispatching
+      const apptId = (notification.data as any)?.appointmentId;
+      if (apptId) {
+        const appt = await prisma.appointment.findUnique({
+          where: { id: apptId },
+          select: { status: true },
+        });
+        if (!appt || appt.status !== "confirmed") {
+          await prisma.scheduledNotification.update({
+            where: { id: notification.id },
+            data: { status: "cancelled", sentAt: now },
+          });
+          continue;
+        }
+      }
+
+      // PP-1: Check user preferences (missing preferences row defaults to pushEnabled: true)
       const preferences = user.notificationPreferences;
-      if (preferences && !preferences.pushEnabled) {
+      const pushEnabled = preferences ? preferences.pushEnabled : true;
+      if (!pushEnabled) {
         await prisma.scheduledNotification.update({
           where: { id: notification.id },
           data: { status: "cancelled", sentAt: now },
@@ -115,40 +203,77 @@ export async function processDueScheduledNotifications(): Promise<{ dispatchedCo
         continue;
       }
 
-      const pushTokens = user.pushTokens.map((t) => t.token);
-
-      if (pushTokens.length > 0) {
-        const messages = pushTokens.map((token) => ({
-          to: token,
-          sound: "default" as const,
-          title: notification.title,
-          body: notification.body,
-          data: (notification.data as Record<string, unknown>) || {},
-        }));
-
-        await communicationService.sendExpoPushNotifications(messages);
+      // PP-3 / NT-2: Quiet hours evaluation in Europe/London timezone
+      if (preferences && isInQuietHours(now, preferences.quietHoursStart, preferences.quietHoursEnd)) {
+        const nextEnd = getNextQuietHoursEnd(now, preferences.quietHoursEnd);
+        const apptStartTime = (notification.data as any)?.startTimeUtc ? new Date((notification.data as any).startTimeUtc) : null;
+        if (apptStartTime && apptStartTime <= nextEnd) {
+          await prisma.scheduledNotification.update({
+            where: { id: notification.id },
+            data: { status: "cancelled", sentAt: now },
+          });
+        } else {
+          await prisma.scheduledNotification.update({
+            where: { id: notification.id },
+            data: { status: "pending", scheduledFor: nextEnd },
+          });
+        }
+        continue;
       }
 
-      // Record in notification history
-      await prisma.notificationHistory.create({
-        data: {
-          userId: user.id,
-          type: "reminder",
-          title: notification.title,
-          body: notification.body,
-          data: (notification.data as any) || {},
-          sentAt: now,
-          status: pushTokens.length > 0 ? "delivered" : "sent",
-        },
-      }).catch(() => {});
+      const pushTokens = user.pushTokens.map((t) => t.token);
 
-      // Mark scheduled notification as sent
-      await prisma.scheduledNotification.update({
-        where: { id: notification.id },
-        data: { status: "sent", sentAt: now },
-      });
+      try {
+        if (pushTokens.length > 0) {
+          const messages = pushTokens.map((token) => ({
+            to: token,
+            sound: "default" as const,
+            title: notification.title,
+            body: notification.body,
+            data: (notification.data as Record<string, unknown>) || {},
+          }));
 
-      dispatchedCount++;
+          const sendResult = await communicationService.sendExpoPushNotifications(messages);
+          if (sendResult.failedCount > 0 && sendResult.sentCount === 0) {
+            throw new Error("All push notifications failed to send");
+          }
+        }
+
+        // Record in notification history
+        await prisma.notificationHistory.create({
+          data: {
+            userId: user.id,
+            type: "reminder",
+            title: notification.title,
+            body: notification.body,
+            data: (notification.data as any) || {},
+            sentAt: now,
+            status: pushTokens.length > 0 ? "delivered" : "sent",
+          },
+        }).catch(() => {});
+
+        // Mark scheduled notification as sent
+        await prisma.scheduledNotification.update({
+          where: { id: notification.id },
+          data: { status: "sent", sentAt: now },
+        });
+
+        dispatchedCount++;
+      } catch (itemErr: any) {
+        // BJ-3: Per-item error handling with attempt cap
+        const nextAttempts = (notification.attempts || 0) + 1;
+        const lastError = itemErr instanceof Error ? itemErr.message : String(itemErr);
+        const maxAttempts = 3;
+
+        await prisma.scheduledNotification.update({
+          where: { id: notification.id },
+          data: {
+            attempts: nextAttempts,
+            lastError,
+            status: nextAttempts >= maxAttempts ? "failed" : "pending",
+          },
+        });
+      }
     }
 
     if (dispatchedCount > 0) {
@@ -183,8 +308,17 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
     const startTime = new Date(appointment.startTimeUtc);
     const serviceName = appointment.service?.name || "Dental Appointment";
     const clinicName = appointment.clinic?.name || "Pav Dental";
-    const timeFormatted = startTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    const dateFormatted = startTime.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    const timeFormatted = startTime.toLocaleTimeString("en-GB", {
+      timeZone: "Europe/London",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const dateFormatted = startTime.toLocaleDateString("en-GB", {
+      timeZone: "Europe/London",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
 
     const ladder = [
       {

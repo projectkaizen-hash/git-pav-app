@@ -183,11 +183,10 @@ app.use("/api/patients/dependants", auditMiddleware, patientDependantsRoutes);
 app.use("/api/patients", requireAuth, auditMiddleware, patientRoutes);
 app.use("/api/booking/appointments", requireAuth, auditMiddleware, cancellationRoutes);
 app.use("/api/booking", requireAuth, auditMiddleware, bookingRoutes);
-app.use("/api/van", requireAuth, auditMiddleware, vanRoutes);
-// Operator stop check-in (see routes/van-stops.ts) — scoped to active shift.
+// Mount specific van sub-routes before generic /api/van
 app.use("/api/van/stops", requireAuth, auditMiddleware, vanStopsRoutes);
-// Queue optimization / manual reorder (see routes/van-queue.ts).
 app.use("/api/van/shift", requireAuth, auditMiddleware, vanQueueRoutes);
+app.use("/api/van", requireAuth, auditMiddleware, vanRoutes);
 app.use("/api/audit", requireAuth, auditMiddleware, auditRoutes);
 app.use("/api/payments", requireAuth, auditMiddleware, paymentRoutes);
 app.use("/api/video", requireAuth, auditMiddleware, videoRoutes);

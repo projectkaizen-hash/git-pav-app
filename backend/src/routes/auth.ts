@@ -298,6 +298,14 @@ router.post("/logout", requireAuth, async (req: AuthRequest, res: Response) => {
 
   await revokeSessions({ id: req.user.sessionId });
 
+  // PP-2: Deactivate push token if passed by the client on logout
+  if (req.body?.pushToken) {
+    await prisma.pushToken.updateMany({
+      where: { token: String(req.body.pushToken), userId: req.user.sub },
+      data: { active: false },
+    });
+  }
+
   return res.json({ message: "Logged out" });
 });
 

@@ -28,7 +28,9 @@ export async function sendPatientNotification(
       where: { userId: patient.userId },
     });
 
-    if (!preferences?.pushEnabled) return;
+    // PP-1: Missing preferences row defaults to pushEnabled: true
+    const pushEnabled = preferences ? preferences.pushEnabled : true;
+    if (!pushEnabled) return;
 
     const tokens = await prisma.pushToken.findMany({
       where: { userId: patient.userId, active: true },

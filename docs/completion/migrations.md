@@ -81,3 +81,8 @@ WHERE a.status IN ('draft_hold', 'confirmed', 'in_progress')
 ```
 
 Expired holds count too, so let the hold sweeper run (or cancel holds whose `hold_expires_at` has passed) before deploying. Any real clash between confirmed appointments needs a person to rebook one of them. It also enables the `btree_gist` extension.
+
+## Deploying `20261024050000_notification_dispatcher_and_indexes` (CS-19)
+
+Adds composite index `(status, scheduled_for)` on `scheduled_notifications`, adds FK indexes on `push_tokens(user_id)`, `auth_sessions(user_id)`, `notification_history(user_id)`, adds dispatcher tracking columns (`attempts`, `last_error`), and drops redundant duplicate indexes on `patient_profiles(user_id)`, `clinician_profiles(gdc_number)`, and `vans(registration_plate)`. Fully additive and safe to deploy with zero downtime.
+

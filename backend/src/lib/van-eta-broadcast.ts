@@ -61,7 +61,7 @@ export function isMaterialDrift(
  */
 export async function broadcastEtaUpdates(
   shiftId: string,
-  opts?: { force?: boolean }
+  opts?: { force?: boolean; forceRequestId?: string }
 ): Promise<Record<string, EtaPushOutcome>> {
   const outcomes: Record<string, EtaPushOutcome> = {};
 
@@ -84,6 +84,13 @@ export async function broadcastEtaUpdates(
 
   for (let i = 0; i < stops.length; i++) {
     const stop = stops[i];
+
+    // EB-1: Skip stops that are on_site or in_treatment
+    if (stop.phase === "on_site" || stop.phase === "in_treatment") {
+      outcomes[stop.id] = "no_change";
+      continue;
+    }
+
     const position = stop.queuePosition ?? i + 1;
 
     // Only stops ahead of this patient affect their ETA — same math as the
@@ -113,12 +120,17 @@ export async function broadcastEtaUpdates(
     const prevEta = stop.lastEtaSeconds;
     const lastPushedAt = stop.lastEtaPushedAt;
 
-    if (!opts?.force && prevEta != null && Math.abs(etaSeconds - prevEta) < DRIFT_MINUTES * 60) {
+    // EB-1: If forceRequestId is passed, force only that request; otherwise respect force flag
+    const isForced = opts?.forceRequestId
+      ? stop.id === opts.forceRequestId
+      : Boolean(opts?.force);
+
+    if (!isForced && prevEta != null && Math.abs(etaSeconds - prevEta) < DRIFT_MINUTES * 60) {
       outcomes[stop.id] = "below_drift";
       continue;
     }
     if (
-      !opts?.force &&
+      !isForced &&
       lastPushedAt &&
       Date.now() - lastPushedAt.getTime() < THROTTLE_MINUTES * 60 * 1000
     ) {
