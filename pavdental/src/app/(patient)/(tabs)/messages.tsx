@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
 import * as Haptics from "expo-haptics";
 import {
   ThemedText,
@@ -16,6 +16,7 @@ import {
 import { colors, spacing, radius } from "@/theme";
 import {
   useMessageThreads,
+  useCreateMessageThreadMutation,
   useReplyMessageThreadMutation,
   useMarkMessageThreadReadMutation,
 } from "@/features/hooks/use-dental-api";
@@ -37,7 +38,14 @@ export default function MessagesScreen() {
   const [showTriage, setShowTriage] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const { data: rawThreads, isLoading } = useMessageThreads();
+  // New message compose state
+  const [isComposing, setIsComposing] = useState(false);
+  const [newSubject, setNewSubject] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newRecipientType, setNewRecipientType] = useState<"practice" | "care_team">("practice");
+
+  const { data: rawThreads, isLoading, refetch } = useMessageThreads();
+  const createMutation = useCreateMessageThreadMutation();
   const replyMutation = useReplyMessageThreadMutation();
   const markReadMutation = useMarkMessageThreadReadMutation();
 
@@ -87,13 +95,44 @@ export default function MessagesScreen() {
     }
   };
 
+  const handleCreateThread = async () => {
+    if (!newSubject.trim() || !newBody.trim()) return;
+    try {
+      await createMutation.mutateAsync({
+        subject: newSubject.trim(),
+        body: newBody.trim(),
+        recipientType: newRecipientType,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setToast(
+        newRecipientType === "care_team"
+          ? "Message sent to your care team"
+          : "Message sent to practice team"
+      );
+      setIsComposing(false);
+      setNewSubject("");
+      setNewBody("");
+      refetch();
+    } catch (err: any) {
+      setToast(err?.message || "Could not send message");
+    }
+  };
+
   return (
     <View style={styles.container}>
       {toast ? <Toast message={toast} tone="success" onDismiss={() => setToast(null)} /> : null}
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
-          <ThemedText variant="overline">Secure inbox</ThemedText>
-          {unreadCount > 0 ? <Badge label={`${unreadCount} NEW`} variant="info" /> : null}
+          <View style={styles.headerTitleGroup}>
+            <ThemedText variant="overline">Secure inbox</ThemedText>
+            {unreadCount > 0 ? <Badge label={`${unreadCount} NEW`} variant="info" /> : null}
+          </View>
+          <Button
+            title="+ New Message"
+            variant="secondary"
+            size="sm"
+            onPress={() => setIsComposing(true)}
+          />
         </View>
 
         {/* Dental emergency symptom check */}
@@ -116,11 +155,19 @@ export default function MessagesScreen() {
               </ThemedText>
             </View>
             <ThemedText variant="caption" style={styles.triageSubtitle}>
-              Pain, a broken tooth or swelling? See where to get help.
+              Pain, swelling, or trauma? Call 999 or attend A&E for acute emergencies. For urgent advice call 111.
             </ThemedText>
           </View>
           <AppIcon name="chevronRight" size={16} color={colors.secondaryLabel} />
         </Pressable>
+
+        {/* SLA & Practice Hours Notice */}
+        <View style={styles.slaNoticeCard}>
+          <AppIcon name="clock" size={14} color={colors.secondaryLabel} />
+          <ThemedText variant="caption" style={styles.slaNoticeText}>
+            Practice hours: Mon–Fri 09:00–17:30, Sat 09:00–13:00. Responses typically within 1 business day.
+          </ThemedText>
+        </View>
 
         <Input
           label=""
@@ -229,11 +276,161 @@ export default function MessagesScreen() {
 
       {/* Frame 6: emergency triage modal */}
       <EmergencyTriageModal visible={showTriage} onClose={() => setShowTriage(false)} />
+
+      {/* Frame 7: new message compose modal */}
+      <Modal visible={isComposing} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText variant="headline">New Message</ThemedText>
+              <Button title="Cancel" variant="ghost" size="sm" onPress={() => setIsComposing(false)} />
+            </View>
+
+            <ThemedText variant="caption" style={styles.modalSubtext}>
+              Route message to:
+            </ThemedText>
+
+            <View style={styles.recipientSelector}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Route to Practice Team"
+                onPress={() => setNewRecipientType("practice")}
+                style={[
+                  styles.recipientOption,
+                  newRecipientType === "practice" && styles.recipientOptionActive,
+                ]}
+              >
+                <ThemedText
+                  variant="caption"
+                  style={[
+                    styles.recipientText,
+                    newRecipientType === "practice" && styles.recipientTextActive,
+                  ]}
+                >
+                  Practice Team
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Route to Clinical Care Team"
+                onPress={() => setNewRecipientType("care_team")}
+                style={[
+                  styles.recipientOption,
+                  newRecipientType === "care_team" && styles.recipientOptionActive,
+                ]}
+              >
+                <ThemedText
+                  variant="caption"
+                  style={[
+                    styles.recipientText,
+                    newRecipientType === "care_team" && styles.recipientTextActive,
+                  ]}
+                >
+                  Care Team Clinician
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            <Input
+              label="Subject"
+              placeholder="e.g. Question about appointment or care"
+              value={newSubject}
+              onChangeText={setNewSubject}
+            />
+
+            <Input
+              label="Message"
+              placeholder="Type your message here…"
+              value={newBody}
+              onChangeText={setNewBody}
+            />
+
+            <View style={styles.modalActions}>
+              <Button
+                title={createMutation.isPending ? "Sending…" : "Send Message"}
+                variant="primary"
+                size="md"
+                disabled={!newSubject.trim() || !newBody.trim() || createMutation.isPending}
+                onPress={handleCreateThread}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: colors.systemBackground,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    gap: spacing.sm,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalSubtext: {
+    color: colors.secondaryLabel,
+  },
+  recipientSelector: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  recipientOption: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  recipientOptionActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  recipientText: {
+    color: colors.secondaryLabel,
+    fontWeight: "500",
+  },
+  recipientTextActive: {
+    color: colors.onInk,
+    fontWeight: "600",
+  },
+  modalActions: {
+    marginTop: spacing.sm,
+  },
+  slaNoticeCard: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: radius.md,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  slaNoticeText: {
+    color: colors.secondaryLabel,
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  headerTitleGroup: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
   triageBanner: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,

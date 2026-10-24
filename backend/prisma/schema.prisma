@@ -184,6 +184,7 @@ model ClinicianProfile {
   rota               ClinicianRotaBlock[]
   rotaOverrides      ClinicianRotaOverride[]
   appointmentNotes   AppointmentNote[]
+  assignedThreads    MessageThread[]         @relation("ClinicianAssignedThreads")
 
   @@index([isTelehealthActive])
   @@map("clinician_profiles")
@@ -771,19 +772,23 @@ model VanServiceRequest {
 
 /// Secure patient-clinician messaging thread
 model MessageThread {
-  id            String    @id @default(uuid()) @db.Uuid
-  patientUserId String    @map("patient_user_id") @db.Uuid
-  senderName    String    @map("sender_name") @db.VarChar(150)
-  subject       String    @db.VarChar(255)
-  preview       String
-  isRead        Boolean   @default(false) @map("is_read")
-  hasAttachment Boolean   @default(false) @map("has_attachment")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  messages      Message[]
-  patientUser   User      @relation(fields: [patientUserId], references: [id], onDelete: Restrict)
+  id                  String            @id @default(uuid()) @db.Uuid
+  patientUserId       String            @map("patient_user_id") @db.Uuid
+  senderName          String            @map("sender_name") @db.VarChar(150)
+  subject             String            @db.VarChar(255)
+  preview             String
+  isRead              Boolean           @default(false) @map("is_read")
+  hasAttachment       Boolean           @default(false) @map("has_attachment")
+  recipientType       String            @default("practice") @map("recipient_type") @db.VarChar(50)
+  assignedClinicianId String?           @map("assigned_clinician_id") @db.Uuid
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  messages            Message[]
+  patientUser         User              @relation(fields: [patientUserId], references: [id], onDelete: Restrict)
+  assignedClinician   ClinicianProfile? @relation("ClinicianAssignedThreads", fields: [assignedClinicianId], references: [id], onDelete: SetNull)
 
   @@index([patientUserId, updatedAt])
+  @@index([assignedClinicianId, updatedAt])
   @@map("message_threads")
 }
 
