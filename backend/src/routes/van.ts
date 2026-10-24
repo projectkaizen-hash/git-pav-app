@@ -610,7 +610,8 @@ router.post("/requests/:id/accept", requireAuth, requireRole("operator"), valida
 
   // Seed the patient's first live ETA immediately (bypasses drift/throttle
   // gates) so the acceptance notification carries a real arrival estimate.
-  void broadcastEtaUpdates(shift.id, { force: true }).catch((err) =>
+  // EB-1: force only for the newly accepted request, not every patient on the shift.
+  void broadcastEtaUpdates(shift.id, { forceRequestId: updated.id }).catch((err) =>
     console.error("[VAN ETA PUSH] post-accept broadcast failed:", err)
   );
 

@@ -79,6 +79,11 @@ export async function auditMiddleware(
   res: Response,
   next: NextFunction
 ) {
+  if ((res as any).__pavAuditAttached) {
+    return next();
+  }
+  (res as any).__pavAuditAttached = true;
+
   res.on("finish", async () => {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       try {

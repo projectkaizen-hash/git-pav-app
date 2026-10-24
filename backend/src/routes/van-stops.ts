@@ -14,6 +14,8 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateParams } from "../middleware/validate";
+import { sendPatientNotification } from "../lib/patient-push";
+import { broadcastEtaUpdates } from "../lib/van-eta-broadcast";
 
 const router = Router();
 
@@ -43,7 +45,7 @@ router.post(
 
     const stop = await prisma.vanServiceRequest.findUnique({
       where: { id: String(req.params.id) },
-      select: { id: true, shiftId: true, status: true, phase: true },
+      select: { id: true, shiftId: true, status: true, phase: true, patientId: true },
     });
     if (!stop) return res.status(404).json({ error: "Stop not found" });
     if (stop.shiftId !== shift.id) {
@@ -61,6 +63,19 @@ router.post(
       where: { id: stop.id },
       data: { phase: "on_site", status: "in_progress" },
     });
+
+    // VS-1: Send "Van Has Arrived" notification to patient (same as van.ts phase update)
+    await sendPatientNotification(
+      stop.patientId,
+      "Van Has Arrived",
+      "The dental van has arrived at your location. Please be ready for your appointment.",
+      { requestId: stop.id, phase: "on_site" }
+    );
+
+    // VS-1: Broadcast ETA updates for remaining stops on shift
+    void broadcastEtaUpdates(shift.id).catch((err) =>
+      console.error("[VAN ETA PUSH] check-in broadcast failed:", err)
+    );
 
     return res.json({ ok: true, phase: "on_site" });
   }

@@ -60,6 +60,7 @@ model AuthSession {
   createdAt        DateTime  @default(now()) @map("created_at")
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("auth_sessions")
 }
 
@@ -157,7 +158,6 @@ model PatientProfile {
   vanRequests           VanServiceRequest[]
   guardianDependants    Dependant[]         @relation("GuardianDependants")
 
-  @@index([userId])
   @@index([postcode])
   @@index([createdAt])
   @@map("patient_profiles")
@@ -182,7 +182,6 @@ model ClinicianProfile {
   rota               ClinicianRotaBlock[]
   rotaOverrides      ClinicianRotaOverride[]
 
-  @@index([gdcNumber])
   @@index([isTelehealthActive])
   @@map("clinician_profiles")
 }
@@ -282,7 +281,6 @@ model Van {
   shifts            VanShift[]
 
   @@index([isActive])
-  @@index([registrationPlate])
   @@map("vans")
 }
 
@@ -482,6 +480,7 @@ model PushToken {
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("push_tokens")
 }
 
@@ -562,10 +561,13 @@ model ScheduledNotification {
   data         Json?
   scheduledFor DateTime  @map("scheduled_for")
   status       String    @default("pending")
+  attempts     Int       @default(0)
+  lastError    String?   @map("last_error")
   createdAt    DateTime  @default(now()) @map("created_at")
   sentAt       DateTime? @map("sent_at")
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([status, scheduledFor])
   @@map("scheduled_notifications")
 }
 
@@ -580,6 +582,7 @@ model NotificationHistory {
   status String   @default("sent")
   user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("notification_history")
 }
 

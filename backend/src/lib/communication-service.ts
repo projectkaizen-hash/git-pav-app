@@ -1,5 +1,6 @@
 import { env } from "../config/env";
 import { maskEmail, maskPhone, safeError } from "./log-safety";
+import { prisma } from "./prisma";
 
 export interface SendEmailOptions {
   to: string;
@@ -41,6 +42,7 @@ export class CommunicationService {
       try {
         const response = await fetch("https://api.postmarkapp.com/email", {
           method: "POST",
+          signal: AbortSignal.timeout(5000),
           headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -103,6 +105,7 @@ export class CommunicationService {
           `https://api.twilio.com/2010-04-01/Accounts/${this.twilioSid}/Messages.json`,
           {
             method: "POST",
+            signal: AbortSignal.timeout(5000),
             headers: {
               "Authorization": `Basic ${auth}`,
               "Content-Type": "application/x-www-form-urlencoded",
@@ -238,38 +241,138 @@ export class CommunicationService {
     tickets?: any[];
   }> {
     if (messages.length === 0) {
-      return { sentCount: 0, failedCount: 0 };
+      return { sentCount: 0, failedCount: 0, tickets: [] };
     }
 
-    try {
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Accept-Encoding": "gzip, deflate",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messages),
-      });
+    const CHUNK_SIZE = 100; // Expo maximum messages per batch
+    let totalSent = 0;
+    let totalFailed = 0;
+    const allTickets: any[] = [];
 
-      if (!response.ok) {
-        console.error("[CommunicationService] Expo push API returned status:", response.status);
-        return { sentCount: 0, failedCount: messages.length };
+    for (let i = 0; i < messages.length; i += CHUNK_SIZE) {
+      const chunk = messages.slice(i, i + CHUNK_SIZE);
+
+      try {
+        const response = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          signal: AbortSignal.timeout(10000),
+          headers: {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(chunk),
+        });
+
+        if (!response.ok) {
+          console.error("[CommunicationService] Expo push API returned status:", response.status);
+          totalFailed += chunk.length;
+          continue;
+        }
+
+        const resJson = (await response.json()) as any;
+        const tickets = resJson.data || [];
+        allTickets.push(...tickets);
+
+        for (let j = 0; j < chunk.length; j++) {
+          const ticket = tickets[j];
+          if (!ticket || ticket.status === "error") {
+            totalFailed++;
+            // PP-2 / CS-3: Deactivate dead tokens
+            if (ticket?.details?.error === "DeviceNotRegistered") {
+              const deadToken = chunk[j].to;
+              await prisma.pushToken
+                .updateMany({
+                  where: { token: deadToken },
+                  data: { active: false },
+                })
+                .catch((err) =>
+                  console.error("[CommunicationService] Failed to deactivate dead token:", safeError(err))
+                );
+            }
+          } else {
+            totalSent++;
+          }
+        }
+      } catch (err) {
+        console.error("[CommunicationService] Error contacting Expo Push API:", safeError(err));
+        totalFailed += chunk.length;
       }
-
-      const resJson = await response.json() as any;
-      const tickets = resJson.data || [];
-      const failed = tickets.filter((t: any) => t.status === "error").length;
-
-      return {
-        sentCount: messages.length - failed,
-        failedCount: failed,
-        tickets,
-      };
-    } catch (err) {
-      console.error("[CommunicationService] Error contacting Expo Push API:", err);
-      return { sentCount: 0, failedCount: messages.length };
     }
+
+    return {
+      sentCount: totalSent,
+      failedCount: totalFailed,
+      tickets: allTickets,
+    };
+  }
+
+  /**
+   * Polls receipts for push notification tickets and deactivates any tokens marked DeviceNotRegistered.
+   */
+  async checkExpoReceipts(ticketIds: string[], tokenByTicketId: Record<string, string> = {}): Promise<{
+    okCount: number;
+    errorCount: number;
+    deactivatedTokens: string[];
+  }> {
+    if (ticketIds.length === 0) return { okCount: 0, errorCount: 0, deactivatedTokens: [] };
+
+    const CHUNK_SIZE = 300;
+    let okCount = 0;
+    let errorCount = 0;
+    const deactivatedTokens: string[] = [];
+
+    for (let i = 0; i < ticketIds.length; i += CHUNK_SIZE) {
+      const chunk = ticketIds.slice(i, i + CHUNK_SIZE);
+      try {
+        const response = await fetch("https://exp.host/--/api/v2/push/getReceipts", {
+          method: "POST",
+          signal: AbortSignal.timeout(10000),
+          headers: {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: chunk }),
+        });
+
+        if (!response.ok) {
+          errorCount += chunk.length;
+          continue;
+        }
+
+        const resJson = (await response.json()) as any;
+        const receipts = resJson.data || {};
+
+        for (const ticketId of chunk) {
+          const receipt = receipts[ticketId];
+          if (!receipt) continue;
+
+          if (receipt.status === "ok") {
+            okCount++;
+          } else if (receipt.status === "error") {
+            errorCount++;
+            if (receipt.details?.error === "DeviceNotRegistered") {
+              const token = tokenByTicketId[ticketId];
+              if (token) {
+                deactivatedTokens.push(token);
+                await prisma.pushToken
+                  .updateMany({
+                    where: { token },
+                    data: { active: false },
+                  })
+                  .catch(() => {});
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[CommunicationService] Error checking Expo receipts:", safeError(err));
+        errorCount += chunk.length;
+      }
+    }
+
+    return { okCount, errorCount, deactivatedTokens };
   }
 }
 
