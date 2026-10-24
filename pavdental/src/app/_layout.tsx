@@ -15,7 +15,8 @@ import { useAppLockStore } from "@/features/app-lock/app-lock-store";
 import { AppLockScreen } from "@/features/app-lock/app-lock-screen";
 import { useNotificationManager } from "@/features/notifications/notification-hooks";
 import { initErrorTracking, reportError } from "@/lib/error-tracking";
-import { ThemedText, Button } from "@/components";
+import { ThemedText, Button, OfflineBanner } from "@/components";
+import { setupNetworkMonitoring } from "@/lib/network";
 import { colors, spacing } from "@/theme";
 
 initErrorTracking();
@@ -77,6 +78,14 @@ const errorStyles = StyleSheet.create({
 export default function RootLayout() {
   const { isHydrating, setHydrating } = useAuthStore();
   const { setBackgrounded, setForegrounded, isLocked } = useAppLockStore();
+
+  // ── Network offline monitoring (MA-4) ──────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = setupNetworkMonitoring();
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // ── Hydrate auth on cold start ──────────────────────────────────────────
   // Attempt a silent refresh using the stored refresh token.
@@ -147,6 +156,7 @@ export default function RootLayout() {
             <ThemeProvider value={DefaultTheme}>
               <StatusBar style="dark" />
               <NotificationSetup />
+              <OfflineBanner />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(onboarding)" />
