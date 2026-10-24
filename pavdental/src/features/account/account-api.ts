@@ -144,6 +144,18 @@ export const accountApi = {
     return res.json();
   },
 
+  updateDependant: async (id: string, updates: Partial<NewDependant>): Promise<DependantItem> => {
+    const res = await authFetch(`/api/patients/dependants/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error ?? "Failed to update dependant");
+    }
+    return res.json();
+  },
+
   removeDependant: async (id: string): Promise<void> => {
     const res = await authFetch(`/api/patients/dependants/${id}`, {
       method: "DELETE",
