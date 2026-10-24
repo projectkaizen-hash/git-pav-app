@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { requireAdmin } from "@/lib/auth/middleware";
 import { query } from "@/lib/db/client";
 
 /**
  * GET /api/v1/admin/users
  * Returns all users from the database
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const authErr = await requireAdmin(request);
+  if (authErr) return authErr;
+
   try {
     const users = await query<any>(
       "SELECT id, email, name, phone, email_verified, created_at, updated_at FROM users ORDER BY created_at DESC",

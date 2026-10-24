@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { verifyStaffToken } from "@/lib/auth/jwt";
+
 const ALLOWED_ORIGINS = [process.env.WEBSITE_ORIGIN ?? "http://localhost:8080", "http://localhost:3001"];
 
 function corsHeaders(origin: string | null) {
@@ -21,9 +23,10 @@ function corsHeaders(origin: string | null) {
  *   `requireAdmin` / `requireUser`.
  * - Allows the authentication UI (`/auth/*`).
  * - For any other UI route (e.g. `/dashboard/*`, `/`), checks the
- *   `admin_token` cookie. If missing, redirects to the login page.
+ *   `admin_token` cookie holds a staff session. If not, redirects to the
+ *   login page.
  */
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const origin = req.headers.get("origin");
 
@@ -50,9 +53,9 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect all other UI routes – require admin_token cookie
+  // Protect all other UI routes – require a staff session in admin_token
   const token = req.cookies.get("admin_token")?.value;
-  if (!token) {
+  if (!token || !(await verifyStaffToken(token))) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/auth/v1/login";
     return NextResponse.redirect(loginUrl);

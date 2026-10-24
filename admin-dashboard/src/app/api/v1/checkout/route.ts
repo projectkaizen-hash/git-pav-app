@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 
 import Stripe from "stripe";
 
-import { verifyToken } from "@/lib/auth/jwt";
+import { verifyShopperToken } from "@/lib/auth/jwt";
 import { query } from "@/lib/db/client";
 import { calculateCartTax } from "@/lib/tax-calculator";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -29,7 +29,7 @@ async function getUserIdFromRequest(req: Request): Promise<string | null> {
   if (!rawToken) return null;
 
   try {
-    const payload = await verifyToken(rawToken);
+    const payload = await verifyShopperToken(rawToken);
     return payload?.userId ? String(payload.userId) : null;
   } catch {
     return null;

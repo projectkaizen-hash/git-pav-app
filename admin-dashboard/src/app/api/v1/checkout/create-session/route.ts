@@ -56,8 +56,8 @@ export async function POST(req: Request) {
   const match = token ? undefined : cookieHeader.match(/(?:^|;\s*)user_token=([^;]+)/);
   const rawToken = token || (match ? decodeURIComponent(match[1]) : null);
   if (!rawToken) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-  const { verifyToken } = await import("@/lib/auth/jwt");
-  const payload = await verifyToken(rawToken);
+  const { verifyShopperToken } = await import("@/lib/auth/jwt");
+  const payload = await verifyShopperToken(rawToken);
   const userId = payload?.userId;
   if (!userId) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
