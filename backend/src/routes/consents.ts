@@ -272,6 +272,7 @@ router.post("/data-access-request", requireAuth, validateBody(dataAccessRequestS
     message: "Data access request processed. Encrypted bundle added to your Document Vault.",
     requestId,
     documentId: vaultDoc.id,
+    downloadUrl: `/api/patients/${profile.id}/documents/${vaultDoc.id}/download`,
     sha256: uploaded.sha256,
     recordCounts: bundle.recordCounts,
   });
