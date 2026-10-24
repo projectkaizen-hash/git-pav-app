@@ -170,6 +170,9 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
                 return (
                   <Pressable
                     key={item.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
+                    accessibilityState={{ selected: isActive }}
                     onPress={() => handleSelectSymptom(item.id)}
                     style={[
                       styles.symptomPill,
@@ -213,6 +216,9 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
                   return (
                     <Pressable
                       key={score}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Pain level ${score}`}
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         setPainLevel(score);
@@ -275,7 +281,12 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
             </Card>
 
             {/* Quick Hotline Banner */}
-            <Pressable onPress={handleCallHotline} style={styles.hotlineBanner}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Call practice emergency hotline at 0800 1938 786"
+              onPress={handleCallHotline}
+              style={styles.hotlineBanner}
+            >
               <AppIcon name="phone" size={15} color={colors.ink} />
               <View style={styles.hotlineTextGroup}>
                 <ThemedText variant="caption" style={styles.hotlineLabel}>

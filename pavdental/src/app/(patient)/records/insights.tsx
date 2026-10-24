@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     gap: 4,
+    minWidth: 20,
   },
   barFill: {
     backgroundColor: colors.ink,
@@ -237,7 +238,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.separator,
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: spacing.md,
+    flexWrap: "wrap",
+    gap: spacing.sm,
     marginTop: spacing.sm,
     paddingTop: spacing.xs,
   },
@@ -252,6 +254,7 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     color: colors.secondaryLabel,
+    fontSize: 11,
     fontWeight: "600",
   },
   divider: {
@@ -293,6 +296,7 @@ const styles = StyleSheet.create({
   },
   gaugesGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   header: {

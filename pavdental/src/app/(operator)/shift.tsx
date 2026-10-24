@@ -128,6 +128,8 @@ export default function OperatorShiftScreen() {
               onValueChange={handleToggleShift}
               disabled={startMutation.isPending || endMutation.isPending}
               trackColor={{ false: colors.secondaryBackground, true: colors.ink }}
+              accessibilityRole="switch"
+              accessibilityLabel="Operator Shift Status"
             />
           </View>
           <View style={styles.badgeRow}>

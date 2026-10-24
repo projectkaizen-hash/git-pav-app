@@ -285,6 +285,8 @@ export default function VanAccessDetailsScreen() {
             value={hasGatedAccess}
             onValueChange={setHasGatedAccess}
             trackColor={{ true: colors.ink, false: colors.separator }}
+            accessibilityRole="switch"
+            accessibilityLabel="Gated Entrance or Intercom Code"
           />
         </View>
 

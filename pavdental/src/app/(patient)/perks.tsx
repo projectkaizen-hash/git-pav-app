@@ -57,7 +57,13 @@ export default function OralHealthPerksScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={8}
+          >
             <AppIcon name="chevronLeft" size={20} color={colors.ink} />
             <ThemedText variant="subhead" style={styles.backText}>Back</ThemedText>
           </Pressable>

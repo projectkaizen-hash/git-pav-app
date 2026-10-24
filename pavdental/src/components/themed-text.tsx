@@ -15,8 +15,15 @@ interface ThemedTextProps extends TextProps {
 export function ThemedText({
   variant = "body",
   style,
+  maxFontSizeMultiplier = 1.5,
   ...props
 }: ThemedTextProps) {
-  return <Text style={[type[variant], style]} {...props} />;
+  return (
+    <Text
+      style={[type[variant], style]}
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
+      {...props}
+    />
+  );
 }
 

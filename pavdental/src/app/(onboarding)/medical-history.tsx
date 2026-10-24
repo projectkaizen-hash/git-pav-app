@@ -61,6 +61,8 @@ export default function OnboardingMedicalHistoryScreen() {
                 value={hasAllergies}
                 onValueChange={setHasAllergies}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="Known Allergies"
               />
             </View>
 
@@ -85,6 +87,8 @@ export default function OnboardingMedicalHistoryScreen() {
                 value={isTakingMeds}
                 onValueChange={setIsTakingMeds}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="Regular Medications"
               />
             </View>
 
@@ -109,6 +113,8 @@ export default function OnboardingMedicalHistoryScreen() {
                 value={isBleedingRisk}
                 onValueChange={setIsBleedingRisk}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="Blood Thinners or Bleeding Disorders"
               />
             </View>
 

@@ -44,6 +44,7 @@ export function ChipPill({ label, tone = "neutral", selected, onPress, style }: 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected: !!selected }}
       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
       onPress={() => {

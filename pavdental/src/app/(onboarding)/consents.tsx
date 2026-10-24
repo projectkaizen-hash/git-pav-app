@@ -138,6 +138,8 @@ export default function OnboardingConsentsScreen() {
                   if (error) setError(null);
                 }}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="Special Category Health Data Consent"
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
@@ -158,6 +160,8 @@ export default function OnboardingConsentsScreen() {
                   if (error) setError(null);
                 }}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="General Treatment and Examination Consent"
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
@@ -175,6 +179,8 @@ export default function OnboardingConsentsScreen() {
                 value={directMarketing}
                 onValueChange={setDirectMarketing}
                 trackColor={{ true: colors.ink, false: colors.separator }}
+                accessibilityRole="switch"
+                accessibilityLabel="Hygiene and Recall Reminders Consent"
               />
             </View>
             <ThemedText variant="subhead" style={styles.cardBody}>
