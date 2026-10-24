@@ -23,8 +23,9 @@ describe("CS-27: Video Consultation Lifecycle (VD-2, VD-3, VD-4, MC-3)", () => {
     const serverModule = require("../server");
     const app = serverModule.default ?? serverModule;
     server = http.createServer(app);
-    await new Promise<void>((resolve) => server.listen(3015, resolve));
-    baseUrl = "http://localhost:3015";
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const port = (server.address() as any).port;
+    baseUrl = `http://localhost:${port}`;
 
     // Setup users & profiles
     const patientUser = await prisma.user.create({
@@ -103,9 +104,7 @@ describe("CS-27: Video Consultation Lifecycle (VD-2, VD-3, VD-4, MC-3)", () => {
     if (ids.clinicianProfileId) {
       await prisma.clinicianProfile.deleteMany({ where: { id: ids.clinicianProfileId } });
     }
-    if (ids.patientUserId || ids.clinicianUserId) {
-      await prisma.user.deleteMany({ where: { id: { in: [ids.patientUserId, ids.clinicianUserId] } } });
-    }
+    // Keep user records so audit logs created during tests maintain their foreign key and actorId integrity
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
   });

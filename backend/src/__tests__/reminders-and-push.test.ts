@@ -28,8 +28,9 @@ describe("CS-19: Reminders and Push That Behave", () => {
     const serverModule = require("../server");
     const app = serverModule.default ?? serverModule;
     server = http.createServer(app);
-    await new Promise<void>((resolve) => server.listen(3018, resolve));
-    baseUrl = "http://localhost:3018";
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const port = (server.address() as any).port;
+    baseUrl = `http://localhost:${port}`;
 
     const timestamp = Date.now();
 
