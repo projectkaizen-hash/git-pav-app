@@ -164,4 +164,27 @@ describe("signed prescription PDFs", () => {
       guardian: { name: "Synthetic Patient" },
     });
   });
+
+  it("enforces role and GDC registration validation when issuing prescriptions (RX-1)", async () => {
+    const patient = await makePatient("rx-role-pat");
+    const clinician = await makeClinician("rx-role-dentist");
+    const apptId = await visit(patient.profileId, clinician.profileId);
+
+    // Patient cannot issue prescriptions
+    const patIssue = await issue(patient.token, apptId);
+    expect(patIssue.status).toBe(403);
+
+    // Clinician with invalid GDC number cannot issue prescriptions
+    const badGdcClinicianUser = await prisma.user.create({
+      data: { email: `bad-gdc-${tag}@example.test`, passwordHash: "x", role: "clinician" },
+    });
+    userIds.push(badGdcClinicianUser.id);
+    await prisma.clinicianProfile.create({
+      data: { userId: badGdcClinicianUser.id, fullName: "Bad GDC Doc", gdcNumber: "123", roleTitle: "Dentist" },
+    });
+    const badGdcToken = signAccessToken({ sub: badGdcClinicianUser.id, role: "clinician", sessionId: crypto.randomUUID() });
+    const badIssue = await issue(badGdcToken, apptId);
+    expect(badIssue.status).toBe(422);
+    expect(badIssue.body.error).toContain("GDC");
+  });
 });
