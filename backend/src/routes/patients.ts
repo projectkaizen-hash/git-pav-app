@@ -17,6 +17,7 @@ import {
 import { objectStorage } from "../lib/object-storage";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { encryptField, decryptField, isEncryptedEnvelope } from "../lib/encryption";
 
 const router = Router();
 
@@ -89,7 +90,7 @@ router.get("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), a
       name: profile.emergencyContactName,
       phone: profile.emergencyContactPhone,
     },
-    medicalHistory: profile.medicalHistory,
+    medicalHistory: await decryptField(profile.medicalHistory),
     consents: resolvedConsents,
     consentRecords,
   });
@@ -123,6 +124,14 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
     }
   }
 
+  // DB-3: Encrypt medicalHistory at rest
+  let storedMedicalHistory: any = undefined;
+  if (medicalHistory !== undefined) {
+    storedMedicalHistory = medicalHistory !== null
+      ? (isEncryptedEnvelope(medicalHistory) ? medicalHistory : await encryptField(medicalHistory))
+      : null;
+  }
+
   // PT-4: Consents are NOT mutable via profile PUT. One source of truth in ConsentRecord.
   const [updated] = await prisma.$transaction([
     prisma.patientProfile.update({
@@ -133,7 +142,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
         gender,
         addressLine1, addressLine2: addressLine2 ?? null, city, postcode,
         emergencyContactName, emergencyContactPhone,
-        medicalHistory: medicalHistory ?? undefined,
+        medicalHistory: storedMedicalHistory,
       },
     }),
     ...(phone !== undefined ? [prisma.user.update({

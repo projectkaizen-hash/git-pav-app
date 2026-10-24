@@ -304,3 +304,60 @@ const encryptionConfig: EncryptionConfig = {
 export const encryptionService = new EncryptionService(encryptionConfig);
 export const clinicalRecordEncryptionService = new ClinicalRecordEncryptionService(encryptionConfig);
 export const documentMetadataEncryptionService = new DocumentMetadataEncryptionService(encryptionConfig);
+
+/**
+ * Type guard to check if a value is an encrypted envelope.
+ */
+export function isEncryptedEnvelope(value: unknown): value is EncryptedData {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ciphertext" in value &&
+    "iv" in value &&
+    "keyId" in value &&
+    "algorithm" in value
+  );
+}
+
+/**
+ * Encrypt any clinical object or text into an EncryptedData envelope.
+ */
+export async function encryptField(value: unknown): Promise<EncryptedData> {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return clinicalRecordEncryptionService.encryptField(text);
+}
+
+/**
+ * Transparently decrypt an encrypted envelope or return plaintext/unencrypted value.
+ */
+export async function decryptField<T = unknown>(value: unknown): Promise<T> {
+  if (!value) return value as T;
+  if (!isEncryptedEnvelope(value)) {
+    return value as T;
+  }
+  const text = await clinicalRecordEncryptionService.decryptField(value);
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
+}
+
+/**
+ * Transparently decrypt string fields (e.g., Message.body) that may be stored
+ * as JSON-stringified EncryptedData envelopes or plain text.
+ */
+export async function decryptString(value: unknown): Promise<string> {
+  if (typeof value !== "string" || !value) return (value as string) || "";
+  if (value.startsWith("{") && value.includes('"ciphertext"')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (isEncryptedEnvelope(parsed)) {
+        return await clinicalRecordEncryptionService.decryptField(parsed);
+      }
+    } catch {
+      // not a JSON envelope, treat as plaintext
+    }
+  }
+  return value;
+}

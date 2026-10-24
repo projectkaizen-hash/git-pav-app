@@ -24,7 +24,7 @@ import {
   REQUEST_TIMEOUT_MS,
   MAX_ETA_SECONDS,
 } from "../lib/van-eta";
-import { clinicalRecordEncryptionService } from "../lib/encryption";
+import { clinicalRecordEncryptionService, decryptString, encryptField } from "../lib/encryption";
 import { haversineMetres, postcodeToCoordinates } from "../lib/geo";
 import { getOnlineShiftsCoveringPoint } from "../lib/van-coverage";
 import { broadcastEtaUpdates, isMaterialDrift } from "../lib/van-eta-broadcast";
@@ -457,6 +457,7 @@ router.get("/shift/current", requireAuth, requireRole("operator"), async (req: A
     queue.map(async (item) => ({
       ...item,
       accessDetails: item.accessDetails ? await decryptAccessDetails(item.accessDetails) : item.accessDetails,
+      notes: item.notes ? await decryptString(item.notes) : item.notes,
     }))
   );
 
@@ -510,6 +511,7 @@ router.get("/queue", requireAuth, requireRole("operator"), async (req: AuthReque
     queue.map(async (item) => ({
       ...item,
       accessDetails: item.accessDetails ? await decryptAccessDetails(item.accessDetails) : item.accessDetails,
+      notes: item.notes ? await decryptString(item.notes) : item.notes,
     }))
   );
 
@@ -748,7 +750,9 @@ router.post("/requests/:id/phase", requireAuth, requireRole("operator"), validat
   if (phase === "completed" || phase === "no_show") {
     updateData.status = phase === "completed" ? "completed" : "no_show";
     updateData.completedAt = now;
-    if (notes) updateData.notes = notes;
+    if (notes) {
+      updateData.notes = JSON.stringify(await encryptField(notes));
+    }
   }
 
   const updated = await prisma.vanServiceRequest.update({
@@ -1092,6 +1096,9 @@ router.get("/requests/mine/active", requireAuth, async (req: AuthRequest, res: R
   if (request.accessDetails) {
     request.accessDetails = await decryptAccessDetails(request.accessDetails);
   }
+  if (request.notes) {
+    request.notes = await decryptString(request.notes);
+  }
 
   // Compute live ETA from the van's real position, then hide it below
   // unless this patient is next (VR-4).
@@ -1144,6 +1151,9 @@ router.get("/requests/:id", requireAuth, validateParams(vanRequestIdParamsSchema
     if (request.accessDetails && (request.status === "accepted" || request.status === "in_progress")) {
       request.accessDetails = await decryptAccessDetails(request.accessDetails);
     }
+    if (request.notes) {
+      request.notes = await decryptString(request.notes);
+    }
   } else {
     const patientProfile = await prisma.patientProfile.findUnique({
       where: { userId: req.user!.sub },
@@ -1155,7 +1165,9 @@ router.get("/requests/:id", requireAuth, validateParams(vanRequestIdParamsSchema
     if (request.accessDetails) {
       request.accessDetails = await decryptAccessDetails(request.accessDetails);
     }
-
+    if (request.notes) {
+      request.notes = await decryptString(request.notes);
+    }
   }
 
   let etaSeconds: number | null = null;
