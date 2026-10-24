@@ -35,7 +35,6 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
       await prisma.messageThread.deleteMany({ where: { id: { in: threadIds } } }).catch(() => {});
     }
     if (userIds.length > 0) {
-      await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } }).catch(() => {});
       await prisma.patientProfile.deleteMany({ where: { userId: { in: userIds } } }).catch(() => {});
       await prisma.clinicianProfile.deleteMany({ where: { userId: { in: userIds } } }).catch(() => {});
       await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => {});
