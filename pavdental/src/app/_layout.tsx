@@ -3,7 +3,8 @@ import { AppState, AppStateStatus, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, DefaultTheme } from "expo-router/react-navigation";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -22,16 +23,6 @@ initErrorTracking();
 const STRIPE_PUBLISHABLE_KEY =
   process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_STRIPE_PK ?? "";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 2,
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
-      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
-    },
-  },
-});
 
 // ─── Notification registrar ──────────────────────────────────────────────────
 // Rendered inside QueryClientProvider: useNotificationManager uses React Query

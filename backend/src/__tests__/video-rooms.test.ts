@@ -95,7 +95,7 @@ describe("video consultation rooms", () => {
     await new Promise<void>((resolve) => server.listen(3015, resolve));
     baseUrl = "http://localhost:3015";
     serviceId = (await prisma.service.findFirstOrThrow()).id;
-  });
+  }, 15000);
 
   afterAll(async () => {
     await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });

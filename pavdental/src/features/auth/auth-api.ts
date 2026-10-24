@@ -1,13 +1,29 @@
 import { tokenStore } from "@/lib/token-store";
+import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "./auth-store";
+import { useBookingStore } from "../booking/booking-store";
+import { useVanStore } from "../van/van-store";
+import { useOnboardingStore } from "../onboarding/onboarding-store";
+import { API_URL, apiUrl } from "@/config/api";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
-
-/** Full URL for an API path, for links opened outside the app (e.g. a PDF). */
-export const apiUrl = (path: string) => `${BASE_URL}${path}`;
+export { API_URL, apiUrl };
 
 // ─── In-flight refresh de-duplication ────────────────────────────────────────
 let refreshPromise: Promise<string> | null = null;
+
+/**
+ * Fully purges local state on signOut or unrecoverable session expiry.
+ * MA-2: Clears React Query cache and resets booking, van, and onboarding stores
+ * to prevent patient health data leaking across sessions on shared devices.
+ */
+export async function clearSessionState() {
+  useAuthStore.getState().clearAuth();
+  await tokenStore.deleteRefreshToken();
+  queryClient.clear();
+  useBookingStore.getState().resetDraft();
+  useVanStore.getState().resetDraft();
+  useOnboardingStore.getState().reset();
+}
 
 // ─── Core authenticated fetch with transparent refresh ───────────────────────
 export async function authFetch(
@@ -17,29 +33,33 @@ export async function authFetch(
   const { accessToken } = useAuthStore.getState();
   const token = accessToken ?? (await ensureValidToken());
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    Authorization: token ? `Bearer ${token}` : "",
+    ...(options.headers as Record<string, string>),
+  };
+  if (!isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (res.status === 401) {
     try {
       const freshToken = await ensureValidToken(true);
-      return fetch(`${BASE_URL}${path}`, {
+      const retryHeaders: Record<string, string> = {
+        ...headers,
+        Authorization: `Bearer ${freshToken}`,
+      };
+      return await fetch(`${API_URL}${path}`, {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${freshToken}`,
-          ...options.headers,
-        },
+        headers: retryHeaders,
       });
     } catch {
-      useAuthStore.getState().clearAuth();
-      await tokenStore.deleteRefreshToken();
+      await clearSessionState();
       throw new Error("Session expired. Please sign in again.");
     }
   }
@@ -47,7 +67,7 @@ export async function authFetch(
   return res;
 }
 
-async function ensureValidToken(forceRefresh = false): Promise<string> {
+export async function ensureValidToken(forceRefresh = false): Promise<string> {
   const { accessToken } = useAuthStore.getState();
   if (accessToken && !forceRefresh) return accessToken;
 
@@ -63,15 +83,14 @@ async function doRefresh(): Promise<string> {
   const refreshToken = await tokenStore.getRefreshToken();
   if (!refreshToken) throw new Error("No refresh token");
 
-  const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+  const res = await fetch(`${API_URL}/api/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
   });
 
   if (!res.ok) {
-    await tokenStore.deleteRefreshToken();
-    useAuthStore.getState().clearAuth();
+    await clearSessionState();
     throw new Error("Refresh failed");
   }
 
@@ -84,7 +103,7 @@ async function doRefresh(): Promise<string> {
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 export const authApi = {
   checkEmail: async (email: string): Promise<{ exists: boolean; email: string }> => {
-    const res = await fetch(`${BASE_URL}/api/auth/check-email`, {
+    const res = await fetch(`${API_URL}/api/auth/check-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim() }),
@@ -103,7 +122,7 @@ export const authApi = {
     lastName: string,
     phone?: string
   ) => {
-    const res = await fetch(`${BASE_URL}/api/auth/register`, {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, firstName, lastName, phone }),
@@ -121,7 +140,7 @@ export const authApi = {
   // Staff (and patients who turned it on) get { mfaRequired: true } first and
   // a security code by SMS or email; calling again with the code signs in.
   signIn: async (email: string, password: string, mfaCode?: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, ...(mfaCode ? { mfaCode } : {}) }),
@@ -140,14 +159,15 @@ export const authApi = {
   signOut: async () => {
     try {
       await authFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Network failure on logout shouldn't prevent clearing local state
     } finally {
-      useAuthStore.getState().clearAuth();
-      await tokenStore.deleteRefreshToken();
+      await clearSessionState();
     }
   },
 
   requestPhoneOtp: async (phone: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/otp/request`, {
+    const res = await fetch(`${API_URL}/api/auth/otp/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone }),
@@ -157,7 +177,7 @@ export const authApi = {
   },
 
   verifyPhoneOtp: async (phone: string, code: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/otp/verify`, {
+    const res = await fetch(`${API_URL}/api/auth/otp/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, code }),
@@ -171,7 +191,7 @@ export const authApi = {
 
   forgotPassword: async (email: string) => {
     // Fire-and-forget — always 200 to prevent email enumeration
-    await fetch(`${BASE_URL}/api/auth/password-reset/request`, {
+    await fetch(`${API_URL}/api/auth/password-reset/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -179,7 +199,7 @@ export const authApi = {
   },
 
   resetPassword: async (token: string, password: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/password-reset/confirm`, {
+    const res = await fetch(`${API_URL}/api/auth/password-reset/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, newPassword: password }),
@@ -189,7 +209,7 @@ export const authApi = {
   },
 
   confirmEmailVerification: async (token: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/verify-email/confirm`, {
+    const res = await fetch(`${API_URL}/api/auth/verify-email/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
@@ -202,7 +222,7 @@ export const authApi = {
   },
 
   resendEmailVerification: async (email: string) => {
-    const res = await fetch(`${BASE_URL}/api/auth/verify-email/request`, {
+    const res = await fetch(`${API_URL}/api/auth/verify-email/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -226,24 +246,8 @@ export const authApi = {
   },
 
   refresh: async () => {
-    const refreshToken = await tokenStore.getRefreshToken();
-    if (!refreshToken) throw new Error("No refresh token");
-
-    const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!res.ok) {
-      await tokenStore.deleteRefreshToken();
-      useAuthStore.getState().clearAuth();
-      throw new Error("Refresh failed");
-    }
-
-    const data = await res.json();
-    await tokenStore.setRefreshToken(data.refreshToken);
-    useAuthStore.getState().setAuth(data.accessToken, data.user);
-    return data;
+    // MA-5: Use the same single flight-safe refresh path as authFetch
+    const token = await ensureValidToken(true);
+    return { accessToken: token, user: useAuthStore.getState().user };
   },
 };

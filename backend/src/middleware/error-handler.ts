@@ -27,33 +27,60 @@ export function errorHandler(
   const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
   const timestamp = new Date().toISOString();
 
-  // Never log request bodies or query values: they carry names, clinical
-  // notes, triage answers and contact details (EH-1, P0-3). Field names are
-  // enough to see what shape of request failed.
-  console.error(`[${requestId}] ${timestamp} ERROR:`, {
+  // Determine HTTP status and client message.
+  // EH-2: Honour err.status/err.statusCode for 4xx, map multer errors to 400/413.
+  let status = 500;
+  let clientMessage: string | null = null;
+
+  if (err instanceof HttpError) {
+    status = err.status;
+    clientMessage = err.message;
+  } else if ((err as any).name === "MulterError") {
+    const code = (err as any).code;
+    if (code === "LIMIT_FILE_SIZE") {
+      status = 413;
+      clientMessage = "File too large";
+    } else {
+      status = 400;
+      clientMessage = err.message || "Invalid file upload";
+    }
+  } else if (err.message && err.message.includes("image files are allowed")) {
+    status = 400;
+    clientMessage = err.message;
+  } else {
+    const explicitStatus = (err as any).status ?? (err as any).statusCode;
+    if (typeof explicitStatus === "number" && explicitStatus >= 400 && explicitStatus < 500) {
+      status = explicitStatus;
+      clientMessage = err.message || "Bad request";
+    }
+  }
+
+  const logMeta = {
     ...safeError(err),
     path: req.path,
     method: req.method,
     bodyFields: req.body && typeof req.body === "object" ? Object.keys(req.body) : [],
     queryFields: Object.keys(req.query ?? {}),
-  });
+  };
 
-  // HttpErrors carry our own user-facing message; anything else is treated as
-  // an internal failure and only exposes its message outside production.
-  const isHttpError = err instanceof HttpError;
-  const status = isHttpError ? err.status : 500;
+  // 4xx errors are client errors and must not be logged as server errors or reported to Sentry.
   if (status >= 500) {
+    console.error(`[${requestId}] ${timestamp} ERROR:`, logMeta);
     // The route pattern (":id"), never the URL with its ids and query.
     const route = req.route?.path ? `${req.baseUrl}${req.route.path}` : req.baseUrl || "unmatched";
     reportError(err, { requestId, method: req.method, route });
+  } else {
+    console.warn(`[${requestId}] ${timestamp} WARN:`, logMeta);
   }
+
   const isDevelopment = process.env.NODE_ENV === 'development';
+  const isClientError = status < 500;
 
   res.status(status).json({
-    error: isHttpError ? err.message : isDevelopment ? err.message : 'Internal server error',
+    error: isClientError ? (clientMessage ?? err.message) : isDevelopment ? err.message : 'Internal server error',
     requestId,
     timestamp,
-    ...(isDevelopment && !isHttpError && { stack: err.stack }),
+    ...(isDevelopment && status >= 500 && { stack: err.stack }),
   });
 }
 

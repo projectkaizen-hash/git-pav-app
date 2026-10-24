@@ -1,7 +1,8 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Platform } from "react-native";
-import { useAccessToken } from "../auth/auth-store";
+import { useIsAuthenticated } from "../auth/auth-store";
+import { authFetch } from "../auth/auth-api";
 
 // Conditionally import expo-notifications to prevent crash in Expo Go
 let Notifications: any;
@@ -11,8 +12,6 @@ try {
   console.warn("expo-notifications not available (likely running in Expo Go)");
   Notifications = null;
 }
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 interface NotificationPreferences {
   pushEnabled: boolean;
@@ -102,24 +101,19 @@ export function useNotificationPermissions() {
 
 // Register push token
 export function useRegisterPushToken() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (expoPushToken: string) => {
       const platform = Platform.OS;
 
-      const response = await fetch(`${API_BASE}/api/notifications/register-token`, {
+      const response = await authFetch("/api/notifications/register-token", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({ expoPushToken, platform }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to register push token");
       }
 
@@ -132,17 +126,14 @@ export function useRegisterPushToken() {
 }
 
 // Get notification preferences
+// MA-5: Gate on isAuthenticated so guest screens don't fire 401s on every page
 export function useNotificationPreferences() {
-  const accessToken = useAccessToken();
+  const isAuthenticated = useIsAuthenticated();
 
   return useQuery({
     queryKey: ["notification-preferences"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/api/notifications/preferences`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = await authFetch("/api/notifications/preferences");
 
       if (!response.ok) {
         throw new Error("Failed to fetch notification preferences");
@@ -150,27 +141,23 @@ export function useNotificationPreferences() {
 
       return response.json() as Promise<NotificationPreferences>;
     },
+    enabled: isAuthenticated,
   });
 }
 
 // Update notification preferences
 export function useUpdateNotificationPreferences() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (preferences: Partial<NotificationPreferences>) => {
-      const response = await fetch(`${API_BASE}/api/notifications/preferences`, {
+      const response = await authFetch("/api/notifications/preferences", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify(preferences),
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to update notification preferences");
       }
 
@@ -183,19 +170,15 @@ export function useUpdateNotificationPreferences() {
 }
 
 // Get notification history
+// MA-5: Gate on isAuthenticated so guest screens don't fire 401s on every page
 export function useNotificationHistory(limit: number = 20, offset: number = 0) {
-  const accessToken = useAccessToken();
+  const isAuthenticated = useIsAuthenticated();
 
   return useQuery({
     queryKey: ["notification-history", limit, offset],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE}/api/notifications/history?limit=${limit}&offset=${offset}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const response = await authFetch(
+        `/api/notifications/history?limit=${limit}&offset=${offset}`
       );
 
       if (!response.ok) {
@@ -204,6 +187,7 @@ export function useNotificationHistory(limit: number = 20, offset: number = 0) {
 
       return response.json() as Promise<NotificationHistory[]>;
     },
+    enabled: isAuthenticated,
   });
 }
 

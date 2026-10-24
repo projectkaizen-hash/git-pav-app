@@ -1,8 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAccessToken } from "../auth/auth-store";
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3002";
+import { authFetch } from "../auth/auth-api";
 
 interface PaymentIntentResponse {
   clientSecret: string;
@@ -11,100 +9,46 @@ interface PaymentIntentResponse {
   isMock: boolean;
 }
 
-interface AppointmentConfirmation {
-  id: string;
-  status: string;
-  depositPaidPence: number;
-  message: string;
-}
-
 // Create payment intent for appointment deposit
 export function useCreatePaymentIntent() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (appointmentId: string) => {
-      const response = await fetch(`${API_BASE}/api/payments/create-intent`, {
+      const response = await authFetch("/api/payments/create-intent", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({ appointmentId }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to create payment intent");
       }
 
       return response.json() as Promise<PaymentIntentResponse>;
     },
     onSuccess: () => {
-      // Invalidate appointments query to refresh status
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
     },
   });
 }
 
-// Ask the server to confirm the appointment after PaymentSheet succeeds. The
-// server verifies the PaymentIntent it created with Stripe and records the
-// amount itself; the client never sends an amount. The webhook confirms too,
-// so useAppointmentStatus remains the source of truth.
-export function useConfirmAppointment() {
-  const accessToken = useAccessToken();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ appointmentId, stripePaymentId }: {
-      appointmentId: string;
-      stripePaymentId?: string;
-    }) => {
-      const response = await fetch(`${API_BASE}/api/booking/appointments/${appointmentId}/confirm`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(stripePaymentId ? { stripePaymentId } : {}),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to confirm appointment");
-      }
-
-      return response.json() as Promise<AppointmentConfirmation>;
-    },
-    onSuccess: () => {
-      // Invalidate appointments query to refresh status
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    },
-  });
-}
-
-// Poll appointment status to reconcile with webhook confirmation
+// Poll appointment status to reconcile with webhook confirmation (MA-1).
+// Calls GET /api/booking/appointments/:id directly instead of downloading the entire list.
 export function useAppointmentStatus(appointmentId: string | null) {
-  const accessToken = useAccessToken();
-
   return useQuery({
     queryKey: ["appointment", appointmentId],
     queryFn: async () => {
       if (!appointmentId) return null;
 
-      const response = await fetch(`${API_BASE}/api/booking/appointments`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = await authFetch(`/api/booking/appointments/${appointmentId}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch appointment status");
       }
 
-      const appointments = await response.json();
-      return appointments.find((apt: any) => apt.id === appointmentId) || null;
+      return response.json();
     },
     enabled: !!appointmentId,
     refetchInterval: (query: any) => {
@@ -118,19 +62,12 @@ export function useAppointmentStatus(appointmentId: string | null) {
 // Combined hook for payment flow with Stripe PaymentSheet
 export function usePaymentFlow() {
   const createIntent = useCreatePaymentIntent();
-  const confirmAppointment = useConfirmAppointment();
   const [paymentStatus, setPaymentStatus] = React.useState<"idle" | "processing" | "success" | "error">("idle");
 
   const initiatePayment = async (appointmentId: string) => {
     try {
       setPaymentStatus("processing");
-      
-      // Step 1: Create payment intent
       const paymentData = await createIntent.mutateAsync(appointmentId);
-      
-      // Step 2: Present Stripe PaymentSheet (to be implemented in component)
-      // This will be handled by the component using StripePaymentSheet
-      
       return paymentData;
     } catch (error) {
       setPaymentStatus("error");
@@ -138,18 +75,9 @@ export function usePaymentFlow() {
     }
   };
 
-  const completePayment = async (appointmentId: string, stripePaymentId?: string) => {
-    try {
-      setPaymentStatus("processing");
-      
-      // Step 3: Confirm appointment with payment details
-      await confirmAppointment.mutateAsync({ appointmentId, stripePaymentId });
-      
-      setPaymentStatus("success");
-    } catch (error) {
-      setPaymentStatus("error");
-      throw error;
-    }
+  const completePayment = async () => {
+    // Webhook confirms the appointment; client reconciles via useAppointmentStatus
+    setPaymentStatus("success");
   };
 
   return {
