@@ -63,14 +63,7 @@ const HOLD_STATUSES: Stripe.PaymentIntent.Status[] = [
   "requires_action",
 ];
 
-/**
- * Van cancellation policy (decisions log #6, a default the owner can change):
- * a patient who cancels before the van sets off gets the deposit back; once
- * the van is en route or on site the captured deposit covers the call-out.
- */
-export function vanCancellationKeepsDeposit(phase: string | null | undefined): boolean {
-  return phase === "en_route" || phase === "on_site";
-}
+export { vanCancellationKeepsDeposit } from "./cancellation-policy";
 
 /**
  * Release the deposit attached to a van service request.

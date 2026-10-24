@@ -248,6 +248,28 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
 }
 
 /**
+ * Cancels all pending scheduled reminder notifications for an appointment.
+ * Closes BK-6.
+ */
+export async function cancelAppointmentReminders(appointmentId: string): Promise<number> {
+  try {
+    const deleted = await prisma.scheduledNotification.deleteMany({
+      where: {
+        status: "pending",
+        data: {
+          path: ["appointmentId"],
+          equals: appointmentId,
+        },
+      },
+    });
+    return deleted.count;
+  } catch (error) {
+    console.error(`[BACKGROUND JOBS] Failed to cancel reminders for appointment ${appointmentId}:`, error);
+    return 0;
+  }
+}
+
+/**
  * Sweeps pending van service requests that have passed their expiresAt TTL.
  * Each expired request has its deposit PaymentIntent released (the hold is
  * cancelled — the patient is never left with a pending card authorisation),
