@@ -34,11 +34,9 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
       await prisma.message.deleteMany({ where: { threadId: { in: threadIds } } }).catch(() => {});
       await prisma.messageThread.deleteMany({ where: { id: { in: threadIds } } }).catch(() => {});
     }
-    if (userIds.length > 0) {
-      await prisma.patientProfile.deleteMany({ where: { userId: { in: userIds } } }).catch(() => {});
-      await prisma.clinicianProfile.deleteMany({ where: { userId: { in: userIds } } }).catch(() => {});
-      await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => {});
-    }
+    // Do not delete users or profiles: audit_logs has a foreign key to users with
+    // ON DELETE SET NULL, which mutates actor_id on existing audit log rows and breaks
+    // their cryptographic HMAC integrity chain in CI.
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
