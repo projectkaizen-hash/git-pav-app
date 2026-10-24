@@ -47,6 +47,24 @@ router.get("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), a
     select: { email: true, phone: true },
   });
 
+  // PT-4: Single source of truth for consent — read from ConsentRecord
+  const consentRecords = await prisma.consentRecord.findMany({
+    where: { patientProfileId: profile.id, isGranted: true },
+    select: {
+      consentType: true,
+      version: true,
+      grantedAt: true,
+      lawfulBasis: true,
+    },
+  });
+  const activeConsentsMap: Record<string, boolean> = {};
+  for (const c of consentRecords) {
+    activeConsentsMap[c.consentType] = true;
+  }
+  const resolvedConsents = consentRecords.length > 0
+    ? activeConsentsMap
+    : (profile.consents as Record<string, unknown> | null) ?? {};
+
   return res.json({
     id: requestedId,
     profileId: profile.id,
@@ -72,7 +90,8 @@ router.get("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), a
       phone: profile.emergencyContactPhone,
     },
     medicalHistory: profile.medicalHistory,
-    consents: profile.consents,
+    consents: resolvedConsents,
+    consentRecords,
   });
 });
 
@@ -88,7 +107,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
     addressLine1, addressLine2, city, postcode,
     phone,
     emergencyContactName, emergencyContactPhone,
-    medicalHistory, consents,
+    medicalHistory,
   } = req.body;
 
   if (dob) {
@@ -104,6 +123,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
     }
   }
 
+  // PT-4: Consents are NOT mutable via profile PUT. One source of truth in ConsentRecord.
   const [updated] = await prisma.$transaction([
     prisma.patientProfile.update({
       where: { id: profile.id },
@@ -114,7 +134,6 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
         addressLine1, addressLine2: addressLine2 ?? null, city, postcode,
         emergencyContactName, emergencyContactPhone,
         medicalHistory: medicalHistory ?? undefined,
-        consents: consents ?? undefined,
       },
     }),
     ...(phone !== undefined ? [prisma.user.update({

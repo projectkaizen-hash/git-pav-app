@@ -21,7 +21,6 @@ export const updatePatientProfileSchema = z.object({
   emergencyContactName: name.optional(),
   emergencyContactPhone: phone.optional(),
   medicalHistory: z.record(z.unknown()).optional(),
-  consents: z.record(z.unknown()).optional(),
 }).strict();
 
 export const updateOdontogramSchema = z.object({

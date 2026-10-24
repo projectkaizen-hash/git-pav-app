@@ -35,7 +35,7 @@ const router = Router();
 
 // ─── POST /api/consents/grant ──────────────────────────────────────────────
 router.post("/grant", requireAuth, validateBody(grantConsentSchema), async (req: AuthRequest, res: Response) => {
-  const { consentType, lawfulBasis, ipAddress, metadata } = req.body;
+  const { consentType, lawfulBasis, metadata } = req.body;
   const userId = req.user!.sub;
 
   const profile = await prisma.patientProfile.findUnique({
@@ -46,35 +46,57 @@ router.post("/grant", requireAuth, validateBody(grantConsentSchema), async (req:
     return res.status(404).json({ error: "Patient profile not found" });
   }
 
-  const latestConsent = await prisma.consentRecord.findFirst({
-    where: {
-      patientProfileId: profile.id,
-      consentType,
-    },
-    orderBy: { version: "desc" },
-  });
+  // DB-3 / CO-1: Server-observed IP only, hashed via pseudonymiseIp (client cannot supply IP)
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
 
-  const newVersion = (latestConsent?.version || 0) + 1;
+  // CO-1: Transactional grant with versioning to prevent race conditions
+  const consent = await prisma.$transaction(async (tx) => {
+    const latestConsent = await tx.consentRecord.findFirst({
+      where: {
+        patientProfileId: profile.id,
+        consentType,
+      },
+      orderBy: { version: "desc" },
+    });
 
-  if (latestConsent && latestConsent.isGranted) {
-    await prisma.consentRecord.update({
-      where: { id: latestConsent.id },
+    const newVersion = (latestConsent?.version || 0) + 1;
+
+    if (latestConsent && latestConsent.isGranted) {
+      await tx.consentRecord.update({
+        where: { id: latestConsent.id },
+        data: {
+          isGranted: false,
+          withdrawnAt: new Date(),
+        },
+      });
+    }
+
+    return tx.consentRecord.create({
       data: {
-        isGranted: false,
-        withdrawnAt: new Date(),
+        patientProfileId: profile.id,
+        consentType,
+        version: newVersion,
+        lawfulBasis,
+        isGranted: true,
+        ipAddress: serverIpHash,
+        metadata: (metadata as any) || {},
       },
     });
-  }
+  });
 
-  const consent = await prisma.consentRecord.create({
-    data: {
-      patientProfileId: profile.id,
+  // CO-1: Audit log with hash chain integrity
+  await createAuditLogWithIntegrity({
+    action: "consent.granted",
+    actorId: userId,
+    resourceId: profile.id,
+    sessionId: req.user!.sessionId,
+    ipHash: serverIpHash,
+    metadata: {
       consentType,
-      version: newVersion,
+      version: consent.version,
       lawfulBasis,
-      isGranted: true,
-      ipAddress: ipAddress || req.ip,
-      metadata: metadata || {},
+      consentId: consent.id,
     },
   });
 
@@ -90,7 +112,7 @@ router.post("/grant", requireAuth, validateBody(grantConsentSchema), async (req:
 
 // ─── POST /api/consents/withdraw ────────────────────────────────────────────
 router.post("/withdraw", requireAuth, validateBody(withdrawConsentSchema), async (req: AuthRequest, res: Response) => {
-  const { consentType, ipAddress } = req.body;
+  const { consentType } = req.body;
   const userId = req.user!.sub;
 
   const profile = await prisma.patientProfile.findUnique({
@@ -101,25 +123,50 @@ router.post("/withdraw", requireAuth, validateBody(withdrawConsentSchema), async
     return res.status(404).json({ error: "Patient profile not found" });
   }
 
-  const consent = await prisma.consentRecord.findFirst({
-    where: {
-      patientProfileId: profile.id,
-      consentType,
-      isGranted: true,
-    },
-    orderBy: { version: "desc" },
+  // DB-3 / CO-1: Server-observed IP only, hashed via pseudonymiseIp
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
+
+  // CO-1: Transactional withdrawal
+  const updated = await prisma.$transaction(async (tx) => {
+    const consent = await tx.consentRecord.findFirst({
+      where: {
+        patientProfileId: profile.id,
+        consentType,
+        isGranted: true,
+      },
+      orderBy: { version: "desc" },
+    });
+
+    if (!consent) {
+      return null;
+    }
+
+    return tx.consentRecord.update({
+      where: { id: consent.id },
+      data: {
+        isGranted: false,
+        withdrawnAt: new Date(),
+        ipAddress: serverIpHash,
+      },
+    });
   });
 
-  if (!consent) {
+  if (!updated) {
     return res.status(404).json({ error: "No active consent found for this type" });
   }
 
-  const updated = await prisma.consentRecord.update({
-    where: { id: consent.id },
-    data: {
-      isGranted: false,
-      withdrawnAt: new Date(),
-      ipAddress: ipAddress || req.ip,
+  // CO-1: Audit log with hash chain integrity
+  await createAuditLogWithIntegrity({
+    action: "consent.withdrawn",
+    actorId: userId,
+    resourceId: profile.id,
+    sessionId: req.user!.sessionId,
+    ipHash: serverIpHash,
+    metadata: {
+      consentType,
+      version: updated.version,
+      consentId: updated.id,
     },
   });
 

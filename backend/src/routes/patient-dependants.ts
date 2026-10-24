@@ -16,6 +16,8 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody, validateParams } from "../middleware/validate";
 import { ageInYears, DEPENDANT_MAX_AGE, GUARDIAN_MIN_AGE, parseIsoDate } from "../lib/age";
+import { pseudonymiseIp } from "../lib/audit-security";
+import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 
 const router = Router();
 
@@ -94,14 +96,61 @@ router.post("/", requireAuth, validateBody(createDependantSchema), async (req: A
     });
   }
 
-  const dependant = await prisma.dependant.create({
-    data: {
-      guardianId: patientId,
-      firstName,
-      lastName,
-      dob,
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
+
+  // DP-1 / CO-1: Transactionally create dependant and versioned guardian_consent ConsentRecord
+  const { dependant, consentRecord } = await prisma.$transaction(async (tx) => {
+    const dep = await tx.dependant.create({
+      data: {
+        guardianId: patientId,
+        firstName,
+        lastName,
+        dob,
+        relationship,
+        consentSigned: true,
+      },
+    });
+
+    const latest = await tx.consentRecord.findFirst({
+      where: {
+        patientProfileId: patientId,
+        consentType: "guardian_consent",
+      },
+      orderBy: { version: "desc" },
+    });
+    const nextVersion = (latest?.version || 0) + 1;
+
+    const consent = await tx.consentRecord.create({
+      data: {
+        patientProfileId: patientId,
+        consentType: "guardian_consent",
+        version: nextVersion,
+        lawfulBasis: "vital_interests",
+        isGranted: true,
+        ipAddress: serverIpHash,
+        metadata: {
+          dependantId: dep.id,
+          relationship,
+          childName: `${firstName} ${lastName}`,
+          childDob: dob,
+        },
+      },
+    });
+
+    return { dependant: dep, consentRecord: consent };
+  });
+
+  await createAuditLogWithIntegrity({
+    action: "patient.dependant.created",
+    actorId: req.user.sub,
+    resourceId: patientId,
+    sessionId: req.user.sessionId,
+    ipHash: serverIpHash,
+    metadata: {
+      dependantId: dependant.id,
+      consentRecordId: consentRecord.id,
       relationship,
-      consentSigned,
     },
   });
 
@@ -112,6 +161,7 @@ router.post("/", requireAuth, validateBody(createDependantSchema), async (req: A
     dob: dependant.dob,
     relationship: dependant.relationship,
     consentSigned: dependant.consentSigned,
+    consentRecordId: consentRecord.id,
   });
 });
 
