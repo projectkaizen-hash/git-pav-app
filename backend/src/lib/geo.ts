@@ -42,29 +42,53 @@ export async function postcodeToCoordinates(postcode: string): Promise<Point | n
 
 export interface Polygon {
   type: "Polygon";
-  coordinates: number[][][]; // GeoJSON format: [[[lng, lat], ...]]
+  coordinates: number[][][]; // GeoJSON format: [outerRing, ...holeRings]
+}
+
+export interface MultiPolygon {
+  type: "MultiPolygon";
+  coordinates: number[][][][]; // GeoJSON format: [[[outerRing, ...holes]], ...]
+}
+
+export type GeoJsonPolygon = Polygon | MultiPolygon;
+
+function isPointInLinearRing(point: Point, ring: number[][]): boolean {
+  if (!ring || ring.length < 3) return false;
+  const [x, y] = [point.lng, point.lat];
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInPolygonCoords(point: Point, rings: number[][][]): boolean {
+  if (!rings || rings.length === 0 || !rings[0] || rings[0].length === 0) return false;
+  // Exterior ring: point must be inside
+  if (!isPointInLinearRing(point, rings[0])) {
+    return false;
+  }
+  // VC-4: Interior rings (holes): point must NOT be inside any hole
+  for (let i = 1; i < rings.length; i++) {
+    if (isPointInLinearRing(point, rings[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
- * Check if a point is inside a polygon using ray casting algorithm
- * This is a simplified version of Turf.js pointInPolygon
+ * Check if a point is inside a polygon or multipolygon using ray casting algorithm.
+ * VC-4: Handles interior rings (holes) and MultiPolygon features.
  */
-export function pointInPolygon(point: Point, polygon: Polygon): boolean {
-  const [x, y] = [point.lng, point.lat];
-  const coords = polygon.coordinates[0]; // First ring of the polygon
-  
-  let inside = false;
-  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-    const [xi, yi] = coords[i];
-    const [xj, yj] = coords[j];
-    
-    const intersect = ((yi > y) !== (yj > y)) &&
-      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    
-    if (intersect) inside = !inside;
+export function pointInPolygon(point: Point, geometry: Polygon | MultiPolygon): boolean {
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.some((polygonCoords) => pointInPolygonCoords(point, polygonCoords));
   }
-  
-  return inside;
+  return pointInPolygonCoords(point, geometry.coordinates);
 }
 
 /**
@@ -106,19 +130,26 @@ function toRad(degrees: number): number {
 }
 
 /**
- * Find the centroid of a polygon (for distance calculations)
+ * Find the centroid of a polygon or multipolygon (for distance calculations).
+ * VC-4: Uses the primary exterior boundary ring.
  */
-export function getPolygonCentroid(polygon: Polygon): Point {
-  const coords = polygon.coordinates[0];
+export function getPolygonCentroid(geometry: Polygon | MultiPolygon): Point {
+  const rings =
+    geometry.type === "MultiPolygon"
+      ? geometry.coordinates[0]?.[0] || []
+      : geometry.coordinates[0] || [];
+
+  if (rings.length === 0) {
+    return { lat: 0, lng: 0 };
+  }
+
   let sumX = 0, sumY = 0;
-  
-  for (const [x, y] of coords) {
+  for (const [x, y] of rings) {
     sumX += x;
     sumY += y;
   }
-  
   return {
-    lng: sumX / coords.length,
-    lat: sumY / coords.length
+    lng: sumX / rings.length,
+    lat: sumY / rings.length,
   };
 }

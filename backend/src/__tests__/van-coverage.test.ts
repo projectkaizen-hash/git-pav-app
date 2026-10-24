@@ -53,8 +53,8 @@ beforeEach(() => {
   (prisma.vanShift.findMany as jest.Mock).mockReset().mockResolvedValue([]);
 });
 
-describe("backend probing", () => {
-  test("uses PostGIS when the extension and geometry column exist", async () => {
+describe("backend probing (VC-1: read-only probe, DDL in migration)", () => {
+  test("uses PostGIS when the extension and geometry column exist without executing DDL", async () => {
     (prisma.$queryRaw as jest.Mock)
       .mockResolvedValueOnce([{ extname: "postgis" }])
       .mockResolvedValue([{ cnt: 1n }]);
@@ -62,20 +62,35 @@ describe("backend probing", () => {
     const backend = await getCoverageBackend(true);
 
     expect(backend.mode).toBe("postgis");
-    // Backfill of NULL geometry columns ran against the DB
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalled();
+    // VC-1: Startup probe is read-only; no DDL or backfill writes are executed
+    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
   });
 
-  test("falls back to JS and drops the dead trigger when PostGIS is absent", async () => {
+  test("falls back to JS when PostGIS is absent without modifying triggers", async () => {
     (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
 
     const backend = await getCoverageBackend(true);
 
     expect(backend.mode).toBe("js");
     expect(backend.reason).toBeDefined();
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining("DROP TRIGGER IF EXISTS trigger_update_polygon")
-    );
+    // VC-1: No DROP TRIGGER executed at runtime
+    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
+  });
+
+  test("VC-2: re-probes PostGIS after cooldown elapsed", async () => {
+    (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([]); // Initially no postgis
+    const backend = await getCoverageBackend(true);
+    expect(backend.mode).toBe("js");
+
+    // Simulate cooldown elapsed
+    backend.failedAt = Date.now() - 31_000;
+
+    (prisma.$queryRaw as jest.Mock)
+      .mockResolvedValueOnce([{ extname: "postgis" }])
+      .mockResolvedValue([{ cnt: 1n }]);
+
+    const recovered = await getCoverageBackend();
+    expect(recovered.mode).toBe("postgis");
   });
 });
 
@@ -121,6 +136,67 @@ describe("findCoveringVans — JS mode", () => {
 
     const matches = await findCoveringVans({ lat: 53.0, lng: -1.0 });
     expect(matches).toEqual([]);
+  });
+
+  test("VC-4: respects interior rings (holes) in polygons", async () => {
+    // Outer square: [-0.2, 51.4] to [-0.1, 51.6]
+    const outer = [
+      [-0.2, 51.4],
+      [-0.1, 51.4],
+      [-0.1, 51.6],
+      [-0.2, 51.6],
+      [-0.2, 51.4],
+    ];
+    // Hole in center: [-0.16, 51.48] to [-0.14, 51.52]
+    const hole = [
+      [-0.16, 51.48],
+      [-0.14, 51.48],
+      [-0.14, 51.52],
+      [-0.16, 51.52],
+      [-0.16, 51.48],
+    ];
+
+    (prisma.vanServicePolygon.findMany as jest.Mock).mockResolvedValue([
+      fakePolygon({
+        polygonGeoJson: { type: "Polygon", coordinates: [outer, hole] },
+      }),
+    ]);
+
+    // Inside outer ring, outside hole -> covers
+    const insideOuter = await findCoveringVans({ lat: 51.45, lng: -0.18 });
+    expect(insideOuter.length).toBe(1);
+
+    // Inside hole -> excluded
+    const insideHole = await findCoveringVans({ lat: 51.50, lng: -0.15 });
+    expect(insideHole.length).toBe(0);
+  });
+
+  test("VC-4: supports MultiPolygon coverage", async () => {
+    const poly1 = [
+      [-0.13, 51.49],
+      [-0.11, 51.49],
+      [-0.11, 51.51],
+      [-0.13, 51.51],
+      [-0.13, 51.49],
+    ];
+    const poly2 = [
+      [-0.05, 51.49],
+      [-0.03, 51.49],
+      [-0.03, 51.51],
+      [-0.05, 51.51],
+      [-0.05, 51.49],
+    ];
+
+    (prisma.vanServicePolygon.findMany as jest.Mock).mockResolvedValue([
+      fakePolygon({
+        polygonGeoJson: { type: "MultiPolygon", coordinates: [[poly1], [poly2]] },
+      }),
+    ]);
+
+    // Inside poly2 -> covered
+    const matches = await findCoveringVans({ lat: 51.5, lng: -0.04 });
+    expect(matches.length).toBe(1);
+    expect(matches[0].vanName).toBe("Van #1");
   });
 });
 

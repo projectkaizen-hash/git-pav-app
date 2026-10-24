@@ -1,5 +1,6 @@
 import { verifyAuditIntegrity, applyAuditRetentionPolicy, checkAuditFailures } from "./audit-integrity";
 import { communicationService } from "./communication-service";
+import { env } from "../config/env";
 
 // Audit monitoring configuration
 const AUDIT_CONFIG = {
@@ -24,7 +25,7 @@ export function startAuditMonitoring() {
       if (!result.verified) {
         console.error("[AUDIT INTEGRITY] Integrity check failed:", result.issues);
         await communicationService.sendEmail({
-          to: "ops@pavdental.com",
+          to: env.opsAlertEmail,
           subject: "[AUDIT INTEGRITY] Hash Chain Verification Failed",
           html: `<p>Audit log integrity verification failed:</p><pre>${JSON.stringify(result.issues, null, 2)}</pre>`,
           text: `Audit log integrity verification failed: ${JSON.stringify(result.issues)}`,
@@ -54,7 +55,7 @@ export function startAuditMonitoring() {
       if (result.thresholdExceeded) {
         console.error(`[AUDIT FAILURES] High failure rate detected: ${result.failureCount} failures in 24h`);
         await communicationService.sendEmail({
-          to: "ops@pavdental.com",
+          to: env.opsAlertEmail,
           subject: `[AUDIT FAILURES] ${result.failureCount} failures in 24h`,
           html: `<p>Audit failure threshold exceeded: ${result.failureCount} events in 24 hours.</p>`,
           text: `Audit failure threshold exceeded: ${result.failureCount} events in 24 hours.`,

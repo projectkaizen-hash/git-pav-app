@@ -86,3 +86,8 @@ Expired holds count too, so let the hold sweeper run (or cancel holds whose `hol
 
 Adds composite index `(status, scheduled_for)` on `scheduled_notifications`, adds FK indexes on `push_tokens(user_id)`, `auth_sessions(user_id)`, `notification_history(user_id)`, adds dispatcher tracking columns (`attempts`, `last_error`), and drops redundant duplicate indexes on `patient_profiles(user_id)`, `clinician_profiles(gdc_number)`, and `vans(registration_plate)`. Fully additive and safe to deploy with zero downtime.
 
+## Deploying `20261024070000_audit_index_and_van_polygon_trigger` (CS-20)
+
+Adds composite index `(archived, timestamp_utc, id)` on `audit_logs` to accelerate audit chain reads and integrity verification. Moves van service polygon SRID-4326 synchronization trigger and GeoJSON backfill into PostgreSQL migration (VC-1), allowing the runtime startup probe to be strictly read-only.
+
+
