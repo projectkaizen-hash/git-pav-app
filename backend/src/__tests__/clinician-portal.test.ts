@@ -165,9 +165,9 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
     try { redis.disconnect(); } catch {}
   });
 
-  it("MB-4: scopes clinician schedule to today by default without mixing in future days", async () => {
-    // GET /api/booking/appointments as clinician
-    const res = await fetch(`${baseUrl}/api/booking/appointments`, {
+  it("MB-4: scopes clinician schedule to today with date/scope filter without mixing in future days", async () => {
+    // GET /api/booking/appointments?scope=today as clinician
+    const res = await fetch(`${baseUrl}/api/booking/appointments?scope=today`, {
       headers: { Authorization: `Bearer ${clinicianToken}` },
     });
     expect(res.status).toBe(200);
@@ -178,12 +178,12 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
     const todayFound = schedule.find((a: any) => a.id === ids.appointmentTodayId);
     expect(todayFound).toBeDefined();
 
-    // Future appointment should NOT be present in today's default view
+    // Future appointment should NOT be present in today's scoped view
     const futureFound = schedule.find((a: any) => a.id === ids.appointmentFutureId);
     expect(futureFound).toBeUndefined();
 
-    // Querying with ?scope=all should return both
-    const allRes = await fetch(`${baseUrl}/api/booking/appointments?scope=all`, {
+    // Querying without scope filter returns all future appointments (backward compatible)
+    const allRes = await fetch(`${baseUrl}/api/booking/appointments`, {
       headers: { Authorization: `Bearer ${clinicianToken}` },
     });
     expect(allRes.status).toBe(200);

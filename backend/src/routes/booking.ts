@@ -375,20 +375,18 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     if (!clinician) return res.status(404).json({ error: "Clinician profile not found" });
 
     // MB-4: Support date-scoped schedule query
-    // If date query parameter is provided (e.g. "2026-10-24" or "today"), scope to that London day.
-    // If ?scope=all or ?all=true is explicitly set, return today forward.
-    // Default scopes to today's consultations only (startOfLondonDay to endOfLondonDay),
-    // preventing tomorrow's/future days from appearing as "Today's consultations".
+    // If date query parameter is provided (e.g. "2026-10-24" or "?scope=today"), scope to that London day.
+    // If no date filter is provided, return all upcoming appointments (today forward) to maintain backward compatibility.
     let dateFilter: { gte: Date; lte?: Date };
-    if (req.query.scope === "all" || req.query.all === "true") {
-      dateFilter = { gte: startOfLondonDay(new Date()) };
-    } else {
-      const targetDate = req.query.date && typeof req.query.date === "string" && req.query.date !== "today"
-        ? new Date(req.query.date)
+    if (req.query.scope === "today" || (req.query.date && typeof req.query.date === "string")) {
+      const targetDate = req.query.date && req.query.date !== "today"
+        ? new Date(req.query.date as string)
         : new Date();
       const startOfDay = startOfLondonDay(targetDate);
       const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
       dateFilter = { gte: startOfDay, lte: endOfDay };
+    } else {
+      dateFilter = { gte: startOfLondonDay(new Date()) };
     }
 
     const schedule = await prisma.appointment.findMany({
