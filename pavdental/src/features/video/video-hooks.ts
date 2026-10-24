@@ -1,10 +1,8 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAccessToken } from "../auth/auth-store";
+import { authFetch } from "../auth/auth-api";
 import * as ImagePicker from "expo-image-picker";
 import { Platform } from "react-native";
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3002";
 
 interface VideoRoomResponse {
   roomName: string;
@@ -108,7 +106,6 @@ export function useMediaPermissions() {
 
 // Photo upload hook for triage
 export function usePhotoUpload() {
-  const accessToken = useAccessToken();
   const [uploadStatus, setUploadStatus] = React.useState<"idle" | "uploading" | "success" | "error">("idle");
 
   const pickAndUploadPhoto = async (appointmentId: string) => {
@@ -137,12 +134,8 @@ export function usePhotoUpload() {
       } as any);
       formData.append("appointmentId", appointmentId);
 
-      const response = await fetch(`${API_BASE}/api/video/upload-triage-photo`, {
+      const response = await authFetch("/api/video/upload-triage-photo", {
         method: "POST",
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: formData,
       });
 
@@ -186,12 +179,8 @@ export function usePhotoUpload() {
       } as any);
       formData.append("appointmentId", appointmentId);
 
-      const response = await fetch(`${API_BASE}/api/video/upload-triage-photo`, {
+      const response = await authFetch("/api/video/upload-triage-photo", {
         method: "POST",
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: formData,
       });
 
@@ -220,22 +209,17 @@ export function usePhotoUpload() {
 
 // Create video room
 export function useCreateVideoRoom() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (appointmentId: string) => {
-      const response = await fetch(`${API_BASE}/api/video/rooms`, {
+      const response = await authFetch("/api/video/rooms", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({ appointmentId }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to create video room");
       }
 
@@ -243,13 +227,13 @@ export function useCreateVideoRoom() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
     },
   });
 }
 
 // Submit triage data
 export function useSubmitTriage() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -257,12 +241,8 @@ export function useSubmitTriage() {
       appointmentId: string;
       triageData: TriageData;
     }) => {
-      const response = await fetch(`${API_BASE}/api/video/submit-triage`, {
+      const response = await authFetch("/api/video/submit-triage", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({
           appointmentId,
           ...triageData,
@@ -270,7 +250,7 @@ export function useSubmitTriage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to submit triage");
       }
 
@@ -278,22 +258,17 @@ export function useSubmitTriage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
     },
   });
 }
 
 // Clinician queue management
 export function useClinicianQueue() {
-  const accessToken = useAccessToken();
-
   return useQuery({
     queryKey: ["clinician-queue"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/api/video/clinician-queue`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = await authFetch("/api/video/clinician-queue");
 
       if (!response.ok) {
         throw new Error("Failed to fetch clinician queue");
@@ -307,22 +282,17 @@ export function useClinicianQueue() {
 
 // Admit patient to consultation
 export function useAdmitPatient() {
-  const accessToken = useAccessToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (appointmentId: string) => {
-      const response = await fetch(`${API_BASE}/api/video/admit-patient`, {
+      const response = await authFetch("/api/video/admit-patient", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({ appointmentId }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Failed to admit patient");
       }
 

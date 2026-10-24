@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import multer from "multer";
 import { withIdempotency, generateIdempotencyKey } from "../lib/idempotency";
 import { validateBody } from "../middleware/validate";
+import { HttpError } from "../middleware/error-handler";
 import { createVideoRoomSchema, submitTriageSchema, admitPatientSchema } from "../schemas/video";
 import { dailyApiClient } from "../lib/api-client";
 import { objectStorage } from "../lib/object-storage";
@@ -24,7 +25,7 @@ const upload = multer({
     if (ALLOWED_IMAGE_MIMES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG, PNG, and WebP image files are allowed"));
+      cb(new HttpError(400, "Only JPEG, PNG, and WebP image files are allowed"));
     }
   },
 });

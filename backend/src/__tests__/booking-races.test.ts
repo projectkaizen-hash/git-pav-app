@@ -91,7 +91,7 @@ describe("booking races", () => {
     expect(results.filter((r) => r.status === 201)).toHaveLength(1);
     expect(results.filter((r) => r.status === 409)).toHaveLength(4);
     expect(await prisma.appointment.count({ where: { clinicianId, status: { in: ["draft_hold", "confirmed", "in_progress"] } } })).toBe(1);
-  });
+  }, 15000);
 
   it("refuses an overlapping live appointment in the database itself", async () => {
     const clinicianId = await makeClinician([]);

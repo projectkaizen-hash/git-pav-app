@@ -18,7 +18,13 @@ function validate<T>(location: "body" | "query" | "params", schema: ZodType<T>):
   return (req, res, next) => {
     const result = schema.safeParse(req[location]);
     if (!result.success) {
-      return res.status(400).json({ error: `Invalid request ${location}` });
+      return res.status(400).json({
+        error: `Invalid request ${location}`,
+        issues: result.error.errors.map((e) => ({
+          path: e.path.join("."),
+          message: e.message,
+        })),
+      });
     }
     req[location] = result.data as never;
     return next();

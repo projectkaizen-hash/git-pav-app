@@ -40,11 +40,13 @@ const appointmentInclude = {
 
 /** True when the insert hit the no-overlap constraint (CS-16). */
 function isClinicianOverlap(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message;
   return (
-    error instanceof Prisma.PrismaClientUnknownRequestError &&
-    (error.message.includes("appointments_no_clinician_overlap") ||
-      error.message.includes("deadlock detected") ||
-      error.message.includes("40P01"))
+    msg.includes("appointments_no_clinician_overlap") ||
+    msg.includes("deadlock detected") ||
+    msg.includes("40P01") ||
+    msg.includes("23P01")
   );
 }
 
@@ -423,6 +425,63 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
   });
 
   return res.json(appointments);
+});
+
+// ─── GET /api/booking/appointments/:id ───────────────────────────────────────
+// Fetches a single appointment by id for status polling and detail views.
+// Accessible by the owning patient, the assigned clinician, or an admin.
+router.get("/appointments/:id", requireAuth, validateParams(appointmentIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const appointmentId = String(req.params.id);
+
+  let allowed = false;
+  if (req.user!.role === "admin") {
+    allowed = true;
+  } else if (req.user!.role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { id: true },
+    });
+    if (clinician) {
+      const apt = await prisma.appointment.findFirst({
+        where: { id: appointmentId, clinicianId: clinician.id },
+        select: { id: true },
+      });
+      if (apt) allowed = true;
+    }
+  } else {
+    // Patient
+    const profile = await prisma.patientProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { id: true },
+    });
+    if (profile) {
+      const apt = await prisma.appointment.findFirst({
+        where: { id: appointmentId, patientId: profile.id },
+        select: { id: true },
+      });
+      if (apt) allowed = true;
+    }
+  }
+
+  if (!allowed) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      service: { select: { name: true, durationMinutes: true } },
+      clinician: { select: { fullName: true, photoUrl: true } },
+      clinic: { select: { name: true, address: true } },
+      dependant: { select: { id: true, firstName: true, lastName: true } },
+    },
+  });
+
+  if (!appointment) {
+    return res.status(404).json({ error: "Appointment not found" });
+  }
+
+  return res.json(appointment);
 });
 
 // ─── GET /api/booking/appointments/:id/clinical-context ──────────────────────

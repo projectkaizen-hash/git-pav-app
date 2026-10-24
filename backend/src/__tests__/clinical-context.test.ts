@@ -75,9 +75,9 @@ describe("GET /api/booking/appointments/:id/clinical-context", () => {
   });
 
   afterAll(async () => {
-    await prisma.appointment.deleteMany({ where: { id: ids.appointment } });
-    await prisma.clinicianProfile.deleteMany({ where: { userId: { in: ids.users } } });
-    await prisma.patientProfile.deleteMany({ where: { id: ids.patientProfile } });
+    if (ids.appointment) await prisma.appointment.deleteMany({ where: { id: ids.appointment } });
+    if (ids.users.length) await prisma.clinicianProfile.deleteMany({ where: { userId: { in: ids.users } } });
+    if (ids.patientProfile) await prisma.patientProfile.deleteMany({ where: { id: ids.patientProfile } });
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
