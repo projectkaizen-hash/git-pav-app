@@ -23,6 +23,7 @@ import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
+import { encryptField, decryptField, isEncryptedEnvelope, encryptAccessDetails, decryptAccessDetails } from "../lib/encryption";
 
 const router = Router();
 
@@ -267,6 +268,14 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       assignedClinicianId = bookable;
     }
 
+    // DB-3: Encrypt triageData and accessDetails at rest
+    const storedTriageData = triageData
+      ? (isEncryptedEnvelope(triageData) ? triageData : await encryptField(triageData))
+      : null;
+    const storedAccessDetails = accessDetails
+      ? await encryptAccessDetails(accessDetails)
+      : null;
+
     // The constraint on appointments is what stops a double booking (BK-2);
     // this transaction clears expired holds in the way first, as the hold
     // sweeper would, and turns a clash into a friendly 409.
@@ -306,8 +315,8 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
             endTimeUtc: endDate,
             status: "draft_hold",
             holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-            accessDetails: accessDetails || null,
-            triageData: triageData || null,
+            accessDetails: storedAccessDetails as any,
+            triageData: storedTriageData as any,
             totalPricePence: service.pricePence,
             depositPaidPence: 0,
           },
@@ -338,12 +347,17 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     }
 
     return { appointment, status: 201 };
-  }).then((result: any) => {
+  }).then(async (result: any) => {
     if (result.error) {
       const { status, ...errorBody } = result;
       return res.status(status || 400).json(errorBody);
     }
-    return res.status(result.status).json(result.appointment);
+    const apt = result.appointment;
+    if (apt) {
+      apt.triageData = await decryptField(apt.triageData);
+      apt.accessDetails = await decryptAccessDetails(apt.accessDetails);
+    }
+    return res.status(result.status).json(apt);
   });
 });
 
@@ -380,29 +394,33 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     });
 
     return res.json(
-      schedule.map((a) => ({
-        ...a,
-        // When a guardian booked for their child, the child is the one seen;
-        // the guardian stays as the account holder.
-        dependant: a.dependant
-          ? {
-              id: a.dependant.id,
-              firstName: a.dependant.firstName,
-              lastName: a.dependant.lastName,
-              age: ageInYears(new Date(a.dependant.dob)),
-            }
-          : null,
-        patient: a.patient
-          ? {
-              id: a.patient.id,
-              firstName: a.patient.firstName,
-              lastName: a.patient.lastName,
-              age: a.patient.dob
-                ? Math.floor((Date.now() - new Date(a.patient.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
-                : null,
-            }
-          : null,
-      }))
+      await Promise.all(
+        schedule.map(async (a) => ({
+          ...a,
+          triageData: await decryptField(a.triageData),
+          accessDetails: await decryptAccessDetails(a.accessDetails),
+          // When a guardian booked for their child, the child is the one seen;
+          // the guardian stays as the account holder.
+          dependant: a.dependant
+            ? {
+                id: a.dependant.id,
+                firstName: a.dependant.firstName,
+                lastName: a.dependant.lastName,
+                age: ageInYears(new Date(a.dependant.dob)),
+              }
+            : null,
+          patient: a.patient
+            ? {
+                id: a.patient.id,
+                firstName: a.patient.firstName,
+                lastName: a.patient.lastName,
+                age: a.patient.dob
+                  ? Math.floor((Date.now() - new Date(a.patient.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
+                  : null,
+              }
+            : null,
+        }))
+      )
     );
   }
 
@@ -424,7 +442,15 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     take: SCHEDULE_LIMIT,
   });
 
-  return res.json(appointments);
+  return res.json(
+    await Promise.all(
+      appointments.map(async (a) => ({
+        ...a,
+        triageData: await decryptField(a.triageData),
+        accessDetails: await decryptAccessDetails(a.accessDetails),
+      }))
+    )
+  );
 });
 
 // ─── GET /api/booking/appointments/:id ───────────────────────────────────────
@@ -481,7 +507,11 @@ router.get("/appointments/:id", requireAuth, validateParams(appointmentIdParamsS
     return res.status(404).json({ error: "Appointment not found" });
   }
 
-  return res.json(appointment);
+  return res.json({
+    ...appointment,
+    triageData: await decryptField(appointment.triageData),
+    accessDetails: await decryptAccessDetails(appointment.accessDetails),
+  });
 });
 
 // ─── GET /api/booking/appointments/:id/clinical-context ──────────────────────
@@ -509,6 +539,10 @@ router.get("/appointments/:id/clinical-context", requireAuth, requireRole("clini
     },
   });
   if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+  if (appointment.patient) {
+    (appointment.patient as any).medicalHistory = await decryptField(appointment.patient.medicalHistory);
+  }
 
   await createAuditLogWithIntegrity({
     action: "clinical_record.read.appointment_context",
@@ -728,15 +762,19 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
   }
 
   const checkedInAt = new Date().toISOString();
+  const currentAccess = (await decryptAccessDetails(appointment.accessDetails)) || {};
+  const updatedAccess = {
+    ...currentAccess,
+    checkedIn: true,
+    checkedInAt,
+    completedTasks: [...new Set(completedTasks)],
+  };
+  const encryptedAccess = await encryptAccessDetails(updatedAccess);
+
   const updated = await prisma.appointment.update({
     where: { id: appointment.id },
     data: {
-      accessDetails: {
-        ...((appointment.accessDetails as Record<string, unknown>) || {}),
-        checkedIn: true,
-        checkedInAt,
-        completedTasks: [...new Set(completedTasks)],
-      },
+      accessDetails: encryptedAccess as any,
     },
   });
 

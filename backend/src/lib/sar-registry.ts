@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { decryptField, decryptString } from "./encryption";
 
 export interface SarContext {
   userId: string;
@@ -33,7 +34,7 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
   },
 
   PatientProfile: async (prisma, { profileId }) => {
-    return prisma.patientProfile.findUnique({
+    const profile = await prisma.patientProfile.findUnique({
       where: { id: profileId },
       select: {
         id: true,
@@ -53,6 +54,11 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
         updatedAt: true,
       },
     });
+    if (!profile) return null;
+    return {
+      ...profile,
+      medicalHistory: profile.medicalHistory ? await decryptField(profile.medicalHistory) : profile.medicalHistory,
+    };
   },
 
   Dependant: async (prisma, { profileId }) => {
@@ -63,7 +69,7 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
   },
 
   Appointment: async (prisma, { profileId }) => {
-    return prisma.appointment.findMany({
+    const appts = await prisma.appointment.findMany({
       where: { patientId: profileId },
       include: {
         service: { select: { name: true, durationMinutes: true } },
@@ -73,6 +79,13 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
       },
       orderBy: { startTimeUtc: "desc" },
     });
+    return Promise.all(
+      appts.map(async (a) => ({
+        ...a,
+        triageData: a.triageData ? await decryptField(a.triageData) : a.triageData,
+        accessDetails: a.accessDetails ? await decryptField(a.accessDetails) : a.accessDetails,
+      }))
+    );
   },
 
   ToothRecord: async (prisma, { profileId }) => {
@@ -112,7 +125,7 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
   },
 
   MessageThread: async (prisma, { userId }) => {
-    return prisma.messageThread.findMany({
+    const threads = await prisma.messageThread.findMany({
       where: { patientUserId: userId },
       include: {
         messages: {
@@ -128,10 +141,21 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
       },
       orderBy: { updatedAt: "desc" },
     });
+    return Promise.all(
+      threads.map(async (t) => ({
+        ...t,
+        messages: await Promise.all(
+          t.messages.map(async (m) => ({
+            ...m,
+            body: await decryptString(m.body),
+          }))
+        ),
+      }))
+    );
   },
 
   Message: async (prisma, { userId }) => {
-    return prisma.message.findMany({
+    const messages = await prisma.message.findMany({
       where: { thread: { patientUserId: userId } },
       select: {
         id: true,
@@ -143,21 +167,35 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
       },
       orderBy: { sentAt: "desc" },
     });
+    return Promise.all(
+      messages.map(async (m) => ({
+        ...m,
+        body: await decryptString(m.body),
+      }))
+    );
   },
 
   VanServiceRequest: async (prisma, { profileId }) => {
-    return prisma.vanServiceRequest.findMany({
+    const requests = await prisma.vanServiceRequest.findMany({
       where: { patientId: profileId },
       select: {
         id: true,
         patientLat: true,
         patientLng: true,
         accessDetails: true,
+        notes: true,
         status: true,
         requestedAt: true,
       },
       orderBy: { requestedAt: "desc" },
     });
+    return Promise.all(
+      requests.map(async (r) => ({
+        ...r,
+        accessDetails: r.accessDetails ? await decryptField(r.accessDetails) : r.accessDetails,
+        notes: r.notes ? await decryptString(r.notes) : r.notes,
+      }))
+    );
   },
 
   NotificationHistory: async (prisma, { userId }) => {

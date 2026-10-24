@@ -7,6 +7,7 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody, validateParams } from "../middleware/validate";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { encryptField, decryptString } from "../lib/encryption";
 
 const router = Router();
 
@@ -53,22 +54,26 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
   });
 
   return res.json(
-    threads.map((t) => ({
-      id: t.id,
-      from: t.senderName,
-      subject: t.subject,
-      preview: t.preview,
-      sentAtIso: t.updatedAt.toISOString(),
-      isRead: t.isRead,
-      hasAttachment: t.hasAttachment,
-      messages: t.messages.map((m) => ({
-        id: m.id,
-        senderRole: m.senderRole,
-        senderName: m.senderName,
-        body: m.body,
-        sentAtIso: m.sentAt.toISOString(),
-      })),
-    }))
+    await Promise.all(
+      threads.map(async (t) => ({
+        id: t.id,
+        from: t.senderName,
+        subject: t.subject,
+        preview: t.preview,
+        sentAtIso: t.updatedAt.toISOString(),
+        isRead: t.isRead,
+        hasAttachment: t.hasAttachment,
+        messages: await Promise.all(
+          t.messages.map(async (m) => ({
+            id: m.id,
+            senderRole: m.senderRole,
+            senderName: m.senderName,
+            body: await decryptString(m.body),
+            sentAtIso: m.sentAt.toISOString(),
+          }))
+        ),
+      }))
+    )
   );
 });
 
@@ -76,6 +81,10 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
 router.post("/", requireAuth, validateBody(createThreadSchema), async (req: AuthRequest, res: Response) => {
   const userId = req.user!.sub;
   const { subject, body, recipientName } = req.body;
+
+  // DB-3: Encrypt message body at rest
+  const encrypted = await encryptField(body);
+  const storedBody = JSON.stringify(encrypted);
 
   const thread = await prisma.messageThread.create({
     data: {
@@ -90,7 +99,7 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
           {
             senderRole: req.user!.role,
             senderName: "You",
-            body,
+            body: storedBody,
           },
         ],
       },
@@ -106,7 +115,10 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     sentAtIso: thread.updatedAt.toISOString(),
     isRead: thread.isRead,
     hasAttachment: thread.hasAttachment,
-    messages: thread.messages,
+    messages: thread.messages.map((m) => ({
+      ...m,
+      body,
+    })),
   });
 });
 
@@ -129,13 +141,17 @@ router.post(
       return res.status(404).json({ error: "Message thread not found" });
     }
 
+    // DB-3: Encrypt reply message body at rest
+    const encrypted = await encryptField(body);
+    const storedBody = JSON.stringify(encrypted);
+
     const [message, updatedThread] = await prisma.$transaction([
       prisma.message.create({
         data: {
           threadId: thread.id,
           senderRole: req.user!.role,
           senderName: "You",
-          body,
+          body: storedBody,
         },
       }),
       prisma.messageThread.update({
@@ -164,7 +180,7 @@ router.post(
         id: message.id,
         senderRole: message.senderRole,
         senderName: message.senderName,
-        body: message.body,
+        body,
         sentAtIso: message.sentAt.toISOString(),
       },
       thread: {

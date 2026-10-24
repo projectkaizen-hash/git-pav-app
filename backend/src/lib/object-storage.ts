@@ -51,7 +51,7 @@ export interface SignedUrlResult {
   signature: string;
 }
 
-class ObjectStorage {
+export class ObjectStorage {
   private config: StorageConfig;
   private s3Client?: S3Client;
   private uploadDir: string;
@@ -59,6 +59,19 @@ class ObjectStorage {
   constructor(config: StorageConfig) {
     this.config = config;
     this.uploadDir = path.resolve(process.cwd(), config.uploadPath || "./uploads");
+
+    // OS-1: In staging and production, refuse to boot without real storage config. Never silently write to local disk.
+    const isProdOrStaging =
+      env.isProduction ||
+      env.nodeEnv === "staging" ||
+      process.env.NODE_ENV === "staging" ||
+      process.env.NODE_ENV === "production";
+
+    if (isProdOrStaging && config.provider === "local") {
+      throw new Error(
+        "CRITICAL: Staging and Production must not use local object storage. Configure S3/R2 storage."
+      );
+    }
 
     if (
       config.provider === "s3" &&
@@ -99,12 +112,14 @@ class ObjectStorage {
         : Buffer.from(file);
     const sha256 = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket && env.isProduction) {
+    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
+      // OS-2: Enforce AES256 server-side encryption at rest
       const command = new PutObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
         Body: fileBuffer,
         ContentType: contentType,
+        ServerSideEncryption: "AES256",
         Metadata: { ...metadata, sha256 },
       });
       await this.s3Client.send(command);
@@ -118,7 +133,7 @@ class ObjectStorage {
       };
     }
 
-    // Durable local disk storage for development/staging/self-hosted deployments
+    // Durable local disk storage for development/test deployments
     const fullPath = path.join(this.uploadDir, key);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     await fs.writeFile(fullPath, fileBuffer);
@@ -143,7 +158,7 @@ class ObjectStorage {
   async download(rawKey: string): Promise<DownloadResult> {
     const key = this.sanitizeKey(rawKey);
 
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket && env.isProduction) {
+    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
       const command = new GetObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
@@ -182,7 +197,7 @@ class ObjectStorage {
    */
   async delete(rawKey: string): Promise<void> {
     const key = this.sanitizeKey(rawKey);
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket && env.isProduction) {
+    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
       const command = new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
@@ -242,7 +257,7 @@ class ObjectStorage {
 
   async exists(rawKey: string): Promise<boolean> {
     const key = this.sanitizeKey(rawKey);
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket && env.isProduction) {
+    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
       try {
         await this.s3Client.send(
           new HeadObjectCommand({ Bucket: this.config.bucket, Key: key })
