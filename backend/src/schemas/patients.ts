@@ -49,6 +49,11 @@ export const planActionParamsSchema = z.object({
   planId: uuid,
 }).strict();
 
+export const patientDocParamsSchema = z.object({
+  id: uuid,
+  docId: uuid,
+}).strict();
+
 export const signTreatmentPlanSchema = z.object({
   signerName: z.string().trim().min(1).max(150).refine(
     (val) => !/<script|javascript:|onerror|onload/i.test(val),

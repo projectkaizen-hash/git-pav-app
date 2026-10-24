@@ -7,6 +7,7 @@ import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { validateParams, validateBody } from "../middleware/validate";
 import {
   patientIdParamsSchema,
+  patientDocParamsSchema,
   updatePatientProfileSchema,
   updateOdontogramSchema,
   createTreatmentPlanSchema,
@@ -408,5 +409,39 @@ router.get("/:id/documents", requireAuth, validateParams(patientIdParamsSchema),
 
   return res.json(result);
 });
+
+// ─── GET /api/patients/:id/documents/:docId/download ─────────────────────────
+// Authenticated stream download for Document Vault files (SAR exports, X-rays, etc.)
+// Closes OS-3: allows patient to download anytime while authenticated.
+router.get(
+  "/:id/documents/:docId/download",
+  requireAuth,
+  validateParams(patientDocParamsSchema),
+  async (req: AuthRequest, res: Response) => {
+    const profile = await requirePatientRecordAccess(req, res);
+    if (!profile) return;
+
+    const docId = String(req.params.docId);
+    const doc = await prisma.documentVault.findFirst({
+      where: { id: docId, patientId: profile.id },
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    try {
+      const file = await objectStorage.download(doc.fileKey);
+      const filename = doc.fileKey.split("/").pop() || "document";
+      res.setHeader("Content-Type", file.contentType || "application/octet-stream");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+      return res.send(file.buffer);
+    } catch {
+      return res.status(404).json({ error: "Document binary not found" });
+    }
+  }
+);
 
 export default router;

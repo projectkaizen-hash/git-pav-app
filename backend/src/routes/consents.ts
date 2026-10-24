@@ -15,6 +15,21 @@ import { objectStorage } from "../lib/object-storage";
 import { communicationService } from "../lib/communication-service";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import {
+  buildSubjectAccessRequestBundle,
+  formatSarBundleAsCsv,
+  safeJsonStringify,
+} from "../lib/sar-registry";
+
+function htmlEscape(str: unknown): string {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 const router = Router();
 
@@ -192,107 +207,25 @@ router.post("/data-access-request", requireAuth, validateBody(dataAccessRequestS
 
   const profile = await prisma.patientProfile.findUnique({
     where: { userId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          phone: true,
-          emailVerified: true,
-          phoneVerified: true,
-          createdAt: true,
-        },
-      },
-      odontogramTeeth: { orderBy: { toothNumber: "asc" } },
-      treatmentPlans: { include: { items: true } },
-    },
+    select: { id: true, firstName: true, user: { select: { email: true } } },
   });
 
   if (!profile) {
     return res.status(404).json({ error: "Patient profile not found" });
   }
 
-  const [appointments, consents, prescriptions] = await Promise.all([
-    prisma.appointment.findMany({
-      where: { patientId: profile.id },
-      include: { service: { select: { name: true } } },
-      orderBy: { startTimeUtc: "desc" },
-    }),
-    prisma.consentRecord.findMany({
-      where: { patientProfileId: profile.id },
-      orderBy: { grantedAt: "desc" },
-    }),
-    prisma.prescription.findMany({
-      where: { appointment: { patientId: profile.id } },
-      orderBy: { dispatchedAt: "desc" },
-    }),
-  ]);
-
   const requestId = crypto.randomUUID();
-  const dataExport = {
-    requestId,
-    standard: "UK GDPR Article 15 Subject Access Request (DSAR)",
-    user: profile.user,
-    profile: {
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      dob: profile.dob,
-      gender: profile.gender,
-      addressLine1: profile.addressLine1,
-      city: profile.city,
-      postcode: profile.postcode,
-      medicalHistory: profile.medicalHistory,
-      createdAt: profile.createdAt,
-      updatedAt: profile.updatedAt,
-    },
-    odontogram: profile.odontogramTeeth,
-    treatmentPlans: profile.treatmentPlans,
-    prescriptions,
-    appointments: appointments.map((apt) => ({
-      id: apt.id,
-      serviceName: apt.service?.name,
-      channel: apt.channel,
-      startTimeUtc: apt.startTimeUtc,
-      endTimeUtc: apt.endTimeUtc,
-      status: apt.status,
-      totalPricePence: apt.totalPricePence,
-      depositPaidPence: apt.depositPaidPence,
-    })),
-    consents: consents.map((consent) => ({
-      consentType: consent.consentType,
-      version: consent.version,
-      lawfulBasis: consent.lawfulBasis,
-      isGranted: consent.isGranted,
-      grantedAt: consent.grantedAt,
-      withdrawnAt: consent.withdrawnAt,
-    })),
-    requestedAt: new Date().toISOString(),
-    ipAddress: ipAddress || req.ip,
-  };
+  const bundle = await buildSubjectAccessRequestBundle(
+    prisma,
+    { userId, profileId: profile.id },
+    requestId
+  );
 
   const isCsv = format === "csv";
   const fileKey = `gdpr-sar/${profile.id}/sar-export-${requestId}.${isCsv ? "csv" : "json"}`;
-  const csvEscape = (val: unknown) => `"${String(val ?? "").replace(/"/g, '""')}"`;
   const exportPayload = isCsv
-    ? [
-        "section,field,value",
-        `meta,requestId,${csvEscape(requestId)}`,
-        `meta,standard,${csvEscape(dataExport.standard)}`,
-        `meta,requestedAt,${csvEscape(dataExport.requestedAt)}`,
-        `user,id,${csvEscape(profile.user.id)}`,
-        `user,email,${csvEscape(profile.user.email)}`,
-        `user,phone,${csvEscape(profile.user.phone)}`,
-        `profile,firstName,${csvEscape(profile.firstName)}`,
-        `profile,lastName,${csvEscape(profile.lastName)}`,
-        `profile,postcode,${csvEscape(profile.postcode)}`,
-        ...appointments.map(
-          (apt) => `appointment,${csvEscape(apt.id)},${csvEscape(`${apt.service?.name ?? ""} | ${apt.channel} | ${apt.status}`)}`
-        ),
-        ...consents.map(
-          (c) => `consent,${csvEscape(c.consentType)},${csvEscape(`v${c.version} | ${c.lawfulBasis} | granted=${c.isGranted}`)}`
-        ),
-      ].join("\n")
-    : JSON.stringify(dataExport, null, 2);
+    ? formatSarBundleAsCsv(bundle)
+    : safeJsonStringify(bundle, 2);
 
   const uploaded = await objectStorage.upload(
     fileKey,
@@ -301,7 +234,7 @@ router.post("/data-access-request", requireAuth, validateBody(dataAccessRequestS
     { requestId, userId, format: isCsv ? "csv" : "json" }
   );
 
-  await prisma.documentVault.create({
+  const vaultDoc = await prisma.documentVault.create({
     data: {
       patientId: profile.id,
       docType: "gdpr_sar_export",
@@ -322,27 +255,25 @@ router.post("/data-access-request", requireAuth, validateBody(dataAccessRequestS
       fileKey: uploaded.key,
       sha256: uploaded.sha256,
       format: isCsv ? "csv" : "json",
+      documentId: vaultDoc.id,
     },
   });
 
+  // SAR-2 / OS-3: Escape firstName in HTML; do not email a 15-minute expiring bearer URL.
+  // Direct the patient into the authenticated app Document Vault instead.
   await communicationService.sendEmail({
     to: profile.user.email,
     subject: "Your Pav Dental GDPR Subject Access Request (SAR) Bundle",
-    html: `<p>Dear ${profile.firstName},</p><p>Your UK GDPR Article 15 Subject Access Request bundle (Ref: <strong>${requestId}</strong>) has been generated and added to your encrypted Document Vault.</p><p>Download URL (expires in 15 minutes): <a href="${uploaded.url}">${uploaded.url}</a></p>`,
-    text: `Your Pav Dental GDPR Subject Access Request bundle (Ref: ${requestId}) is ready: ${uploaded.url}`,
+    html: `<p>Dear ${htmlEscape(profile.firstName)},</p><p>Your UK GDPR Article 15 Subject Access Request bundle (Ref: <strong>${htmlEscape(requestId)}</strong>) has been generated and securely stored in your encrypted Document Vault.</p><p>To view and download your full records at any time, please open the Pav Dental app, sign in, and go to <strong>Records &gt; Document Vault</strong>.</p>`,
+    text: `Your Pav Dental GDPR Subject Access Request bundle (Ref: ${requestId}) is ready in your Document Vault. Open your Pav Dental app and go to Records > Document Vault to view or download it.`,
   });
 
   return res.status(202).json({
-    message: "Data access request processed. Encrypted bundle added to your Document Vault and emailed.",
+    message: "Data access request processed. Encrypted bundle added to your Document Vault.",
     requestId,
-    downloadUrl: uploaded.url,
+    documentId: vaultDoc.id,
     sha256: uploaded.sha256,
-    recordCounts: {
-      appointments: appointments.length,
-      treatmentPlans: profile.treatmentPlans.length,
-      odontogramTeeth: profile.odontogramTeeth.length,
-      consents: consents.length,
-    },
+    recordCounts: bundle.recordCounts,
   });
 });
 
