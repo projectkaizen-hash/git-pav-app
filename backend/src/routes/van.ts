@@ -28,6 +28,7 @@ import { clinicalRecordEncryptionService } from "../lib/encryption";
 import { haversineMetres, postcodeToCoordinates } from "../lib/geo";
 import { getOnlineShiftsCoveringPoint } from "../lib/van-coverage";
 import { broadcastEtaUpdates, isMaterialDrift } from "../lib/van-eta-broadcast";
+import { cancelAppointmentReminders } from "../lib/background-jobs";
 import { env } from "../config/env";
 import {
   releaseVanDeposit,
@@ -1320,6 +1321,7 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
       where: { id: request.appointmentId },
       data: { status: "cancelled" },
     });
+    await cancelAppointmentReminders(request.appointmentId).catch(() => {});
   }
 
   // Renumber queue if this was an accepted stop

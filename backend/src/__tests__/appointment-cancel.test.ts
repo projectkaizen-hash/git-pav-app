@@ -1,6 +1,11 @@
 import http from "http";
 import crypto from "crypto";
-import { appointmentRefundPolicy } from "../routes/cancellations";
+import {
+  appointmentRefundPolicy,
+  getCancellationPolicy,
+  vanCancellationKeepsDeposit,
+} from "../lib/cancellation-policy";
+import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 
 // CS-18: one cancel path. The old PATCH /cancel (no refund) is retired, and
 // cancel-with-refund only cancels appointments that can still be cancelled.
@@ -51,6 +56,8 @@ describe("appointment cancellation", () => {
   });
 
   afterAll(async () => {
+    await prisma.scheduledNotification.deleteMany({ where: { userId: { in: ids.users } } });
+    await prisma.vanServiceRequest.deleteMany({ where: { patientId: ids.patientProfile } });
     await prisma.appointment.deleteMany({ where: { id: { in: ids.appointments } } });
     await prisma.clinicianProfile.deleteMany({ where: { userId: { in: ids.users } } });
     await prisma.patientProfile.deleteMany({ where: { id: ids.patientProfile } });
@@ -60,7 +67,7 @@ describe("appointment cancellation", () => {
   // Each fixture gets its own half hour: one clinician can't have two live
   // appointments at once (CS-16).
   let fixtureSlot = 0;
-  async function makeAppointment(status: "confirmed" | "draft_hold" | "completed", hoursAhead = 72) {
+  async function makeAppointment(status: "confirmed" | "draft_hold" | "completed" | "in_progress", hoursAhead = 72) {
     const start = new Date(Date.now() + hoursAhead * 3600000 + fixtureSlot++ * 1800000);
     const appt = await prisma.appointment.create({
       data: {
@@ -125,6 +132,83 @@ describe("appointment cancellation", () => {
     const res = await cancel(id);
     expect(res.status).toBe(409);
     expect(await statusOf(id)).toBe("completed");
+  });
+
+  it("refuses to cancel an in_progress appointment (BK-6)", async () => {
+    const id = await makeAppointment("in_progress", 0);
+    const res = await cancel(id);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("An appointment that is in_progress cannot be cancelled");
+    expect(await statusOf(id)).toBe("in_progress");
+  });
+
+  it("removes scheduled reminders when an appointment is cancelled (BK-6)", async () => {
+    const id = await makeAppointment("confirmed", 72);
+    await scheduleAppointmentReminderLadder(id);
+    const beforeCount = await prisma.scheduledNotification.count({
+      where: {
+        status: "pending",
+        data: { path: ["appointmentId"], equals: id },
+      },
+    });
+    expect(beforeCount).toBeGreaterThan(0);
+
+    const res = await cancel(id);
+    expect(res.status).toBe(200);
+
+    const afterCount = await prisma.scheduledNotification.count({
+      where: {
+        status: "pending",
+        data: { path: ["appointmentId"], equals: id },
+      },
+    });
+    expect(afterCount).toBe(0);
+  });
+
+  it("POST /api/booking/appointments/:id/cancel works as unified alias", async () => {
+    const id = await makeAppointment("confirmed", 72);
+    const res = await fetch(`${baseUrl}/api/booking/appointments/${id}/cancel`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.appointmentStatus).toBe("cancelled");
+    expect(body.refundPercentage).toBe(100);
+    expect(await statusOf(id)).toBe("cancelled");
+  });
+
+  it("unifies cancellation policy across channels and phases (VR-7)", () => {
+    // Clinic / video notice tiers
+    expect(getCancellationPolicy({ channel: "clinic", hoursUntilVisit: 72 })).toMatchObject({
+      refundPercentage: 100,
+      keepsDeposit: false,
+    });
+    expect(getCancellationPolicy({ channel: "video", hoursUntilVisit: 30 })).toMatchObject({
+      refundPercentage: 50,
+      keepsDeposit: false,
+    });
+    expect(getCancellationPolicy({ channel: "clinic", hoursUntilVisit: 5 })).toMatchObject({
+      refundPercentage: 0,
+      keepsDeposit: true,
+    });
+
+    // Van visits (Decision #6)
+    expect(getCancellationPolicy({ channel: "van", phase: "queued" })).toMatchObject({
+      refundPercentage: 100,
+      keepsDeposit: false,
+    });
+    expect(getCancellationPolicy({ channel: "van", phase: "en_route" })).toMatchObject({
+      refundPercentage: 0,
+      keepsDeposit: true,
+    });
+    expect(getCancellationPolicy({ channel: "van", phase: "on_site" })).toMatchObject({
+      refundPercentage: 0,
+      keepsDeposit: true,
+    });
+    expect(vanCancellationKeepsDeposit("en_route")).toBe(true);
+    expect(vanCancellationKeepsDeposit("on_site")).toBe(true);
+    expect(vanCancellationKeepsDeposit("queued")).toBe(false);
   });
 
   it("keeps the existing refund tiers", () => {
