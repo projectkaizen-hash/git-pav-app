@@ -40,29 +40,88 @@ const EMERGENCY_NUMBERS: Record<string, string> = {
 };
 
 /**
- * Red-flag symptom patterns
+ * Checks whether any field in triage data contains any of the search keywords
  */
-const RED_FLAG_PATTERNS = [
+export function hasTextMatch(data: TriageData, keywords: string[]): boolean {
+  const texts = [
+    data.chiefComplaint,
+    data.traumaHistory,
+    ...(data.symptoms || []),
+  ]
+    .filter(Boolean)
+    .map((t) => String(t).toLowerCase());
+
+  if (texts.length === 0) return false;
+
+  return keywords.some((keyword) => {
+    const k = keyword.toLowerCase();
+    return texts.some((t) => t.includes(k));
+  });
+}
+
+/**
+ * Red-flag symptom patterns (TE-1, clinical rules)
+ */
+export const RED_FLAG_PATTERNS = [
   {
     type: "airway_or_breathing",
-    symptoms: ["difficulty breathing", "unable to breathe", "choking", "airway"],
-    check: (data: TriageData) => data.difficultyBreathing === true,
+    symptoms: [
+      "difficulty breathing",
+      "unable to breathe",
+      "choking",
+      "airway",
+      "difficulty swallowing",
+      "cannot swallow",
+      "unable to swallow",
+      "throat closing",
+    ],
+    check: (data: TriageData) =>
+      data.difficultyBreathing === true ||
+      data.difficultySwallowing === true ||
+      hasTextMatch(data, [
+        "difficulty breathing",
+        "unable to breathe",
+        "choking",
+        "airway",
+        "difficulty swallowing",
+        "cannot swallow",
+        "unable to swallow",
+        "throat closing",
+      ]),
     emergency: true,
     blockBooking: true,
-    instructions: "This appears to be a medical emergency. Call 999 immediately for emergency ambulance services.",
+    instructions:
+      "This appears to be a medical emergency affecting breathing or swallowing. Call 999 immediately for emergency ambulance services.",
   },
   {
     type: "severe_swelling",
-    symptoms: ["swelling", "face swollen", "neck swollen"],
-    check: (data: TriageData) => data.swelling === true && (data.painLevel || 0) >= 7,
+    symptoms: ["swelling", "face swollen", "neck swollen", "eye swollen", "floor of mouth"],
+    check: (data: TriageData) =>
+      (data.swelling === true && ((data.painLevel || 0) >= 7 || data.fever === true)) ||
+      hasTextMatch(data, [
+        "neck swollen",
+        "swollen neck",
+        "neck is swollen",
+        "eye swollen",
+        "swollen eye",
+        "eye is swollen",
+        "floor of mouth",
+        "face swollen",
+        "swollen face",
+        "face is swollen",
+      ]) ||
+      ((data.swelling === true || hasTextMatch(data, ["swelling", "swollen"])) &&
+        hasTextMatch(data, ["neck", "eye", "floor of mouth"])),
     emergency: true,
     blockBooking: true,
     instructions: "Severe facial swelling can be life-threatening. Please call NHS 111 on 111 or attend A&E immediately.",
   },
   {
     type: "uncontrolled_bleeding",
-    symptoms: ["bleeding", "heavy bleeding", "won't stop"],
-    check: (data: TriageData) => data.bleeding === true,
+    symptoms: ["bleeding", "heavy bleeding", "won't stop", "uncontrolled bleeding"],
+    check: (data: TriageData) =>
+      data.bleeding === true ||
+      hasTextMatch(data, ["uncontrolled bleeding", "heavy bleeding", "bleeding won't stop", "won't stop bleeding"]),
     emergency: true,
     blockBooking: true,
     instructions: "Uncontrolled bleeding requires immediate attention. Please call NHS 111 on 111 or attend A&E.",
@@ -70,7 +129,9 @@ const RED_FLAG_PATTERNS = [
   {
     type: "high_fever",
     symptoms: ["fever", "high temperature", "hot"],
-    check: (data: TriageData) => data.fever === true && (data.painLevel || 0) >= 8,
+    check: (data: TriageData) =>
+      (data.fever === true && (data.painLevel || 0) >= 8) ||
+      hasTextMatch(data, ["high fever", "high temperature with severe pain"]),
     emergency: false,
     blockBooking: true,
     instructions: "High fever with severe pain may indicate infection. Please call NHS 111 on 111 for advice before booking.",
@@ -79,9 +140,12 @@ const RED_FLAG_PATTERNS = [
     type: "severe_trauma",
     symptoms: ["trauma", "accident", "injury", "broken tooth", "knocked out"],
     check: (data: TriageData) => {
-      const hasTrauma = data.traumaHistory && data.traumaHistory.length > 0;
+      const hasTrauma = Boolean(data.traumaHistory && data.traumaHistory.trim().length > 0);
       const severePain = (data.painLevel || 0) >= 8;
-      return hasTrauma && severePain;
+      return (
+        (hasTrauma && severePain) ||
+        hasTextMatch(data, ["knocked out tooth", "head injury", "concussion", "broken jaw"])
+      );
     },
     emergency: false,
     blockBooking: true,
@@ -90,7 +154,9 @@ const RED_FLAG_PATTERNS = [
   {
     type: "extreme_pain",
     symptoms: ["extreme pain", "unbearable pain", "worst pain"],
-    check: (data: TriageData) => (data.painLevel || 0) >= 9,
+    check: (data: TriageData) =>
+      (data.painLevel || 0) >= 9 ||
+      hasTextMatch(data, ["unbearable pain", "worst pain imaginable"]),
     emergency: false,
     blockBooking: false,
     instructions: "Severe pain requires urgent assessment. Please call NHS 111 on 111 for advice. You may still book if advised.",
