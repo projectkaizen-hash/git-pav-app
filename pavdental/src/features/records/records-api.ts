@@ -111,9 +111,18 @@ export async function fetchMessageThreads() {
   return res.json();
 }
 
+export async function fetchMessagingMeta() {
+  const res = await authFetch("/api/messages/meta");
+  if (!res.ok) throw new Error("Could not load messaging metadata");
+  return res.json();
+}
+
 export async function createMessageThread(payload: {
   subject: string;
   body: string;
+  recipientType?: "practice" | "care_team" | "clinician";
+  recipientClinicianId?: string;
+  recipientName?: string;
   clinicianRole?: string;
   clinicianName?: string;
 }) {

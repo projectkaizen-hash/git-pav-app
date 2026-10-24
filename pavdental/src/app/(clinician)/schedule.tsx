@@ -66,6 +66,12 @@ export default function ClinicianScheduleScreen() {
           </View>
           <View style={styles.badgeWrapper}>
             <Badge label="Clinical Duty Active" variant="success" />
+            <Button
+              title="Patient Inbox ›"
+              variant="secondary"
+              size="sm"
+              onPress={() => router.push("/(clinician)/inbox" as any)}
+            />
           </View>
         </View>
 
