@@ -106,6 +106,8 @@ describe("CS-27: Video Consultation Lifecycle (VD-2, VD-3, VD-4, MC-3)", () => {
     }
     // Keep user records so audit logs created during tests maintain their foreign key and actorId integrity
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    const { redis } = require("../lib/redis");
+    try { redis.disconnect(); } catch {}
   });
 
   it("VD-2 & VD-3: runs red flags check on triage and merges triageData without overwriting", async () => {

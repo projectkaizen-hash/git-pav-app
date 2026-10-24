@@ -1,5 +1,3 @@
-import { redis } from "../src/lib/redis";
-
 // Audit entries are written after the response is sent, so a test file can
 // finish with an append still running. If jest tears the file down mid-append,
 // that transaction keeps the audit chain lock until it times out and stalls
@@ -7,9 +5,5 @@ import { redis } from "../src/lib/redis";
 afterAll(async () => {
   const queue = (globalThis as { __pavAuditWriteQueue?: Promise<unknown> }).__pavAuditWriteQueue;
   if (queue) await queue;
-  try {
-    redis.disconnect();
-  } catch {}
 });
 export {};
-
