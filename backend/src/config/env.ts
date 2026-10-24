@@ -220,6 +220,8 @@ export const env = Object.freeze({
   jwtAccessSecret: values.jwtAccessSecret ?? "dev_access_secret_change_me",
   jwtRefreshSecret: values.jwtRefreshSecret ?? "dev_refresh_secret_change_me",
   auditIpHmacSecret: values.auditIpHmacSecret ?? "dev_audit_hmac_secret_change_me",
+  auditHmacSecret: readOptional("AUDIT_HMAC_SECRET") ?? values.auditIpHmacSecret ?? "dev_audit_hmac_secret_change_me",
+  opsAlertEmail: readOptional("OPS_ALERT_EMAIL") ?? "ops@pavdental.com",
   encryptionKey: values.encryptionKey ?? "dev_clinical_envelope_kek_32_bytes_minimum_key",
   kmsKeyId: values.kmsKeyId ?? "arn:aws:kms:eu-west-2:000000000000:key/pavdental-clinical-cmk",
   stripeSecretKey,

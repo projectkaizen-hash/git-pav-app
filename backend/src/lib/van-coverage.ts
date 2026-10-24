@@ -28,6 +28,7 @@ import { prisma } from "./prisma";
 import {
   Point,
   Polygon,
+  MultiPolygon,
   pointInPolygon as geoPointInPolygon,
   calculateDistance,
   getPolygonCentroid,
@@ -39,22 +40,31 @@ export type CoverageBackend = {
   mode: CoverageBackendMode;
   /** Why the JS fallback is active (absent when PostGIS is in use) */
   reason?: string;
+  /** Timestamp when PostGIS query failed (for cooldown re-probing) */
+  failedAt?: number;
 };
+
+/** Cooldown before re-probing PostGIS after a query failure (VC-2) */
+export const POSTGIS_REPROBE_COOLDOWN_MS = 30_000;
 
 let backendCache: CoverageBackend | null = null;
 let ensurePromise: Promise<CoverageBackend> | null = null;
 
 /**
- * Probe (once per process) which coverage backend is usable.
+ * Probe which coverage backend is usable (VC-1: read-only, DDL moved to migration).
  * - Verifies the postgis extension AND the geometry column exist.
- * - Backfills NULL geometry columns from GeoJSON when PostGIS is available.
- * - Drops the derived-geometry trigger when PostGIS is absent (see file docs).
+ * - VC-2: Automatically re-probes PostGIS after cooldown if previously failed.
  *
- * Pass force=true to re-probe (e.g. after installing the extension).
+ * Pass force=true to re-probe immediately.
  */
 export async function getCoverageBackend(force = false): Promise<CoverageBackend> {
-  if (backendCache && !force) return backendCache;
-  if (ensurePromise && !force) return ensurePromise;
+  const isCooldownElapsed =
+    backendCache?.mode === "js" &&
+    backendCache.failedAt &&
+    Date.now() - backendCache.failedAt >= POSTGIS_REPROBE_COOLDOWN_MS;
+
+  if (backendCache && !force && !isCooldownElapsed) return backendCache;
+  if (ensurePromise && !force && !isCooldownElapsed) return ensurePromise;
 
   ensurePromise = (async (): Promise<CoverageBackend> => {
     try {
@@ -68,27 +78,12 @@ export async function getCoverageBackend(force = false): Promise<CoverageBackend
         WHERE table_name = 'van_service_polygons' AND column_name = 'polygon'`;
       if (Number(colRows[0]?.cnt ?? 0) === 0) throw new Error("geometry column missing");
 
-      // Heal legacy rows inserted before the geometry trigger existed.
-      await backfillPolygonGeometry();
-
-      // (Re)install the geometry-sync trigger. The version from the original
-      // migration produced SRID-0 geometry (missing ST_SetSRID), which
-      // ST_Contains can never match — recreate it corrected.
-      await installGeometryTrigger();
-
       backendCache = { mode: "postgis" };
       console.log("[VAN COVERAGE] Using PostGIS spatial queries (indexed geometry column)");
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
-      backendCache = { mode: "js", reason };
+      backendCache = { mode: "js", reason, failedAt: Date.now() };
       console.warn(`[VAN COVERAGE] PostGIS unavailable (${reason}) — using JS ray-casting fallback`);
-
-      // The geometry-sync trigger references PostGIS functions; with the
-      // extension missing it turns every polygon write into an error.
-      // GeoJSON is the source of truth, so remove the dead trigger.
-      await prisma
-        .$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_update_polygon ON van_service_polygons`)
-        .catch((e) => console.warn("[VAN COVERAGE] Could not drop geometry trigger:", e));
     }
     return backendCache!;
   })();
@@ -98,44 +93,6 @@ export async function getCoverageBackend(force = false): Promise<CoverageBackend
   } finally {
     if (backendCache) ensurePromise = null;
   }
-}
-
-/** Copy GeoJSON into the geometry column for rows where it is NULL. */
-async function backfillPolygonGeometry(): Promise<void> {
-  const result = await prisma.$executeRawUnsafe(`
-    UPDATE van_service_polygons
-    SET polygon = ST_SetSRID(ST_GeomFromGeoJSON(polygon_geojson::text), 4326)
-    WHERE polygon IS NULL AND polygon_geojson IS NOT NULL
-  `);
-  if (result > 0) {
-    console.log(`[VAN COVERAGE] Backfilled geometry for ${result} polygon(s) from GeoJSON`);
-  }
-}
-
-/**
- * Keep the geometry column in sync with the authoritative GeoJSON on writes.
- * Recreated with ST_SetSRID(…, 4326) — the migration's original version left
- * the SRID unset, silently breaking ST_Contains for any newly written row.
- */
-async function installGeometryTrigger(): Promise<void> {
-  await prisma.$executeRawUnsafe(`
-    CREATE OR REPLACE FUNCTION update_polygon_from_geojson() RETURNS trigger AS $$
-    BEGIN
-      IF NEW.polygon_geojson IS NOT NULL THEN
-        NEW.polygon := ST_SetSRID(ST_GeomFromGeoJSON(NEW.polygon_geojson::text), 4326);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql
-  `);
-  await prisma.$executeRawUnsafe(`
-    DROP TRIGGER IF EXISTS trigger_update_polygon ON van_service_polygons
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TRIGGER trigger_update_polygon
-    BEFORE INSERT OR UPDATE OF polygon_geojson ON van_service_polygons
-    FOR EACH ROW EXECUTE FUNCTION update_polygon_from_geojson()
-  `);
 }
 
 export type VanCoverageMatch = {
@@ -160,7 +117,7 @@ export async function findCoveringVans(point: Point): Promise<VanCoverageMatch[]
       return await findCoveringVansPostgis(point);
     } catch (err) {
       console.warn("[VAN COVERAGE] PostGIS query failed — falling back to JS:", err);
-      backendCache = { mode: "js", reason: "postgis query failed" };
+      backendCache = { mode: "js", reason: "postgis query failed", failedAt: Date.now() };
     }
   }
   return findCoveringVansJs(point);
@@ -180,7 +137,7 @@ async function findCoveringVansPostgis(point: Point): Promise<VanCoverageMatch[]
       v.vehicle_model,
       vsp.sector_name,
       ST_Distance(
-        vsp.polygon::geography,
+        ST_Centroid(vsp.polygon)::geography,
         ST_SetSRID(ST_MakePoint(${point.lng}, ${point.lat}), 4326)::geography
       ) / 1000.0 AS distance_km
     FROM van_service_polygons vsp
@@ -240,7 +197,7 @@ export async function getOnlineShiftsCoveringPoint(point: Point) {
       return shifts.filter((s) => coveringVanIds.has(s.vanId));
     } catch (err) {
       console.warn("[VAN COVERAGE] PostGIS shift query failed — falling back to JS:", err);
-      backendCache = { mode: "js", reason: "postgis query failed" };
+      backendCache = { mode: "js", reason: "postgis query failed", failedAt: Date.now() };
     }
   }
 
@@ -253,11 +210,12 @@ export async function getOnlineShiftsCoveringPoint(point: Point) {
 }
 
 /**
- * Tolerant GeoJSON normalization: accepts a full GeoJSON Polygon or a bare
- * coordinate ring (the legacy JS implementations accepted both).
+ * Tolerant GeoJSON normalization: accepts a full GeoJSON Polygon, MultiPolygon,
+ * or a bare coordinate ring (the legacy JS implementations accepted bare rings).
  */
-function toPolygon(value: unknown): Polygon | null {
+export function toPolygon(value: unknown): Polygon | MultiPolygon | null {
   const v = value as { type?: string; coordinates?: unknown } | unknown[] | null;
+  if (!v) return null;
   if (Array.isArray(v)) {
     // Legacy bare ring: [[[lng, lat], ...]] — wrap it in GeoJSON structure.
     if (v.length > 0 && Array.isArray(v[0]) && Array.isArray((v[0] as unknown[])[0])) {
@@ -265,8 +223,11 @@ function toPolygon(value: unknown): Polygon | null {
     }
     return null;
   }
-  const p = v as { coordinates?: unknown } | null;
+  const p = v as { type?: string; coordinates?: unknown };
+  if (p.type === "MultiPolygon" && Array.isArray(p.coordinates)) {
+    return { type: "MultiPolygon", coordinates: p.coordinates as MultiPolygon["coordinates"] };
+  }
   const ring = (p?.coordinates as unknown[] | undefined)?.[0];
   if (!Array.isArray(ring) || ring.length === 0) return null;
-  return { type: "Polygon", coordinates: p!.coordinates as Polygon["coordinates"] };
+  return { type: "Polygon", coordinates: p.coordinates as Polygon["coordinates"] };
 }

@@ -74,8 +74,9 @@ app.use(cors({
 // express.json() parses API requests.
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 app.use(express.json({ limit: "2mb" }));
-app.use((_req, res, next) => {
-  res.setHeader("x-request-id", crypto.randomUUID());
+app.use((req, res, next) => {
+  const reqId = (req.headers["x-request-id"] as string) || crypto.randomUUID();
+  res.setHeader("x-request-id", reqId);
   next();
 });
 

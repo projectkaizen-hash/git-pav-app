@@ -85,38 +85,53 @@ export async function auditMiddleware(
   (res as any).__pavAuditAttached = true;
 
   res.on("finish", async () => {
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      try {
-        const action = `${req.method} ${req.path}`;
-        
-        // Build metadata with request details (body/params will be redacted)
-        const metadata: Record<string, unknown> = {
-          statusCode: res.statusCode,
-          requestId: res.getHeader("x-request-id") ?? null,
-          method: req.method,
-          path: req.path,
-        };
+    try {
+      // AU-4: Use full router mount + route path as action
+      const routePath = req.route?.path || req.path;
+      const action = `${req.method} ${req.baseUrl}${routePath}`;
 
-        // Redact any clinical data from metadata before logging
-        const redactedMetadata = redactMetadata(metadata);
-        
-        const log = await createAuditLogWithIntegrity({
-          action,
-          actorId: req.user?.sub ?? null,
-          resourceId: null,
-          sessionId: req.user?.sessionId ?? null,
-          ipHash: pseudonymiseIp(req.ip || ""),
-          metadata: redactedMetadata,
-        });
+      // AU-4: Extract resource identifier from route parameters if present
+      const resourceId =
+        req.params?.id ??
+        req.params?.patientId ??
+        req.params?.appointmentId ??
+        req.params?.requestId ??
+        (req as any).resourceId ??
+        null;
 
-        // Check for critical events and send alerts
-        if (isCriticalAuditEvent(action)) {
-          await sendCriticalAuditAlert(log);
-        }
-      } catch (err) {
-        // Audit failures must never break the request
-        console.error("[AUDIT FAILURE]", err);
+      // Build metadata with request details (body/params will be redacted)
+      const metadata: Record<string, unknown> = {
+        statusCode: res.statusCode,
+        requestId: res.getHeader("x-request-id") ?? null,
+        method: req.method,
+        path: req.originalUrl || `${req.baseUrl}${req.path}`,
+        outcome:
+          res.statusCode < 400
+            ? "success"
+            : res.statusCode === 401 || res.statusCode === 403
+            ? "denied"
+            : "failed",
+      };
+
+      // Redact any clinical data from metadata before logging
+      const redactedMetadata = redactMetadata(metadata);
+
+      const log = await createAuditLogWithIntegrity({
+        action,
+        actorId: req.user?.sub ?? null,
+        resourceId: resourceId ? String(resourceId) : null,
+        sessionId: req.user?.sessionId ?? null,
+        ipHash: pseudonymiseIp(req.ip || ""),
+        metadata: redactedMetadata,
+      });
+
+      // AU-6: Check for critical events and send alerts (including denied attempts)
+      if (isCriticalAuditEvent(action, res.statusCode)) {
+        await sendCriticalAuditAlert(log);
       }
+    } catch (err) {
+      // Audit failures must never break the request
+      console.error("[AUDIT FAILURE]", err);
     }
   });
   next();
