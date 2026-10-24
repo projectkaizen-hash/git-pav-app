@@ -214,3 +214,54 @@ export async function requestDataAccessExport(payload?: {
   if (!res.ok) throw new Error("Could not generate GDPR data export");
   return res.json();
 }
+
+// ─── Clinician Portal: Appointment Notes & Actions (CS-28) ────────────────────
+export async function fetchAppointmentNotes(appointmentId: string) {
+  const res = await authFetch(`/api/booking/appointments/${appointmentId}/notes`);
+  if (!res.ok) throw new Error("Could not load clinical notes");
+  return res.json();
+}
+
+export async function saveAppointmentNotes(
+  appointmentId: string,
+  payload: { notes: string; diagnosis?: string; treatmentPlan?: string }
+) {
+  const res = await authFetch(`/api/booking/appointments/${appointmentId}/notes`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Could not save clinical notes");
+  }
+  return res.json();
+}
+
+export async function completeAppointment(appointmentId: string) {
+  const res = await authFetch(`/api/booking/appointments/${appointmentId}/complete`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Could not mark appointment completed");
+  }
+  return res.json();
+}
+
+export async function markAppointmentNoShow(appointmentId: string) {
+  const res = await authFetch(`/api/booking/appointments/${appointmentId}/no-show`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Could not mark appointment as no-show");
+  }
+  return res.json();
+}
+
+export async function fetchOdontogramHistory(userId: string) {
+  const res = await authFetch(`/api/patients/${userId}/odontogram/history`);
+  if (!res.ok) throw new Error("Could not load tooth history");
+  return res.json();
+}
+

@@ -190,6 +190,26 @@ router.get("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
   return res.json(teeth);
 });
 
+// ─── GET /api/patients/:id/odontogram/history ────────────────────────────────
+// Append-only history of tooth record changes (PT-3)
+router.get("/:id/odontogram/history", requireAuth, validateParams(patientIdParamsSchema), async (req: AuthRequest, res: Response) => {
+  const profile = await requirePatientRecordAccess(req, res);
+  if (!profile) return;
+
+  const history = await prisma.toothHistory.findMany({
+    where: { patientId: profile.id },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
+  return res.json(
+    history.map((h) => ({
+      ...h,
+      id: String(h.id),
+    }))
+  );
+});
+
 // ─── PUT /api/patients/:id/odontogram ────────────────────────────────────────
 router.put("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema), validateBody(updateOdontogramSchema), async (req: AuthRequest, res: Response) => {
   const context = await requireActiveAppointmentContext(req, res);
@@ -197,6 +217,11 @@ router.put("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
 
   const { profile, appointmentId } = context;
   const { teeth } = req.body;
+
+  const clinician = await prisma.clinicianProfile.findUnique({
+    where: { userId: req.user!.sub },
+    select: { id: true },
+  });
 
   const upserts = teeth.map((t: { toothNumber: number; arch: string; quadrant: string; condition: string; notes?: string }) =>
     prisma.toothRecord.upsert({
@@ -213,7 +238,36 @@ router.put("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
     })
   );
 
-  await prisma.$transaction(upserts);
+  // PT-3: Append-only tooth history
+  const historyInserts = teeth.map((t: { toothNumber: number; arch: string; quadrant: string; condition: string; notes?: string }) =>
+    prisma.toothHistory.create({
+      data: {
+        patientId: profile.id,
+        toothNumber: t.toothNumber,
+        arch: t.arch,
+        quadrant: t.quadrant,
+        condition: t.condition as any,
+        notes: t.notes,
+        appointmentId: appointmentId || null,
+        recordedBy: clinician?.id || null,
+      },
+    })
+  );
+
+  await prisma.$transaction([...upserts, ...historyInserts]);
+
+  // PT-3: Audit odontogram update with cryptographic integrity
+  await createAuditLogWithIntegrity({
+    action: "patient.odontogram.updated",
+    actorId: req.user!.sub,
+    resourceId: profile.id,
+    metadata: {
+      patientId: profile.id,
+      appointmentId: appointmentId || null,
+      teethUpdated: teeth.map((t: any) => ({ toothNumber: t.toothNumber, condition: t.condition })),
+    },
+  }).catch(() => {});
+
   return res.json({ message: "Odontogram updated", count: teeth.length, appointmentId });
 });
 
@@ -260,6 +314,20 @@ router.post("/:id/plans", requireAuth, validateParams(patientIdParamsSchema), va
     },
     include: { items: true },
   });
+
+  // PT-3: Audit treatment plan creation with cryptographic integrity
+  await createAuditLogWithIntegrity({
+    action: "treatment_plan.created",
+    actorId: req.user!.sub,
+    resourceId: plan.id,
+    metadata: {
+      patientId: profile.id,
+      appointmentId,
+      title,
+      totalCostPence,
+      itemCount: items.length,
+    },
+  }).catch(() => {});
 
   return res.status(201).json({ ...plan, appointmentId });
 });

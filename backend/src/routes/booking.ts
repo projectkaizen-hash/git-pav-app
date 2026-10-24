@@ -15,11 +15,12 @@ import {
   confirmAppointmentSchema,
   createAppointmentSchema,
   holdSlotSchema,
+  saveAppointmentNotesSchema,
   slotsQuerySchema,
 } from "../schemas/booking";
 import { idempotencyKeyFrom, withIdempotency } from "../lib/idempotency";
 import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
-import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
+import { cancelAppointmentReminders, scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
@@ -373,21 +374,36 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
     });
     if (!clinician) return res.status(404).json({ error: "Clinician profile not found" });
 
-    // "Today" is the UK day, whatever the server's time zone.
-    const startOfToday = startOfLondonDay(new Date());
+    // MB-4: Support date-scoped schedule query
+    // If date query parameter is provided (e.g. "2026-10-24" or "today"), scope to that London day.
+    // If ?scope=all or ?all=true is explicitly set, return today forward.
+    // Default scopes to today's consultations only (startOfLondonDay to endOfLondonDay),
+    // preventing tomorrow's/future days from appearing as "Today's consultations".
+    let dateFilter: { gte: Date; lte?: Date };
+    if (req.query.scope === "all" || req.query.all === "true") {
+      dateFilter = { gte: startOfLondonDay(new Date()) };
+    } else {
+      const targetDate = req.query.date && typeof req.query.date === "string" && req.query.date !== "today"
+        ? new Date(req.query.date)
+        : new Date();
+      const startOfDay = startOfLondonDay(targetDate);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+      dateFilter = { gte: startOfDay, lte: endOfDay };
+    }
 
     const schedule = await prisma.appointment.findMany({
       where: {
         clinicianId: clinician.id,
-        startTimeUtc: { gte: startOfToday },
+        startTimeUtc: dateFilter,
         status: { notIn: ["cancelled", "no_show"] },
       },
       include: {
         service: { select: { name: true, durationMinutes: true } },
-        clinician: { select: { fullName: true, photoUrl: true } },
+        clinician: { select: { fullName: true, photoUrl: true, gdcNumber: true, roleTitle: true } },
         clinic: { select: { name: true, address: true } },
         patient: { select: { id: true, firstName: true, lastName: true, dob: true } },
         dependant: { select: { id: true, firstName: true, lastName: true, dob: true } },
+        appointmentNote: { select: { id: true, notes: true, diagnosis: true, treatmentPlan: true, updatedAt: true } },
       },
       orderBy: { startTimeUtc: "asc" },
       take: SCHEDULE_LIMIT,
@@ -785,5 +801,200 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
     status: updated.status,
   });
 });
+
+// ─── POST /api/booking/appointments/:id/notes ────────────────────────────────
+// Records or updates clinical notes, examination findings, and plan (PT-3, gaps §2)
+router.post(
+  "/appointments/:id/notes",
+  requireAuth,
+  validateParams(appointmentIdParamsSchema),
+  validateBody(saveAppointmentNotesSchema),
+  async (req: AuthRequest, res: Response) => {
+    const appointmentId = String(req.params.id);
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { clinician: true, patient: true },
+    });
+
+    if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+    // Authorization: Assigned clinician or admin
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+    });
+
+    const isAssignedClinician = clinician && appointment.clinicianId === clinician.id;
+    const isAdmin = req.user!.role === "admin";
+
+    if (!isAssignedClinician && !isAdmin) {
+      return res.status(403).json({ error: "Only the assigned clinician or admin can record appointment notes" });
+    }
+
+    const effectiveClinicianId = clinician?.id || appointment.clinicianId;
+    if (!effectiveClinicianId) {
+      return res.status(400).json({ error: "Appointment has no assigned clinician" });
+    }
+
+    const { notes, diagnosis, treatmentPlan } = req.body;
+
+    const record = await prisma.appointmentNote.upsert({
+      where: { appointmentId },
+      update: {
+        notes,
+        diagnosis: diagnosis || null,
+        treatmentPlan: treatmentPlan || null,
+      },
+      create: {
+        appointmentId,
+        clinicianId: effectiveClinicianId,
+        patientId: appointment.patientId,
+        notes,
+        diagnosis: diagnosis || null,
+        treatmentPlan: treatmentPlan || null,
+      },
+    });
+
+    await createAuditLogWithIntegrity({
+      action: "appointment.notes.updated",
+      actorId: req.user!.sub,
+      resourceId: appointmentId,
+      metadata: {
+        appointmentId,
+        hasDiagnosis: !!diagnosis,
+        hasTreatmentPlan: !!treatmentPlan,
+      },
+    }).catch(() => {});
+
+    return res.json(record);
+  }
+);
+
+// ─── GET /api/booking/appointments/:id/notes ─────────────────────────────────
+// Reads clinical examination notes for an appointment
+router.get(
+  "/appointments/:id/notes",
+  requireAuth,
+  validateParams(appointmentIdParamsSchema),
+  async (req: AuthRequest, res: Response) => {
+    const appointmentId = String(req.params.id);
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        clinician: { select: { userId: true, fullName: true, gdcNumber: true } },
+        patient: { select: { userId: true } },
+      },
+    });
+
+    if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+    const isPatient = appointment.patient.userId === req.user!.sub;
+    const isClinician = appointment.clinician?.userId === req.user!.sub;
+    const isAdmin = req.user!.role === "admin";
+
+    if (!isPatient && !isClinician && !isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const note = await prisma.appointmentNote.findUnique({
+      where: { appointmentId },
+    });
+
+    return res.json(note || null);
+  }
+);
+
+// ─── POST /api/booking/appointments/:id/complete ─────────────────────────────
+// Clinician marks an in-person, van, or video appointment completed
+router.post(
+  "/appointments/:id/complete",
+  requireAuth,
+  validateParams(appointmentIdParamsSchema),
+  async (req: AuthRequest, res: Response) => {
+    const appointmentId = String(req.params.id);
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { clinician: true },
+    });
+
+    if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+    });
+    const isAssigned = clinician && appointment.clinicianId === clinician.id;
+    const isAdmin = req.user!.role === "admin";
+
+    if (!isAssigned && !isAdmin) {
+      return res.status(403).json({ error: "Only the assigned clinician or admin can complete an appointment" });
+    }
+
+    if (appointment.status !== "confirmed" && appointment.status !== "in_progress") {
+      return res.status(409).json({ error: "Only confirmed or in-progress appointments can be completed" });
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "completed" },
+    });
+
+    await cancelAppointmentReminders(appointmentId).catch(() => {});
+
+    await createAuditLogWithIntegrity({
+      action: "appointment.completed",
+      actorId: req.user!.sub,
+      resourceId: appointmentId,
+      metadata: { previousStatus: appointment.status, channel: appointment.channel },
+    }).catch(() => {});
+
+    return res.json({ id: updated.id, status: updated.status });
+  }
+);
+
+// ─── POST /api/booking/appointments/:id/no-show ──────────────────────────────
+// Clinician marks a patient no-show
+router.post(
+  "/appointments/:id/no-show",
+  requireAuth,
+  validateParams(appointmentIdParamsSchema),
+  async (req: AuthRequest, res: Response) => {
+    const appointmentId = String(req.params.id);
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { clinician: true },
+    });
+
+    if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+    });
+    const isAssigned = clinician && appointment.clinicianId === clinician.id;
+    const isAdmin = req.user!.role === "admin";
+
+    if (!isAssigned && !isAdmin) {
+      return res.status(403).json({ error: "Only the assigned clinician or admin can mark a no-show" });
+    }
+
+    if (appointment.status !== "confirmed" && appointment.status !== "in_progress" && appointment.status !== "draft_hold") {
+      return res.status(409).json({ error: "Appointment cannot be marked as no-show from its current status" });
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "no_show" },
+    });
+
+    await cancelAppointmentReminders(appointmentId).catch(() => {});
+
+    await createAuditLogWithIntegrity({
+      action: "appointment.no_show",
+      actorId: req.user!.sub,
+      resourceId: appointmentId,
+      metadata: { previousStatus: appointment.status, channel: appointment.channel },
+    }).catch(() => {});
+
+    return res.json({ id: updated.id, status: updated.status });
+  }
+);
 
 export default router;

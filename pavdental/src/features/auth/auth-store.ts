@@ -18,6 +18,8 @@ export interface AuthUser {
   isMfaEnabled: boolean;
   mfaEnabled: boolean;
   profileId?: string;
+  gdcNumber?: string;
+  roleTitle?: string;
 }
 
 interface AuthState {

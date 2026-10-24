@@ -60,3 +60,10 @@ export const CHECK_IN_TASKS = ["form", "consent", "insurance", "balance"] as con
 export const appointmentCheckInSchema = z
   .object({ completedTasks: z.array(z.enum(CHECK_IN_TASKS)).max(CHECK_IN_TASKS.length).default([]) })
   .strict();
+
+export const saveAppointmentNotesSchema = z.object({
+  notes: z.string().trim().min(1).max(10_000),
+  diagnosis: z.string().trim().max(1000).optional(),
+  treatmentPlan: z.string().trim().max(5000).optional(),
+}).strict();
+

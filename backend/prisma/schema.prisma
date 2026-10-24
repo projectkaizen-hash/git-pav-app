@@ -157,6 +157,8 @@ model PatientProfile {
   treatmentPlans        TreatmentPlan[]
   vanRequests           VanServiceRequest[]
   guardianDependants    Dependant[]         @relation("GuardianDependants")
+  toothHistory          ToothHistory[]
+  appointmentNotes      AppointmentNote[]
 
   @@index([postcode])
   @@index([createdAt])
@@ -181,6 +183,7 @@ model ClinicianProfile {
   treatmentPlans     TreatmentPlan[]
   rota               ClinicianRotaBlock[]
   rotaOverrides      ClinicianRotaOverride[]
+  appointmentNotes   AppointmentNote[]
 
   @@index([isTelehealthActive])
   @@map("clinician_profiles")
@@ -352,6 +355,8 @@ model Appointment {
   dependant            Dependant?         @relation(fields: [dependantId], references: [id], onDelete: Restrict)
   pointsAward          RewardPointsAward?
   rewardVoucher        RewardRedemption?
+  appointmentNote      AppointmentNote?
+  toothHistory         ToothHistory[]
 
   @@index([patientId])
   @@index([clinicianId])
@@ -377,6 +382,44 @@ model ToothRecord {
 
   @@unique([patientId, toothNumber])
   @@map("tooth_records")
+}
+
+model ToothHistory {
+  id            BigInt         @id @default(autoincrement())
+  patientId     String         @map("patient_id") @db.Uuid
+  toothNumber   Int            @map("tooth_number")
+  arch          String
+  quadrant      String
+  condition     ToothCondition
+  notes         String?
+  appointmentId String?        @map("appointment_id") @db.Uuid
+  recordedBy    String?        @map("recorded_by") @db.Uuid
+  createdAt     DateTime       @default(now()) @map("created_at")
+  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, toothNumber])
+  @@index([appointmentId])
+  @@map("tooth_history")
+}
+
+model AppointmentNote {
+  id            String           @id @default(uuid()) @db.Uuid
+  appointmentId String           @unique @map("appointment_id") @db.Uuid
+  clinicianId   String           @map("clinician_id") @db.Uuid
+  patientId     String           @map("patient_id") @db.Uuid
+  notes         String           @db.Text
+  diagnosis     String?
+  treatmentPlan String?          @map("treatment_plan")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  appointment   Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  clinician     ClinicianProfile @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+  patient       PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([clinicianId])
+  @@map("appointment_notes")
 }
 
 model TreatmentPlan {
