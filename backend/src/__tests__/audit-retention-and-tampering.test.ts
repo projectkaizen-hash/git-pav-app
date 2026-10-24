@@ -122,6 +122,12 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       expect(postArchiveCheck.valid).toBe(true);
       expect(postArchiveCheck.issues).toEqual([]);
       expect(postArchiveCheck.checkedCount).toBeGreaterThanOrEqual(2); // log2 and log3 (plus any concurrent test logs)
+
+      // Restore log1 so the unarchived chain remains contiguous for subsequent test suites
+      await prisma.auditLog.update({
+        where: { id: log1.id },
+        data: { archived: false, archivedAt: null },
+      });
     });
   });
 

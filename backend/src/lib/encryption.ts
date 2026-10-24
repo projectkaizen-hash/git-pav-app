@@ -361,3 +361,48 @@ export async function decryptString(value: unknown): Promise<string> {
   }
   return value;
 }
+
+/**
+ * Encrypt sensitive fields (gateCode, accessNotes) within accessDetails object.
+ */
+export async function encryptAccessDetails(accessDetails: any): Promise<any> {
+  if (!accessDetails || typeof accessDetails !== "object") return accessDetails;
+  if (isEncryptedEnvelope(accessDetails)) return accessDetails;
+
+  const encrypted = { ...accessDetails };
+  if (accessDetails.gateCode && !isEncryptedEnvelope(accessDetails.gateCode)) {
+    encrypted.gateCode = await encryptField(accessDetails.gateCode);
+  }
+  if (accessDetails.accessNotes && !isEncryptedEnvelope(accessDetails.accessNotes)) {
+    encrypted.accessNotes = await encryptField(accessDetails.accessNotes);
+  }
+  return encrypted;
+}
+
+/**
+ * Decrypt sensitive fields (gateCode, accessNotes) within accessDetails object.
+ */
+export async function decryptAccessDetails(accessDetails: any): Promise<any> {
+  if (!accessDetails) return accessDetails;
+  if (isEncryptedEnvelope(accessDetails)) {
+    return decryptField(accessDetails);
+  }
+  if (typeof accessDetails !== "object") return accessDetails;
+
+  const decrypted = { ...accessDetails };
+  if (accessDetails.gateCode && isEncryptedEnvelope(accessDetails.gateCode)) {
+    try {
+      decrypted.gateCode = await decryptField(accessDetails.gateCode);
+    } catch {
+      decrypted.gateCode = "[ENCRYPTED]";
+    }
+  }
+  if (accessDetails.accessNotes && isEncryptedEnvelope(accessDetails.accessNotes)) {
+    try {
+      decrypted.accessNotes = await decryptField(accessDetails.accessNotes);
+    } catch {
+      decrypted.accessNotes = "[ENCRYPTED]";
+    }
+  }
+  return decrypted;
+}

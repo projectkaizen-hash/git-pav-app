@@ -23,7 +23,7 @@ import { scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
-import { encryptField, decryptField, isEncryptedEnvelope } from "../lib/encryption";
+import { encryptField, decryptField, isEncryptedEnvelope, encryptAccessDetails, decryptAccessDetails } from "../lib/encryption";
 
 const router = Router();
 
@@ -273,7 +273,7 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       ? (isEncryptedEnvelope(triageData) ? triageData : await encryptField(triageData))
       : null;
     const storedAccessDetails = accessDetails
-      ? (isEncryptedEnvelope(accessDetails) ? accessDetails : await encryptField(accessDetails))
+      ? await encryptAccessDetails(accessDetails)
       : null;
 
     // The constraint on appointments is what stops a double booking (BK-2);
@@ -355,7 +355,7 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     const apt = result.appointment;
     if (apt) {
       apt.triageData = await decryptField(apt.triageData);
-      apt.accessDetails = await decryptField(apt.accessDetails);
+      apt.accessDetails = await decryptAccessDetails(apt.accessDetails);
     }
     return res.status(result.status).json(apt);
   });
@@ -398,7 +398,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
         schedule.map(async (a) => ({
           ...a,
           triageData: await decryptField(a.triageData),
-          accessDetails: await decryptField(a.accessDetails),
+          accessDetails: await decryptAccessDetails(a.accessDetails),
           // When a guardian booked for their child, the child is the one seen;
           // the guardian stays as the account holder.
           dependant: a.dependant
@@ -447,7 +447,7 @@ router.get("/appointments", requireAuth, async (req: AuthRequest, res: Response)
       appointments.map(async (a) => ({
         ...a,
         triageData: await decryptField(a.triageData),
-        accessDetails: await decryptField(a.accessDetails),
+        accessDetails: await decryptAccessDetails(a.accessDetails),
       }))
     )
   );
@@ -510,7 +510,7 @@ router.get("/appointments/:id", requireAuth, validateParams(appointmentIdParamsS
   return res.json({
     ...appointment,
     triageData: await decryptField(appointment.triageData),
-    accessDetails: await decryptField(appointment.accessDetails),
+    accessDetails: await decryptAccessDetails(appointment.accessDetails),
   });
 });
 
@@ -762,13 +762,14 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
   }
 
   const checkedInAt = new Date().toISOString();
-  const currentAccess = (await decryptField<Record<string, unknown>>(appointment.accessDetails)) || {};
-  const encryptedAccess = await encryptField({
+  const currentAccess = (await decryptAccessDetails(appointment.accessDetails)) || {};
+  const updatedAccess = {
     ...currentAccess,
     checkedIn: true,
     checkedInAt,
     completedTasks: [...new Set(completedTasks)],
-  });
+  };
+  const encryptedAccess = await encryptAccessDetails(updatedAccess);
 
   const updated = await prisma.appointment.update({
     where: { id: appointment.id },
