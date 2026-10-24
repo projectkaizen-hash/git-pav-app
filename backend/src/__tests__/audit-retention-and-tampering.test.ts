@@ -175,10 +175,20 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       expect(check.valid).toBe(false);
       expect(check.issues.some((i) => i.includes(String(logC.id)))).toBe(true);
 
-      // Clean up for subsequent tests
-      await prisma.auditLog.updateMany({
-        where: { archived: false },
-        data: { archived: true, archivedAt: new Date() },
+      // Restore row so concurrent test suites in CI don't see a broken chain
+      await prisma.auditLog.create({
+        data: {
+          id: logB.id,
+          action: logB.action,
+          actorId: logB.actorId,
+          resourceId: logB.resourceId,
+          sessionId: logB.sessionId,
+          ipHash: logB.ipHash,
+          metadata: logB.metadata as any,
+          integrityHash: logB.integrityHash,
+          timestampUtc: logB.timestampUtc,
+          archived: false,
+        },
       });
     });
   });
