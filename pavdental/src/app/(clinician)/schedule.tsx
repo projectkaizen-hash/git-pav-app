@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, EmptyState } from "@/components";
 import { colors, spacing } from "@/theme";
@@ -9,15 +9,27 @@ import { useCurrentUser, useAuthStore } from "@/features/auth/auth-store";
 export default function ClinicianScheduleScreen() {
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const { data: liveAppointments } = useMyAppointments();
+  const { data: liveAppointments, isLoading, error, refetch } = useMyAppointments();
 
-  const clinicianName = currentUser?.firstName
-    ? `Dr. ${currentUser.firstName} ${currentUser.lastName}`
+  // MB-4: Prevent "Dr. Dr." double prefix
+  const rawFirst = currentUser?.firstName || "";
+  const rawLast = currentUser?.lastName || "";
+  const hasDr = rawFirst.toLowerCase().startsWith("dr.") || rawFirst.toLowerCase().startsWith("dr ");
+  const clinicianName = rawFirst
+    ? hasDr
+      ? `${rawFirst} ${rawLast}`.trim()
+      : `Dr. ${rawFirst} ${rawLast}`.trim()
     : "Clinician";
+
+  // MB-4: Real GDC number and role title
+  const gdcText = currentUser?.gdcNumber
+    ? `GDC #${currentUser.gdcNumber} · ${currentUser?.roleTitle || "Dental Surgeon"}`
+    : currentUser?.roleTitle || "Dental Practitioner";
 
   const sessions = (liveAppointments && liveAppointments.length > 0)
     ? liveAppointments.map((a: any) => ({
         id: a.id,
+        patientId: a.patientId || a.patient?.id,
         time: new Date(a.startTimeUtc).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
         type: a.channel || "video",
         // A child booked by their guardian is the one being seen.
@@ -35,7 +47,7 @@ export default function ClinicianScheduleScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Clinician Header */}
+        {/* Clinician Header (MB-4: No clipping at 320/375px) */}
         <View style={styles.header}>
           <View style={styles.docRow}>
             <View style={styles.avatar}>
@@ -47,9 +59,14 @@ export default function ClinicianScheduleScreen() {
               <ThemedText variant="headline" style={styles.docName}>
                 {clinicianName}
               </ThemedText>
+              <ThemedText variant="caption" style={styles.gdcSubtext}>
+                {gdcText}
+              </ThemedText>
             </View>
           </View>
-          <Badge label="Clinical Duty Active" variant="success" />
+          <View style={styles.badgeWrapper}>
+            <Badge label="Clinical Duty Active" variant="success" />
+          </View>
         </View>
 
         {/* Schedule Section */}
@@ -58,7 +75,24 @@ export default function ClinicianScheduleScreen() {
             Today's Consultations & Visits ({sessions.length} Patient{sessions.length !== 1 ? "s" : ""})
           </ThemedText>
 
-          {sessions.length === 0 ? (
+          {isLoading ? (
+            <Card elevation="flat" style={styles.loadingCard}>
+              <ActivityIndicator color={colors.ink} size="small" />
+              <ThemedText variant="body" style={styles.loadingText}>
+                Loading daily schedule…
+              </ThemedText>
+            </Card>
+          ) : error ? (
+            <Card elevation="flat" style={styles.errorCard}>
+              <ThemedText variant="headline" style={styles.errorTitle}>
+                Could not load consultations
+              </ThemedText>
+              <ThemedText variant="caption" style={styles.errorBody}>
+                An error occurred while fetching your rota for today.
+              </ThemedText>
+              <Button title="Try Again" size="sm" variant="secondary" onPress={() => refetch()} />
+            </Card>
+          ) : sessions.length === 0 ? (
             <EmptyState
               heading="No consultations scheduled"
               body="Appointments booked by patients will appear here."
@@ -77,8 +111,8 @@ export default function ClinicianScheduleScreen() {
                   >
                     <View style={styles.cardTop}>
                       <Badge
-                        label={isVideo ? "VIDEO CONSULT" : "IN-CLINIC"}
-                        variant={isVideo ? "info" : "default"}
+                        label={isVideo ? "VIDEO CONSULT" : s.type === "van" ? "VAN VISIT" : "IN-CLINIC"}
+                        variant={isVideo ? "info" : s.type === "van" ? "success" : "default"}
                       />
                       <ThemedText variant="headline" style={styles.timeVal}>
                         {s.time}
@@ -102,22 +136,43 @@ export default function ClinicianScheduleScreen() {
                       ) : null}
                     </View>
 
+                    {/* MB-4: Channel-aware action */}
                     {isReady ? (
                       <View style={styles.actionRow}>
-                        <Button
-                          title="Open Video Consult Room ›"
-                          size="md"
-                          onPress={() =>
-                            router.push({
-                              pathname: "/(clinician)/consult-room" as any,
-                              params: {
-                                appointmentId: s.id,
-                                patientName: s.patientName,
-                                chiefComplaint: s.chiefComplaint,
-                              },
-                            })
-                          }
-                        />
+                        {isVideo ? (
+                          <Button
+                            title="Open Video Consult Room ›"
+                            size="md"
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(clinician)/consult-room" as any,
+                                params: {
+                                  appointmentId: s.id,
+                                  patientName: s.patientName,
+                                  chiefComplaint: s.chiefComplaint,
+                                },
+                              })
+                            }
+                          />
+                        ) : (
+                          <Button
+                            title="Open Patient Record & Notes ›"
+                            size="md"
+                            variant="primary"
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(clinician)/patient-record" as any,
+                                params: {
+                                  appointmentId: s.id,
+                                  patientId: s.patientId,
+                                  patientName: s.patientName,
+                                  chiefComplaint: s.chiefComplaint,
+                                  channel: s.type,
+                                },
+                              })
+                            }
+                          />
+                        )}
                       </View>
                     ) : null}
                   </Card>
@@ -189,6 +244,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontWeight: "700",
   },
+  badgeWrapper: {
+    alignSelf: "flex-start",
+  },
   card: {
     backgroundColor: colors.systemBackground,
     gap: spacing.xs,
@@ -216,6 +274,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   docInfo: {
+    flex: 1,
     gap: 2,
   },
   docName: {
@@ -223,16 +282,47 @@ const styles = StyleSheet.create({
   },
   docRow: {
     alignItems: "center",
+    flex: 1,
     flexDirection: "row",
     gap: spacing.sm,
+    minWidth: 180,
+  },
+  errorBody: {
+    color: colors.secondaryLabel,
+  },
+  errorCard: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    gap: spacing.xs,
+    padding: spacing.lg,
+  },
+  errorTitle: {
+    color: colors.danger,
+  },
+  gdcSubtext: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
   },
   header: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
     borderRadius: 16,
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
     justifyContent: "space-between",
     padding: spacing.md,
+  },
+  loadingCard: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    padding: spacing.xl,
+  },
+  loadingText: {
+    color: colors.secondaryLabel,
   },
   patientBlock: {
     gap: 4,
@@ -284,3 +374,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 });
+

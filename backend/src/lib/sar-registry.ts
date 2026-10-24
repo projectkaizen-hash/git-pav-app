@@ -276,6 +276,23 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
     });
   },
 
+  ToothHistory: async (prisma, { profileId }) => {
+    if (!profileId) return [];
+    const rows = await prisma.toothHistory.findMany({
+      where: { patientId: profileId },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => ({ ...r, id: r.id.toString() }));
+  },
+
+  AppointmentNote: async (prisma, { profileId }) => {
+    if (!profileId) return [];
+    return prisma.appointmentNote.findMany({
+      where: { patientId: profileId },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
   AuditLog: async (prisma, { userId, profileId }) => {
     const logs = await prisma.auditLog.findMany({
       where: {
@@ -368,6 +385,8 @@ export interface SarBundle {
   dependants: unknown[];
   appointments: unknown[];
   odontogram: unknown[];
+  toothHistory: unknown[];
+  appointmentNotes: unknown[];
   treatmentPlans: unknown[];
   prescriptions: unknown[];
   documents: unknown[];
@@ -418,6 +437,8 @@ export async function buildSubjectAccessRequestBundle(
   const waitlistEntries: any = await PATIENT_DATA_EXTRACTORS.WaitlistEntry(prisma, ctx);
   const oralHealthMetrics: any = await PATIENT_DATA_EXTRACTORS.OralHealthMetric(prisma, ctx);
   const erasureRequests: any = await PATIENT_DATA_EXTRACTORS.ErasureRequest(prisma, ctx);
+  const toothHistory: any = await PATIENT_DATA_EXTRACTORS.ToothHistory(prisma, ctx);
+  const appointmentNotes: any = await PATIENT_DATA_EXTRACTORS.AppointmentNote(prisma, ctx);
   const auditLogs: any = await PATIENT_DATA_EXTRACTORS.AuditLog(prisma, ctx);
 
   return {
@@ -429,6 +450,8 @@ export async function buildSubjectAccessRequestBundle(
     dependants: dependants ?? [],
     appointments: appointments ?? [],
     odontogram: odontogram ?? [],
+    toothHistory: toothHistory ?? [],
+    appointmentNotes: appointmentNotes ?? [],
     treatmentPlans: treatmentPlans ?? [],
     prescriptions: prescriptions ?? [],
     documents: documents ?? [],
@@ -450,6 +473,8 @@ export async function buildSubjectAccessRequestBundle(
       dependants: dependants?.length ?? 0,
       appointments: appointments?.length ?? 0,
       odontogram: odontogram?.length ?? 0,
+      toothHistory: toothHistory?.length ?? 0,
+      appointmentNotes: appointmentNotes?.length ?? 0,
       treatmentPlans: treatmentPlans?.length ?? 0,
       prescriptions: prescriptions?.length ?? 0,
       documents: documents?.length ?? 0,
