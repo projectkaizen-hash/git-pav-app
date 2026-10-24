@@ -15,6 +15,7 @@ export const consentTypes = z.enum([
   "photo_video_usage",
   "third_party_sharing",
   "emergency_contact",
+  "guardian_consent",
 ]);
 
 export const lawfulBasisTypes = z.enum([
