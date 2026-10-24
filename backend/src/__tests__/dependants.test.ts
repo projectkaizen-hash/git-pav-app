@@ -169,6 +169,42 @@ describe("dependants", () => {
     expect(unlink.status).toBe(409);
   });
 
+  it("updates a dependant's details with validation and authorization checks (DP-1)", async () => {
+    const guardian = await makePatient("updater", yearsAgo(35));
+    const stranger = await makePatient("stranger-updater", yearsAgo(35));
+    const childRes = await addChild(guardian.token, { firstName: "Initial", lastName: "Name", dob: yearsAgo(6) });
+    const child = (await childRes.json()) as any;
+
+    const patch = (token: string, id: string, body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/api/patients/dependants/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    // Stranger cannot update
+    expect((await patch(stranger.token, child.id, { firstName: "Hacked" })).status).toBe(404);
+
+    // Guardian cannot update DOB to 16 or over
+    expect((await patch(guardian.token, child.id, { dob: yearsAgo(16) })).status).toBe(422);
+
+    // Guardian cannot update DOB to invalid or future date
+    expect((await patch(guardian.token, child.id, { dob: "invalid-date" })).status).toBe(400);
+    expect((await patch(guardian.token, child.id, { dob: yearsAgo(-1) })).status).toBe(400);
+
+    // Guardian updates name and relationship successfully
+    const updated = await patch(guardian.token, child.id, { firstName: "UpdatedName", relationship: "Ward" });
+    expect(updated.status).toBe(200);
+    const body = (await updated.json()) as any;
+    expect(body.firstName).toBe("UpdatedName");
+    expect(body.relationship).toBe("Ward");
+
+    // Persisted in database
+    const dbChild = await prisma.dependant.findUnique({ where: { id: child.id } });
+    expect(dbChild?.firstName).toBe("UpdatedName");
+    expect(dbChild?.relationship).toBe("Ward");
+  });
+
   it("counts age in whole years", () => {
     expect(ageInYears(parseIsoDate("2010-06-15")!, new Date("2026-06-14T12:00:00Z"))).toBe(15);
     expect(ageInYears(parseIsoDate("2010-06-15")!, new Date("2026-06-15T00:00:00Z"))).toBe(16);

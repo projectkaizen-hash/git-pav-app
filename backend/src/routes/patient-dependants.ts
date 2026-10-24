@@ -33,6 +33,15 @@ const createDependantSchema = z
   })
   .strict();
 
+const updateDependantSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(100).optional(),
+    lastName: z.string().trim().min(1).max(100).optional(),
+    dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "dob must be YYYY-MM-DD").optional(),
+    relationship: z.enum(["Son", "Daughter", "Ward"]).optional(),
+  })
+  .strict();
+
 const dependantIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
 async function getPatientProfileId(userId: string): Promise<string | null> {
@@ -162,6 +171,78 @@ router.post("/", requireAuth, validateBody(createDependantSchema), async (req: A
     relationship: dependant.relationship,
     consentSigned: dependant.consentSigned,
     consentRecordId: consentRecord.id,
+  });
+});
+
+// ─── PATCH /api/patients/dependants/:id ──────────────────────────────────
+router.patch("/:id", requireAuth, validateParams(dependantIdParamsSchema), validateBody(updateDependantSchema), async (req: AuthRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: "Unauthorised" });
+
+  const patientId = await getPatientProfileId(req.user.sub);
+  if (!patientId) return res.status(403).json({ error: "Patient profile required" });
+
+  const existing = await prisma.dependant.findUnique({ where: { id: String(req.params.id) } });
+  if (!existing || existing.guardianId !== patientId) {
+    return res.status(404).json({ error: "Dependant not found" });
+  }
+
+  const { firstName, lastName, dob, relationship } = req.body;
+  const dataToUpdate: any = {};
+
+  if (firstName !== undefined) dataToUpdate.firstName = firstName;
+  if (lastName !== undefined) dataToUpdate.lastName = lastName;
+  if (relationship !== undefined) dataToUpdate.relationship = relationship;
+
+  if (dob !== undefined) {
+    const childDob = parseIsoDate(dob);
+    if (!childDob || childDob.getTime() > Date.now()) {
+      return res.status(400).json({ error: "Enter a valid date of birth" });
+    }
+    if (ageInYears(childDob) >= DEPENDANT_MAX_AGE) {
+      return res.status(422).json({
+        error: "Only children under 16 can be added. Young people aged 16 or over can create their own account.",
+      });
+    }
+    dataToUpdate.dob = dob;
+  }
+
+  if (Object.keys(dataToUpdate).length === 0) {
+    return res.json({
+      id: existing.id,
+      firstName: existing.firstName,
+      lastName: existing.lastName,
+      dob: existing.dob,
+      relationship: existing.relationship,
+      consentSigned: existing.consentSigned,
+    });
+  }
+
+  const updated = await prisma.dependant.update({
+    where: { id: existing.id },
+    data: dataToUpdate,
+  });
+
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
+
+  await createAuditLogWithIntegrity({
+    action: "patient.dependant.updated",
+    actorId: req.user.sub,
+    resourceId: existing.id,
+    sessionId: req.user.sessionId,
+    ipHash: serverIpHash,
+    metadata: {
+      updatedFields: Object.keys(dataToUpdate),
+    },
+  });
+
+  return res.json({
+    id: updated.id,
+    firstName: updated.firstName,
+    lastName: updated.lastName,
+    dob: updated.dob,
+    relationship: updated.relationship,
+    consentSigned: updated.consentSigned,
   });
 });
 

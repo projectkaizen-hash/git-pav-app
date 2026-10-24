@@ -94,6 +94,17 @@ export function useAddDependantMutation() {
   });
 }
 
+export function useUpdateDependantMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<NewDependant> }) =>
+      accountApi.updateDependant(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patient-dependants"] });
+    },
+  });
+}
+
 export function useRemoveDependantMutation() {
   const queryClient = useQueryClient();
   return useMutation({
