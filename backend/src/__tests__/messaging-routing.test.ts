@@ -40,9 +40,6 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
       await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => {});
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    try {
-      redis.disconnect();
-    } catch {}
   });
 
   async function makePatient(label: string, firstName = "Alice", lastName = "Smith") {
