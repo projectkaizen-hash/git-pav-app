@@ -20,6 +20,8 @@ export default function DocumentVaultScreen() {
         return "droplet";
       case "invoice":
         return "fileText";
+      case "gdpr_sar_export":
+        return "shieldCheck";
       default:
         return "fileText";
     }
