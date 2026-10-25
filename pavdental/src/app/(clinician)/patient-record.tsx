@@ -44,7 +44,8 @@ export default function ClinicianPatientRecordScreen() {
     setError(null);
     try {
       const [profData, odontData, planData, noteData] = await Promise.all([
-        fetchPatientProfile(patientId).catch(() => null),
+        // A refused or failed profile load is shown as an error, not as an empty record.
+        fetchPatientProfile(patientId),
         fetchOdontogram(patientId).catch(() => []),
         fetchTreatmentPlans(patientId).catch(() => []),
         appointmentId ? fetchAppointmentNotes(appointmentId).catch(() => null) : null,
