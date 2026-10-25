@@ -13,19 +13,25 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3000"
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000",
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_pavdental_dev_placeholder"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.pavdental.co.uk"
+        "EXPO_PUBLIC_API_URL": "https://staging-api.pavdental.co.uk",
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_pavdental_preview_placeholder"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.pavdental.co.uk"
+        "EXPO_PUBLIC_API_URL": "https://api.pavdental.co.uk",
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_pavdental_production_placeholder"
       }
     }
   },
@@ -34,7 +40,7 @@
       "ios": {
         "appleId": "clinical@pavdental.co.uk",
         "ascAppId": "6540192831",
-        "appleTeamId": "PAV889921"
+        "appleTeamId": "PAV8899210"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
