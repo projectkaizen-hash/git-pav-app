@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TextInput, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import {
   fetchAppointmentNotes,
   saveAppointmentNotes,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -285,10 +285,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     padding: spacing.sm,
     textAlignVertical: "top",

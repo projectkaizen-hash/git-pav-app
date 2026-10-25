@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ThemedText, Card, Button, Input, AppIcon } from "@/components";
 import { useDeleteAccountMutation } from "@/features/account/account-hooks";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -114,7 +114,7 @@ export default function DeleteAccountScreen() {
       {/* Confirmation Input */}
       <View style={styles.section}>
         <ThemedText variant="subhead" style={styles.sectionTitle}>
-          TYPE "DELETE" TO CONFIRM
+          Type "DELETE" to confirm
         </ThemedText>
         <Input
           placeholder="DELETE"
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   retentionCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   warningCard: {
     backgroundColor: colors.dangerSubtle,
     borderColor: colors.danger,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,

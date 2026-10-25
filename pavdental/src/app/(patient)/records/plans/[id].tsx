@@ -63,7 +63,7 @@ export default function TreatmentPlanDetailScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          <View style={{ padding: spacing.md, minHeight: 160, backgroundColor: colors.secondaryBackground, borderRadius: 16, width: "100%" }} />
+          <View style={{ padding: spacing.md, minHeight: 160, backgroundColor: colors.inkSubtle, borderRadius: radius.lg, width: "100%" }} />
         </View>
       </View>
     );
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
   financeBox: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: spacing.xxs,
@@ -603,12 +603,12 @@ const styles = StyleSheet.create({
   financeText: {
     color: colors.ink,
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
   },
   financeLink: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   footerBar: {
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.sm,
   },
   itemCost: {
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md,
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.systemBackground,
     borderColor: colors.success,
-    borderRadius: 24,
+    borderRadius: radius.full,
     borderWidth: 3,
     height: 48,
     justifyContent: "center",
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
   },
   ringText: {
     color: colors.label,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   section: {
@@ -698,9 +698,9 @@ const styles = StyleSheet.create({
   },
   /* Signed Certificate Styles */
   signedCertificateCard: {
-    backgroundColor: "#F0FDF4",
-    borderColor: "#BBF7D0",
-    borderRadius: 16,
+    backgroundColor: colors.successSubtle,
+    borderColor: colors.successSubtle,
+    borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   },
   certShield: {
     alignItems: "center",
-    backgroundColor: "#DCFCE7",
+    backgroundColor: colors.successSubtle,
     borderRadius: radius.full,
     height: 32,
     justifyContent: "center",
@@ -722,18 +722,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   certTitle: {
-    color: "#166534",
+    color: colors.success,
     fontSize: 14,
     fontWeight: "700",
   },
   certMeta: {
-    color: "#15803D",
+    color: colors.success,
     fontSize: 11,
   },
   certDetailsBox: {
     backgroundColor: colors.systemBackground,
-    borderColor: "#DCFCE7",
-    borderRadius: 10,
+    borderColor: colors.successSubtle,
+    borderRadius: radius.md,
     borderWidth: 1,
     gap: 4,
     padding: spacing.sm,
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
   },
   certFieldValue: {
     color: colors.label,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
   certMetaMono: {
@@ -774,13 +774,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxHeight: "88%",
     paddingBottom: 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   sheetGrabber: {
     alignSelf: "center",
     backgroundColor: colors.separator,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     height: 4,
     marginBottom: spacing.xs,
     width: 36,
@@ -792,16 +792,16 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: colors.label,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   sheetSub: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
   },
   closeBtn: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.full,
     height: 32,
     justifyContent: "center",
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   sheetSummaryCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: 4,
     padding: spacing.sm,
   },
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   },
   summaryPrice: {
     color: colors.label,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
   miniItemsDivider: {
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
   miniItemText: {
     color: colors.label,
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
   },
   miniItemCost: {
     color: colors.secondaryLabel,
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   modalFinancePill: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 10,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: 6,
     paddingHorizontal: 12,
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   consentCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: 6,
     padding: spacing.sm,
   },
@@ -878,13 +878,13 @@ const styles = StyleSheet.create({
   },
   consentHeaderText: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
   consentBody: {
     color: colors.label,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 17,
   },
   checkboxRow: {
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   checkboxBox: {
     alignItems: "center",
     borderColor: colors.separator,
-    borderRadius: 6,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     height: 20,
     justifyContent: "center",
@@ -909,13 +909,11 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     color: colors.label,
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
   },
   signaturePad: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: 6,
     padding: spacing.sm,
   },
@@ -925,13 +923,13 @@ const styles = StyleSheet.create({
   },
   sigPadLabel: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
   sigPadMeta: {
     color: colors.info,
-    fontSize: 10,
+    fontSize: 11,
   },
   sigDisplayRow: {
     alignItems: "center",
@@ -941,7 +939,7 @@ const styles = StyleSheet.create({
   cursiveSignature: {
     color: colors.ink,
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: 22,
     fontStyle: "italic",
     fontWeight: "600",
     letterSpacing: 1,
@@ -954,7 +952,7 @@ const styles = StyleSheet.create({
   sigPadSub: {
     alignSelf: "center",
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
   },
   sheetFooter: {
     gap: spacing.xs,

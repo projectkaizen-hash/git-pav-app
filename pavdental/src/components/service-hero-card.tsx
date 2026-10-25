@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   actionText: {
     color: colors.alwaysWhite,
@@ -152,10 +152,9 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: colors.alwaysWhite,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   bottomRow: {
     alignItems: "center",
@@ -164,7 +163,7 @@ const styles = StyleSheet.create({
     marginTop: "auto",
   },
   card: {
-    borderRadius: 24,
+    borderRadius: radius.lg,
     // @ts-ignore
     borderCurve: "continuous",
     height: 220,

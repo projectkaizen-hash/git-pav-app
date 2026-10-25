@@ -119,8 +119,6 @@ const styles = StyleSheet.create({
   cardWrapper: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
     borderRadius: radius.xl,
     padding: spacing.xl,
     width: "100%",
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSubtle,
     borderRadius: radius.md,
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   errorText: {
@@ -148,14 +146,14 @@ const styles = StyleSheet.create({
   iconCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 36,
+    borderRadius: radius.full,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.md,
     width: 72,
   },
   safe: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {

@@ -12,6 +12,7 @@ import {
   resumeShift,
 } from "@/features/van/van-api";
 import { useOperatorLocation } from "@/features/van/use-operator-location";
+import { toLabel } from "@/lib/text";
 
 export default function OperatorShiftScreen() {
   const router = useRouter();
@@ -149,14 +150,14 @@ export default function OperatorShiftScreen() {
               value={isOnShift}
               onValueChange={handleToggleShift}
               disabled={startMutation.isPending || endMutation.isPending}
-              trackColor={{ false: colors.secondaryBackground, true: colors.ink }}
+              trackColor={{ false: colors.inkSubtle, true: colors.successFill }}
               accessibilityRole="switch"
               accessibilityLabel="Operator Shift Status"
             />
           </View>
           <View style={styles.badgeRow}>
             {getStatusBadge()}
-            {gpsActive && <Badge label="GPS ACTIVE" variant="info" />}
+            {gpsActive && <Badge label="GPS active" variant="info" />}
           </View>
           {gpsError ? (
             <ThemedText variant="caption" style={styles.gpsWarning}>
@@ -236,7 +237,7 @@ export default function OperatorShiftScreen() {
               <View style={styles.stopTopRow}>
                 <Badge label={`STOP #${idx + 1}`} variant="info" />
                 <ThemedText variant="caption" style={styles.phaseLabel}>
-                  {stop.phase.replace("_", " ").toUpperCase()}
+                  {toLabel(stop.phase)}
                 </ThemedText>
               </View>
               <ThemedText variant="headline">
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.xl,
   },

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Linking, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, EmptyState, ErrorState, Skeleton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { apiUrl, authFetch } from "@/features/auth/auth-api";
@@ -98,7 +98,7 @@ export default function PrescriptionDetailScreen() {
               </ThemedText>
             </View>
             <Badge
-              label={rx.status === "active" ? "ACTIVE" : "COMPLETED"}
+              label={rx.status === "active" ? "Active" : "Completed"}
               variant={rx.status === "active" ? "success" : "default"}
             />
           </View>
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   headerIcon: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 24,
+    borderRadius: radius.full,
     height: 48,
     justifyContent: "center",
     width: 48,
@@ -253,8 +253,8 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   notesBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   notesText: {
@@ -276,14 +276,14 @@ const styles = StyleSheet.create({
   refillBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xxs,
     padding: spacing.sm,
   },
   refillBoxDone: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   refillText: {

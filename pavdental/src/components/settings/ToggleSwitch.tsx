@@ -70,7 +70,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.systemBackground,
     borderRadius: radius.lg,
-    // @ts-ignore — iOS squircle corners
     borderCurve: "continuous",
     flexDirection: "row",
     justifyContent: "space-between",

@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   fieldMultiline: {
     alignItems: "flex-start",

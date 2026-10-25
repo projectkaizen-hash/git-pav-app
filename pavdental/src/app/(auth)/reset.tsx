@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "re
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function ResetPasswordScreen() {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   errorBox: {
     alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     marginBottom: spacing.md,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
@@ -213,10 +213,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   successCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md + 2,
@@ -225,7 +223,7 @@ const styles = StyleSheet.create({
   successIconBox: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.full,
     backgroundColor: colors.successSubtle,
     alignItems: "center",
     justifyContent: "center",
@@ -245,7 +243,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   topNav: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

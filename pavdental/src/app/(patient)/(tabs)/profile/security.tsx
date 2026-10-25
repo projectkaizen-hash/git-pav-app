@@ -8,7 +8,7 @@ import { PasswordChangeForm, PasswordChangeFormData } from "@/components/forms/P
 import { useBiometrics } from "@/features/security/biometric-hooks";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { useChangePasswordMutation, useResendVerificationMutation } from "@/features/account/account-hooks";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -203,7 +203,7 @@ export default function SecurityScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   modalContainer: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   modalHeader: {
@@ -230,8 +230,8 @@ const styles = StyleSheet.create({
     ...type.overline,
   },
   verifyCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ThemedText } from "../themed-text";
 import { Input } from "../input";
 import { Button } from "../button";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   passwordChangeSchema,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   requirementsCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginTop: spacing.xs,
     padding: spacing.md,

@@ -52,7 +52,7 @@ const sizes_ = {
   },
   md: {
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     minHeight: sizes.button,
     borderRadius: radius.lg,
   },

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ThemedText, Card, ListRow, AppIcon, type AppIconName } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 // ─── Records — clinical documents hub (routes unchanged) ──────────────────────
 
@@ -173,7 +173,7 @@ export default function PatientRecordsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -209,15 +209,15 @@ const styles = StyleSheet.create({
     right: 10,
     height: 2.5,
     backgroundColor: colors.ink,
-    borderRadius: 2,
+    borderRadius: radius.xs,
   },
   metricsCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   metricVal: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
     color: colors.label,
   },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -258,14 +258,14 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xxs,
   },
   groupedCard: {
-    borderRadius: 20,
+    borderRadius: radius.lg,
     overflow: "hidden",
     borderColor: colors.separator,
   },
   summaryCard: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   summaryIcon: {
     alignItems: "center",
     backgroundColor: colors.inkSoft,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     height: 44,
     justifyContent: "center",
     width: 44,

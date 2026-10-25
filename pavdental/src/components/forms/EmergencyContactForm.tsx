@@ -6,7 +6,7 @@ import { ThemedText } from "../themed-text";
 import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   emergencyContactSchema,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
   },
   infoBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
@@ -182,10 +182,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   pill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

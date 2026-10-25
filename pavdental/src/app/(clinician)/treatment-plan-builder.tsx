@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, TextInput } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { createTreatmentPlan } from "@/features/records/records-api";
 
 interface PlanItem {
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -330,8 +330,8 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.sm,
@@ -366,10 +366,8 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   textInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     padding: spacing.sm,
   },
@@ -377,10 +375,8 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   toothInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 6,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     paddingHorizontal: 8,
     paddingVertical: 4,

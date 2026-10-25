@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
-    // @ts-ignore — iOS squircle corners
     borderCurve: "continuous",
   },
   circle: {

@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

@@ -192,7 +192,7 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

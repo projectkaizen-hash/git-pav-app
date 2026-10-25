@@ -60,6 +60,8 @@ export default function PatientTabsLayout() {
         name="home"
         options={{
           title: "Home",
+          // Home draws its own top bar (avatar, perks, notifications), as in the reference
+          headerShown: false,
           tabBarLabel: tabLabel("Home"),
           tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}

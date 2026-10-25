@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import NetInfo from "@react-native-community/netinfo";
 import { ThemedText, Button, Card, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export default function DeviceCheckScreen() {
   const router = useRouter();
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   fallbackBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: 4,
     padding: spacing.md,
   },
@@ -210,10 +210,8 @@ const styles = StyleSheet.create({
   },
   videoPreview: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     height: 180,
     justifyContent: "center",

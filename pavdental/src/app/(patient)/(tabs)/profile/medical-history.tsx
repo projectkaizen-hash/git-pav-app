@@ -6,7 +6,7 @@ import { ThemedText } from "@/components";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { usePatientProfile, useUpdateProfileMutation } from "@/features/hooks/use-dental-api";
 import { MedicalHistoryForm, MedicalHistoryFormData } from "@/components/forms/MedicalHistoryForm";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export default function MedicalHistoryScreen() {
   const router = useRouter();
@@ -78,18 +78,18 @@ export default function MedicalHistoryScreen() {
 const styles = StyleSheet.create({
   centerContainer: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   errorContainer: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.md,
   },
   errorText: {

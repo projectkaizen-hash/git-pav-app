@@ -1,5 +1,5 @@
 import { View, StyleSheet } from "react-native";
-import { colors, spacing, radius } from "@/theme";
+import { colors, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 
 type BadgeVariant = "default" | "success" | "warning" | "danger" | "info";
@@ -29,7 +29,7 @@ export function Badge({ label, variant = "default" }: BadgeProps) {
       accessibilityRole="text"
       accessibilityLabel={label}
     >
-      <ThemedText variant="micro" style={{ color: text, fontWeight: "600" }}>
+      <ThemedText variant="micro" style={[styles.label, { color: text }]}>
         {label}
       </ThemedText>
     </View>
@@ -42,6 +42,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.xs,
     paddingHorizontal: 6,
     paddingVertical: 3,
+  },
+  label: {
+    fontWeight: "600",
   },
 });
 

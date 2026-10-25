@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { ThemedText } from "../themed-text";
 import { Badge } from "../badge";
 import { AppIcon } from "../app-icon";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export interface SessionData {
   id: string;
@@ -98,17 +98,15 @@ export function SessionItem({ session, onRevoke, isRevoking = false }: SessionIt
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
   deviceIconWrap: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 20,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -139,7 +137,7 @@ const styles = StyleSheet.create({
   },
   revokeButton: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 6,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

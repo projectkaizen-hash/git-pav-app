@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Button, AppIcon, Badge, Toast, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useRewards, useRedeemRewardMutation } from "@/features/hooks/use-dental-api";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -73,7 +73,7 @@ export default function OralHealthPerksScreen() {
         <Card elevation="flat" style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View>
-              <ThemedText variant="caption" style={styles.heroLabel}>YOUR REWARD BALANCE</ThemedText>
+              <ThemedText variant="caption" style={styles.heroLabel}>Your reward balance</ThemedText>
               <ThemedText variant="largeTitle" style={styles.heroPoints}>
                 {isLoading ? "–" : pointsBalance.toLocaleString("en-GB")}
               </ThemedText>
@@ -232,20 +232,20 @@ const styles = StyleSheet.create({
   heroCard: {
     backgroundColor: colors.alwaysBlack,
     borderCurve: "continuous",
-    borderRadius: 24,
+    borderRadius: radius.lg,
     gap: spacing.md,
     padding: spacing.lg,
   },
   heroLabel: {
     color: "rgba(255, 255, 255, 0.6)",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 1.2,
   },
   heroNoticeRow: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 12,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
@@ -253,13 +253,13 @@ const styles = StyleSheet.create({
   },
   heroNoticeText: {
     color: "rgba(255, 255, 255, 0.85)",
-    fontSize: 12,
+    fontSize: 13,
     flex: 1,
   },
   heroPoints: {
     color: colors.alwaysWhite,
-    fontSize: 38,
-    fontWeight: "800",
+    fontSize: 34,
+    fontWeight: "700",
     letterSpacing: -1,
     marginVertical: 2,
   },
@@ -274,9 +274,7 @@ const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: colors.systemBackground,
     borderCurve: "continuous",
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -301,10 +299,8 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   modalCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginVertical: spacing.md,
     padding: spacing.md,
@@ -321,7 +317,7 @@ const styles = StyleSheet.create({
   },
   modalRemaining: {
     color: colors.ink,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   modalRow: {
     alignItems: "center",
@@ -344,7 +340,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: colors.label,
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
   },
   modalValue: {
@@ -362,10 +358,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   promoCodePill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -379,7 +373,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -399,12 +393,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.label,
     fontWeight: "700",
-    fontSize: 18,
+    fontSize: 17,
   },
   sparkleBox: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -413,7 +407,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },
@@ -422,8 +416,8 @@ const styles = StyleSheet.create({
   },
   voucherIconBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 10,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.md,
     height: 32,
     justifyContent: "center",
     width: 32,
@@ -441,9 +435,7 @@ const styles = StyleSheet.create({
   },
   vouchersCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     padding: spacing.md,
   },
 });

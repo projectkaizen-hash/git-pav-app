@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable, Linking } from "react-native";
 import { ThemedText, Card, EmptyState, ErrorState, Skeleton, AppIcon, type AppIconName } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useDocumentVault } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 
@@ -122,7 +122,7 @@ export default function DocumentVaultScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   downloadBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -168,16 +168,16 @@ const styles = StyleSheet.create({
   },
   iconCircle: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 22,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
   },
   securityBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.sm,

@@ -394,11 +394,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   recipientOption: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   recipientOptionActive: {
@@ -418,7 +416,7 @@ const styles = StyleSheet.create({
   },
   slaNoticeCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
@@ -439,17 +437,15 @@ const styles = StyleSheet.create({
   },
   triageBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
   },
   triageIconBadge: {
     alignItems: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerSubtle,
     borderRadius: radius.full,
     height: 36,
     justifyContent: "center",
@@ -485,8 +481,8 @@ const styles = StyleSheet.create({
   },
   avatarTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -507,7 +503,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -523,7 +519,7 @@ const styles = StyleSheet.create({
   sendBtn: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -541,7 +537,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   threadCardUnread: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
   },
   threadFrom: {
     color: colors.label,
@@ -573,7 +569,7 @@ const styles = StyleSheet.create({
   },
   unreadDot: {
     backgroundColor: colors.ink,
-    borderRadius: 4,
+    borderRadius: radius.full,
     height: 8,
     width: 8,
   },

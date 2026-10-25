@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.sm,
     padding: spacing.xl,
   },

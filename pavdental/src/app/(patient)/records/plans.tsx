@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Button, Badge, EmptyState, ErrorState, Skeleton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useTreatmentPlans } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { formatGbp } from "@/features/booking/booking-api";
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   financeBox: {
     backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   itemCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   itemCode: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   signatureBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xxs,
     justifyContent: "center",

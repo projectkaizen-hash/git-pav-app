@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useMyAppointments } from "@/features/hooks/use-dental-api";
 import { useCurrentUser, useAuthStore } from "@/features/auth/auth-store";
 
@@ -117,7 +117,7 @@ export default function ClinicianScheduleScreen() {
                   >
                     <View style={styles.cardTop}>
                       <Badge
-                        label={isVideo ? "VIDEO CONSULT" : s.type === "van" ? "VAN VISIT" : "IN-CLINIC"}
+                        label={isVideo ? "Video consult" : s.type === "van" ? "Van visit" : "In clinic"}
                         variant={isVideo ? "info" : s.type === "van" ? "success" : "default"}
                       />
                       <ThemedText variant="headline" style={styles.timeVal}>
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -311,12 +311,12 @@ const styles = StyleSheet.create({
   },
   gdcSubtext: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
   },
   header: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -364,11 +364,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   roleCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderCurve: "continuous",
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginTop: spacing.md,
     padding: spacing.md,

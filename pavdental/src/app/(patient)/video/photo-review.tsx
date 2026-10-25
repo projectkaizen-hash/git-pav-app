@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText, Card, Button, AppIcon, Toast } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 
 interface ReviewSlot {
@@ -197,7 +197,7 @@ export default function PhotoReviewScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -263,13 +263,13 @@ const styles = StyleSheet.create({
   thumb: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     height: 48,
     justifyContent: "center",
     width: 48,
   },
   thumbEmpty: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
   },
   title: {
     color: colors.label,

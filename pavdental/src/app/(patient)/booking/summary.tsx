@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStripe } from "@stripe/stripe-react-native";
 import { ThemedText, Card, Button, AppIcon, ProgressPills, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent, newBookingAttemptKey } from "@/features/booking/booking-api";
 import { useRewards } from "@/features/hooks/use-dental-api";
@@ -399,14 +399,14 @@ export default function BookingSummaryScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   topNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },
@@ -422,31 +422,29 @@ const styles = StyleSheet.create({
   },
   timerBanner: {
     alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    borderRadius: 999,
+    backgroundColor: colors.warningSubtle,
+    borderRadius: radius.full,
     flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs + 2,
   },
   timerText: {
-    color: "#B45309",
+    color: colors.warning,
     flex: 1,
     fontWeight: "600",
     fontSize: 13,
   },
   card: {
     backgroundColor: colors.systemBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
   sectionTitle: {
     color: colors.label,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 17,
     marginBottom: spacing.xxs,
   },
   row: {
@@ -468,10 +466,8 @@ const styles = StyleSheet.create({
   },
   insuranceRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.md,
@@ -493,17 +489,17 @@ const styles = StyleSheet.create({
   },
   depositAmount: {
     color: colors.ink,
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 17,
+    fontWeight: "700",
   },
   balanceNote: {
     color: colors.secondaryLabel,
     marginTop: spacing.xxs,
-    fontSize: 12,
+    fontSize: 13,
   },
   policyBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: 6,
     padding: spacing.md,
   },
@@ -514,7 +510,7 @@ const styles = StyleSheet.create({
   policyText: {
     color: colors.secondaryLabel,
     lineHeight: 18,
-    fontSize: 12,
+    fontSize: 13,
   },
   whoRow: {
     flexDirection: "row",
@@ -523,9 +519,9 @@ const styles = StyleSheet.create({
   },
   whoPill: {
     borderColor: colors.separator,
-    borderRadius: 999,
+    borderRadius: radius.full,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   whoPillSelected: {
@@ -546,7 +542,7 @@ const styles = StyleSheet.create({
   walletButton: {
     alignItems: "center",
     backgroundColor: colors.alwaysBlack,
-    borderRadius: 999,
+    borderRadius: radius.full,
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 52,
@@ -559,6 +555,6 @@ const styles = StyleSheet.create({
   walletText: {
     color: colors.alwaysWhite,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 17,
   },
 });

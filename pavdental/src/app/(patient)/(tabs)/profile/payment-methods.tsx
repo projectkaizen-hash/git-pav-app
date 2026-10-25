@@ -9,7 +9,7 @@ import {
   useSetDefaultPaymentMethodMutation,
 } from "@/features/account/account-hooks";
 import { accountApi } from "@/features/account/account-api";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 import { TouchableOpacity } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   brandIconWrap: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 20,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalContainer: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   modalContent: {
@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   paymentCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },

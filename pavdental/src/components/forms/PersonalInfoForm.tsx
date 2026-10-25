@@ -6,7 +6,7 @@ import { ThemedText } from "../themed-text";
 import { Input } from "../input";
 import { Button } from "../button";
 import { Badge } from "../badge";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   personalInfoSchema,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -271,10 +271,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   genderPill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -296,8 +294,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   readOnlyCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },

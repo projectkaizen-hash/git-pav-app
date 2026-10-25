@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

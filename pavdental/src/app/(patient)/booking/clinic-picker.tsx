@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, AppIcon, EmptyState, ErrorState, Skeleton, ProgressPills, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useClinics } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { ClinicLocation } from "@/features/booking/booking-types";
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   card: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     borderColor: colors.separator,
     flexDirection: "row",
     gap: spacing.md,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   iconBox: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     height: 44,
     justifyContent: "center",
     width: 44,

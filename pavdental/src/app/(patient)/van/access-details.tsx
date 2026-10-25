@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, ActivityIndicat
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Input, Button, Card, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useVanStore } from "@/features/van/van-store";
 import { fetchServices } from "@/features/van/van-api";
 import { Service } from "@/features/van/van-types";
@@ -288,7 +288,7 @@ export default function VanAccessDetailsScreen() {
           <Switch
             value={hasGatedAccess}
             onValueChange={setHasGatedAccess}
-            trackColor={{ true: colors.ink, false: colors.separator }}
+            trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
             accessibilityRole="switch"
             accessibilityLabel="Gated Entrance or Intercom Code"
           />
@@ -328,7 +328,7 @@ export default function VanAccessDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   errorCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   errorText: {
@@ -366,9 +366,7 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     gap: 2,
   },
   optionCardActive: {
@@ -411,9 +409,7 @@ const styles = StyleSheet.create({
   },
   serviceCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     gap: 4,
   },
   serviceCardActive: {
@@ -449,8 +445,8 @@ const styles = StyleSheet.create({
   },
   switchRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.md,

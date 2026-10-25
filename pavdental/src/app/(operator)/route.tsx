@@ -3,12 +3,13 @@ import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemedText, Card, Badge, Button, ErrorState, Skeleton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchCurrentShift, updatePhase, optimizeRoute, reorderQueue } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
 import { openDrivingDirections } from "@/features/van/nav-links";
 import { useOperatorLocation } from "@/features/van/use-operator-location";
 import { useAuthStore } from "@/features/auth/auth-store";
+import { toLabel } from "@/lib/text";
 
 export default function OperatorRouteScreen() {
   const router = useRouter();
@@ -114,7 +115,7 @@ export default function OperatorRouteScreen() {
       case "in_treatment":
         return <Badge label="🦷 IN TREATMENT" variant="success" />;
       default:
-        return <Badge label="QUEUED" variant="default" />;
+        return <Badge label="Queued" variant="default" />;
     }
   };
 
@@ -147,11 +148,11 @@ export default function OperatorRouteScreen() {
           <View style={styles.vanBadgeRow}>
             <Badge label={van?.name ?? "Live Dispatch"} variant="info" />
             <ThemedText variant="caption" style={styles.shiftText}>
-              Status: {shift?.status?.toUpperCase() ?? "OFFLINE"}
+              Status: {shift?.status ? toLabel(shift.status) : "Offline"}
             </ThemedText>
             {isOnShift ? (
               <Badge
-                label={gpsActive ? "GPS LIVE" : "GPS WAIT"}
+                label={gpsActive ? "GPS live" : "Waiting for GPS"}
                 variant={gpsActive ? "success" : "default"}
               />
             ) : null}
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   hintText: {
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.sm,
     padding: spacing.xl,
   },
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   },
   gpsWarning: {
     backgroundColor: colors.warningSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   gpsWarningText: {
@@ -502,8 +503,8 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   stopBadge: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 6,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
@@ -528,11 +529,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   roleCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderCurve: "continuous",
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginTop: spacing.md,
     padding: spacing.md,

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { ThemedText, Input, Button, Card, Badge, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { checkVanCoverage } from "@/features/booking/booking-api";
 import { fetchVanAvailability } from "@/features/van/van-api";
 import { VanAvailability } from "@/features/van/van-types";
@@ -230,7 +230,7 @@ export default function VanServiceAreaScreen() {
             <Card elevation="raised" style={styles.coveredCard}>
               <View style={styles.badgeRow}>
                 <Badge
-                  label={isVanOnline ? "VAN ON SHIFT" : "VAN OFF DUTY"}
+                  label={isVanOnline ? "Van on shift" : "Van off duty"}
                   variant={isVanOnline ? "success" : "default"}
                 />
                 <ThemedText variant="caption" style={styles.vanUnit}>
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -387,8 +387,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   dispatchOfflineBanner: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     marginVertical: spacing.xs,
     padding: spacing.sm,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   dispatchOnlineBanner: {
     backgroundColor: colors.systemBackground,
     borderColor: colors.ink,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     gap: 2,
     marginVertical: spacing.xs,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   outOfAreaCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.sm,
     padding: spacing.md,
   },

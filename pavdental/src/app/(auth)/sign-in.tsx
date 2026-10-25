@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function SignInScreen() {
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   demoPill: {
     backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {

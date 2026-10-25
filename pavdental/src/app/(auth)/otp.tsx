@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function OtpScreen() {
@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 48,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: colors.secondaryBackground,
+    borderRadius: radius.lg,
+    backgroundColor: colors.inkSubtle,
     borderWidth: 1.5,
     borderColor: "transparent",
     alignItems: "center",
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.systemBackground,
   },
   otpBoxFilled: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderColor: colors.separator,
   },
   otpDigit: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {

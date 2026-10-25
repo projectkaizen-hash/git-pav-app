@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, Card } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export default function VideoIntakeScreen() {
   const router = useRouter();
@@ -118,7 +118,7 @@ export default function VideoIntakeScreen() {
           <Switch
             value={hasSwelling}
             onValueChange={setHasSwelling}
-            trackColor={{ true: colors.ink, false: colors.separator }}
+            trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
             accessibilityRole="switch"
             accessibilityLabel="Facial Swelling or Gum Boil"
           />
@@ -166,7 +166,7 @@ export default function VideoIntakeScreen() {
                 setDualRecordingConsent(val);
                 if (error) setError(null);
               }}
-              trackColor={{ true: colors.ink, false: colors.separator }}
+              trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
               accessibilityRole="switch"
               accessibilityLabel="Clinical Video Record Consent"
             />
@@ -188,7 +188,7 @@ export default function VideoIntakeScreen() {
 
 const styles = StyleSheet.create({
   consentCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   consentInfo: {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -213,9 +213,7 @@ const styles = StyleSheet.create({
   durationItem: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    borderRadius: radius.md,
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: spacing.xs,
@@ -239,7 +237,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   errorText: {
@@ -256,8 +254,8 @@ const styles = StyleSheet.create({
   },
   painPill: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.sm,
     height: 36,
     justifyContent: "center",
     width: 30,
@@ -289,8 +287,8 @@ const styles = StyleSheet.create({
   },
   switchCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.md,

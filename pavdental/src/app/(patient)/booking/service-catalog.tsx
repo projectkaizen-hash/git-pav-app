@@ -15,6 +15,7 @@ import { useServices } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { DentalService } from "@/features/booking/booking-types";
 import { formatGbp } from "@/features/booking/booking-api";
+import { toLabel } from "@/lib/text";
 
 type CategoryFilter =
   | "all"
@@ -125,6 +126,7 @@ export default function ServiceCatalogScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.hScroll}
           contentContainerStyle={styles.categoryScroll}
         >
           {CATEGORIES.map((cat) => {
@@ -179,7 +181,7 @@ export default function ServiceCatalogScreen() {
                 <ServiceHeroCard
                   key={srv.id}
                   title={srv.name}
-                  badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
+                  badge={`${toLabel(srv.category || "clinical")} · ${formatGbp(srv.pricePence || 0)}`}
                   image={getServiceImage(srv.category, srv.name)}
                   actionLabel="Book Appointment"
                   onPressAction={() => handleSelectService(srv)}
@@ -196,6 +198,10 @@ export default function ServiceCatalogScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Horizontal chip rows must not stretch to fill the column (web)
+  hScroll: {
+    flexGrow: 0,
+  },
   cardList: {
     gap: spacing.md,
   },
@@ -211,11 +217,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   categoryPillInactive: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
   },
   categoryScroll: {
+    alignItems: "center",
     gap: spacing.xs,
     paddingVertical: spacing.xxs,
   },
@@ -230,7 +235,7 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -246,7 +251,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.label,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "700",
     lineHeight: 38,
   },
@@ -255,10 +260,8 @@ const styles = StyleSheet.create({
   },
   searchIconBtn: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.full,
-    borderWidth: 1,
     height: 44,
     justifyContent: "center",
     width: 44,

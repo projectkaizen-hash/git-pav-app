@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Switch } 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, ProgressPills, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 export default function OnboardingMedicalHistoryScreen() {
@@ -75,7 +75,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={hasAllergies}
                   onValueChange={setHasAllergies}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Known Allergies"
                 />
@@ -105,7 +105,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={isTakingMeds}
                   onValueChange={setIsTakingMeds}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Regular Medications"
                 />
@@ -135,7 +135,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={isBleedingRisk}
                   onValueChange={setIsBleedingRisk}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Blood Thinners or Bleeding Disorders"
                 />
@@ -171,10 +171,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   card: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     padding: spacing.md,
   },
   cardTitle: {
@@ -205,7 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
@@ -244,7 +242,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

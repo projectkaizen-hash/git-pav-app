@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 
 export default function VideoSummaryScreen() {
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   checkBadge: {
     alignSelf: "flex-start",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.xxs,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -196,8 +196,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
   summaryBlock: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {

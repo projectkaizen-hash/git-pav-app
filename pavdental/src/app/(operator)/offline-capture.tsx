@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { ThemedText, Input, Button, Card, Badge } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { authFetch } from "@/features/auth/auth-api";
 
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   onlineDot: {
     backgroundColor: colors.success,
-    borderRadius: 4,
+    borderRadius: radius.full,
     height: 8,
     width: 8,
   },
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   successBanner: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   successText: {
@@ -276,8 +276,8 @@ const styles = StyleSheet.create({
   },
   syncBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.sm,

@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 interface PhotoSlot {
   id: string;
@@ -161,7 +161,7 @@ export default function IntraoralPhotosScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -182,9 +182,7 @@ const styles = StyleSheet.create({
   slotCard: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md,
@@ -222,8 +220,8 @@ const styles = StyleSheet.create({
   },
   thumbnailBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 10,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.md,
     height: 48,
     justifyContent: "center",
     width: 48,
@@ -234,7 +232,7 @@ const styles = StyleSheet.create({
   },
   tipBox: {
     backgroundColor: colors.infoSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   tipText: {

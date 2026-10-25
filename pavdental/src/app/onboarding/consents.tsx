@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Button, ProgressPills, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
@@ -151,7 +151,7 @@ export default function OnboardingConsentsScreen() {
                   Health Data Processing
                 </ThemedText>
                 <View style={styles.mandatoryBadge}>
-                  <ThemedText variant="caption" style={styles.mandatoryText}>MANDATORY</ThemedText>
+                  <ThemedText variant="caption" style={styles.mandatoryText}>Required</ThemedText>
                 </View>
               </View>
               <Switch
@@ -160,7 +160,7 @@ export default function OnboardingConsentsScreen() {
                   setDataProcessing(val);
                   if (error) setError(null);
                 }}
-                trackColor={{ true: colors.ink, false: colors.separator }}
+                trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                 accessibilityRole="switch"
                 accessibilityLabel="Special Category Health Data Consent"
               />
@@ -178,7 +178,7 @@ export default function OnboardingConsentsScreen() {
                   General Treatment
                 </ThemedText>
                 <View style={styles.mandatoryBadge}>
-                  <ThemedText variant="caption" style={styles.mandatoryText}>MANDATORY</ThemedText>
+                  <ThemedText variant="caption" style={styles.mandatoryText}>Required</ThemedText>
                 </View>
               </View>
               <Switch
@@ -187,7 +187,7 @@ export default function OnboardingConsentsScreen() {
                   setTreatmentConsent(val);
                   if (error) setError(null);
                 }}
-                trackColor={{ true: colors.ink, false: colors.separator }}
+                trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                 accessibilityRole="switch"
                 accessibilityLabel="General Treatment and Examination Consent"
               />
@@ -205,13 +205,13 @@ export default function OnboardingConsentsScreen() {
                   Recall & Reminders
                 </ThemedText>
                 <View style={styles.optionalBadge}>
-                  <ThemedText variant="caption" style={styles.optionalText}>OPTIONAL</ThemedText>
+                  <ThemedText variant="caption" style={styles.optionalText}>Optional</ThemedText>
                 </View>
               </View>
               <Switch
                 value={directMarketing}
                 onValueChange={setDirectMarketing}
-                trackColor={{ true: colors.ink, false: colors.separator }}
+                trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                 accessibilityRole="switch"
                 accessibilityLabel="Hygiene and Recall Reminders Consent"
               />
@@ -262,10 +262,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   consentCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -275,7 +273,7 @@ const styles = StyleSheet.create({
   errorBox: {
     alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     marginBottom: spacing.md,
@@ -293,13 +291,13 @@ const styles = StyleSheet.create({
   },
   mandatoryBadge: {
     backgroundColor: colors.ink,
-    borderRadius: 999,
+    borderRadius: radius.full,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   mandatoryText: {
     color: colors.alwaysWhite,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -308,13 +306,13 @@ const styles = StyleSheet.create({
   },
   optionalBadge: {
     backgroundColor: colors.separator,
-    borderRadius: 999,
+    borderRadius: radius.full,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   optionalText: {
     color: colors.secondaryLabel,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -323,7 +321,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
@@ -347,7 +345,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

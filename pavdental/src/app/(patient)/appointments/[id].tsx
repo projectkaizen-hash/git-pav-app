@@ -14,8 +14,9 @@ import {
   EmptyState,
   IconButton,
 } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useMyAppointments, useCancelAppointmentMutation } from "@/features/hooks/use-dental-api";
+import { toLabel } from "@/lib/text";
 
 // ─── Appointment detail — full context + lifecycle actions ────────────────────
 // Reference pattern: Mobbin Zocdoc appointment detail (map, reschedule, cancel)
@@ -66,7 +67,7 @@ export default function AppointmentDetailScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <View style={{ padding: spacing.md, minHeight: 180, backgroundColor: colors.secondaryBackground, borderRadius: 20 }} />
+          <View style={{ padding: spacing.md, minHeight: 180, backgroundColor: colors.inkSubtle, borderRadius: radius.lg }} />
         </View>
       </View>
     );
@@ -143,18 +144,18 @@ export default function AppointmentDetailScreen() {
               {booking.service?.name || "Dental Treatment"}
             </ThemedText>
             <Badge
-              label={isCancelled ? "Cancelled" : isPast ? "Completed" : booking.status.toUpperCase()}
+              label={isCancelled ? "Cancelled" : isPast ? "Completed" : toLabel(booking.status)}
               variant={isCancelled ? "danger" : isPast ? "default" : "success"}
             />
           </View>
           <View style={styles.chipRow}>
-            <ChipPill label={`${booking.channel.toUpperCase()} · ${timeLine}`} tone={isPast || isCancelled ? "neutral" : "info"} />
+            <ChipPill label={`${toLabel(booking.channel)} · ${timeLine}`} tone={isPast || isCancelled ? "neutral" : "info"} />
           </View>
         </Card>
 
         {/* Details receipt card */}
         <Card elevation="flat" style={styles.card}>
-          <ThemedText variant="overline" style={styles.cardOverline}>VISIT SUMMARY</ThemedText>
+          <ThemedText variant="overline" style={styles.cardOverline}>Visit summary</ThemedText>
           <Row icon="calendar" label="Date" value={dateLine} />
           <View style={styles.divider} />
           <Row icon="clock" label="Time" value={timeLine} />
@@ -278,9 +279,7 @@ export default function AppointmentDetailScreen() {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -293,7 +292,7 @@ const styles = StyleSheet.create({
   checkInCard: {
     alignItems: "center",
     backgroundColor: colors.alwaysBlack,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md + 2,
@@ -301,7 +300,7 @@ const styles = StyleSheet.create({
   checkInIcon: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -319,7 +318,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -329,8 +328,8 @@ const styles = StyleSheet.create({
   },
   detailIconBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 10,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.md,
     height: 32,
     justifyContent: "center",
     width: 32,
@@ -369,9 +368,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -384,7 +381,7 @@ const styles = StyleSheet.create({
   muted: {
     color: colors.alwaysWhite,
     opacity: 0.75,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
   },
   navSpacer: {
@@ -403,14 +400,14 @@ const styles = StyleSheet.create({
   serviceTitle: {
     color: colors.label,
     flex: 1,
-    fontWeight: "800",
-    fontSize: 18,
+    fontWeight: "700",
+    fontSize: 17,
   },
   topNav: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

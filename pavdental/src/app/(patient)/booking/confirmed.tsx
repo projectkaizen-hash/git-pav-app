@@ -3,7 +3,7 @@ import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { fetchMyAppointments } from "@/features/booking/booking-api";
 
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   checkCircle: {
     alignItems: "center",
-    borderRadius: 36,
+    borderRadius: radius.full,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.xs,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warningSubtle,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   spinner: {
@@ -193,14 +193,12 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 22,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   summaryCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     marginTop: spacing.md,
     padding: spacing.md,
@@ -219,7 +217,7 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     backgroundColor: colors.successSubtle,
-    borderRadius: 999,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical: 2,
   },
@@ -243,8 +241,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.systemBackground,
+    borderRadius: radius.md,
+    backgroundColor: colors.inkSubtle,
   },
   detailCol: {
     flex: 1,
@@ -253,7 +251,6 @@ const styles = StyleSheet.create({
   detailLabel: {
     color: colors.secondaryLabel,
     fontSize: 11,
-    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   location: {
@@ -267,6 +264,6 @@ const styles = StyleSheet.create({
   title: {
     color: colors.label,
     textAlign: "center",
-    fontWeight: "800",
+    fontWeight: "700",
   },
 });

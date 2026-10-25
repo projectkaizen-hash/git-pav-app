@@ -38,7 +38,6 @@ const styles = StyleSheet.create({
   tile: {
     alignItems: "center",
     borderRadius: radius.md,
-    // @ts-ignore — iOS squircle corners
     borderCurve: "continuous",
     justifyContent: "center",
   },

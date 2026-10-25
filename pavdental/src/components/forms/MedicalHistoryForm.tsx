@@ -7,7 +7,7 @@ import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   medicalHistorySchema,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
   conditionRowActive: {
@@ -321,12 +321,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   conditionsList: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     overflow: "hidden",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subContainer: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
@@ -353,9 +353,7 @@ const styles = StyleSheet.create({
   },
   tag: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

@@ -7,6 +7,7 @@ import { colors, spacing, radius } from "@/theme";
 import { ToothRecord, ToothCondition } from "@/features/records/records-types";
 import { useOdontogram } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
+import { toLabel } from "@/lib/text";
 
 const STANDARD_TEETH: ToothRecord[] = Array.from({ length: 32 }, (_, idx) => {
   const num = idx + 1;
@@ -276,7 +277,7 @@ export default function OdontogramScreen() {
               </View>
               <View style={styles.selectedDetailRight}>
                 <Badge
-                  label={selectedLabel.toUpperCase()}
+                  label={toLabel(selectedLabel)}
                   variant={!selectedTooth.recorded ? "info" : selectedCondition === "decay" ? "danger" : "success"}
                 />
                 <AppIcon name="chevronRight" size={16} color={colors.secondaryLabel} />
@@ -400,7 +401,7 @@ export default function OdontogramScreen() {
 const styles = StyleSheet.create({
   archContainer: {
     backgroundColor: colors.systemBackground,
-    borderRadius: 24,
+    borderRadius: radius.lg,
     gap: spacing.md,
     padding: spacing.md,
   },
@@ -417,14 +418,14 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.full,
     height: 38,
     justifyContent: "center",
     width: 38,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -433,8 +434,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   enamelDot: {
-    backgroundColor: "#E2E8F0",
-    borderRadius: 2,
+    backgroundColor: colors.separator,
+    borderRadius: radius.xs,
     height: 12,
     width: 8,
   },
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FCE7F3",
     borderColor: "#F472B6",
-    borderRadius: 22,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FCE7F3",
     borderColor: "#F472B6",
-    borderRadius: 22,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
@@ -479,7 +480,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.label,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   hygieneIconCircle: {
@@ -492,8 +493,8 @@ const styles = StyleSheet.create({
   },
   selectedDetail: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.md,
@@ -517,9 +518,7 @@ const styles = StyleSheet.create({
   toothCapsule: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: radius.sm,
     height: 24,
     justifyContent: "center",
     width: 16,
@@ -548,13 +547,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxHeight: "88%",
     paddingBottom: 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   sheetGrabber: {
     alignSelf: "center",
     backgroundColor: colors.separator,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     height: 4,
     marginBottom: spacing.xs,
     width: 36,
@@ -567,16 +566,16 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: colors.label,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   sheetSub: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
   },
   closeBtn: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.full,
     height: 32,
     justifyContent: "center",
@@ -587,7 +586,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   diagnosticCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.sm,
   },
   diagnosticRow: {
@@ -601,7 +600,7 @@ const styles = StyleSheet.create({
   },
   cardSectionLabel: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -611,14 +610,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   surfaceSection: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.sm,
   },
   sectionHeader: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -638,7 +637,7 @@ const styles = StyleSheet.create({
   },
   surfaceDot: {
     backgroundColor: colors.success,
-    borderRadius: 3,
+    borderRadius: radius.full,
     height: 6,
     width: 6,
   },
@@ -651,25 +650,25 @@ const styles = StyleSheet.create({
   },
   surfaceStatus: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
   },
   surfaceStatusRisk: {
     color: colors.danger,
     fontWeight: "600",
   },
   clinicianNoteCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.sm,
   },
   clinicianName: {
     color: colors.label,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
   clinicianNoteBody: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
     fontStyle: "italic",
     lineHeight: 18,
   },

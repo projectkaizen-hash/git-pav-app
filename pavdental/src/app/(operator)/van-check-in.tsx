@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

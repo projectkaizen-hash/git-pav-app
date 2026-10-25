@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     color: colors.alwaysWhite,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     letterSpacing: -0.5,
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   demoPill: {
     backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   errorText: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.alwaysWhite,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "700",
     lineHeight: 38,
   },
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: colors.alwaysWhite,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
   },
   sliderWrap: {

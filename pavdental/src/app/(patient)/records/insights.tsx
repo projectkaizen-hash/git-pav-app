@@ -72,7 +72,7 @@ export default function OralHealthInsightsScreen() {
         <Card elevation="raised" style={styles.recallCard}>
           <View style={styles.recallTop}>
             <View>
-              <ThemedText variant="caption" style={styles.recallSub}>PREVENTIVE RECALL CYCLE</ThemedText>
+              <ThemedText variant="caption" style={styles.recallSub}>Preventive recall cycle</ThemedText>
               <ThemedText variant="largeTitle" style={styles.recallDays}>
                 {recallDays === null ? "Not set" : `${recallDays} days`}
               </ThemedText>
@@ -153,7 +153,7 @@ export default function OralHealthInsightsScreen() {
         {/* Clinical Health Gauges */}
         <View style={styles.gaugesGrid}>
           <Card elevation="raised" style={styles.gaugeCard}>
-            <ThemedText variant="caption" style={styles.gaugeSub}>PLAQUE INDEX</ThemedText>
+            <ThemedText variant="caption" style={styles.gaugeSub}>Plaque index</ThemedText>
             <ThemedText variant="largeTitle" style={styles.gaugeNum}>
               {plaqueIndex === null ? "—" : `${plaqueIndex}%`}
             </ThemedText>
@@ -163,7 +163,7 @@ export default function OralHealthInsightsScreen() {
           </Card>
 
           <Card elevation="raised" style={styles.gaugeCard}>
-            <ThemedText variant="caption" style={styles.gaugeSub}>BLEEDING ON PROBE</ThemedText>
+            <ThemedText variant="caption" style={styles.gaugeSub}>Bleeding on probe</ThemedText>
             <ThemedText variant="largeTitle" style={styles.gaugeNum}>
               {bleedingIndex === null ? "—" : `${bleedingIndex}%`}
             </ThemedText>
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   },
   barFill: {
     backgroundColor: colors.ink,
-    borderRadius: 6,
+    borderRadius: radius.sm,
     width: "100%",
   },
   barFillPartial: {
@@ -229,8 +229,8 @@ const styles = StyleSheet.create({
   },
   barTrack: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 6,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.sm,
     height: 120,
     justifyContent: "flex-end",
     overflow: "hidden",
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   dot: {
     backgroundColor: colors.separator,
-    borderRadius: 3,
+    borderRadius: radius.full,
     height: 6,
     width: 6,
   },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
   },
   dotMissing: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
   },
   gaugeCard: {
     borderCurve: "continuous",
@@ -308,12 +308,12 @@ const styles = StyleSheet.create({
   gaugeNum: {
     color: colors.ink,
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   gaugeSub: {
     color: colors.secondaryLabel,
-    fontSize: 10,
-    fontWeight: "800",
+    fontSize: 11,
+    fontWeight: "700",
     letterSpacing: 1,
   },
   gaugesGrid: {
@@ -352,13 +352,13 @@ const styles = StyleSheet.create({
   recallDays: {
     color: colors.ink,
     fontSize: 34,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: -1,
   },
   recallSub: {
     color: colors.secondaryLabel,
-    fontSize: 10,
-    fontWeight: "800",
+    fontSize: 11,
+    fontWeight: "700",
     letterSpacing: 1,
   },
   recallTarget: {

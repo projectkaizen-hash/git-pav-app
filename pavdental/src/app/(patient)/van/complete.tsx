@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ThemedText, Card, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchVanRequest, fetchActiveVanRequest } from "@/features/van/van-api";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   checkCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 40,
+    borderRadius: radius.full,
     height: 80,
     justifyContent: "center",
     marginBottom: spacing.xs,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   sub: {
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 20,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   title: {

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
 import { requestDataAccessExport } from "@/features/records/records-api";
 import { authFetch } from "@/features/auth/auth-api";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 export default function ConsentScreen() {
   const [isExporting, setIsExporting] = useState(false);
@@ -228,8 +228,8 @@ export default function ConsentScreen() {
 const styles = StyleSheet.create({
   banner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md,
@@ -243,8 +243,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   card: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

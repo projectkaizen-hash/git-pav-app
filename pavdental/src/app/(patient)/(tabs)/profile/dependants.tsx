@@ -10,7 +10,7 @@ import {
 } from "@/features/account/account-hooks";
 import type { DependantItem, DependantRelationship } from "@/features/account/account-api";
 import { changedDependantFields } from "@/features/account/dependant-edits";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 // Only a parent or guardian adds a child under 16 (decisions log #17).
 const RELATIONSHIPS: DependantRelationship[] = ["Son", "Daughter", "Ward"];
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   avatarCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -358,8 +358,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   depCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   modalContainer: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   modalContent: {
@@ -415,10 +415,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   relPill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -440,7 +438,7 @@ const styles = StyleSheet.create({
   checkbox: {
     alignItems: "center",
     borderColor: colors.separator,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     borderWidth: 1,
     height: 22,
     justifyContent: "center",

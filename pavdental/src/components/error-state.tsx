@@ -1,5 +1,5 @@
 import { View, StyleSheet } from "react-native";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { Button } from "./button";
 import { AppIcon } from "./app-icon";
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     alignItems: "center",
     backgroundColor: colors.warningSubtle,
-    borderRadius: 32,
+    borderRadius: radius.full,
     height: 64,
     justifyContent: "center",
     width: 64,

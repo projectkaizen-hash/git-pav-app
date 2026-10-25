@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, EmptyState, ErrorState, AppIcon, Skeleton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 
@@ -51,7 +51,7 @@ export default function PrescriptionsScreen() {
           </ThemedText>
         </View>
         {rx.status === "active" ? (
-          <Badge label="ACTIVE" variant="success" />
+          <Badge label="Active" variant="success" />
         ) : (
           <AppIcon name="chevronRight" size={15} color={colors.tertiaryLabel} />
         )}
@@ -124,7 +124,7 @@ export default function PrescriptionsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
   },
   rowIcon: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,

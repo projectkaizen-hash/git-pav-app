@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Button, AppIcon, ChipPill, ProgressPills, Input } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { updatePatientProfile } from "@/features/records/records-api";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
@@ -186,7 +186,7 @@ export default function BookingInsuranceScreen() {
 
 const styles = StyleSheet.create({
   checkCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   confirmedBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     gap: spacing.xxs,
     padding: spacing.xl,
   },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: colors.ink,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -264,10 +264,10 @@ const styles = StyleSheet.create({
   },
   scanBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderColor: colors.ink,
     borderStyle: "dashed",
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     gap: spacing.xxs,
     padding: spacing.xxl,

@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   iconCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 40,
+    borderRadius: radius.xl,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -170,13 +170,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 20,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   title: {

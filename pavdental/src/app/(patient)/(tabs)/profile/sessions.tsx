@@ -133,12 +133,12 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {

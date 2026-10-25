@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { useStripe } from "@stripe/stripe-react-native";
 import { ThemedText, Card, Button, Badge } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import {
   createVanRequest,
   cancelVanRequest,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   holdBanner: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   holdText: {
@@ -312,8 +312,8 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   policyBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     marginTop: spacing.xs,
     padding: spacing.sm,

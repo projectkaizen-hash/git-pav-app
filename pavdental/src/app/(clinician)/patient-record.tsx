@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import {
   fetchPatientProfile,
   fetchOdontogram,
@@ -11,6 +11,7 @@ import {
   completeAppointment,
   markAppointmentNoShow,
 } from "@/features/records/records-api";
+import { toLabel } from "@/lib/text";
 
 export default function ClinicianPatientRecordScreen() {
   const router = useRouter();
@@ -104,7 +105,7 @@ export default function ClinicianPatientRecordScreen() {
           />
           {params.channel ? (
             <Badge
-              label={params.channel.toUpperCase()}
+              label={toLabel(params.channel)}
               variant={params.channel === "video" ? "info" : "default"}
             />
           ) : null}
@@ -291,7 +292,7 @@ export default function ClinicianPatientRecordScreen() {
                         #{t.toothNumber}
                       </ThemedText>
                       <Badge
-                        label={t.condition.toUpperCase()}
+                        label={toLabel(t.condition)}
                         variant={
                           t.condition === "decay"
                             ? "danger"
@@ -339,7 +340,7 @@ export default function ClinicianPatientRecordScreen() {
                           {p.title}
                         </ThemedText>
                         <Badge
-                          label={p.status.replaceAll("_", " ").toUpperCase()}
+                          label={toLabel(p.status)}
                           variant={p.status === "accepted" ? "success" : "default"}
                         />
                       </View>
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -413,7 +414,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -432,8 +433,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   notesBlock: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: spacing.xs,
     padding: spacing.sm,
   },
@@ -449,8 +450,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   planItem: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -495,8 +496,8 @@ const styles = StyleSheet.create({
   },
   toothChip: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 6,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: 4,
     paddingHorizontal: 8,
@@ -504,6 +505,6 @@ const styles = StyleSheet.create({
   },
   toothNum: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: 13,
   },
 });

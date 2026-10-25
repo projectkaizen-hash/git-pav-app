@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, Input } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 
 export default function ClinicianConsultRoomScreen() {
@@ -424,22 +424,22 @@ const styles = StyleSheet.create({
   },
   roomError: {
     color: colors.danger,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   roomTag: {
     color: colors.secondaryLabel,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   streamBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 24,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     height: 320,
     justifyContent: "center",
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   tabRow: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderBottomColor: colors.separator,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   triageCard: {
@@ -526,10 +526,8 @@ const styles = StyleSheet.create({
   },
   toothCapsule: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 6,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     height: 28,
     justifyContent: "center",
     minWidth: 20,
@@ -541,7 +539,7 @@ const styles = StyleSheet.create({
   },
   toothNumText: {
     color: colors.label,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   toothNumTextSelected: {
