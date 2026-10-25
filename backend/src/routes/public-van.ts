@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validate";
 import { vanCoverageCheckSchema } from "../schemas/van";
-import { Point } from "../lib/geo";
+import { Point, postcodeToCoordinates } from "../lib/geo";
 import { findCoveringVans } from "../lib/van-coverage";
 
 const router = Router();
@@ -28,7 +28,7 @@ router.post("/coverage-check", validateBody(vanCoverageCheckSchema), async (req:
     processedPostcode = clean;
     inputType = "postcode";
     
-    // Convert postcode to approximate coordinates using centroid of matching area
+    // PV-1: Convert postcode to coordinates using lib/geo with hard 3s timeout
     checkPoint = await postcodeToCoordinates(clean);
     
     if (!checkPoint) {
@@ -38,7 +38,7 @@ router.post("/coverage-check", validateBody(vanCoverageCheckSchema), async (req:
         assignedVan: null,
         vehicleType: null,
         activeSector: null,
-        message: "This postcode is outside our current service area. Please try a London postcode or use GPS location.",
+        message: "Could not verify postcode coordinates. Please check your postcode or try using GPS location.",
         inputType: "postcode"
       });
     }
@@ -68,28 +68,5 @@ router.post("/coverage-check", validateBody(vanCoverageCheckSchema), async (req:
     inputType
   });
 });
-
-/**
- * Convert UK postcode to coordinates using postcodes.io API
- * Real geocoding service for accurate UK postcode coordinates
- */
-export async function postcodeToCoordinates(postcode: string): Promise<Point | null> {
-  try {
-    const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`);
-    const data = await response.json() as { status: number; result?: { latitude: number; longitude: number } };
-    
-    if (data.status === 200 && data.result) {
-      return {
-        lat: data.result.latitude,
-        lng: data.result.longitude
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Postcode geocoding error:', error);
-    return null;
-  }
-}
 
 export default router;

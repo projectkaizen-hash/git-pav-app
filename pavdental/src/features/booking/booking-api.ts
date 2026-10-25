@@ -105,8 +105,12 @@ export function newBookingAttemptKey(): string {
 }
 
 // ─── List Appointments ────────────────────────────────────────────────────────
-export async function fetchMyAppointments() {
-  const res = await authFetch("/api/booking/appointments");
+export async function fetchMyAppointments(params?: { scope?: string; date?: string }) {
+  const query = new URLSearchParams();
+  if (params?.scope) query.set("scope", params.scope);
+  if (params?.date) query.set("date", params.date);
+  const qs = query.toString();
+  const res = await authFetch(`/api/booking/appointments${qs ? `?${qs}` : ""}`);
   if (!res.ok) throw new Error("Could not load appointments");
   return res.json();
 }

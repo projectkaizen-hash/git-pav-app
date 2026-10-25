@@ -72,10 +72,10 @@ export function useSlots(params: {
   });
 }
 
-export function useMyAppointments() {
+export function useMyAppointments(params?: { scope?: string; date?: string }) {
   return useQuery({
-    queryKey: ["my-appointments"],
-    queryFn: fetchMyAppointments,
+    queryKey: ["my-appointments", params],
+    queryFn: () => fetchMyAppointments(params),
   });
 }
 

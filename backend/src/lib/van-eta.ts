@@ -72,14 +72,20 @@ function recordProviderFailure(err: unknown): void {
 // Key: rounded lat/lng pair (~110 m grid). Short TTL keeps results fresh
 // enough for a moving van without hammering the provider.
 
-const CACHE_TTL_MS = parseInt(process.env.VAN_ROUTING_CACHE_TTL_MS ?? "120000", 10);
+const CACHE_TTL_MS = parseInt(process.env.VAN_ROUTING_CACHE_TTL_MS ?? "60000", 10); // 60s
 const CACHE_MAX_ENTRIES = 500;
 
 const durationCache = new Map<string, { seconds: number; expiresAt: number }>();
+const multiMatrixCache = new Map<string, { matrix: number[][]; expiresAt: number }>();
 
 function cacheKey(a: Point, b: Point): string {
   const round = (n: number) => Math.round(n * 1000) / 1000;
   return `${round(a.lat)},${round(a.lng)}|${round(b.lat)},${round(b.lng)}`;
+}
+
+function multiMatrixCacheKey(points: Point[]): string {
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  return points.map((p) => `${round(p.lat)},${round(p.lng)}`).join(";");
 }
 
 function getCached(a: Point, b: Point): number | null {
@@ -148,11 +154,28 @@ async function getDurationMatrix(points: Point[]): Promise<number[][] | null> {
   if (provider === "haversine") return null;
   if (breakerIsOpen()) return null;
 
+  const key = multiMatrixCacheKey(points);
+  const cachedHit = multiMatrixCache.get(key);
+  if (cachedHit && Date.now() < cachedHit.expiresAt) {
+    return cachedHit.matrix;
+  }
+
   try {
     const matrix =
       provider === "mapbox" ? await mapboxDurations(points) : await osrmDurations(points);
     if (!matrix) throw new Error("provider returned no duration matrix");
     recordProviderSuccess();
+
+    // VE-3: Cache multi-point matrix and populate pairwise durationCache
+    multiMatrixCache.set(key, { matrix, expiresAt: Date.now() + CACHE_TTL_MS });
+    for (let i = 0; i < points.length; i++) {
+      for (let j = 0; j < points.length; j++) {
+        if (i !== j && matrix[i]?.[j] != null && Number.isFinite(matrix[i][j])) {
+          setCached(points[i], points[j], matrix[i][j]);
+        }
+      }
+    }
+
     return matrix;
   } catch (err) {
     recordProviderFailure(err);
@@ -191,15 +214,17 @@ export async function travelSeconds(from: Point, to: Point): Promise<number> {
 /**
  * How many seconds of treatment remain for this stop.
  * - queued / en_route / on_site → full block
- * - in_treatment → elapsed time subtracted (allow negative for overrun tracking)
+ * - in_treatment → elapsed time subtracted, clamped to a minimum positive duration (VE-1)
  * - completed / cancelled → 0
  */
 export function remainingTreatmentSeconds(stop: QueueStop, now = new Date()): number {
   const full = stop.treatmentMinutes * 60;
   if (stop.phase === "in_treatment" && stop.treatmentStartedAt) {
     const elapsed = (now.getTime() - stop.treatmentStartedAt.getTime()) / 1000;
-    // Don't clamp to 0 - allow negative values to track overrun
-    return full - elapsed;
+    // VE-1: Clamp overrun to a small positive minimum (5 min = 300s).
+    // An overrun must never be allowed to go negative, which would erroneously
+    // reduce subsequent patients' ETAs.
+    return Math.max(300, Math.round(full - elapsed));
   }
   if (stop.phase === "completed" || stop.phase === "cancelled") return 0;
   return full;
@@ -236,12 +261,15 @@ export async function etaSecondsToNewPatient(
   const waypoints: Point[] = [van, ...queue.map((s) => ({ lat: s.lat, lng: s.lng })), target];
   const matrix = await getDurationMatrix(waypoints);
 
-  const legByIndex = async (fromIdx: number, toIdx: number): Promise<number> => {
+  // VE-2: If matrix is null (provider down/failed), compute direct haversine
+  // fallback per leg without triggering repeated pairwise network calls with timeouts.
+  const legByIndex = (fromIdx: number, toIdx: number): number => {
     if (matrix) {
       const seconds = matrix[fromIdx]?.[toIdx];
       if (seconds != null && Number.isFinite(seconds)) return Math.round(seconds);
     }
-    return travelSeconds(waypoints[fromIdx], waypoints[toIdx]);
+    const dist = haversineMetres(waypoints[fromIdx], waypoints[toIdx]);
+    return Math.round((dist * ROAD_FACTOR) / URBAN_SPEED_MS);
   };
 
   let t = 0;
@@ -252,14 +280,14 @@ export async function etaSecondsToNewPatient(
     const stopIdx = i + 1;
     // Skip travel if already on_site or in_treatment (van is already there)
     if (stop.phase !== "on_site" && stop.phase !== "in_treatment") {
-      t += await legByIndex(cursorIdx, stopIdx);
+      t += legByIndex(cursorIdx, stopIdx);
     }
     t += remainingTreatmentSeconds(stop);
     t += stop.bufferMinutes * 60;
     cursorIdx = stopIdx;
   }
 
-  t += await legByIndex(cursorIdx, waypoints.length - 1);
+  t += legByIndex(cursorIdx, waypoints.length - 1);
   return Math.round(t);
 }
 
