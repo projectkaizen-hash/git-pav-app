@@ -295,6 +295,34 @@ describe("CS-49: Payment and refund integrity", () => {
     expect(meta?.toStatus).toBe("cancelled");
   });
 
+  // Decisions log #22: a staff cancellation refunds the whole deposit, and
+  // never cancels without it.
+  it("admin cancel of a paid booking refunds the whole deposit", async () => {
+    const { appt, paymentIntentId } = await createTestAppointment("confirmed", 2000);
+    const res = await fetch(`${baseUrl}/api/admin/appointments/${appt.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockRefundCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_intent: paymentIntentId, amount: 2000 }),
+      { idempotencyKey: `admin-cancel-refund:${appt.id}:2000` }
+    );
+  });
+
+  it("admin cancel leaves a paid booking as it was when the refund fails", async () => {
+    const { appt } = await createTestAppointment("confirmed", 2000);
+    mockRefundCreate.mockRejectedValueOnce(new Error("stripe down"));
+    const res = await fetch(`${baseUrl}/api/admin/appointments/${appt.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    expect(res.status).toBe(502);
+    expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).status).toBe("confirmed");
+  });
+
   afterAll(async () => {
     if (createdApptIds.length > 0) {
       await prisma.appointment.deleteMany({ where: { id: { in: createdApptIds } } });
