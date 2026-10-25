@@ -95,6 +95,9 @@ export default function RootLayout() {
 
     async function hydrate() {
       try {
+        // MA-3: Hydrate biometric lock preference on cold start
+        await useAppLockStore.getState().hydrateBiometricPreference();
+
         const refreshToken = await tokenStore.getRefreshToken();
         if (refreshToken) {
           // Attempt silent refresh using stored refresh token

@@ -1,6 +1,19 @@
 import { create } from 'zustand';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { tokenStore } from '@/lib/token-store';
+import { useAuthStore } from '@/features/auth/auth-store';
+
+let localAuthModule: any = null;
+try {
+  localAuthModule = require('expo-local-authentication');
+} catch {}
+
+export function setLocalAuthModuleForTesting(mock: any) {
+  localAuthModule = mock;
+}
+
+export function getLocalAuthModule() {
+  return localAuthModule;
+}
 
 interface AppLockState {
   isLocked: boolean;
@@ -23,31 +36,42 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
   lockTimeoutMs: 60 * 1000, // 1 minute default
   requiresBiometric: false,
 
-  lock: () => set({ isLocked: true }),
+  lock: () => {
+    set({ isLocked: true });
+    useAuthStore.getState().setBiometricUnlocked(false);
+  },
 
-  setRequiresBiometric: (enabled: boolean) => set({ requiresBiometric: enabled }),
+  setRequiresBiometric: (enabled: boolean) => {
+    set({ requiresBiometric: enabled, isLocked: enabled ? get().isLocked : false });
+  },
 
   hydrateBiometricPreference: async () => {
     try {
       const enabled = await tokenStore.getBiometricEnabled();
-      set({ requiresBiometric: enabled });
+      set({
+        requiresBiometric: enabled,
+        // MA-3: When biometric lock is enabled, start locked on hydrate (cold start)
+        isLocked: enabled ? true : false,
+      });
+      if (enabled) {
+        useAuthStore.getState().setBiometricUnlocked(false);
+      } else {
+        useAuthStore.getState().setBiometricUnlocked(true);
+      }
     } catch {
-      set({ requiresBiometric: false });
+      set({ requiresBiometric: false, isLocked: false });
     }
   },
 
   unlock: async () => {
     try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (!hasHardware || !isEnrolled) {
-        // Device doesn't support biometrics or not enrolled - auto-unlock
-        set({ isLocked: false });
-        return true;
+      // MA-3: Do NOT auto-unlock if device has no biometrics enrolled or lacks hardware.
+      // Always prompt authenticateAsync which uses device passcode fallback (disableDeviceFallback: false).
+      if (!localAuthModule?.authenticateAsync) {
+        return false;
       }
 
-      const result = await LocalAuthentication.authenticateAsync({
+      const result = await localAuthModule.authenticateAsync({
         promptMessage: 'Authenticate to access your health data',
         fallbackLabel: 'Use passcode',
         cancelLabel: 'Cancel',
@@ -56,6 +80,7 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
 
       if (result.success) {
         set({ isLocked: false });
+        useAuthStore.getState().setBiometricUnlocked(true);
         return true;
       }
 
@@ -83,6 +108,7 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
       const timeInBackground = Date.now() - backgroundedAt;
       if (timeInBackground > lockTimeoutMs) {
         set({ isLocked: true });
+        useAuthStore.getState().setBiometricUnlocked(false);
       }
     }
 
@@ -91,4 +117,4 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
 }));
 
 // Hydrate stored biometric preference on module load
-useAppLockStore.getState().hydrateBiometricPreference();
+useAppLockStore.getState().hydrateBiometricPreference().catch(() => {});
