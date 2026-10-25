@@ -261,7 +261,8 @@ export interface Prescription {
   dosageInstructions: string;
   dispensingPharmacy: string;
   epsTransactionRef?: string;
-  dispatchedAt: string;
+  dispatchedAt?: string | null;
+  createdAt?: string;
 }
 
 export interface CreatePrescriptionRequest {

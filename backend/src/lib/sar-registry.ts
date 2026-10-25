@@ -112,7 +112,7 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
   Prescription: async (prisma, { profileId }) => {
     return prisma.prescription.findMany({
       where: { appointment: { patientId: profileId } },
-      orderBy: { dispatchedAt: "desc" },
+      orderBy: { createdAt: "desc" },
     });
   },
 
