@@ -15,6 +15,12 @@ import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
 
 const router = Router();
 
+const authLimiterMiddleware = (req: Request, res: Response, next: any) => {
+  const limiter = req.app.get("authLimiter");
+  if (typeof limiter === "function") return limiter(req, res, next);
+  return next();
+};
+
 /** How long a just-rotated refresh token still gets the new one (AT-5). */
 const REFRESH_GRACE_SECONDS = 30;
 
@@ -36,7 +42,7 @@ router.post("/check-email", validateBody(checkEmailSchema), async (req: Request,
 });
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
-router.post("/register", validateBody(registerSchema), async (req: Request, res: Response) => {
+router.post("/register", authLimiterMiddleware, validateBody(registerSchema), async (req: Request, res: Response) => {
   const { email, password, firstName, lastName, phone } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -100,7 +106,7 @@ router.post("/register", validateBody(registerSchema), async (req: Request, res:
 });
 
 // ─── POST /api/auth/login ──────────────────────────────────────────────────────
-router.post("/login", validateBody(loginSchema), async (req: Request, res: Response) => {
+router.post("/login", authLimiterMiddleware, validateBody(loginSchema), async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({
@@ -119,26 +125,36 @@ router.post("/login", validateBody(loginSchema), async (req: Request, res: Respo
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
+  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+  const ipHash = pseudonymiseIp(clientIp);
+  const userIpLockKey = `login-lock:${user.id}:${ipHash}`;
+  const userIpFailKey = `login-fail:${user.id}:${ipHash}`;
+
+  const isUserIpLocked = await redis.get(userIpLockKey).catch(() => null);
+  if (isUserIpLocked) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
   const valid = await argon2.verify(user.passwordHash, password);
   if (!valid) {
-    // Increment failed login attempts
-    const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-    const lockoutThreshold = 5;
-    
-    const updateData: any = {
-      failedLoginAttempts: failedAttempts,
-    };
-
-    // Implement exponential backoff lockout
-    if (failedAttempts >= lockoutThreshold) {
-      const lockDuration = Math.min(2 ** (failedAttempts - lockoutThreshold) * 60, 60 * 60); // Max 1 hour
-      updateData.lockedUntil = new Date(Date.now() + lockDuration * 1000);
-    }
-
-    await prisma.user.update({
+    // AT-7: Increment failed login attempts atomically in DB
+    const updated = await prisma.user.update({
       where: { id: user.id },
-      data: updateData,
+      data: { failedLoginAttempts: { increment: 1 } },
+      select: { failedLoginAttempts: true },
     });
+    const failedAttempts = updated.failedLoginAttempts;
+    const lockoutThreshold = 5;
+
+    // Exponential backoff for this attacker's IP in Redis against this user
+    const ipFails = await redis.incr(userIpFailKey).catch(() => 1);
+    if (ipFails === 1) {
+      await redis.expire(userIpFailKey, 900).catch(() => {});
+    }
+    if (ipFails >= lockoutThreshold) {
+      const lockDuration = Math.min(2 ** (ipFails - lockoutThreshold) * 60, 3600);
+      await redis.set(userIpLockKey, "1", "EX", lockDuration).catch(() => {});
+    }
 
     return res.status(401).json({ error: "Invalid credentials" });
   }
@@ -151,10 +167,15 @@ router.post("/login", validateBody(loginSchema), async (req: Request, res: Respo
       lockedUntil: null,
     },
   });
+  await redis.del(userIpFailKey).catch(() => {});
+  await redis.del(userIpLockKey).catch(() => {});
+
+  // AT-7: If account had suspicious failed attempts from other IPs, enforce step-up MFA
+  const isSuspiciousLogin = (user.failedLoginAttempts || 0) >= 5;
 
   // Staff always need a second factor; patients only if they turned it on
   // (CS-08, MF-1). The session is created only once the code is checked.
-  const needsCode = user.mfaEnabled || MFA_REQUIRED_ROLES.includes(user.role);
+  const needsCode = user.mfaEnabled || MFA_REQUIRED_ROLES.includes(user.role) || isSuspiciousLogin;
   if (needsCode && !req.body.mfaCode) {
     if (await rateLimiter.isRateLimited(`login-code:${user.id}`, 5, 900)) {
       return res.status(429).json({ error: "Too many codes requested. Please try again later." });
@@ -337,7 +358,7 @@ router.delete("/sessions/:id", requireAuth, async (req: AuthRequest, res: Respon
 });
 
 // ─── POST /api/auth/verify-email/request ─────────────────────────────────────
-router.post("/verify-email/request", async (req: Request, res: Response) => {
+router.post("/verify-email/request", authLimiterMiddleware, async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
@@ -377,7 +398,7 @@ router.post("/verify-email/request", async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/auth/verify-email/confirm ─────────────────────────────────────
-router.post("/verify-email/confirm", async (req: Request, res: Response) => {
+router.post("/verify-email/confirm", authLimiterMiddleware, async (req: Request, res: Response) => {
   const { token } = req.body;
 
   if (!token) {
@@ -386,37 +407,39 @@ router.post("/verify-email/confirm", async (req: Request, res: Response) => {
 
   const hashedToken = hashToken(token);
 
-  // Find valid token
-  const verificationToken = await prisma.emailVerificationToken.findFirst({
+  // CS-54: Mark token as used conditionally (race-proof single-redemption)
+  const consumed = await prisma.emailVerificationToken.updateMany({
     where: {
       token: hashedToken,
       expiresAt: { gt: new Date() },
       usedAt: null,
     },
-    include: { user: true },
-  });
-
-  if (!verificationToken) {
-    return res.status(400).json({ error: "Invalid or expired token" });
-  }
-
-  // Mark token as used
-  await prisma.emailVerificationToken.update({
-    where: { id: verificationToken.id },
     data: { usedAt: new Date() },
   });
 
-  // Verify user email
-  await prisma.user.update({
-    where: { id: verificationToken.userId },
-    data: { emailVerified: true },
+  if (consumed.count !== 1) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+
+  // Find valid token to retrieve user
+  const verificationToken = await prisma.emailVerificationToken.findFirst({
+    where: { token: hashedToken },
+    select: { userId: true },
   });
+
+  if (verificationToken) {
+    // Verify user email
+    await prisma.user.update({
+      where: { id: verificationToken.userId },
+      data: { emailVerified: true },
+    });
+  }
 
   return res.json({ message: "Email verified successfully" });
 });
 
 // ─── POST /api/auth/password-reset/request ───────────────────────────────────
-router.post("/password-reset/request", async (req: Request, res: Response) => {
+router.post("/password-reset/request", authLimiterMiddleware, async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
@@ -454,7 +477,7 @@ router.post("/password-reset/request", async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/auth/password-reset/confirm ───────────────────────────────────
-router.post("/password-reset/confirm", async (req: Request, res: Response) => {
+router.post("/password-reset/confirm", authLimiterMiddleware, async (req: Request, res: Response) => {
   const { token, newPassword } = req.body;
 
   if (!token || !newPassword) {
@@ -477,14 +500,23 @@ router.post("/password-reset/confirm", async (req: Request, res: Response) => {
 
   const hashedToken = hashToken(token);
 
-  // Find valid token
-  const resetToken = await prisma.passwordResetToken.findFirst({
+  // CS-54: Mark token as used conditionally (race-proof single-redemption)
+  const consumed = await prisma.passwordResetToken.updateMany({
     where: {
       token: hashedToken,
       expiresAt: { gt: new Date() },
       usedAt: null,
     },
-    include: { user: true },
+    data: { usedAt: new Date() },
+  });
+
+  if (consumed.count !== 1) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: { token: hashedToken },
+    select: { userId: true },
   });
 
   if (!resetToken) {
@@ -499,12 +531,6 @@ router.post("/password-reset/confirm", async (req: Request, res: Response) => {
     parallelism: 4,
   });
 
-  // Mark token as used
-  await prisma.passwordResetToken.update({
-    where: { id: resetToken.id },
-    data: { usedAt: new Date() },
-  });
-
   // Update user password
   await prisma.user.update({
     where: { id: resetToken.userId },
@@ -515,7 +541,7 @@ router.post("/password-reset/confirm", async (req: Request, res: Response) => {
     },
   });
 
-  // Revoke all sessions
+  // Revoke all sessions and deactivate push tokens
   await revokeSessions({ userId: resetToken.userId });
 
   return res.json({ message: "Password reset successfully" });

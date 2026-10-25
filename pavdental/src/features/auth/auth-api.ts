@@ -156,9 +156,13 @@ export const authApi = {
     return data;
   },
 
-  signOut: async () => {
+  signOut: async (pushToken?: string) => {
     try {
-      await authFetch("/api/auth/logout", { method: "POST" });
+      await authFetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pushToken ? { pushToken } : {}),
+      });
     } catch {
       // Network failure on logout shouldn't prevent clearing local state
     } finally {

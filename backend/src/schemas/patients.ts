@@ -18,9 +18,19 @@ export const updatePatientProfileSchema = z.object({
   city: z.string().trim().max(100).optional(),
   postcode: postcode.optional(),
   phone: phone.optional(),
+  phoneOtp: z.string().trim().min(4).max(10).optional(),
   emergencyContactName: name.optional(),
   emergencyContactPhone: phone.optional(),
   medicalHistory: z.record(z.unknown()).optional(),
+}).strict();
+
+export const requestPhoneChangeSchema = z.object({
+  newPhone: phone,
+}).strict();
+
+export const verifyPhoneChangeSchema = z.object({
+  newPhone: phone,
+  code: z.string().trim().min(4).max(10),
 }).strict();
 
 export const updateOdontogramSchema = z.object({

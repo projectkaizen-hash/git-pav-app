@@ -89,9 +89,10 @@ app.use(attachOptionalAuth);
 // Deployed, counters live in Redis so all replicas share them. Locally they stay
 // in memory so repeated test runs don't accumulate. See middleware/rate-limits.ts.
 const { globalLimiter, authLimiter } = buildRateLimiters({
-  production: env.isProduction,
+  production: env.isProduction || env.isStaging,
   redis: env.isProduction || env.isStaging ? redis : undefined,
 });
+app.set("authLimiter", authLimiter);
 app.use(globalLimiter);
 app.use(standardResponse);
 
@@ -178,7 +179,8 @@ app.use("/api/public/van", publicVanRoutes);
 app.use("/api/auth/account", auditMiddleware, authAccountRoutes);
 // Phone-OTP login (see routes/auth-otp.ts) — strict limiter, applied once.
 app.use("/api/auth/otp", authLimiter, auditMiddleware, authOtpRoutes);
-app.use("/api/auth", authLimiter, auditMiddleware, authRoutes);
+// CS-54: authLimiter applied specifically to login/register/reset routes within authRoutes
+app.use("/api/auth", auditMiddleware, authRoutes);
 // Mount specific /api/patients/dependants before generic /api/patients/:id
 app.use("/api/patients/dependants", auditMiddleware, patientDependantsRoutes);
 app.use("/api/patients", requireAuth, auditMiddleware, patientRoutes);

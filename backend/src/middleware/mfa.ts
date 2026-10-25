@@ -63,7 +63,7 @@ async function markMFAVerifiedInSession(userId: string, sessionId: string): Prom
 /**
  * Middleware to require MFA for privileged operations
  */
-export function requireMFA(req: AuthRequest, res: Response, next: NextFunction) {
+export async function requireMFA(req: AuthRequest, res: Response, next: NextFunction) {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -73,8 +73,9 @@ export function requireMFA(req: AuthRequest, res: Response, next: NextFunction) 
     return next();
   }
 
-  // Check if MFA is enabled for user
-  isMFAEnabled(req.user.sub).then((enabled) => {
+  try {
+    // Check if MFA is enabled for user
+    const enabled = await isMFAEnabled(req.user.sub);
     if (!enabled) {
       return res.status(403).json({ 
         error: 'MFA not enabled',
@@ -83,18 +84,18 @@ export function requireMFA(req: AuthRequest, res: Response, next: NextFunction) 
     }
 
     // Check if MFA was verified in current session
-    isMFAVerifiedInSession(req.user!.sub, req.user!.sessionId).then((verified) => {
-      if (verified) {
-        return next();
-      }
-
-      // MFA not verified
+    const verified = await isMFAVerifiedInSession(req.user.sub, req.user.sessionId);
+    if (!verified) {
       return res.status(403).json({ 
         error: 'MFA required',
         message: 'Please complete MFA verification',
       });
-    });
-  });
+    }
+
+    return next();
+  } catch {
+    return res.status(500).json({ error: 'Could not verify MFA status' });
+  }
 }
 
 /**
