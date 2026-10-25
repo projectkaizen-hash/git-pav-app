@@ -21,6 +21,10 @@ function deployed(overrides: Record<string, unknown> = {}) {
     postmarkServerToken: "unittest-postmark-token-not-real",
     dailyApiKey: "unittest-daily-key-not-real",
     s3BucketName: "unittest-bucket",
+    prescriptionSigningKey: "unittest-signing-key-not-real",
+    twilioAccountSid: "unittest-twilio-sid-not-real",
+    twilioAuthToken: "unittest-twilio-token-not-real",
+    twilioFromPhone: "+447700900000",
     ...overrides,
   };
 }
@@ -140,6 +144,10 @@ describe("validateDeployedConfig", () => {
     ["dailyApiKey", "stub", /DAILY_API_KEY/],
     ["dailyApiKey", "replace_with_daily_api_key", /DAILY_API_KEY/],
     ["s3BucketName", undefined, /S3_BUCKET_NAME/],
+    ["prescriptionSigningKey", undefined, /PRESCRIPTION_SIGNING_KEY/],
+    ["twilioAccountSid", undefined, /TWILIO_ACCOUNT_SID/],
+    ["twilioAuthToken", "replace_me", /TWILIO_AUTH_TOKEN/],
+    ["twilioFromPhone", undefined, /TWILIO_FROM_PHONE/],
   ])("production rejects %s = %p", (field, value, pattern) => {
     expect(() => validateDeployedConfig("production", deployed({ [field]: value }))).toThrow(pattern);
   });
@@ -152,6 +160,8 @@ describe("validateDeployedConfig", () => {
       postmarkServerToken: undefined,
       dailyApiKey: "stub",
       s3BucketName: undefined,
+      prescriptionSigningKey: undefined,
+      twilioAccountSid: undefined,
     });
     expect(() => validateDeployedConfig("staging", staging)).not.toThrow();
     expect(deployedServiceGaps(staging)).toEqual([
@@ -159,6 +169,8 @@ describe("validateDeployedConfig", () => {
       "POSTMARK_SERVER_TOKEN",
       "DAILY_API_KEY",
       "S3_BUCKET_NAME",
+      "PRESCRIPTION_SIGNING_KEY",
+      "TWILIO_ACCOUNT_SID",
     ]);
   });
 });
