@@ -339,44 +339,48 @@ router.post("/shift/end", requireAuth, requireRole("operator"), async (req: Auth
     });
   }
 
-  // Expire pending requests one by one so each deposit hold is released.
+  // Expire pending requests one by one under the accept lock so each deposit hold is released
+  // and no accept can race with shift ending (CS-49).
   // Failures are reported but never block ending the shift — the expiry
   // sweeper retries failed releases on its next pass.
-  const pendingRequests = await prisma.vanServiceRequest.findMany({
-    where: { shiftId: shift.id, status: "pending" },
-    select: { id: true, patientId: true, paymentIntentId: true },
-  });
   const failedReleases: string[] = [];
-  for (const pending of pendingRequests) {
-    let releaseStatus: string | null = null;
-    let releasedAt: Date | null = null;
-    if (pending.paymentIntentId) {
-      const release = await releaseVanDeposit(pending.paymentIntentId, "shift_ended");
-      releaseStatus = release.status;
-      if (release.status === "failed") {
-        failedReleases.push(pending.id);
-      } else if (["released", "already_released", "refunded"].includes(release.status)) {
-        releasedAt = new Date();
-      }
-    }
-    await prisma.vanServiceRequest.update({
-      where: { id: pending.id },
-      data: {
-        status: "expired",
-        depositReleaseStatus: releaseStatus,
-        depositReleasedAt: releasedAt,
-      },
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`van-accept:${shift.id}`}))`;
+    const pendingRequests = await tx.vanServiceRequest.findMany({
+      where: { shiftId: shift.id, status: "pending" },
+      select: { id: true, patientId: true, paymentIntentId: true },
     });
-    const message = releaseStatus === "failed"
-      ? "The van has ended its shift before accepting your request. We are releasing your deposit hold."
-      : "The van has ended its shift before accepting your request. No deposit was taken — please try again later.";
-    await sendPatientNotification(
-      pending.patientId,
-      "Van Went Offline",
-      message,
-      { requestId: pending.id, status: "expired" }
-    );
-  }
+    for (const pending of pendingRequests) {
+      let releaseStatus: string | null = null;
+      let releasedAt: Date | null = null;
+      if (pending.paymentIntentId) {
+        const release = await releaseVanDeposit(pending.paymentIntentId, "shift_ended");
+        releaseStatus = release.status;
+        if (release.status === "failed") {
+          failedReleases.push(pending.id);
+        } else if (["released", "already_released", "refunded"].includes(release.status)) {
+          releasedAt = new Date();
+        }
+      }
+      await tx.vanServiceRequest.update({
+        where: { id: pending.id },
+        data: {
+          status: "expired",
+          depositReleaseStatus: releaseStatus as any,
+          depositReleasedAt: releasedAt,
+        },
+      });
+      const message = releaseStatus === "failed"
+        ? "The van has ended its shift before accepting your request. We are releasing your deposit hold."
+        : "The van has ended its shift before accepting your request. No deposit was taken — please try again later.";
+      await sendPatientNotification(
+        pending.patientId,
+        "Van Went Offline",
+        message,
+        { requestId: pending.id, status: "expired" }
+      ).catch(() => {});
+    }
+  }, { maxWait: 10_000, timeout: 30_000 });
   if (failedReleases.length > 0) {
     console.error(`[VAN SHIFT END] Failed to release deposits for requests: ${failedReleases.join(", ")}`);
   }
@@ -678,45 +682,68 @@ router.post("/requests/:id/decline", requireAuth, requireRole("operator"), valid
   if (!shift) return res.status(404).json({ error: "No active shift" });
 
   const requestId = String(req.params.id);
-  const request = await prisma.vanServiceRequest.findUnique({ where: { id: requestId } });
-  if (!request) return res.status(404).json({ error: "Request not found" });
-  if (request.shiftId !== shift.id) return res.status(403).json({ error: "Request not on your shift" });
-  if (request.status !== "pending") return res.status(409).json({ error: `Request is already ${request.status}` });
+  // Run decline under the accept lock with compare-and-set so accept and decline cannot race (CS-49)
+  const outcome = await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`van-accept:${shift.id}`}))`;
+      const request = await tx.vanServiceRequest.findUnique({ where: { id: requestId } });
+      if (!request) return { status: 404, body: { error: "Request not found" } };
+      if (request.shiftId !== shift.id) return { status: 403, body: { error: "Request not on your shift" } };
+      if (request.status !== "pending") return { status: 409, body: { error: `Request is already ${request.status}` } };
 
-  // Lift the patient's deposit hold (or invalidate the unconfirmed intent so
-  // its client secret can no longer be used). Failure is non-blocking: the
-  // request is still declined; the sweeper retries releases on its next pass.
-  let releaseStatus: VanDepositReleaseStatus | null = null;
-  let releasedAt: Date | null = null;
-  if (request.paymentIntentId) {
-    const release = await releaseVanDeposit(request.paymentIntentId, "operator_declined");
-    releaseStatus = release.status;
-    if (["released", "already_released", "refunded"].includes(release.status)) {
-      releasedAt = new Date();
-    }
+      const claimed = await tx.vanServiceRequest.updateMany({
+        where: { id: request.id, status: "pending" },
+        data: { status: "declined" },
+      });
+      if (claimed.count !== 1) {
+        return { status: 409, body: { error: "Request changed while declining" } };
+      }
+
+      let releaseStatus: VanDepositReleaseStatus | null = null;
+      let releasedAt: Date | null = null;
+      if (request.paymentIntentId) {
+        const release = await releaseVanDeposit(request.paymentIntentId, "operator_declined");
+        releaseStatus = release.status;
+        if (["released", "already_released", "refunded"].includes(release.status)) {
+          releasedAt = new Date();
+        }
+      }
+
+      const updated = await tx.vanServiceRequest.update({
+        where: { id: request.id },
+        data: {
+          depositReleaseStatus: releaseStatus,
+          depositReleasedAt: releasedAt,
+        },
+      });
+
+      return {
+        status: 200,
+        body: { ...updated, releaseStatus },
+        patientId: request.patientId,
+        requestId: request.id,
+        releaseStatus,
+      };
+    },
+    { maxWait: 10_000, timeout: 30_000 }
+  );
+
+  if (outcome.status !== 200) {
+    return res.status(outcome.status).json(outcome.body);
   }
 
-  const updated = await prisma.vanServiceRequest.update({
-    where: { id: request.id },
-    data: {
-      status: "declined",
-      depositReleaseStatus: releaseStatus,
-      depositReleasedAt: releasedAt,
-    },
-  });
-
-  // Send notification to patient
-  const declineMessage = releaseStatus === "failed"
+  // Send notification to patient outside the transaction
+  const declineMessage = outcome.releaseStatus === "failed"
     ? "Unfortunately, your van visit request could not be accommodated at this time. We are releasing your deposit hold."
     : "Unfortunately, your van visit request could not be accommodated at this time. No deposit was taken — please try again later.";
   await sendPatientNotification(
-    request.patientId,
+    outcome.patientId!,
     "Van Request Declined",
     declineMessage,
-    { requestId: request.id, status: "declined" }
-  );
+    { requestId: outcome.requestId, status: "declined" }
+  ).catch(() => {});
 
-  return res.json({ ...updated, releaseStatus });
+  return res.json(outcome.body);
 });
 
 // POST /api/van/requests/:id/phase
@@ -1288,58 +1315,84 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
     return res.status(409).json({ error: `Request is already ${request.status}` });
   }
 
-  // Release the deposit BEFORE marking the request cancelled: if Stripe fails
-  // we return an error and leave the request in its current state, so the
-  // patient can retry the cancel (and so we never strand a hold on a request
-  // we claim is already over). A captured deposit is refunded unless the van
-  // is already en route or on site (vanCancellationKeepsDeposit).
-  const keepsDeposit = vanCancellationKeepsDeposit(request.phase);
-  let depositOutcome: string | null = null;
-  if (request.paymentIntentId) {
-    const release = await releaseVanDeposit(request.paymentIntentId, "patient_cancelled", {
-      retainCaptured: keepsDeposit,
-    });
-    depositOutcome = release.status;
-    if (release.status === "failed") {
+  // Run cancel under the shift accept lock with compare-and-set so accept and cancel cannot race (CS-49)
+  let outcome: { status: number; body: any; depositOutcome?: string | null };
+  try {
+    outcome = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`van-accept:${request.shiftId}`}))`;
+
+        const fresh = await tx.vanServiceRequest.findUnique({ where: { id: request.id } });
+        if (!fresh || !["pending", "accepted", "in_progress"].includes(fresh.status)) {
+          return { status: 409, body: { error: `Request is already ${fresh?.status ?? "unknown"}` } };
+        }
+
+        const cancelled = await tx.vanServiceRequest.updateMany({
+          where: { id: fresh.id, status: fresh.status, appointmentId: fresh.appointmentId },
+          data: {
+            status: "cancelled",
+            phase: "cancelled",
+          },
+        });
+        if (cancelled.count !== 1) {
+          return { status: 409, body: { error: "Request changed while cancelling. Please try again." } };
+        }
+
+        const keepsDeposit = vanCancellationKeepsDeposit(fresh.phase);
+        let depositOutcome: string | null = null;
+        if (fresh.paymentIntentId) {
+          const release = await releaseVanDeposit(fresh.paymentIntentId, "patient_cancelled", {
+            retainCaptured: keepsDeposit,
+          });
+          depositOutcome = release.status;
+          if (release.status === "failed") {
+            throw new Error("Could not release deposit");
+          }
+        }
+
+        const updated = await tx.vanServiceRequest.update({
+          where: { id: fresh.id },
+          data: {
+            depositReleaseStatus: depositOutcome as any,
+            depositReleasedAt: ["released", "already_released", "refunded", "retained"].includes(depositOutcome ?? "") ? new Date() : null,
+          },
+        });
+
+        if (fresh.appointmentId) {
+          await tx.appointment.updateMany({
+            where: { id: fresh.appointmentId },
+            data: { status: "cancelled" },
+          });
+        }
+
+        if (fresh.status === "accepted" || fresh.status === "in_progress") {
+          await renumberQueue(tx, fresh.shiftId, "queue_position");
+        }
+
+        return {
+          status: 200,
+          body: { ...updated, depositOutcome, depositRetained: depositOutcome === "retained" },
+          depositOutcome,
+        };
+      },
+      { maxWait: 10_000, timeout: 30_000 }
+    );
+  } catch (err: any) {
+    if (err?.message === "Could not release deposit") {
       return res.status(502).json({
         error: "Could not release deposit",
         message: "The payment hold could not be released right now. Please try cancelling again in a moment.",
       });
     }
+    throw err;
   }
 
-  // Only if nothing changed since it was read: an operator accepting in the
-  // meantime has created an appointment this request doesn't know about yet.
-  // The deposit step above is safe to repeat, so the patient can retry.
-  const cancelled = await prisma.vanServiceRequest.updateMany({
-    where: { id: request.id, status: request.status, appointmentId: request.appointmentId },
-    data: {
-      status: "cancelled",
-      phase: "cancelled",
-      depositReleaseStatus: depositOutcome,
-      depositReleasedAt:
-        ["released", "already_released", "refunded", "retained"].includes(depositOutcome ?? "")
-          ? new Date()
-          : null,
-    },
-  });
-  if (cancelled.count !== 1) {
-    return res.status(409).json({ error: "Request changed while cancelling. Please try again." });
+  if (outcome.status !== 200) {
+    return res.status(outcome.status).json(outcome.body);
   }
-  const updated = await prisma.vanServiceRequest.findUniqueOrThrow({ where: { id: request.id } });
 
-  // Cancel linked appointment if it exists
   if (request.appointmentId) {
-    await prisma.appointment.update({
-      where: { id: request.appointmentId },
-      data: { status: "cancelled" },
-    });
     await cancelAppointmentReminders(request.appointmentId).catch(() => {});
-  }
-
-  // Renumber queue if this was an accepted stop
-  if (request.status === "accepted" || request.status === "in_progress") {
-    await renumberQueue(prisma, request.shiftId, "queue_position");
   }
 
   // Cancellation shortens everyone else's chain — recompute their ETAs.
@@ -1347,7 +1400,7 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
     console.error("[VAN ETA PUSH] post-cancel broadcast failed:", err)
   );
 
-  return res.json({ ...updated, depositOutcome, depositRetained: depositOutcome === "retained" });
+  return res.json(outcome.body);
 });
 
 export default router;

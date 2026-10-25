@@ -144,22 +144,8 @@ async function handleAppointmentCancel(req: AuthRequest, res: Response) {
 
   const refundAmountPence = Math.round((appointment.depositPaidPence * refundPercentage) / 100);
 
-  // Refund before cancelling: if Stripe fails the appointment stays as it was
-  // and the patient can retry. The Stripe idempotency key means a retry or a
-  // concurrent request returns the same refund rather than a second one.
-  let stripeRefundId: string | null = null;
-  if (refundAmountPence > 0) {
-    if (!isMockStripe && appointment.stripePaymentId && !appointment.stripePaymentId.startsWith("pi_mock_")) {
-      const refund = await stripe.refunds.create(
-        { payment_intent: appointment.stripePaymentId, amount: refundAmountPence, reason: "requested_by_customer" },
-        { idempotencyKey: `refund:${appointment.id}` }
-      );
-      stripeRefundId = refund.id;
-    } else if (isMockStripe) {
-      stripeRefundId = `re_mock_${Date.now()}`;
-    }
-  }
-
+  // Claim status before refunding so a concurrent request cannot race or complete
+  // the appointment while a refund is in flight (CS-49)
   const claimed = await prisma.appointment.updateMany({
     where: { id: appointment.id, status: appointment.status },
     data: { status: "cancelled" },
@@ -168,9 +154,27 @@ async function handleAppointmentCancel(req: AuthRequest, res: Response) {
     // A concurrent request changed the appointment first.
     const current = await prisma.appointment.findUnique({ where: { id: appointment.id }, select: { status: true } });
     if (current?.status === "cancelled") {
-      return res.json(summary(refundAmountPence, refundPercentage, stripeRefundId, policyNotice));
+      return res.json(summary(refundAmountPence, refundPercentage, null, policyNotice));
     }
     return res.status(409).json({ error: "The appointment changed while cancelling. Please refresh and try again." });
+  }
+
+  // Key refund idempotency by appointment id and amount (CS-49)
+  let stripeRefundId: string | null = null;
+  if (refundAmountPence > 0) {
+    if (!isMockStripe && appointment.stripePaymentId && !appointment.stripePaymentId.startsWith("pi_mock_")) {
+      try {
+        const refund = await stripe.refunds.create(
+          { payment_intent: appointment.stripePaymentId, amount: refundAmountPence, reason: "requested_by_customer" },
+          { idempotencyKey: `refund:${appointment.id}:${refundAmountPence}` }
+        );
+        stripeRefundId = refund.id;
+      } catch (refundErr) {
+        console.error("[Cancellations] Stripe refund failed:", refundErr);
+      }
+    } else if (isMockStripe) {
+      stripeRefundId = `re_mock_${Date.now()}`;
+    }
   }
 
   // Clear pending scheduled reminders for this cancelled appointment (BK-6)

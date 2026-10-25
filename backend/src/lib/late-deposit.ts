@@ -11,10 +11,18 @@ import { sendPatientNotification } from "./patient-push";
 
 export const LATE_DEPOSIT_AUDIT_ACTION = "appointment.late_deposit_refunded";
 
-/** True when a deposit arriving now can no longer confirm the appointment. */
+/** True when a deposit arriving now can no longer confirm the appointment because its slot hold expired. */
 export function isLateForHold(appointment: { status: string; holdExpiresAt: Date | null }, now = new Date()): boolean {
-  if (appointment.status === "cancelled") return true;
-  return appointment.status === "draft_hold" && appointment.holdExpiresAt !== null && appointment.holdExpiresAt <= now;
+  if (appointment.status === "draft_hold") {
+    return appointment.holdExpiresAt !== null && appointment.holdExpiresAt <= now;
+  }
+  if (appointment.status === "cancelled") {
+    // Only an unconfirmed draft hold (holdExpiresAt !== null) is late.
+    // A patient cancellation of a confirmed booking (where confirmation cleared holdExpiresAt to null)
+    // is never late for hold and cannot be turned into a full refund (CS-49).
+    return appointment.holdExpiresAt !== null;
+  }
+  return false;
 }
 
 export type LateDepositOutcome = "refunded" | "already_refunded" | "mock";

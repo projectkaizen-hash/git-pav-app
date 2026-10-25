@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import argon2 from "argon2";
+import Stripe from "stripe";
 import { Router, Response } from "express";
+import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { awardVisitPoints } from "../lib/rewards";
 import { cancelAppointmentReminders } from "../lib/background-jobs";
@@ -175,17 +177,50 @@ router.get("/appointments", requireAuth, requireRole("admin"), validateQuery(adm
 });
 
 // ─── PATCH /api/admin/appointments/:id/status ─────────────────────────────────
-// Admin status override
+// Admin status override (CS-49: allowed transitions only, cancels through refund path, audit from and to)
+const ALLOWED_ADMIN_STATUS_TRANSITIONS: Record<string, string[]> = {
+  draft_hold: ["cancelled"],
+  confirmed: ["in_progress", "completed", "no_show", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  no_show: [],
+  completed: [],
+  cancelled: [],
+};
+
 router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), validateParams(appointmentIdParamsSchema), validateBody(updateAppointmentStatusSchema), async (req: AuthRequest, res: Response) => {
   const appointmentId = String(req.params.id);
   const { status } = req.body;
 
   const existing = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    select: { id: true },
+    select: { id: true, status: true, depositPaidPence: true, stripePaymentId: true },
   });
   if (!existing) {
     return res.status(404).json({ error: "Appointment not found" });
+  }
+
+  if (existing.status === status) {
+    return res.json({ id: existing.id, status: existing.status });
+  }
+
+  const allowed = ALLOWED_ADMIN_STATUS_TRANSITIONS[existing.status] || [];
+  if (!allowed.includes(status)) {
+    return res.status(409).json({ error: `Cannot transition appointment from ${existing.status} to ${status}` });
+  }
+
+  // If cancelling a booking where deposit was paid, issue refund through Stripe
+  if (status === "cancelled" && existing.depositPaidPence > 0 && existing.stripePaymentId) {
+    if (!env.isMockStripe && !existing.stripePaymentId.startsWith("pi_mock_")) {
+      try {
+        const stripe = new Stripe(env.stripeSecretKey, { apiVersion: "2025-02-24.acacia" as never });
+        await stripe.refunds.create(
+          { payment_intent: existing.stripePaymentId, amount: existing.depositPaidPence, reason: "requested_by_customer" },
+          { idempotencyKey: `admin-cancel-refund:${existing.id}:${existing.depositPaidPence}` }
+        );
+      } catch (refundErr) {
+        console.error("[Admin Status] Refund failed during admin cancellation:", refundErr);
+      }
+    }
   }
 
   const updated = await prisma.appointment.update({
@@ -200,6 +235,18 @@ router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), vali
   if (updated.status === "cancelled") {
     await cancelAppointmentReminders(appointmentId).catch(() => {});
   }
+
+  await createAuditLogWithIntegrity({
+    action: "admin.appointment.status_updated",
+    actorId: req.user!.sub,
+    resourceId: appointmentId,
+    sessionId: req.user?.sessionId ?? null,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: {
+      fromStatus: existing.status,
+      toStatus: status,
+    },
+  }).catch(() => {});
 
   return res.json({ id: updated.id, status: updated.status, updatedAt: updated.updatedAt });
 });
