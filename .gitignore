@@ -13,7 +13,6 @@ uploads/
 backend/uploads/
 **/testsprite_tests/tmp/
 .freebuff/
-neo-financial-ios/
 
 # Database & Docker data
 pgdata/
