@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -33,13 +33,24 @@ export default function ForgotPasswordScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
+        <View style={styles.topNav}>
+          <IconButton
+            icon="chevronLeft"
+            label="Go back"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Reset Password
+              Reset password
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               {submitted
@@ -62,12 +73,17 @@ export default function ForgotPasswordScreen() {
             </View>
           ) : (
             <View style={styles.successCard}>
-              <ThemedText variant="headline" style={styles.successTitle}>
-                Check your inbox
-              </ThemedText>
-              <ThemedText variant="subhead" style={styles.successBody}>
-                Follow the instructions in the email to choose a new password. The link will expire in 30 minutes.
-              </ThemedText>
+              <View style={styles.successIconBox}>
+                <AppIcon name="check" size={20} color={colors.success} />
+              </View>
+              <View style={styles.successTextCol}>
+                <ThemedText variant="headline" style={styles.successTitle}>
+                  Check your inbox
+                </ThemedText>
+                <ThemedText variant="subhead" style={styles.successBody}>
+                  Follow the instructions in the email to choose a new password. The link will expire in 30 minutes.
+                </ThemedText>
+              </View>
             </View>
           )}
 
@@ -76,6 +92,7 @@ export default function ForgotPasswordScreen() {
               <Button
                 title="Send Reset Instructions"
                 size="lg"
+                arrow={true}
                 loading={loading}
                 onPress={handleSubmit}
               />
@@ -85,6 +102,7 @@ export default function ForgotPasswordScreen() {
               title="Return to Sign In"
               variant={submitted ? "primary" : "ghost"}
               size="lg"
+              arrow={submitted}
               onPress={() => router.push("/(auth)/sign-in")}
             />
           </View>
@@ -98,6 +116,7 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   flex: {
     flex: 1,
@@ -108,6 +127,7 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -118,25 +138,53 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 22,
   },
   successBody: {
     color: colors.secondaryLabel,
+    fontSize: 13,
+    lineHeight: 18,
   },
   successCard: {
     backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
-    gap: spacing.xs,
-    padding: spacing.lg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md + 2,
+    alignItems: "flex-start",
+  },
+  successIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.successSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  successTextCol: {
+    flex: 1,
+    gap: 2,
   },
   successTitle: {
-    color: colors.ink,
+    color: colors.label,
+    fontWeight: "700",
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

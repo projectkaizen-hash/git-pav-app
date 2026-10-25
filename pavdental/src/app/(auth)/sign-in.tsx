@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -11,6 +11,7 @@ export default function SignInScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email || "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,17 @@ export default function SignInScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Top Bar with Neo Financial circular back button */}
+          <View style={styles.topNav}>
+            <IconButton
+              icon="chevronLeft"
+              label="Go back"
+              variant="soft"
+              size={18}
+              onPress={() => router.back()}
+            />
+          </View>
+
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
               Welcome back
@@ -73,30 +85,30 @@ export default function SignInScreen() {
 
           {/* Quick Demo Role Fillers — development only */}
           {__DEV__ ? (
-          <View style={styles.demoRow}>
-            <ThemedText variant="caption" style={styles.demoLabel}>Demo 1-tap fill:</ThemedText>
-            <View style={styles.demoPills}>
-              {[
-                { label: "Patient", email: "patient@pavdental.com" },
-                { label: "Clinician", email: "doctor@pavdental.com" },
-                { label: "Van Operator", email: "van@pavdental.com" },
-              ].map((role) => (
-                <Pressable
-                  key={role.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Fill demo credentials for ${role.label}`}
-                  onPress={() => {
-                    setEmail(role.email);
-                    setPassword("Password123!");
-                    if (error) setError(null);
-                  }}
-                  style={styles.demoPill}
-                >
-                  <ThemedText variant="caption" style={styles.demoPillText}>{role.label}</ThemedText>
-                </Pressable>
-              ))}
+            <View style={styles.demoRow}>
+              <ThemedText variant="caption" style={styles.demoLabel}>Demo 1-tap fill:</ThemedText>
+              <View style={styles.demoPills}>
+                {[
+                  { label: "Patient", email: "patient@pavdental.com" },
+                  { label: "Clinician", email: "doctor@pavdental.com" },
+                  { label: "Van Operator", email: "van@pavdental.com" },
+                ].map((role) => (
+                  <Pressable
+                    key={role.label}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Fill demo credentials for ${role.label}`}
+                    onPress={() => {
+                      setEmail(role.email);
+                      setPassword("Password123!");
+                      if (error) setError(null);
+                    }}
+                    style={styles.demoPill}
+                  >
+                    <ThemedText variant="caption" style={styles.demoPillText}>{role.label}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          </View>
           ) : null}
 
           <View style={styles.form}>
@@ -117,13 +129,27 @@ export default function SignInScreen() {
             <Input
               label="Password"
               placeholder="Enter your password"
-              secureTextEntry
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
                 if (error) setError(null);
               }}
+              rightSlot={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={8}
+                >
+                  <AppIcon
+                    name={showPassword ? "eyeOff" : "eye"}
+                    size={18}
+                    color={colors.tertiaryLabel}
+                  />
+                </Pressable>
+              }
             />
 
             {codeSent ? (
@@ -149,7 +175,7 @@ export default function SignInScreen() {
               onPress={() => router.push("/(auth)/forgot")}
               style={styles.forgotPassPressable}
             >
-              <ThemedText variant="caption" style={styles.forgotText}>
+              <ThemedText variant="subhead" style={styles.forgotText}>
                 Forgot your password?
               </ThemedText>
             </Pressable>
@@ -159,6 +185,7 @@ export default function SignInScreen() {
             <Button
               title={codeSent ? "Verify and sign in" : "Sign In"}
               size="lg"
+              arrow
               loading={loading}
               onPress={handleSignIn}
             />
@@ -237,7 +264,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   footerLink: {
-    color: colors.ink,
+    color: colors.info,
     fontWeight: "600",
   },
   footerRow: {
@@ -251,7 +278,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   forgotText: {
-    color: colors.ink,
+    color: colors.info,
     fontWeight: "600",
   },
   form: {
@@ -259,7 +286,10 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.xs,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  topNav: {
+    marginBottom: spacing.md,
   },
   safe: {
     backgroundColor: colors.systemBackground,

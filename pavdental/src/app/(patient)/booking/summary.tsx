@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, Pressable, Platform } from "react-
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStripe } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Button, AppIcon, ProgressPills } from "@/components";
+import { ThemedText, Card, Button, AppIcon, ProgressPills, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { formatGbp, createAppointment, createPaymentIntent, newBookingAttemptKey } from "@/features/booking/booking-api";
@@ -195,9 +195,20 @@ export default function BookingSummaryScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <ProgressPills total={5} current={5} />
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <View style={styles.progressWrap}>
+          <ProgressPills total={5} current={5} />
+        </View>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Soft Hold Countdown Banner */}
         <View style={styles.timerBanner}>
           <AppIcon name="clock" size={14} color={colors.warning} />
@@ -373,6 +384,7 @@ export default function BookingSummaryScreen() {
           title={secondsRemaining === 0 ? "Slot Expired - Select New Time" : `Pay by card instead`}
           size="lg"
           variant="secondary"
+          arrow={true}
           loading={isProcessing}
           disabled={secondsRemaining === 0}
           onPress={secondsRemaining === 0 ? () => {
@@ -386,68 +398,88 @@ export default function BookingSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  balanceNote: {
-    color: colors.secondaryLabel,
-    marginTop: spacing.xxs,
-  },
-  card: {
-    backgroundColor: colors.systemBackground,
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
+  },
+  topNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  progressWrap: {
+    flex: 1,
+    alignItems: "center",
+    marginRight: 44,
   },
   content: {
     gap: spacing.md,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  timerBanner: {
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  timerText: {
+    color: "#B45309",
+    flex: 1,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  card: {
+    backgroundColor: colors.systemBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  sectionTitle: {
+    color: colors.label,
+    fontWeight: "700",
+    fontSize: 16,
+    marginBottom: spacing.xxs,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 3,
+  },
+  label: {
+    color: colors.secondaryLabel,
+  },
+  value: {
+    color: colors.label,
+    fontWeight: "600",
+  },
   dateHighlight: {
     color: colors.ink,
-  },
-  depositAmount: {
-    color: colors.ink,
-  },
-  depositLabel: {
-    color: colors.label,
-  },
-  footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: spacing.xs,
-    padding: spacing.md,
+    fontWeight: "700",
   },
   insuranceRow: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.separator,
     flexDirection: "row",
     gap: spacing.xs,
-    padding: spacing.sm,
+    padding: spacing.md,
   },
   insuranceText: {
     color: colors.label,
     flex: 1,
     fontWeight: "600",
-  },
-  label: {
-    color: colors.secondaryLabel,
-  },
-  policyBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
-    gap: 4,
-    padding: spacing.md,
-  },
-  policyText: {
-    color: colors.secondaryLabel,
-    lineHeight: 16,
-  },
-  policyTitle: {
-    color: colors.label,
-    fontWeight: "700",
   },
   priceRow: {
     alignItems: "center",
@@ -455,46 +487,61 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 4,
   },
-  row: {
-    gap: 2,
-    paddingVertical: 2,
-  },
-  sectionTitle: {
+  depositLabel: {
     color: colors.label,
-    marginBottom: spacing.xxs,
+    fontWeight: "700",
   },
-  timerBanner: {
-    alignItems: "center",
-    backgroundColor: colors.warningSubtle,
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: spacing.xs,
-    padding: spacing.sm,
+  depositAmount: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: "800",
   },
-  timerText: {
-    color: colors.warning,
-    flex: 1,
-    fontWeight: "600",
+  balanceNote: {
+    color: colors.secondaryLabel,
+    marginTop: spacing.xxs,
+    fontSize: 12,
   },
-  whoPill: {
-    borderColor: colors.separator,
+  policyBox: {
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    gap: 6,
+    padding: spacing.md,
   },
-  whoPillSelected: {
-    backgroundColor: colors.inkSubtle,
-    borderColor: colors.ink,
+  policyTitle: {
+    color: colors.label,
+    fontWeight: "700",
+  },
+  policyText: {
+    color: colors.secondaryLabel,
+    lineHeight: 18,
+    fontSize: 12,
   },
   whoRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.xs,
   },
+  whoPill: {
+    borderColor: colors.separator,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  whoPillSelected: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
   whoTextSelected: {
-    color: colors.ink,
+    color: colors.alwaysWhite,
     fontWeight: "600",
+  },
+  footerBar: {
+    backgroundColor: colors.systemBackground,
+    borderTopColor: colors.separator,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   walletButton: {
     alignItems: "center",
@@ -502,16 +549,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     flexDirection: "row",
     justifyContent: "space-between",
+    minHeight: 52,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
   },
   walletButtonDisabled: {
     opacity: 0.4,
   },
   walletText: {
     color: colors.alwaysWhite,
-  },
-  value: {
-    color: colors.label,
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

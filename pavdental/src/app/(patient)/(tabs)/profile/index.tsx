@@ -9,6 +9,8 @@ import {
   Avatar,
   AppIcon,
   Badge,
+  Button,
+  IconButton,
   ConfirmSheet,
   type AppIconName,
 } from "@/components";
@@ -132,11 +134,21 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <ThemedText variant="largeTitle">Profile</ThemedText>
-          <ThemedText variant="subhead" style={styles.headerSub}>
-            Manage your details and preferences
-          </ThemedText>
+        {/* Neo Financial Top Header with Circular Close Button */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerTextWrap}>
+            <ThemedText variant="largeTitle">Profile</ThemedText>
+            <ThemedText variant="subhead" style={styles.headerSub}>
+              Manage your details and preferences
+            </ThemedText>
+          </View>
+          <IconButton
+            icon="close"
+            label="Close profile"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
         </View>
 
         {/* Identity card — edit target is Personal Information */}
@@ -149,6 +161,30 @@ export default function ProfileScreen() {
             onPress={() => router.push("/(patient)/(tabs)/profile/personal-info" as never)}
             style={styles.identityRow}
           />
+        </Card>
+
+        {/* Neo Financial Two-Column Refer & Earn Promo Banner (Screen_455_Settings & Preferences.png) */}
+        <Card style={styles.promoCard}>
+          <View style={styles.promoRow}>
+            <View style={styles.promoContent}>
+              <ThemedText variant="headline" style={styles.promoTitle}>
+                Refer friends, earn £20
+              </ThemedText>
+              <ThemedText variant="caption" style={styles.promoSub}>
+                Share your invite link with family and receive £20 towards treatments.
+              </ThemedText>
+              <Button
+                title="Share link"
+                size="sm"
+                arrow
+                onPress={() => router.push("/(patient)/perks" as never)}
+                style={styles.promoBtn}
+              />
+            </View>
+            <View style={styles.promoBadgeSquare}>
+              <AppIcon name="sparkles" size={26} color="#D97706" />
+            </View>
+          </View>
         </Card>
 
         {groups.map((g) => renderGroup(g.heading, g.rows))}
@@ -262,18 +298,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
   },
-  header: {
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTextWrap: {
     gap: spacing.xxs,
   },
   headerSub: {
     color: colors.secondaryLabel,
   },
   identityCard: {
-    // subtle emphasis without a shadow — layered surface
+    borderRadius: 20,
     backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
   },
   identityRow: {
     paddingVertical: spacing.sm,
+  },
+  promoCard: {
+    borderRadius: 20,
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    padding: spacing.md,
+  },
+  promoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  promoContent: {
+    flex: 1,
+    gap: 4,
+    paddingRight: spacing.sm,
+  },
+  promoTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.label,
+  },
+  promoSub: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: spacing.xs,
+  },
+  promoBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.md,
+  },
+  promoBadgeSquare: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
   },
   group: {
     gap: spacing.xxs,
@@ -284,7 +365,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 20,
+    borderRadius: 12,
     height: 40,
     justifyContent: "center",
     width: 40,

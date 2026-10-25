@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -93,9 +93,20 @@ export default function VerifyEmailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
+        <View style={styles.topNav}>
+          <IconButton
+            icon="chevronLeft"
+            label="Go back"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
@@ -112,6 +123,7 @@ export default function VerifyEmailScreen() {
 
           {infoMessage ? (
             <View style={styles.infoBox}>
+              <AppIcon name="checkCircle" size={16} color={colors.ink} />
               <ThemedText variant="caption" style={styles.infoText}>
                 {infoMessage}
               </ThemedText>
@@ -120,6 +132,7 @@ export default function VerifyEmailScreen() {
 
           {error ? (
             <View style={styles.errorBox} accessibilityRole="alert">
+              <AppIcon name="alert" size={16} color={colors.danger} />
               <ThemedText variant="caption" style={styles.errorText}>
                 {error}
               </ThemedText>
@@ -143,6 +156,7 @@ export default function VerifyEmailScreen() {
             <Button
               title="Verify & Continue"
               size="lg"
+              arrow={true}
               loading={loading}
               onPress={handleVerify}
             />
@@ -165,28 +179,25 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   emailHighlight: {
     color: colors.label,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   errorBox: {
+    alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: 14,
+    flexDirection: "row",
+    gap: spacing.xs,
     marginBottom: spacing.md,
-    padding: spacing.sm,
+    padding: spacing.md,
   },
   errorText: {
     color: colors.danger,
-  },
-  infoBox: {
-    backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-  },
-  infoText: {
-    color: colors.ink,
+    flex: 1,
+    fontWeight: "600",
   },
   flex: {
     flex: 1,
@@ -197,6 +208,21 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
+  },
+  infoBox: {
+    alignItems: "center",
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 14,
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  infoText: {
+    color: colors.ink,
+    flex: 1,
+    fontWeight: "600",
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -207,13 +233,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 22,
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

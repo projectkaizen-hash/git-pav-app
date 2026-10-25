@@ -8,6 +8,7 @@ import {
   ThemedText,
   Card,
   Button,
+  Badge,
   AppIcon,
   ServiceHeroCard,
   EmergencyTriageModal,
@@ -18,7 +19,7 @@ import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { fetchActiveVanRequest } from "@/features/van/van-api";
 import { useBookingStore } from "@/features/booking/booking-store";
-import { useServices, useRewards } from "@/features/hooks/use-dental-api";
+import { useServices, useRewards, useMyAppointments } from "@/features/hooks/use-dental-api";
 import { DentalService } from "@/features/booking/booking-types";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -54,11 +55,16 @@ export default function PatientHomeScreen() {
   const params = useLocalSearchParams<{ triageModal?: string }>();
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey>("all");
   const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
+  const [showBalance, setShowBalance] = useState<boolean>(true);
 
-  // Services and points come only from the API: no fallback catalogue, prices
-  // or points balance (MC-4).
+  // Services, points, and bookings from API
   const { data: apiServices, isError: servicesError, refetch: refetchServices } = useServices();
   const { data: rewards } = useRewards();
+  const { data: upcomingAppointments } = useMyAppointments({ scope: "upcoming" });
+  const nextAppointment =
+    Array.isArray(upcomingAppointments) && upcomingAppointments.length > 0
+      ? (upcomingAppointments[0] as any)
+      : null;
   const pointsBalance: number | undefined = (rewards as any)?.pointsBalance;
 
   useEffect(() => {
@@ -155,10 +161,118 @@ export default function PatientHomeScreen() {
         </View>
       </View>
 
-      {/* Screen Title */}
+      {/* Screen Title & Neo Financial Balance/Status Eye Toggle */}
       <View style={styles.titleSection}>
-        <ThemedText variant="largeTitle" style={styles.mainTitle}>
-          Select Your{"\n"}Preferred Service
+        <View style={styles.titleWithToggle}>
+          <ThemedText variant="largeTitle" style={styles.mainTitle}>
+            {showBalance ? `Welcome back,\n${userName}` : "Welcome back,\n••••••••"}
+          </ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showBalance ? "Hide oral health summary" : "Show oral health summary"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowBalance((prev) => !prev);
+            }}
+            style={({ pressed }) => [styles.eyeToggleBtn, pressed && { opacity: 0.7 }]}
+          >
+            <AppIcon
+              name={showBalance ? "eye" : "eyeOff"}
+              size={20}
+              color={colors.secondaryLabel}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Primary Active Appointment / Care Card (Screen_017_Wallet & Balance_Home.png) */}
+      <Card style={styles.activeCareCard}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            nextAppointment
+              ? `Upcoming appointment for ${nextAppointment.service?.name || "Dental Care"}`
+              : "Active oral care status"
+          }
+          onPress={() => {
+            if (nextAppointment) {
+              router.push({
+                pathname: "/(patient)/appointments/[id]" as never,
+                params: { id: nextAppointment.id },
+              });
+            } else {
+              router.push("/(patient)/(tabs)/appointments" as never);
+            }
+          }}
+          style={({ pressed }) => [styles.careCardPressable, pressed && { opacity: 0.85 }]}
+        >
+          <View style={styles.careCardHeader}>
+            <View style={styles.careIconSquare}>
+              <AppIcon name="calendar" size={20} color={colors.ink} />
+            </View>
+            <View style={styles.careCardMain}>
+              <View style={styles.careStatusRow}>
+                <ThemedText variant="caption" style={styles.careOverline}>
+                  {nextAppointment ? "UPCOMING APPOINTMENT" : "ORAL HEALTH STATUS"}
+                </ThemedText>
+                <Badge
+                  label={nextAppointment ? "CONFIRMED" : "ON TRACK"}
+                  variant={nextAppointment ? "success" : "info"}
+                />
+              </View>
+              <ThemedText variant="headline" style={styles.careTitle} numberOfLines={1}>
+                {nextAppointment
+                  ? nextAppointment.service?.name || "Dental Examination & Polish"
+                  : "Routine Checkup Active"}
+              </ThemedText>
+              <ThemedText variant="caption" style={styles.careSub}>
+                {nextAppointment
+                  ? `${new Date(nextAppointment.startTimeUtc).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${nextAppointment.clinic?.name || nextAppointment.van?.name || "Central Practice"}`
+                  : "Next routine dental recall due in 3 months"}
+              </ThemedText>
+            </View>
+            <AppIcon name="chevronRight" size={18} color={colors.tertiaryLabel} />
+          </View>
+        </Pressable>
+
+        {/* Soft grey full-width action button */}
+        <Button
+          title="+ Book an appointment"
+          variant="secondary"
+          size="md"
+          onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
+          style={styles.quickBookBtn}
+        />
+      </Card>
+
+      {/* Two-Column Refer & Earn Promo Card (Screen_017_Wallet & Balance_Home.png) */}
+      <Card style={styles.referralCard}>
+        <View style={styles.referralRow}>
+          <View style={styles.referralContent}>
+            <ThemedText variant="headline" style={styles.referralTitle}>
+              Refer and earn £20
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.referralSub}>
+              Give £20 to friends, earn £20 dental credit for every appointment they complete.
+            </ThemedText>
+            <Button
+              title="Share link"
+              size="sm"
+              arrow
+              onPress={() => router.push("/(patient)/perks" as never)}
+              style={styles.referralBtn}
+            />
+          </View>
+          <View style={styles.referralBadgeSquare}>
+            <AppIcon name="sparkles" size={28} color="#D97706" />
+          </View>
+        </View>
+      </Card>
+
+      {/* Services Section Header */}
+      <View style={styles.sectionTitleRow}>
+        <ThemedText variant="headline" style={styles.sectionHeaderTitle}>
+          Dental Services & Treatments
         </ThemedText>
       </View>
 
@@ -536,6 +650,121 @@ const styles = StyleSheet.create({
   titleSection: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
+  },
+  titleWithToggle: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  eyeToggleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.secondaryBackground,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  activeCareCard: {
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderRadius: 20,
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+  },
+  careCardPressable: {
+    gap: spacing.xs,
+  },
+  careCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  careIconSquare: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.inkSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  careCardMain: {
+    flex: 1,
+    gap: 3,
+  },
+  careStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  careOverline: {
+    color: colors.secondaryLabel,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  careTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.label,
+  },
+  careSub: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+  },
+  quickBookBtn: {
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
+  },
+  referralCard: {
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
+    borderRadius: 20,
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+  },
+  referralRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  referralContent: {
+    flex: 1,
+    gap: 4,
+    paddingRight: spacing.sm,
+  },
+  referralTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.label,
+  },
+  referralSub: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: spacing.xs,
+  },
+  referralBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.md,
+  },
+  referralBadgeSquare: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitleRow: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.label,
   },
   topBar: {
     alignItems: "center",

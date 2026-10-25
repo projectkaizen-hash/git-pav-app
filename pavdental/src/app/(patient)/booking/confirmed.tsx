@@ -68,7 +68,7 @@ export default function BookingConfirmedScreen() {
           <View style={[styles.checkCircle, isConfirmed ? styles.confirmedCircle : styles.pendingCircle]}>
             <AppIcon
               name={isChecking ? "clock" : isConfirmed ? "check" : "alert"}
-              size={40}
+              size={36}
               color={isChecking ? colors.warning : isConfirmed ? colors.success : colors.danger}
             />
           </View>
@@ -89,21 +89,42 @@ export default function BookingConfirmedScreen() {
             <ActivityIndicator size="large" color={colors.ink} style={styles.spinner} />
           )}
 
-          <Card elevation="raised" style={styles.summaryCard}>
-            <ThemedText variant="headline" style={styles.treatmentName}>
-              {service?.name || "Dental Checkup"}
-            </ThemedText>
-            <View style={styles.metaRow}>
-              <AppIcon name="calendar" size={14} color={colors.ink} />
-              <ThemedText variant="body" style={styles.timing}>
-                {slot ? `${slot.dateFormatted} at ${slot.displayTime}` : "Selected Time"}
+          <Card elevation="flat" style={styles.summaryCard}>
+            <View style={styles.cardHeader}>
+              <ThemedText variant="headline" style={styles.treatmentName}>
+                {service?.name || "Dental Checkup"}
               </ThemedText>
+              <View style={styles.statusPill}>
+                <ThemedText variant="caption" style={styles.statusText}>
+                  {isConfirmed ? "Confirmed" : "Processing"}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.metaRow}>
-              <AppIcon name="mapPin" size={14} color={colors.secondaryLabel} />
-              <ThemedText variant="caption" style={styles.location}>
-                {clinic?.name || "Pav Dental Central Practice"}
-              </ThemedText>
+
+            <View style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <View style={styles.iconBox}>
+                <AppIcon name="calendar" size={16} color={colors.ink} />
+              </View>
+              <View style={styles.detailCol}>
+                <ThemedText variant="caption" style={styles.detailLabel}>Date & Time</ThemedText>
+                <ThemedText variant="body" style={styles.timing}>
+                  {slot ? `${slot.dateFormatted} at ${slot.displayTime}` : "Selected Time"}
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.iconBox}>
+                <AppIcon name="mapPin" size={16} color={colors.ink} />
+              </View>
+              <View style={styles.detailCol}>
+                <ThemedText variant="caption" style={styles.detailLabel}>Location</ThemedText>
+                <ThemedText variant="body" style={styles.location}>
+                  {clinic?.name || "Pav Dental Central Practice"}
+                </ThemedText>
+              </View>
             </View>
           </Card>
         </View>
@@ -121,6 +142,7 @@ export default function BookingConfirmedScreen() {
           <Button
             title="View My Appointments"
             size="lg"
+            arrow={true}
             onPress={handleFinish}
           />
         </View>
@@ -141,11 +163,11 @@ const styles = StyleSheet.create({
   },
   checkCircle: {
     alignItems: "center",
-    borderRadius: 45,
-    height: 90,
+    borderRadius: 36,
+    height: 72,
     justifyContent: "center",
     marginBottom: spacing.xs,
-    width: 90,
+    width: 72,
   },
   confirmedCircle: {
     backgroundColor: colors.successSubtle,
@@ -160,15 +182,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
-  },
-  location: {
-    color: colors.secondaryLabel,
-    flex: 1,
-  },
-  metaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xxs,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -185,10 +198,67 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: colors.secondaryBackground,
-    gap: spacing.xs,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    gap: spacing.sm,
     marginTop: spacing.md,
     padding: spacing.md,
     width: "100%",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  treatmentName: {
+    color: colors.label,
+    fontWeight: "700",
+    fontSize: 17,
+    flex: 1,
+  },
+  statusPill: {
+    backgroundColor: colors.successSubtle,
+    borderRadius: 999,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+  },
+  statusText: {
+    color: colors.success,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  divider: {
+    backgroundColor: colors.separator,
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 4,
+  },
+  detailRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  iconBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.systemBackground,
+  },
+  detailCol: {
+    flex: 1,
+    gap: 1,
+  },
+  detailLabel: {
+    color: colors.secondaryLabel,
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  location: {
+    color: colors.label,
+    fontWeight: "500",
   },
   timing: {
     color: colors.ink,
@@ -197,8 +267,6 @@ const styles = StyleSheet.create({
   title: {
     color: colors.label,
     textAlign: "center",
-  },
-  treatmentName: {
-    color: colors.label,
+    fontWeight: "800",
   },
 });

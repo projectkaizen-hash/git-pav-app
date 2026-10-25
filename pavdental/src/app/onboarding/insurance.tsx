@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { ThemedText, Input, Button, ProgressPills, AppIcon, ChipPill } from "@/components";
+import { ThemedText, Input, Button, ProgressPills, AppIcon, ChipPill, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
@@ -61,11 +61,28 @@ export default function OnboardingInsuranceScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <View style={styles.progressWrap}>
           <ProgressPills total={5} current={3} />
+        </View>
+        <View style={styles.navSpacer} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Dental insurance
+            Dental Insurance
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Optional — add a policy to speed up claims and check what's covered before you book.
@@ -88,7 +105,7 @@ export default function OnboardingInsuranceScreen() {
 
         {hasInsurance === true ? (
           <View style={styles.section}>
-            <ThemedText variant="overline">Provider</ThemedText>
+            <ThemedText variant="overline" style={styles.sectionOverline}>PROVIDER</ThemedText>
             <View style={styles.choiceRow}>
               {INSURERS.map((name) => (
                 <ChipPill
@@ -112,11 +129,11 @@ export default function OnboardingInsuranceScreen() {
                 ) : null}
 
                 {/* Card scan zone */}
-                <ThemedText variant="overline">Policy card</ThemedText>
+                <ThemedText variant="overline" style={styles.sectionOverline}>POLICY CARD</ThemedText>
                 {scanState === "captured" ? (
                   <View style={styles.previewCard}>
                     <View style={styles.previewTop}>
-                      <AppIcon name="creditCard" size={20} color={colors.ink} />
+                      <AppIcon name="creditCard" size={20} color={colors.alwaysWhite} />
                       <ThemedText variant="headline" style={styles.previewInsurer}>
                         {insurer}
                       </ThemedText>
@@ -139,13 +156,15 @@ export default function OnboardingInsuranceScreen() {
                     onPress={startScan}
                     style={({ pressed }) => [styles.scanBox, pressed && { opacity: 0.85 }]}
                   >
-                    <AppIcon
-                      name={scanState === "scanning" ? "refresh" : "camera"}
-                      size={26}
-                      color={colors.ink}
-                    />
+                    <View style={styles.scanIconCircle}>
+                      <AppIcon
+                        name={scanState === "scanning" ? "refresh" : "camera"}
+                        size={22}
+                        color={colors.ink}
+                      />
+                    </View>
                     <ThemedText variant="subhead" style={styles.scanTitle}>
-                      {scanState === "scanning" ? "Scanning card…" : "Scan your card"}
+                      {scanState === "scanning" ? "Scanning card…" : "Scan your policy card"}
                     </ThemedText>
                     <ThemedText variant="caption" style={styles.scanSub}>
                       Fit the card inside the frame — we read the policy number automatically.
@@ -178,6 +197,7 @@ export default function OnboardingInsuranceScreen() {
           <Button
             title={hasInsurance === true ? "Save & Continue" : "Continue to Medical History"}
             size="lg"
+            arrow={true}
             disabled={hasInsurance === null}
             onPress={handleContinue}
           />
@@ -197,6 +217,7 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.xs,
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   choiceRow: {
     flexDirection: "row",
@@ -204,13 +225,19 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   header: {
-    gap: spacing.xxs,
+    gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
+  },
+  navSpacer: {
+    width: 44,
   },
   noteBox: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.separator,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.md,
@@ -218,23 +245,28 @@ const styles = StyleSheet.create({
   noteText: {
     color: colors.secondaryLabel,
     flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   previewCard: {
     backgroundColor: colors.ink,
-    borderRadius: 14,
+    borderRadius: 18,
     gap: spacing.xs,
-    padding: spacing.md,
+    padding: spacing.md + 2,
   },
   previewInsurer: {
-    color: colors.onInk,
+    color: colors.alwaysWhite,
+    fontWeight: "700",
   },
   previewOk: {
-    color: colors.onInk,
-    opacity: 0.8,
+    color: colors.alwaysWhite,
+    opacity: 0.85,
   },
   previewPolicy: {
-    color: colors.onInk,
+    color: colors.alwaysWhite,
     letterSpacing: 2,
+    fontSize: 16,
+    fontWeight: "600",
   },
   previewRow: {
     alignItems: "center",
@@ -247,6 +279,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
   },
+  progressWrap: {
+    alignItems: "center",
+    flex: 1,
+  },
   safe: {
     backgroundColor: colors.systemBackground,
     flex: 1,
@@ -254,33 +290,63 @@ const styles = StyleSheet.create({
   scanBox: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,
-    borderColor: colors.ink,
-    borderStyle: "dashed",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    gap: spacing.xxs,
+    borderColor: colors.separator,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: spacing.xs,
     padding: spacing.xl,
+  },
+  scanIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.systemBackground,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xxs,
   },
   scanSub: {
     color: colors.secondaryLabel,
     textAlign: "center",
+    fontSize: 12,
+    lineHeight: 17,
+    maxWidth: 260,
   },
   scanTitle: {
-    color: colors.ink,
+    color: colors.label,
     fontWeight: "700",
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xs,
   },
   section: {
-    gap: spacing.sm,
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  sectionOverline: {
+    color: colors.secondaryLabel,
+    fontSize: 11,
+    letterSpacing: 0.8,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 21,
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });

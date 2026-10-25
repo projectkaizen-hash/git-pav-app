@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button, ProgressPills } from "@/components";
+import { ThemedText, Input, Button, ProgressPills, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
@@ -34,12 +34,26 @@ export default function OnboardingMedicalHistoryScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
+        <View style={styles.topNav}>
+          <IconButton
+            icon="chevronLeft"
+            label="Go back"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
+          <View style={styles.progressWrap}>
+            <ProgressPills total={5} current={4} />
+          </View>
+          <View style={styles.navSpacer} />
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <ProgressPills total={5} current={4} />
             <ThemedText variant="largeTitle" style={styles.title}>
               Medical History
             </ThemedText>
@@ -50,72 +64,82 @@ export default function OnboardingMedicalHistoryScreen() {
 
           <View style={styles.form}>
             {/* Allergies */}
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabelBox}>
-                <ThemedText variant="headline">Known Allergies</ThemedText>
-                <ThemedText variant="caption" style={styles.switchSub}>
-                  e.g. Latex, Penicillin, Anaesthetics
-                </ThemedText>
+            <View style={styles.card}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchLabelBox}>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Known Allergies</ThemedText>
+                  <ThemedText variant="caption" style={styles.switchSub}>
+                    e.g. Latex, Penicillin, Anaesthetics
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={hasAllergies}
+                  onValueChange={setHasAllergies}
+                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Known Allergies"
+                />
               </View>
-              <Switch
-                value={hasAllergies}
-                onValueChange={setHasAllergies}
-                trackColor={{ true: colors.ink, false: colors.separator }}
-                accessibilityRole="switch"
-                accessibilityLabel="Known Allergies"
-              />
-            </View>
 
-            {hasAllergies ? (
-              <Input
-                label="Allergy details"
-                placeholder="List your allergies"
-                value={allergyDetails}
-                onChangeText={setAllergyDetails}
-              />
-            ) : null}
+              {hasAllergies ? (
+                <View style={styles.inputWrap}>
+                  <Input
+                    label="Allergy details"
+                    placeholder="List your allergies"
+                    value={allergyDetails}
+                    onChangeText={setAllergyDetails}
+                  />
+                </View>
+              ) : null}
+            </View>
 
             {/* Medications */}
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabelBox}>
-                <ThemedText variant="headline">Regular Medications</ThemedText>
-                <ThemedText variant="caption" style={styles.switchSub}>
-                  Prescription or regular over-the-counter
-                </ThemedText>
+            <View style={styles.card}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchLabelBox}>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Regular Medications</ThemedText>
+                  <ThemedText variant="caption" style={styles.switchSub}>
+                    Prescription or regular over-the-counter
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={isTakingMeds}
+                  onValueChange={setIsTakingMeds}
+                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Regular Medications"
+                />
               </View>
-              <Switch
-                value={isTakingMeds}
-                onValueChange={setIsTakingMeds}
-                trackColor={{ true: colors.ink, false: colors.separator }}
-                accessibilityRole="switch"
-                accessibilityLabel="Regular Medications"
-              />
+
+              {isTakingMeds ? (
+                <View style={styles.inputWrap}>
+                  <Input
+                    label="Medication details"
+                    placeholder="List medications & dosages"
+                    value={medDetails}
+                    onChangeText={setMedDetails}
+                  />
+                </View>
+              ) : null}
             </View>
 
-            {isTakingMeds ? (
-              <Input
-                label="Medication details"
-                placeholder="List medications & dosages"
-                value={medDetails}
-                onChangeText={setMedDetails}
-              />
-            ) : null}
-
             {/* Blood thinners / bleeding */}
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabelBox}>
-                <ThemedText variant="headline">Blood Thinners / Bleeding Disorders</ThemedText>
-                <ThemedText variant="caption" style={styles.switchSub}>
-                  e.g. Warfarin, Apixaban, Clopidogrel
-                </ThemedText>
+            <View style={styles.card}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchLabelBox}>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Blood Thinners / Bleeding</ThemedText>
+                  <ThemedText variant="caption" style={styles.switchSub}>
+                    e.g. Warfarin, Apixaban, Clopidogrel
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={isBleedingRisk}
+                  onValueChange={setIsBleedingRisk}
+                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Blood Thinners or Bleeding Disorders"
+                />
               </View>
-              <Switch
-                value={isBleedingRisk}
-                onValueChange={setIsBleedingRisk}
-                trackColor={{ true: colors.ink, false: colors.separator }}
-                accessibilityRole="switch"
-                accessibilityLabel="Blood Thinners or Bleeding Disorders"
-              />
             </View>
 
             {/* GP Surgery */}
@@ -131,6 +155,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <Button
               title="Continue to Consents"
               size="lg"
+              arrow={true}
               onPress={handleNext}
             />
           </View>
@@ -143,16 +168,41 @@ export default function OnboardingMedicalHistoryScreen() {
 const styles = StyleSheet.create({
   actions: {
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
+  },
+  card: {
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    padding: spacing.md,
+  },
+  cardTitle: {
+    fontWeight: "700",
   },
   flex: {
     flex: 1,
   },
   form: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   header: {
-    gap: spacing.xxs,
+    gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
+  },
+  inputWrap: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
+  navSpacer: {
+    width: 44,
+  },
+  progressWrap: {
+    alignItems: "center",
+    flex: 1,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -163,27 +213,39 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 21,
   },
   switchLabelBox: {
     flex: 1,
-    gap: spacing.xxs / 2,
+    gap: 2,
     paddingRight: spacing.md,
   },
   switchRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: spacing.xs,
   },
   switchSub: {
     color: colors.secondaryLabel,
+    fontSize: 13,
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText, Button, AppIcon } from "@/components";
+import { ThemedText, Button, AppIcon, Card } from "@/components";
 import { colors, spacing } from "@/theme";
 
 // ─── Account created — soft success after late-auth sign-up ───────────────────
@@ -17,7 +17,7 @@ export default function AccountCreatedScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.hero}>
         <View style={styles.markTile}>
-          <AppIcon name="checkCircle" size={32} color={colors.onInk} />
+          <AppIcon name="check" size={32} color={colors.success} />
         </View>
         <ThemedText variant="largeTitle" style={styles.title}>
           Account created
@@ -26,12 +26,32 @@ export default function AccountCreatedScreen() {
           Welcome to Pav Dental. Set up your profile now so booking takes seconds
           later — or skip and do it any time.
         </ThemedText>
+
+        <Card elevation="flat" style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.checkIconBox}>
+              <AppIcon name="checkCircle" size={16} color={colors.success} />
+            </View>
+            <ThemedText variant="subhead" style={styles.summaryText}>
+              Verified patient credentials active
+            </ThemedText>
+          </View>
+          <View style={styles.summaryRow}>
+            <View style={styles.checkIconBox}>
+              <AppIcon name="checkCircle" size={16} color={colors.success} />
+            </View>
+            <ThemedText variant="subhead" style={styles.summaryText}>
+              256-bit encrypted medical safeguards
+            </ThemedText>
+          </View>
+        </Card>
       </View>
 
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
           title="Set up my profile"
           size="lg"
+          arrow={true}
           accessibilityLabel="Continue to profile setup"
           onPress={() => router.replace("/onboarding/profile" as never)}
         />
@@ -47,6 +67,12 @@ export default function AccountCreatedScreen() {
 }
 
 const styles = StyleSheet.create({
+  checkIconBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 24,
+    height: 24,
+  },
   container: {
     backgroundColor: colors.systemBackground,
     flex: 1,
@@ -68,20 +94,43 @@ const styles = StyleSheet.create({
   },
   markTile: {
     alignItems: "center",
-    backgroundColor: colors.ink,
-    borderRadius: 28,
-    height: 64,
+    backgroundColor: colors.successSubtle,
+    borderRadius: 36,
+    height: 72,
     justifyContent: "center",
     marginBottom: spacing.xs,
-    width: 64,
+    width: 72,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
     lineHeight: 22,
     textAlign: "center",
   },
+  summaryCard: {
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    padding: spacing.md + 2,
+    width: "100%",
+  },
+  summaryRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  summaryText: {
+    color: colors.label,
+    fontSize: 14,
+    fontWeight: "500",
+  },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "800",
     textAlign: "center",
   },
 });

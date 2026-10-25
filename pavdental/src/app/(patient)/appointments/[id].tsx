@@ -12,6 +12,7 @@ import {
   ConfirmSheet,
   Toast,
   EmptyState,
+  IconButton,
 } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useMyAppointments, useCancelAppointmentMutation } from "@/features/hooks/use-dental-api";
@@ -34,7 +35,9 @@ interface Booking {
 function Row({ icon, label, value }: { icon: "calendar" | "clock" | "mapPin" | "profile" | "creditCard"; label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
-      <AppIcon name={icon} size={15} color={colors.secondaryLabel} />
+      <View style={styles.detailIconBox}>
+        <AppIcon name={icon} size={16} color={colors.ink} />
+      </View>
       <ThemedText variant="caption" style={styles.detailLabel}>
         {label}
       </ThemedText>
@@ -63,7 +66,7 @@ export default function AppointmentDetailScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <View style={{ padding: spacing.md, minHeight: 180, backgroundColor: colors.secondaryBackground, borderRadius: 16 }} />
+          <View style={{ padding: spacing.md, minHeight: 180, backgroundColor: colors.secondaryBackground, borderRadius: 20 }} />
         </View>
       </View>
     );
@@ -120,9 +123,21 @@ export default function AppointmentDetailScreen() {
     <View style={styles.container}>
       {toast ? <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <View style={[styles.topNav, { paddingTop: Math.max(spacing.xs, insets.top) }]}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <ThemedText variant="headline" style={styles.navTitle}>Appointment Details</ThemedText>
+        <View style={styles.navSpacer} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Status hero */}
-        <Card elevation="raised" style={styles.heroCard}>
+        <Card elevation="flat" style={styles.heroCard}>
           <View style={styles.heroTop}>
             <ThemedText variant="headline" style={styles.serviceTitle}>
               {booking.service?.name || "Dental Treatment"}
@@ -132,15 +147,22 @@ export default function AppointmentDetailScreen() {
               variant={isCancelled ? "danger" : isPast ? "default" : "success"}
             />
           </View>
-          <ChipPill label={`${booking.channel.toUpperCase()} · ${timeLine}`} tone={isPast || isCancelled ? "neutral" : "info"} />
+          <View style={styles.chipRow}>
+            <ChipPill label={`${booking.channel.toUpperCase()} · ${timeLine}`} tone={isPast || isCancelled ? "neutral" : "info"} />
+          </View>
         </Card>
 
-        {/* Details */}
-        <Card elevation="raised" style={styles.card}>
+        {/* Details receipt card */}
+        <Card elevation="flat" style={styles.card}>
+          <ThemedText variant="overline" style={styles.cardOverline}>VISIT SUMMARY</ThemedText>
           <Row icon="calendar" label="Date" value={dateLine} />
+          <View style={styles.divider} />
           <Row icon="clock" label="Time" value={timeLine} />
+          <View style={styles.divider} />
           <Row icon="profile" label="Clinician" value={clinicianName} />
+          <View style={styles.divider} />
           <Row icon="mapPin" label="Location" value={booking.clinic?.addressLine1 ? `${locationName}, ${booking.clinic.addressLine1}` : locationName} />
+          <View style={styles.divider} />
           <Row
             icon="creditCard"
             label="Deposit paid"
@@ -156,11 +178,11 @@ export default function AppointmentDetailScreen() {
             onPress={() =>
               router.push({ pathname: "/(patient)/check-in" as never, params: { appointmentId: booking.id } })
             }
-            style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
           >
-            <Card elevation="raised" style={styles.checkInCard}>
+            <Card elevation="flat" style={styles.checkInCard}>
               <View style={styles.checkInIcon}>
-                <AppIcon name="clipboard" size={20} color={colors.onInk} />
+                <AppIcon name="clipboard" size={20} color={colors.alwaysWhite} />
               </View>
               <View style={styles.checkInInfo}>
                 <ThemedText variant="headline" style={styles.checkInTitle}>
@@ -170,15 +192,15 @@ export default function AppointmentDetailScreen() {
                   Check in before your visit — forms, consent and balance, 5 minutes.
                 </ThemedText>
               </View>
-              <AppIcon name="chevronRight" size={16} color={colors.onInk} />
+              <AppIcon name="chevronRight" size={16} color={colors.alwaysWhite} />
             </Card>
           </Pressable>
         ) : null}
 
         {/* Post-visit rating (Zocdoc pattern) */}
         {isPast && !isCancelled ? (
-          <Card elevation="raised" style={styles.card}>
-            <ThemedText variant="overline">How was your visit?</ThemedText>
+          <Card elevation="flat" style={styles.card}>
+            <ThemedText variant="overline" style={styles.cardOverline}>HOW WAS YOUR VISIT?</ThemedText>
             <View style={styles.ratingRow}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <Pressable
@@ -190,9 +212,9 @@ export default function AppointmentDetailScreen() {
                     setMyRating(n);
                     setToast({ message: "Thanks — feedback saved", tone: "success" });
                   }}
-                  style={{ padding: 4 }}
+                  style={{ padding: 6 }}
                 >
-                  <AppIcon name="star" size={26} color={n <= myRating ? colors.ink : colors.separator} />
+                  <AppIcon name="star" size={28} color={n <= myRating ? colors.ink : colors.separator} />
                 </Pressable>
               ))}
             </View>
@@ -206,12 +228,14 @@ export default function AppointmentDetailScreen() {
           <Button
             title="Book this again"
             size="lg"
+            arrow={true}
             onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
           />
         ) : isPast ? (
           <Button
             title="Rebook treatment"
             size="lg"
+            arrow={true}
             onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
           />
         ) : (
@@ -253,19 +277,30 @@ export default function AppointmentDetailScreen() {
 
 const styles = StyleSheet.create({
   card: {
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderRadius: 20,
+    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
   },
+  cardOverline: {
+    color: colors.secondaryLabel,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    marginBottom: spacing.xxs,
+  },
   checkInCard: {
     alignItems: "center",
-    backgroundColor: colors.ink,
+    backgroundColor: colors.alwaysBlack,
+    borderRadius: 20,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.md + 2,
   },
   checkInIcon: {
     alignItems: "center",
-    backgroundColor: colors.inkSoft,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 22,
     height: 44,
     justifyContent: "center",
@@ -276,7 +311,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   checkInTitle: {
-    color: colors.onInk,
+    color: colors.alwaysWhite,
+    fontWeight: "700",
+  },
+  chipRow: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xxs,
   },
   container: {
     backgroundColor: colors.systemBackground,
@@ -287,6 +327,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  detailIconBox: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 10,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
   detailLabel: {
     color: colors.secondaryLabel,
     width: 84,
@@ -295,12 +343,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.xs,
-    paddingVertical: 3,
+    paddingVertical: 4,
   },
   detailValue: {
     color: colors.label,
     flex: 1,
+    fontWeight: "600",
     textAlign: "right",
+  },
+  divider: {
+    backgroundColor: colors.separator,
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 2,
   },
   footerBar: {
     backgroundColor: colors.systemBackground,
@@ -314,6 +368,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroCard: {
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderRadius: 20,
+    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -326,15 +384,34 @@ const styles = StyleSheet.create({
   muted: {
     color: colors.alwaysWhite,
     opacity: 0.75,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  navSpacer: {
+    width: 44,
+  },
+  navTitle: {
+    color: colors.label,
+    fontWeight: "700",
   },
   ratingRow: {
     alignSelf: "flex-start",
     flexDirection: "row",
-    gap: spacing.xxs,
-    marginTop: spacing.xxs,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   serviceTitle: {
     color: colors.label,
     flex: 1,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });

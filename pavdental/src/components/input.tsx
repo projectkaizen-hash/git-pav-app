@@ -7,7 +7,7 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
-import { colors, spacing, radius, type } from "@/theme";
+import { colors, spacing, type } from "@/theme";
 import { ThemedText } from "./themed-text";
 
 export type InputState = "default" | "focused" | "error" | "disabled";
@@ -22,11 +22,13 @@ interface InputProps extends Omit<TextInputProps, "style"> {
   /** Disable the field */
   disabled?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
+  /** Optional slot rendered inside the right edge of input */
+  rightSlot?: React.ReactNode;
 }
 
 /**
  * Input — styled text input with label, hint, and error state.
- * Supports all TextInputProps — pass secureTextEntry, keyboardType, etc. directly.
+ * Refactored to Neo Financial soft-filled continuous squircle inputs.
  */
 export function Input({
   label,
@@ -34,6 +36,7 @@ export function Input({
   hint,
   disabled = false,
   containerStyle,
+  rightSlot,
   onFocus,
   onBlur,
   ...props
@@ -45,7 +48,7 @@ export function Input({
     ? colors.danger
     : isFocused
     ? colors.ink
-    : colors.separator;
+    : "transparent";
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -55,30 +58,36 @@ export function Input({
         </ThemedText>
       ) : null}
 
-      <TextInput
-        {...props}
-        editable={!disabled}
-        placeholderTextColor={colors.tertiaryLabel}
-        accessibilityLabel={label}
-        accessibilityHint={hint}
-        accessibilityState={{ disabled }}
-        onFocus={(e) => {
-          setIsFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setIsFocused(false);
-          onBlur?.(e);
-        }}
+      <View
         style={[
-          styles.input,
+          styles.inputWrapper,
           {
             borderColor,
+            borderWidth: isFocused || hasError ? 1.5 : 1,
             backgroundColor: isFocused ? colors.systemBackground : colors.secondaryBackground,
             opacity: disabled ? 0.5 : 1,
           },
         ]}
-      />
+      >
+        <TextInput
+          {...props}
+          editable={!disabled}
+          placeholderTextColor={colors.tertiaryLabel}
+          accessibilityLabel={label}
+          accessibilityHint={hint}
+          accessibilityState={{ disabled }}
+          onFocus={(e) => {
+            setIsFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            onBlur?.(e);
+          }}
+          style={[styles.input, rightSlot ? { paddingRight: 40 } : null]}
+        />
+        {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
+      </View>
 
       {hasError ? (
         <ThemedText
@@ -104,24 +113,39 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.danger,
+    marginTop: 2,
   },
   hint: {
     color: colors.tertiaryLabel,
+    marginTop: 2,
+  },
+  inputWrapper: {
+    minHeight: 52, // Neo Financial comfortable touch target
+    borderRadius: 14,
+    // @ts-ignore
+    borderCurve: "continuous",
+    borderColor: colors.separator,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    overflow: "hidden",
   },
   input: {
     ...type.body,
-    minHeight: 48, // Comfortable 48pt touch target
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: radius.md,
-    // @ts-ignore
-    borderCurve: "continuous",
-    borderWidth: 1.5,
+    flex: 1,
+    minHeight: 52,
     color: colors.label,
+    paddingVertical: spacing.sm,
   },
   label: {
     color: colors.label,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  rightSlot: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: spacing.xs,
   },
 });
 

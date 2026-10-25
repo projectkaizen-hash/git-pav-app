@@ -215,6 +215,7 @@ export default function WelcomeScreen() {
               <Button
                 title="Continue"
                 size="lg"
+                arrow
                 loading={loading}
                 onPress={handleContinueWithEmail}
                 style={styles.continueBtn}

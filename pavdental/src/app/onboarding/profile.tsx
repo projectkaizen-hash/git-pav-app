@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button, ProgressPills } from "@/components";
+import { ThemedText, Input, Button, ProgressPills, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
@@ -43,12 +43,26 @@ export default function OnboardingProfileScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
+        <View style={styles.topNav}>
+          <IconButton
+            icon="chevronLeft"
+            label="Go back"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
+          <View style={styles.progressWrap}>
+            <ProgressPills total={5} current={1} />
+          </View>
+          <View style={styles.navSpacer} />
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <ProgressPills total={5} current={1} />
             <ThemedText variant="largeTitle" style={styles.title}>
               Personal Details
             </ThemedText>
@@ -97,6 +111,7 @@ export default function OnboardingProfileScreen() {
             <Button
               title="Continue to Address"
               size="lg"
+              arrow={true}
               onPress={handleNext}
             />
           </View>
@@ -109,6 +124,7 @@ export default function OnboardingProfileScreen() {
 const styles = StyleSheet.create({
   actions: {
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   flex: {
     flex: 1,
@@ -117,8 +133,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   header: {
-    gap: spacing.xxs,
+    gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
+  },
+  navSpacer: {
+    width: 44,
+  },
+  progressWrap: {
+    alignItems: "center",
+    flex: 1,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -129,13 +153,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 21,
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

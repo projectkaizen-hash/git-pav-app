@@ -8,6 +8,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { colors, spacing, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
+import { AppIcon } from "./app-icon";
 
 // ─── Variant map ──────────────────────────────────────────────────────────────
 const variants = {
@@ -39,12 +40,12 @@ const sizes = {
   md: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
-    minHeight: 44, // WCAG 2.2 minimum tap target
+    minHeight: 48, // Neo Financial standard touch target
   },
   lg: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 14,
     paddingHorizontal: spacing.xl,
-    minHeight: 52,
+    minHeight: 54, // Neo Financial prominent pill button
   },
 } as const;
 
@@ -63,13 +64,15 @@ interface ButtonProps {
   icon?: React.ReactNode;
   /** Position of the icon relative to title (default "left") */
   iconPosition?: "left" | "right";
+  /** If true, renders a trailing arrow matching Neo Financial buttons */
+  arrow?: boolean;
   /** Trigger light haptic on press (defaults to true) */
   haptic?: boolean;
 }
 
 /**
  * Button — the primary interactive primitive for this app.
- * All variants draw from theme tokens; never hardcode colour or spacing here.
+ * Refactored to support Neo Financial continuous squircle pill buttons with trailing arrows.
  */
 export function Button({
   title,
@@ -82,6 +85,7 @@ export function Button({
   accessibilityLabel,
   icon,
   iconPosition = "left",
+  arrow = false,
   haptic = true,
 }: ButtonProps) {
   const v = variants[variant];
@@ -96,6 +100,12 @@ export function Button({
     onPress?.();
   };
 
+  const trailingIcon = icon && iconPosition === "right" ? (
+    <View>{icon}</View>
+  ) : arrow ? (
+    <AppIcon name="arrowRight" size={16} color={v.color as string} />
+  ) : null;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -106,14 +116,14 @@ export function Button({
       style={({ pressed }) => [
         {
           backgroundColor: v.backgroundColor,
-          borderRadius: radius.md,
+          borderRadius: radius.full,
           // @ts-ignore — borderCurve is an iOS-specific style; silently ignored on Android
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
           gap: spacing.xs,
-          opacity: isDisabled ? 0.45 : pressed ? 0.75 : 1,
+          opacity: isDisabled ? 0.45 : pressed ? 0.8 : 1,
           transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
           ...s,
         },
@@ -127,13 +137,13 @@ export function Button({
           {icon && iconPosition === "left" ? <View>{icon}</View> : null}
           <ThemedText
             variant="headline"
-            style={{ color: v.color }}
+            style={{ color: v.color, fontWeight: "600" }}
             accessibilityElementsHidden
             importantForAccessibility="no"
           >
             {title}
           </ThemedText>
-          {icon && iconPosition === "right" ? <View>{icon}</View> : null}
+          {trailingIcon}
         </>
       )}
     </Pressable>

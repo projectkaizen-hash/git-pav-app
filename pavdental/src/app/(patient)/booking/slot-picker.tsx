@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText, Button, ProgressPills, ChipPill, Toast, QueryState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { ThemedText, Button, ProgressPills, ChipPill, Toast, QueryState, IconButton } from "@/components";
+import { colors, spacing, radius } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { TimeSlot } from "@/features/booking/booking-types";
 import { useSlots, useHoldSlotMutation } from "@/features/hooks/use-dental-api";
@@ -104,6 +104,21 @@ export default function SlotPickerScreen() {
           onDismiss={() => setHoldError(null)}
         />
       ) : null}
+
+      {/* Top Navigation */}
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <View style={styles.progressWrap}>
+          <ProgressPills total={5} current={4} />
+        </View>
+      </View>
+
       {/* Date Selector Row */}
       <View style={styles.dateBar}>
         <ScrollView
@@ -114,7 +129,8 @@ export default function SlotPickerScreen() {
           {dates.map((d) => {
             const active = selectedDate === d;
             return (
-              <Pressable accessibilityLabel={d}
+              <Pressable
+                accessibilityLabel={d}
                 key={d}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
@@ -141,10 +157,8 @@ export default function SlotPickerScreen() {
       </View>
 
       {/* Available Slot Grid */}
-      <ScrollView contentContainerStyle={styles.content}>
-        <ProgressPills total={5} current={4} />
-
-        {/* Quick-pick chips (Zocdoc "soonest / part of day" pattern) */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Quick-pick chips */}
         <View style={styles.quickRow}>
           <ChipPill
             label="Soonest available"
@@ -226,6 +240,7 @@ export default function SlotPickerScreen() {
         <Button
           title={selectedSlot ? `Confirm ${selectedSlot.displayTime}` : "Choose a time slot"}
           size="lg"
+          arrow
           disabled={!selectedSlot}
           onPress={handleContinue}
         />
@@ -251,9 +266,9 @@ const styles = StyleSheet.create({
   },
   datePill: {
     backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   datePillActive: {
     backgroundColor: colors.ink,
@@ -276,6 +291,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
   },
+  progressWrap: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
   quickRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -283,6 +302,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     color: colors.label,
+    fontWeight: "700",
   },
   slotGrid: {
     flexDirection: "row",
@@ -291,24 +311,31 @@ const styles = StyleSheet.create({
   },
   slotItem: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.secondaryBackground,
     borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 1,
     justifyContent: "center",
     paddingVertical: spacing.md,
     width: "31%",
   },
   slotItemSelected: {
-    backgroundColor: colors.inkSubtle,
+    backgroundColor: colors.ink,
     borderColor: colors.ink,
   },
   slotTime: {
     color: colors.label,
+    fontWeight: "600",
   },
   slotTimeSelected: {
-    color: colors.ink,
+    color: colors.alwaysWhite,
     fontWeight: "700",
   },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
 });
-

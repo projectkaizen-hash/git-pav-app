@@ -224,6 +224,8 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: spacing.md,
+    borderRadius: 20,
+    borderColor: colors.separator,
   },
   cardBody: {
     flexDirection: "row",
@@ -245,8 +247,8 @@ const styles = StyleSheet.create({
   },
   dateBlock: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 14,
     gap: 1,
     minWidth: 56,
     paddingVertical: spacing.xs,

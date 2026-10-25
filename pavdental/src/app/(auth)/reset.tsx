@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -61,13 +61,24 @@ export default function ResetPasswordScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
+        <View style={styles.topNav}>
+          <IconButton
+            icon="chevronLeft"
+            label="Go back"
+            variant="soft"
+            size={18}
+            onPress={() => router.back()}
+          />
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              {completed ? "Password Updated" : "Choose New Password"}
+              {completed ? "Password updated" : "New password"}
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               {completed
@@ -78,6 +89,7 @@ export default function ResetPasswordScreen() {
 
           {error ? (
             <View style={styles.errorBox} accessibilityRole="alert">
+              <AppIcon name="alert" size={16} color={colors.danger} />
               <ThemedText variant="caption" style={styles.errorText}>
                 {error}
               </ThemedText>
@@ -87,7 +99,7 @@ export default function ResetPasswordScreen() {
           {!completed ? (
             <View style={styles.form}>
               <Input
-                label="New Password"
+                label="New password"
                 placeholder="At least 8 characters"
                 secureTextEntry
                 value={password}
@@ -98,7 +110,7 @@ export default function ResetPasswordScreen() {
               />
 
               <Input
-                label="Confirm New Password"
+                label="Confirm new password"
                 placeholder="Re-enter password"
                 secureTextEntry
                 value={confirmPassword}
@@ -108,13 +120,28 @@ export default function ResetPasswordScreen() {
                 }}
               />
             </View>
-          ) : null}
+          ) : (
+            <View style={styles.successCard}>
+              <View style={styles.successIconBox}>
+                <AppIcon name="check" size={20} color={colors.success} />
+              </View>
+              <View style={styles.successTextCol}>
+                <ThemedText variant="headline" style={styles.successTitle}>
+                  Ready to sign in
+                </ThemedText>
+                <ThemedText variant="subhead" style={styles.successBody}>
+                  Your password meets all NHS and DSPT security standards.
+                </ThemedText>
+              </View>
+            </View>
+          )}
 
           <View style={styles.actions}>
             {!completed ? (
               <Button
                 title="Update Password"
                 size="lg"
+                arrow={true}
                 loading={loading}
                 onPress={handleReset}
               />
@@ -122,6 +149,7 @@ export default function ResetPasswordScreen() {
               <Button
                 title="Proceed to Sign In"
                 size="lg"
+                arrow={true}
                 onPress={() => router.replace("/(auth)/sign-in")}
               />
             )}
@@ -136,15 +164,21 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   errorBox: {
+    alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: 14,
+    flexDirection: "row",
+    gap: spacing.xs,
     marginBottom: spacing.md,
-    padding: spacing.sm,
+    padding: spacing.md,
   },
   errorText: {
     color: colors.danger,
+    flex: 1,
+    fontWeight: "600",
   },
   flex: {
     flex: 1,
@@ -155,6 +189,7 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
     marginBottom: spacing.xl,
+    marginTop: spacing.xs,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -165,13 +200,53 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  successBody: {
+    color: colors.secondaryLabel,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  successCard: {
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md + 2,
+    alignItems: "flex-start",
+  },
+  successIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.successSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  successTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  successTitle: {
+    color: colors.label,
+    fontWeight: "700",
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

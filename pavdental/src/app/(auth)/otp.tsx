@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -13,6 +13,7 @@ export default function OtpScreen() {
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const hiddenInputRef = useRef<TextInput>(null);
 
   const handleSendCode = async () => {
     if (!phone.trim()) {
@@ -60,9 +61,26 @@ export default function OtpScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Top Bar with circular back button */}
+          <View style={styles.topNav}>
+            <IconButton
+              icon="chevronLeft"
+              label="Go back"
+              variant="soft"
+              size={18}
+              onPress={() => {
+                if (step === "code") {
+                  setStep("phone");
+                } else {
+                  router.back();
+                }
+              }}
+            />
+          </View>
+
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              {step === "phone" ? "Phone Sign In" : "Enter Verification Code"}
+              {step === "phone" ? "Phone Sign In" : "Verification"}
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               {step === "phone"
@@ -93,27 +111,78 @@ export default function OtpScreen() {
                 }}
               />
             ) : (
-              <>
-                <Input
-                  label="6-Digit Code"
-                  placeholder="123456"
-                  keyboardType="number-pad"
-                  maxLength={6}
+              <View style={styles.otpSection}>
+                <ThemedText variant="subhead" style={styles.otpLabel}>
+                  Security code
+                </ThemedText>
+
+                {/* Neo Financial 6-box OTP digits */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Tap to enter 6 digit verification code"
+                  onPress={() => hiddenInputRef.current?.focus()}
+                  style={styles.otpBoxesRow}
+                >
+                  {[0, 1, 2, 3, 4, 5].map((index) => {
+                    const digit = code[index] || "";
+                    const isCurrent = code.length === index;
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.otpBox,
+                          isCurrent && styles.otpBoxActive,
+                          digit ? styles.otpBoxFilled : null,
+                        ]}
+                      >
+                        <ThemedText variant="title" style={styles.otpDigit}>
+                          {digit}
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </Pressable>
+
+                {/* Hidden input to capture numeric pad */}
+                <TextInput
+                  ref={hiddenInputRef}
                   value={code}
                   onChangeText={(val) => {
-                    setCode(val);
+                    const cleaned = val.replace(/[^0-9]/g, "").slice(0, 6);
+                    setCode(cleaned);
                     if (error) setError(null);
                   }}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  maxLength={6}
+                  style={styles.hiddenInput}
+                  accessibilityLabel="6-Digit Verification Code"
                 />
-                <Pressable accessibilityRole="button" accessibilityLabel="Change phone number"
-                  onPress={() => setStep("phone")}
-                  style={styles.changePhonePressable}
-                >
-                  <ThemedText variant="caption" style={styles.changePhoneText}>
-                    Change phone number
-                  </ThemedText>
-                </Pressable>
-              </>
+
+                <View style={styles.otpLinksRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Resend code"
+                    onPress={handleSendCode}
+                  >
+                    <ThemedText variant="caption" style={styles.resendText}>
+                      Resend code
+                    </ThemedText>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Change phone number"
+                    onPress={() => setStep("phone")}
+                    style={styles.changePhonePressable}
+                  >
+                    <ThemedText variant="caption" style={styles.changePhoneText}>
+                      Change number
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
             )}
           </View>
 
@@ -121,6 +190,7 @@ export default function OtpScreen() {
             <Button
               title={step === "phone" ? "Send Code" : "Verify & Continue"}
               size="lg"
+              arrow
               loading={loading}
               onPress={step === "phone" ? handleSendCode : handleVerifyCode}
             />
@@ -143,12 +213,66 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xl,
   },
+  topNav: {
+    marginBottom: spacing.md,
+  },
+  otpSection: {
+    gap: spacing.sm,
+  },
+  otpLabel: {
+    color: colors.label,
+    fontWeight: "500",
+  },
+  otpBoxesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: spacing.xs,
+  },
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: colors.secondaryBackground,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  otpBoxActive: {
+    borderColor: colors.ink,
+    backgroundColor: colors.systemBackground,
+  },
+  otpBoxFilled: {
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
+  },
+  otpDigit: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  hiddenInput: {
+    height: 0,
+    width: 0,
+    opacity: 0,
+    position: "absolute",
+  },
+  otpLinksRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.xs,
+  },
+  resendText: {
+    color: colors.info,
+    fontWeight: "600",
+  },
   changePhonePressable: {
     paddingVertical: spacing.xxs,
   },
   changePhoneText: {
-    color: colors.ink,
-    fontWeight: "600",
+    color: colors.secondaryLabel,
+    fontWeight: "500",
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,

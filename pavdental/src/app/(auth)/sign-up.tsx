@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Input, Button } from "@/components";
+import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
@@ -14,8 +14,24 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState(params.email || "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const passwordStrength = useMemo(() => {
+    if (!password) return { level: 0, label: "", color: colors.separator };
+    const hasLength = password.length >= 8;
+    const hasMix = /[A-Z]/.test(password) && /[a-z]/.test(password);
+    const hasNumOrSym = /[0-9]/.test(password) || /[^A-Za-z0-9]/.test(password);
+
+    if (hasLength && hasMix && hasNumOrSym) {
+      return { level: 3, label: "Strong", color: colors.success };
+    }
+    if ((hasLength && hasMix) || (hasLength && hasNumOrSym) || (hasMix && hasNumOrSym)) {
+      return { level: 2, label: "Medium", color: colors.warning };
+    }
+    return { level: 1, label: "Weak", color: colors.danger };
+  }, [password]);
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
@@ -74,6 +90,17 @@ export default function SignUpScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Top Bar with circular back button */}
+          <View style={styles.topNav}>
+            <IconButton
+              icon="chevronLeft"
+              label="Go back"
+              variant="soft"
+              size={18}
+              onPress={() => router.back()}
+            />
+          </View>
+
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
               Create Account
@@ -148,21 +175,63 @@ export default function SignUpScreen() {
             <Input
               label="Password"
               placeholder="At least 8 characters"
-              secureTextEntry
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-              hint="Use numbers, letters & symbols for strength"
               value={password}
               onChangeText={(val) => {
                 setPassword(val);
                 if (error) setError(null);
               }}
+              rightSlot={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={8}
+                >
+                  <AppIcon
+                    name={showPassword ? "eyeOff" : "eye"}
+                    size={18}
+                    color={colors.tertiaryLabel}
+                  />
+                </Pressable>
+              }
             />
+
+            {/* Neo Financial 3-segment password strength indicator */}
+            {password.length > 0 ? (
+              <View style={styles.strengthContainer}>
+                <View style={styles.strengthBars}>
+                  {[1, 2, 3].map((bar) => (
+                    <View
+                      key={bar}
+                      style={[
+                        styles.strengthBar,
+                        {
+                          backgroundColor:
+                            bar <= passwordStrength.level
+                              ? passwordStrength.color
+                              : colors.separator,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+                <ThemedText
+                  variant="caption"
+                  style={[styles.strengthLabel, { color: passwordStrength.color }]}
+                >
+                  {passwordStrength.label}
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.actions}>
             <Button
               title="Create Account"
               size="lg"
+              arrow
               loading={loading}
               onPress={handleRegister}
             />
@@ -209,7 +278,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   footerLink: {
-    color: colors.ink,
+    color: colors.info,
     fontWeight: "600",
   },
   footerRow: {
@@ -224,6 +293,31 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
     marginBottom: spacing.lg,
+  },
+  topNav: {
+    marginBottom: spacing.md,
+  },
+  strengthContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: -4,
+  },
+  strengthBars: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    marginRight: spacing.md,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  strengthLabel: {
+    fontWeight: "600",
+    minWidth: 50,
+    textAlign: "right",
   },
   row: {
     flexDirection: "row",

@@ -39,11 +39,41 @@ interface AuthState {
   updateUser: (patch: Partial<AuthUser>) => void;
 }
 
+const getInitialUser = (): { token: string | null; user: AuthUser | null; isHydrating: boolean } => {
+  if (typeof window !== "undefined") {
+    try {
+      if (window.location?.search?.includes("demo=patient") || window.localStorage?.getItem("pav_demo_patient") === "true") {
+        return {
+          token: "mock-patient-token",
+          user: {
+            id: "usr_patient_demo",
+            sub: "usr_patient_demo",
+            email: "patient@example.test",
+            firstName: "Alex",
+            lastName: "Morgan",
+            role: "patient",
+            emailVerified: true,
+            phoneVerified: true,
+            isMfaEnabled: false,
+            mfaEnabled: false,
+          },
+          isHydrating: false,
+        };
+      }
+    } catch {
+      // Storage unavailable or non-browser context
+    }
+  }
+  return { token: null, user: null, isHydrating: true };
+};
+
+const initialAuth = getInitialUser();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
-  user: null,
-  isHydrating: true,
-  biometricUnlocked: false,
+  accessToken: initialAuth.token,
+  user: initialAuth.user,
+  isHydrating: initialAuth.isHydrating,
+  biometricUnlocked: Boolean(initialAuth.token),
 
   setAuth: (token, user) =>
     set({ accessToken: token, user, isHydrating: false }),

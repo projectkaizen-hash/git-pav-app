@@ -47,9 +47,9 @@ export function ListRow({
       {left ? <View style={styles.leftSlot}>{left}</View> : null}
 
       <View style={styles.content}>
-        <ThemedText variant="body">{title}</ThemedText>
+        <ThemedText variant="body" style={styles.titleText}>{title}</ThemedText>
         {subtitle ? (
-          <ThemedText variant="subhead">{subtitle}</ThemedText>
+          <ThemedText variant="subhead" style={styles.subtitleText}>{subtitle}</ThemedText>
         ) : null}
       </View>
 
@@ -80,7 +80,7 @@ export function ListRow({
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    gap: spacing.xxs / 2,
+    gap: 2,
   },
   leftSlot: {
     marginRight: spacing.sm,
@@ -89,12 +89,19 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   row: {
-    minHeight: 44, // WCAG 2.2 minimum tap target
+    minHeight: 52, // Neo Financial generous tap target
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.systemBackground,
+  },
+  titleText: {
+    fontWeight: "500",
+    color: colors.label,
+  },
+  subtitleText: {
+    color: colors.secondaryLabel,
   },
   separator: {
     backgroundColor: colors.separator,

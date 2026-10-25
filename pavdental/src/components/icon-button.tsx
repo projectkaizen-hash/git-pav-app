@@ -10,8 +10,8 @@ interface IconButtonProps {
   onPress?: () => void;
   size?: number;
   color?: string;
-  /** Filled ink circle, or transparent press-only feedback */
-  variant?: "solid" | "plain";
+  /** Filled ink circle, soft circular grey pill, or transparent press-only feedback */
+  variant?: "solid" | "plain" | "soft";
   disabled?: boolean;
   haptic?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -53,12 +53,17 @@ export function IconButton({
       style={({ pressed }) => [
         styles.base,
         variant === "solid" && styles.solid,
+        variant === "soft" && styles.soft,
         { width: diameter, height: diameter },
         pressed && !disabled && styles.pressed,
         style,
       ]}
     >
-      <AppIcon name={icon} size={size} color={variant === "solid" ? colors.onInk : color} />
+      <AppIcon
+        name={icon}
+        size={size}
+        color={variant === "solid" ? colors.onInk : color}
+      />
     </Pressable>
   );
 }
@@ -71,6 +76,9 @@ const styles = StyleSheet.create({
   },
   solid: {
     backgroundColor: colors.ink,
+  },
+  soft: {
+    backgroundColor: colors.inkSubtle,
   },
   pressed: {
     opacity: 0.7,

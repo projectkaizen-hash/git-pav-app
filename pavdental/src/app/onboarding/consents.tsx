@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Button, ProgressPills } from "@/components";
+import { ThemedText, Button, ProgressPills, IconButton, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -72,8 +72,8 @@ export default function OnboardingConsentsScreen() {
         }),
       });
       if (!profileRes.ok) {
-        const err = await profileRes.json().catch(() => ({}));
-        throw new Error((err as any).error || "Could not save your profile");
+        const err = (await profileRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || "Could not save your profile");
       }
 
       // 2. Consents → consent records (versioned, DSPT-auditable)
@@ -90,14 +90,15 @@ export default function OnboardingConsentsScreen() {
           body: JSON.stringify(grant),
         });
         if (!res.ok && res.status !== 409) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error((err as any).error || `Could not record ${grant.consentType} consent`);
+          const err = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(err.error || `Could not record ${grant.consentType} consent`);
         }
       }
 
       router.push("/onboarding/complete");
-    } catch (err: any) {
-      setError(err?.message || "Could not finish setup. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not finish setup. Please try again.";
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,9 +106,25 @@ export default function OnboardingConsentsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <View style={styles.progressWrap}>
           <ProgressPills total={5} current={5} />
+        </View>
+        <View style={styles.navSpacer} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
             Privacy & Consents
           </ThemedText>
@@ -118,6 +135,7 @@ export default function OnboardingConsentsScreen() {
 
         {error ? (
           <View style={styles.errorBox} accessibilityRole="alert">
+            <AppIcon name="alert" size={16} color={colors.danger} />
             <ThemedText variant="caption" style={styles.errorText}>
               {error}
             </ThemedText>
@@ -128,9 +146,14 @@ export default function OnboardingConsentsScreen() {
           {/* Mandatory Health Data */}
           <View style={styles.consentCard}>
             <View style={styles.cardHeader}>
-              <ThemedText variant="headline" style={styles.cardTitle}>
-                Special Category Health Data (Mandatory)
-              </ThemedText>
+              <View style={styles.cardHeaderLeft}>
+                <ThemedText variant="headline" style={styles.cardTitle}>
+                  Health Data Processing
+                </ThemedText>
+                <View style={styles.mandatoryBadge}>
+                  <ThemedText variant="caption" style={styles.mandatoryText}>MANDATORY</ThemedText>
+                </View>
+              </View>
               <Switch
                 value={dataProcessing}
                 onValueChange={(val) => {
@@ -150,9 +173,14 @@ export default function OnboardingConsentsScreen() {
           {/* Mandatory Clinical Examination */}
           <View style={styles.consentCard}>
             <View style={styles.cardHeader}>
-              <ThemedText variant="headline" style={styles.cardTitle}>
-                General Treatment & Examination (Mandatory)
-              </ThemedText>
+              <View style={styles.cardHeaderLeft}>
+                <ThemedText variant="headline" style={styles.cardTitle}>
+                  General Treatment
+                </ThemedText>
+                <View style={styles.mandatoryBadge}>
+                  <ThemedText variant="caption" style={styles.mandatoryText}>MANDATORY</ThemedText>
+                </View>
+              </View>
               <Switch
                 value={treatmentConsent}
                 onValueChange={(val) => {
@@ -172,9 +200,14 @@ export default function OnboardingConsentsScreen() {
           {/* Optional Communication */}
           <View style={styles.consentCard}>
             <View style={styles.cardHeader}>
-              <ThemedText variant="headline" style={styles.cardTitle}>
-                Hygiene & Recall Reminders (Optional)
-              </ThemedText>
+              <View style={styles.cardHeaderLeft}>
+                <ThemedText variant="headline" style={styles.cardTitle}>
+                  Recall & Reminders
+                </ThemedText>
+                <View style={styles.optionalBadge}>
+                  <ThemedText variant="caption" style={styles.optionalText}>OPTIONAL</ThemedText>
+                </View>
+              </View>
               <Switch
                 value={directMarketing}
                 onValueChange={setDirectMarketing}
@@ -193,6 +226,7 @@ export default function OnboardingConsentsScreen() {
           <Button
             title={isSubmitting ? "Saving your details..." : "Complete Registration"}
             size="lg"
+            arrow={true}
             loading={isSubmitting}
             onPress={handleComplete}
           />
@@ -205,22 +239,33 @@ export default function OnboardingConsentsScreen() {
 const styles = StyleSheet.create({
   actions: {
     marginTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   cardBody: {
     color: colors.secondaryLabel,
+    fontSize: 13,
+    lineHeight: 18,
   },
   cardHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  cardTitle: {
+  cardHeaderLeft: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
     paddingRight: spacing.sm,
+  },
+  cardTitle: {
+    fontWeight: "700",
   },
   consentCard: {
     backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -228,17 +273,54 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   errorBox: {
+    alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: 14,
+    flexDirection: "row",
+    gap: spacing.xs,
     marginBottom: spacing.md,
-    padding: spacing.sm,
+    padding: spacing.md,
   },
   errorText: {
     color: colors.danger,
+    flex: 1,
+    fontWeight: "600",
   },
   header: {
-    gap: spacing.xxs,
+    gap: spacing.xs,
     marginBottom: spacing.lg,
+    marginTop: spacing.xs,
+  },
+  mandatoryBadge: {
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  mandatoryText: {
+    color: colors.alwaysWhite,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  navSpacer: {
+    width: 44,
+  },
+  optionalBadge: {
+    backgroundColor: colors.separator,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  optionalText: {
+    color: colors.secondaryLabel,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  progressWrap: {
+    alignItems: "center",
+    flex: 1,
   },
   safe: {
     backgroundColor: colors.systemBackground,
@@ -248,13 +330,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,
+    fontSize: 15,
+    lineHeight: 21,
   },
   title: {
     color: colors.label,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
 });
-

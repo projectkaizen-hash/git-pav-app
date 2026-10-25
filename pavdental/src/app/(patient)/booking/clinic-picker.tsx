@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, AppIcon, EmptyState, ErrorState, Skeleton, ProgressPills } from "@/components";
+import { ThemedText, Card, AppIcon, EmptyState, ErrorState, Skeleton, ProgressPills, IconButton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useClinics } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
@@ -22,20 +22,32 @@ export default function ClinicPickerScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <View style={styles.progressWrap}>
+          <ProgressPills total={5} current={2} />
+        </View>
+      </View>
+
       <View style={styles.header}>
-        <ProgressPills total={5} current={2} />
-        <ThemedText variant="headline">
-          {service ? `Where would you like your ${service.name}?` : "Select a Clinic"}
+        <ThemedText variant="largeTitle" style={styles.title}>
+          {service ? `Where for your\n${service.name}?` : "Select a Clinic"}
         </ThemedText>
-        <ThemedText variant="caption" style={styles.sub}>
+        <ThemedText variant="subhead" style={styles.sub}>
           All clinics are fully CQC-registered with modern sterilization suites.
         </ThemedText>
       </View>
 
       {isLoading ? (
         <View style={styles.clinicList}>
-          <Skeleton height={88} borderRadius={16} />
-          <Skeleton height={88} borderRadius={16} />
+          <Skeleton height={96} borderRadius={20} />
+          <Skeleton height={96} borderRadius={20} />
         </View>
       ) : isError ? (
         <ErrorState
@@ -51,14 +63,16 @@ export default function ClinicPickerScreen() {
       ) : (
         <View style={styles.clinicList}>
           {clinics.map((clinic) => (
-            <Pressable accessibilityRole="button" accessibilityLabel={clinic.name}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={clinic.name}
               key={clinic.id}
               onPress={() => handleSelectClinic(clinic)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
             >
-              <Card elevation="raised" style={styles.card}>
+              <Card style={styles.card}>
                 <View style={styles.iconBox}>
-                  <AppIcon name="plus" size={22} color={colors.ink} />
+                  <AppIcon name="mapPin" size={20} color={colors.ink} />
                 </View>
                 <View style={styles.info}>
                   <ThemedText variant="headline" style={styles.name}>
@@ -91,6 +105,8 @@ const styles = StyleSheet.create({
   card: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
+    borderRadius: 20,
+    borderColor: colors.separator,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md,
@@ -105,15 +121,17 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     padding: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   header: {
     gap: spacing.xxs,
+    marginBottom: spacing.xs,
   },
   hoursRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 4,
-    marginTop: 2,
+    marginTop: 4,
   },
   hours: {
     color: colors.secondaryLabel,
@@ -121,11 +139,11 @@ const styles = StyleSheet.create({
   },
   iconBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 24,
-    height: 48,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: 14,
+    height: 44,
     justifyContent: "center",
-    width: 48,
+    width: 44,
   },
   info: {
     flex: 1,
@@ -133,8 +151,22 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.label,
+    fontWeight: "600",
+  },
+  progressWrap: {
+    flex: 1,
+    marginLeft: spacing.md,
   },
   sub: {
     color: colors.secondaryLabel,
+  },
+  title: {
+    color: colors.label,
+    fontWeight: "700",
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginBottom: spacing.xs,
   },
 });

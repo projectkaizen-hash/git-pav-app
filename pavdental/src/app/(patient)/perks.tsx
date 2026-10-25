@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
+import { View, StyleSheet, ScrollView, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Button, AppIcon, Badge, Toast } from "@/components";
-import { colors, spacing, radius } from "@/theme";
+import { ThemedText, Card, Button, AppIcon, Badge, Toast, IconButton } from "@/components";
+import { colors, spacing } from "@/theme";
 import { useRewards, useRedeemRewardMutation } from "@/features/hooks/use-dental-api";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -45,9 +45,10 @@ export default function OralHealthPerksScreen() {
         message: `Voucher ${res.voucherCode} added. You can use it when you pay your next deposit.`,
         tone: "success",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSelectedReward(null);
-      setToast({ message: err?.message || "Could not redeem points", tone: "error" });
+      const msg = err instanceof Error ? err.message : "Could not redeem points";
+      setToast({ message: msg, tone: "error" });
     }
   };
 
@@ -55,39 +56,42 @@ export default function OralHealthPerksScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {toast ? <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            onPress={() => router.back()}
-            style={styles.backBtn}
-            hitSlop={8}
-          >
-            <AppIcon name="chevronLeft" size={20} color={colors.ink} />
-            <ThemedText variant="subhead" style={styles.backText}>Back</ThemedText>
-          </Pressable>
-          <ThemedText variant="largeTitle" style={styles.title}>
-            Rewards
-          </ThemedText>
-          <ThemedText variant="subhead" style={styles.subtitle}>
-            {pointsPerVisit
-              ? `You earn ${pointsPerVisit} points for each completed visit. Use them for money off a future deposit.`
-              : "Earn points for completed visits and use them for money off a future deposit."}
-          </ThemedText>
-        </View>
+      <View style={styles.topNav}>
+        <IconButton
+          icon="chevronLeft"
+          label="Go back"
+          variant="soft"
+          size={18}
+          onPress={() => router.back()}
+        />
+        <ThemedText variant="headline" style={styles.navTitle}>Rewards & Perks</ThemedText>
+        <View style={styles.navSpacer} />
+      </View>
 
-        <Card elevation="raised" style={styles.heroCard}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Points Hero Card */}
+        <Card elevation="flat" style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View>
-              <ThemedText variant="caption" style={styles.heroLabel}>YOUR POINTS</ThemedText>
+              <ThemedText variant="caption" style={styles.heroLabel}>YOUR REWARD BALANCE</ThemedText>
               <ThemedText variant="largeTitle" style={styles.heroPoints}>
                 {isLoading ? "–" : pointsBalance.toLocaleString("en-GB")}
               </ThemedText>
               <ThemedText variant="caption" style={styles.heroSub}>
-                {isError ? "Couldn't load your points. Try again later." : "Points available"}
+                {isError ? "Couldn't load your points. Try again later." : "Active points available"}
               </ThemedText>
             </View>
+            <View style={styles.sparkleBox}>
+              <AppIcon name="sparkle" size={24} color={colors.alwaysWhite} />
+            </View>
+          </View>
+          <View style={styles.heroNoticeRow}>
+            <AppIcon name="info" size={14} color="rgba(255, 255, 255, 0.7)" />
+            <ThemedText variant="caption" style={styles.heroNoticeText}>
+              {pointsPerVisit
+                ? `Earn ${pointsPerVisit} points per completed visit. Spend as money off deposits.`
+                : "Earn points for every completed visit. Spend as money off deposits."}
+            </ThemedText>
           </View>
         </Card>
 
@@ -97,16 +101,23 @@ export default function OralHealthPerksScreen() {
               <ThemedText variant="headline" style={styles.sectionTitle}>
                 Your vouchers
               </ThemedText>
-              <ThemedText variant="caption" style={styles.muted}>
+              <ThemedText variant="caption" style={styles.sectionMuted}>
                 Choose a voucher when you pay the deposit for your next booking.
               </ThemedText>
             </View>
-            <Card style={styles.itemCard}>
+            <Card elevation="flat" style={styles.vouchersCard}>
               {vouchers.map((v, i) => (
                 <View key={v.id}>
                   {i > 0 && <View style={styles.divider} />}
                   <View style={styles.voucherRow}>
-                    <ThemedText variant="subhead">{formatGbp(v.discountPence)} off a deposit</ThemedText>
+                    <View style={styles.voucherLeft}>
+                      <View style={styles.voucherIconBox}>
+                        <AppIcon name="tag" size={16} color={colors.ink} />
+                      </View>
+                      <ThemedText variant="subhead" style={styles.voucherDiscount}>
+                        {formatGbp(v.discountPence)} off a deposit
+                      </ThemedText>
+                    </View>
                     <View style={styles.promoCodePill}>
                       <ThemedText variant="caption" style={styles.promoCodeText}>{v.voucherCode}</ThemedText>
                     </View>
@@ -119,7 +130,10 @@ export default function OralHealthPerksScreen() {
 
         <View style={styles.sectionHeader}>
           <ThemedText variant="headline" style={styles.sectionTitle}>
-            Use your points
+            Available rewards
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.sectionMuted}>
+            Redeem points for treatment discounts & perks.
           </ThemedText>
         </View>
 
@@ -127,7 +141,7 @@ export default function OralHealthPerksScreen() {
           {catalog.map((item) => {
             const canAfford = pointsBalance >= item.pointsCost;
             return (
-              <Card key={item.id} elevation="raised" style={styles.itemCard}>
+              <Card key={item.id} elevation="flat" style={styles.itemCard}>
                 <View style={styles.itemTopRow}>
                   <Badge label={item.category} variant="info" />
                   <ThemedText variant="headline" style={styles.pointsCostTag}>
@@ -143,9 +157,10 @@ export default function OralHealthPerksScreen() {
                 </ThemedText>
 
                 <Button
-                  title={canAfford ? "Redeem ›" : `Need ${item.pointsCost - pointsBalance} more pts`}
+                  title={canAfford ? "Redeem voucher" : `Need ${item.pointsCost - pointsBalance} more pts`}
                   variant={canAfford ? "primary" : "secondary"}
                   size="sm"
+                  arrow={canAfford}
                   disabled={!canAfford}
                   onPress={() => setSelectedReward(item)}
                   style={styles.redeemBtn}
@@ -161,32 +176,33 @@ export default function OralHealthPerksScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
               <ThemedText variant="largeTitle" style={styles.modalTitle}>
-                Confirm
+                Confirm redemption
               </ThemedText>
               <ThemedText variant="subhead" style={styles.modalSub}>
                 Swap {selectedReward.pointsCost} points for {selectedReward.title.toLowerCase()}?
               </ThemedText>
 
-              <Card elevation="raised" style={styles.modalCard}>
+              <Card elevation="flat" style={styles.modalCard}>
                 <View style={styles.modalRow}>
-                  <ThemedText variant="caption">Points balance</ThemedText>
-                  <ThemedText variant="subhead">{pointsBalance} pts</ThemedText>
+                  <ThemedText variant="caption" style={styles.modalLabel}>Points balance</ThemedText>
+                  <ThemedText variant="subhead" style={styles.modalValue}>{pointsBalance} pts</ThemedText>
                 </View>
                 <View style={styles.modalRow}>
-                  <ThemedText variant="caption">Cost</ThemedText>
+                  <ThemedText variant="caption" style={styles.modalLabel}>Cost</ThemedText>
                   <ThemedText variant="subhead" style={styles.costNegative}>–{selectedReward.pointsCost} pts</ThemedText>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.modalRow}>
-                  <ThemedText variant="caption">Remaining balance</ThemedText>
-                  <ThemedText variant="headline">{pointsBalance - selectedReward.pointsCost} pts</ThemedText>
+                  <ThemedText variant="caption" style={styles.modalLabel}>Remaining balance</ThemedText>
+                  <ThemedText variant="headline" style={styles.modalRemaining}>{pointsBalance - selectedReward.pointsCost} pts</ThemedText>
                 </View>
               </Card>
 
               <View style={styles.modalActions}>
                 <Button
-                  title={redeemMutation.isPending ? "Redeeming…" : "Redeem"}
+                  title={redeemMutation.isPending ? "Redeeming…" : "Confirm & Redeem"}
                   size="lg"
+                  arrow={true}
                   loading={redeemMutation.isPending}
                   onPress={() => handleRedeem(selectedReward)}
                 />
@@ -201,23 +217,8 @@ export default function OralHealthPerksScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-    marginBottom: spacing.xs,
-  },
-  backText: {
-    color: colors.ink,
-    fontWeight: "600",
-  },
   catalogGrid: {
     gap: spacing.sm,
-  },
-  voucherRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
   costNegative: {
     color: colors.danger,
@@ -228,29 +229,39 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: spacing.xs,
   },
-  header: {
-    gap: spacing.xxs,
-  },
   heroCard: {
-    backgroundColor: "#161618",
+    backgroundColor: colors.alwaysBlack,
     borderCurve: "continuous",
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    borderRadius: 24,
     gap: spacing.md,
     padding: spacing.lg,
   },
   heroLabel: {
     color: "rgba(255, 255, 255, 0.6)",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+  },
+  heroNoticeRow: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  heroNoticeText: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    flex: 1,
   },
   heroPoints: {
     color: colors.alwaysWhite,
     fontSize: 38,
     fontWeight: "800",
     letterSpacing: -1,
+    marginVertical: 2,
   },
   heroSub: {
     color: "rgba(255, 255, 255, 0.7)",
@@ -261,19 +272,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   itemCard: {
+    backgroundColor: colors.systemBackground,
     borderCurve: "continuous",
     borderColor: colors.separator,
-    borderRadius: radius.xl,
+    borderRadius: 20,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
   },
   itemDesc: {
     color: colors.secondaryLabel,
+    fontSize: 13,
     lineHeight: 18,
   },
   itemTitle: {
     color: colors.label,
+    fontWeight: "700",
     marginTop: 2,
   },
   itemTopRow: {
@@ -288,16 +302,26 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: colors.secondaryBackground,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.separator,
     gap: spacing.xs,
     marginVertical: spacing.md,
     padding: spacing.md,
     width: "100%",
+  },
+  modalLabel: {
+    color: colors.secondaryLabel,
   },
   modalOverlay: {
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     flex: 1,
     justifyContent: "flex-end",
+  },
+  modalRemaining: {
+    color: colors.ink,
+    fontWeight: "800",
   },
   modalRow: {
     alignItems: "center",
@@ -307,8 +331,8 @@ const styles = StyleSheet.create({
   modalSheet: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: spacing.xl,
     paddingBottom: spacing.xxl,
     width: "100%",
@@ -320,20 +344,28 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: colors.label,
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "center",
   },
-  muted: {
-    color: colors.secondaryLabel,
-    lineHeight: 18,
+  modalValue: {
+    fontWeight: "600",
+  },
+  navSpacer: {
+    width: 44,
+  },
+  navTitle: {
+    color: colors.label,
+    fontWeight: "700",
   },
   pointsCostTag: {
     color: colors.ink,
     fontWeight: "700",
   },
   promoCodePill: {
-    backgroundColor: colors.inkSubtle,
+    backgroundColor: colors.secondaryBackground,
+    borderColor: colors.separator,
     borderRadius: 8,
+    borderWidth: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -359,16 +391,59 @@ const styles = StyleSheet.create({
     gap: 2,
     marginTop: spacing.xs,
   },
+  sectionMuted: {
+    color: colors.secondaryLabel,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   sectionTitle: {
     color: colors.label,
-  },
-  subtitle: {
-    color: colors.secondaryLabel,
-    lineHeight: 20,
-  },
-  title: {
-    color: colors.label,
     fontWeight: "700",
-    letterSpacing: -0.5,
+    fontSize: 18,
+  },
+  sparkleBox: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 22,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  topNav: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  voucherDiscount: {
+    fontWeight: "600",
+  },
+  voucherIconBox: {
+    alignItems: "center",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 10,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  voucherLeft: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  voucherRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+  },
+  vouchersCard: {
+    backgroundColor: colors.systemBackground,
+    borderColor: colors.separator,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: spacing.md,
   },
 });
