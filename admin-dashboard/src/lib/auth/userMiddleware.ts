@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyToken } from "@/lib/auth/jwt";
+import { verifyShopperToken } from "@/lib/auth/jwt";
 
 /**
  * Protect public‑user API routes.
@@ -23,15 +23,7 @@ export async function requireUser(request: Request): Promise<NextResponse | void
     if (match) token = decodeURIComponent(match[1]);
   }
 
-  if (token) {
-    const payload = await verifyToken(token);
-    if (payload) return; // valid
-  }
-
-  // In dev allow free access for convenience
-  if (process.env.NODE_ENV !== "production") {
-    return;
-  }
+  if (token && (await verifyShopperToken(token))) return;
 
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }

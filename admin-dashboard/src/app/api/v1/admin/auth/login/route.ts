@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { signToken } from "@/lib/auth/jwt";
+import { STAFF_PURPOSE, signToken } from "@/lib/auth/jwt";
 import { pavApiUrl, storeAppSession } from "@/lib/pav-api.server";
 
 import crypto from "node:crypto";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -14,7 +14,7 @@ const CORS_HEADERS = {
 const SESSION_SECONDS = 60 * 60 * 12;
 
 async function startDashboardSession(claims: { email: string; sub?: string }) {
-  const token = await signToken({ ...claims, role: "admin" }, SESSION_SECONDS);
+  const token = await signToken({ ...claims, role: "admin", purpose: STAFF_PURPOSE }, SESSION_SECONDS);
   const response = NextResponse.json({ success: true }, { headers: CORS_HEADERS });
   response.cookies.set("admin_token", token, {
     httpOnly: true,

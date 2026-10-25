@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { clearAppSession, pavApi, pavApiUrl } from "@/lib/pav-api.server";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireAdmin } from "@/lib/auth/middleware";
 import { query } from "@/lib/db/client";
 
 /**
@@ -7,6 +8,9 @@ import { query } from "@/lib/db/client";
  * Delete a user by ID
  */
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const authErr = await requireAdmin(req);
+  if (authErr) return authErr;
+
   try {
     const { id } = params;
 
@@ -24,6 +28,9 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
  * Update a user by ID
  */
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const authErr = await requireAdmin(req);
+  if (authErr) return authErr;
+
   try {
     const { id } = params;
     const { name, phone, email_verified } = await req.json();

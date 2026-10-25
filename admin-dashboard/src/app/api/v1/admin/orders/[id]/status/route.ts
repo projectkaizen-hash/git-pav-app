@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/middleware";
 import { type OrderStatus, transitionOrderStatus } from "@/lib/order-state-machine";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };

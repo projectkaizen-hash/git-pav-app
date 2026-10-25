@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { verifyToken } from "@/lib/auth/jwt";
+import { verifyShopperToken } from "@/lib/auth/jwt";
 import { query } from "@/lib/db/client";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS });
     }
 
-    const payload = await verifyToken(rawToken);
+    const payload = await verifyShopperToken(rawToken);
     const userId = payload?.userId;
     if (!userId) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401, headers: CORS_HEADERS });
