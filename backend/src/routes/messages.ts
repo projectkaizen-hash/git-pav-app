@@ -125,12 +125,16 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
           : (t.patientUser?.email ? t.patientUser.email.split("@")[0] : "Patient");
         // Staff seeing their inbox see the patient as 'from'; patients see the clinician or practice team name
         const displayFrom = isStaff ? (patientName || "Patient") : t.senderName;
+        const decryptedSubject = await decryptString(t.subject);
+        const lastMsg = t.messages[t.messages.length - 1];
+        const lastBody = lastMsg ? await decryptString(lastMsg.body) : "";
+        const preview = lastBody ? `${lastMsg.senderName || displayFrom}: ${lastBody.slice(0, 160)}` : "[Secure message]";
 
         return {
           id: t.id,
           from: displayFrom,
-          subject: t.subject,
-          preview: t.preview,
+          subject: decryptedSubject,
+          preview,
           sentAtIso: t.updatedAt.toISOString(),
           isRead: t.isRead,
           hasAttachment: t.hasAttachment,
@@ -152,6 +156,15 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
     )
   );
 });
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 // ─── POST /api/messages ───────────────────────────────────────────────────────
 router.post("/", requireAuth, validateBody(createThreadSchema), async (req: AuthRequest, res: Response) => {
@@ -199,16 +212,17 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
   // Get sender's real display name
   const senderDisplayName = await getSenderDisplayName(userId, userRole);
 
-  // DB-3: Encrypt message body at rest
+  // DB-3: Encrypt message body and subject at rest
   const encrypted = await encryptField(body);
   const storedBody = JSON.stringify(encrypted);
+  const encryptedSubject = JSON.stringify(await encryptField(subject));
 
   const thread = await prisma.messageThread.create({
     data: {
       patientUserId: userId,
       senderName: resolvedRecipientName,
-      subject,
-      preview: `${senderDisplayName}: ${body.slice(0, 160)}`,
+      subject: encryptedSubject,
+      preview: "[Secure message]",
       isRead: false, // Unread for the receiving staff / recipient
       hasAttachment: false,
       recipientType: resolvedRecipientType,
@@ -226,14 +240,17 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     include: { messages: true },
   });
 
+  const safeSender = escapeHtml(senderDisplayName);
+  const safeSubject = escapeHtml(subject);
+
   // MS-3: Notify recipient staff (care team clinician or practice inbox)
   if (resolvedAssignedClinicianId && clinicianUserEmail) {
     communicationService
       .sendEmail({
         to: clinicianUserEmail,
-        subject: `[Pav Dental] New message from ${senderDisplayName}: ${subject}`,
+        subject: `[Pav Dental] New message from ${safeSender}: ${safeSubject}`,
         text: `You have received a new patient message from ${senderDisplayName} regarding: "${subject}".\n\nPlease log into the Clinician Portal to review and reply.`,
-        html: `<p>You have received a new patient message from <strong>${senderDisplayName}</strong> regarding: <em>${subject}</em>.</p><p>Please log into the Clinician Portal to review and reply.</p>`,
+        html: `<p>You have received a new patient message from <strong>${safeSender}</strong> regarding: <em>${safeSubject}</em>.</p><p>Please log into the Clinician Portal to review and reply.</p>`,
       })
       .catch((err) => console.error("[Messages] Failed to dispatch clinician notification:", safeError(err)));
   } else {
@@ -242,9 +259,9 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     communicationService
       .sendEmail({
         to: practiceEmail,
-        subject: `[Practice Inbox] New message from ${senderDisplayName}: ${subject}`,
+        subject: `[Practice Inbox] New message from ${safeSender}: ${safeSubject}`,
         text: `A new patient message was submitted to the practice inbox by ${senderDisplayName} regarding: "${subject}".\n\nPlease review in the Admin Dashboard.`,
-        html: `<p>A new patient message was submitted to the practice inbox by <strong>${senderDisplayName}</strong> regarding: <em>${subject}</em>.</p>`,
+        html: `<p>A new patient message was submitted to the practice inbox by <strong>${safeSender}</strong> regarding: <em>${safeSubject}</em>.</p>`,
       })
       .catch((err) => console.error("[Messages] Failed to dispatch practice notification:", safeError(err)));
   }
@@ -325,7 +342,7 @@ router.post(
       prisma.messageThread.update({
         where: { id: thread.id },
         data: {
-          preview: `${senderDisplayName}: ${body.slice(0, 160)}`,
+          preview: "[Secure message]",
           isRead: isStaff ? true : false,
         },
         include: {
@@ -333,6 +350,10 @@ router.post(
         },
       }),
     ]);
+
+    const decryptedSubject = await decryptString(thread.subject);
+    const safeSender = escapeHtml(senderDisplayName);
+    const safeSubject = escapeHtml(decryptedSubject);
 
     // MS-3: Notifications on reply
     if (isStaff) {
@@ -342,9 +363,9 @@ router.post(
         communicationService
           .sendEmail({
             to: patientEmail,
-            subject: `[Pav Dental] Reply from ${senderDisplayName}: ${thread.subject}`,
-            text: `${senderDisplayName} has replied to your message thread: "${thread.subject}".\n\nPlease open the Pav Dental app to view.`,
-            html: `<p><strong>${senderDisplayName}</strong> has replied to your message thread: <em>${thread.subject}</em>.</p><p>Please open the Pav Dental app to read and reply.</p>`,
+            subject: `[Pav Dental] Reply from ${safeSender}: ${safeSubject}`,
+            text: `${senderDisplayName} has replied to your message thread: "${decryptedSubject}".\n\nPlease open the Pav Dental app to view.`,
+            html: `<p><strong>${safeSender}</strong> has replied to your message thread: <em>${safeSubject}</em>.</p><p>Please open the Pav Dental app to read and reply.</p>`,
           })
           .catch((err) => console.error("[Messages] Failed to notify patient of staff reply:", safeError(err)));
       }
@@ -359,9 +380,9 @@ router.post(
           communicationService
             .sendEmail({
               to: clinician.user.email,
-              subject: `[Pav Dental] Patient reply from ${senderDisplayName}: ${thread.subject}`,
-              text: `${senderDisplayName} has replied to thread: "${thread.subject}".\n\nPlease log into the Clinician Portal to review.`,
-              html: `<p><strong>${senderDisplayName}</strong> has replied to: <em>${thread.subject}</em>.</p>`,
+              subject: `[Pav Dental] Patient reply from ${safeSender}: ${safeSubject}`,
+              text: `${senderDisplayName} has replied to thread: "${decryptedSubject}".\n\nPlease log into the Clinician Portal to review.`,
+              html: `<p><strong>${safeSender}</strong> has replied to: <em>${safeSubject}</em>.</p><p>Please log into the Clinician Portal to review.</p>`,
             })
             .catch(() => {});
         }
@@ -370,9 +391,9 @@ router.post(
         communicationService
           .sendEmail({
             to: practiceEmail,
-            subject: `[Practice Inbox] Patient reply from ${senderDisplayName}: ${thread.subject}`,
-            text: `${senderDisplayName} replied to "${thread.subject}".`,
-            html: `<p><strong>${senderDisplayName}</strong> replied to <em>${thread.subject}</em>.</p>`,
+            subject: `[Practice Inbox] Patient reply from ${safeSender}: ${safeSubject}`,
+            text: `${senderDisplayName} replied to "${decryptedSubject}".\n\nPlease review in the Admin Dashboard.`,
+            html: `<p><strong>${safeSender}</strong> replied to <em>${safeSubject}</em>.</p><p>Please review in the Admin Dashboard.</p>`,
           })
           .catch(() => {});
       }
@@ -401,8 +422,8 @@ router.post(
       thread: {
         id: updatedThread.id,
         from: updatedThread.senderName,
-        subject: updatedThread.subject,
-        preview: updatedThread.preview,
+        subject: decryptedSubject,
+        preview: `${senderDisplayName}: ${body.slice(0, 160)}`,
         sentAtIso: updatedThread.updatedAt.toISOString(),
         isRead: updatedThread.isRead,
         hasAttachment: updatedThread.hasAttachment,

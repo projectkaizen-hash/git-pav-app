@@ -17,7 +17,7 @@ import {
 import { objectStorage } from "../lib/object-storage";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
-import { encryptField, decryptField, isEncryptedEnvelope } from "../lib/encryption";
+import { encryptField, decryptField, decryptString, isEncryptedEnvelope } from "../lib/encryption";
 
 const router = Router();
 
@@ -187,7 +187,14 @@ router.get("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
     orderBy: { toothNumber: "asc" },
   });
 
-  return res.json(teeth);
+  const decryptedTeeth = await Promise.all(
+    teeth.map(async (t) => ({
+      ...t,
+      notes: t.notes ? await decryptString(t.notes) : null,
+    }))
+  );
+
+  return res.json(decryptedTeeth);
 });
 
 // ─── GET /api/patients/:id/odontogram/history ────────────────────────────────
@@ -202,12 +209,15 @@ router.get("/:id/odontogram/history", requireAuth, validateParams(patientIdParam
     take: 100,
   });
 
-  return res.json(
-    history.map((h) => ({
+  const decryptedHistory = await Promise.all(
+    history.map(async (h) => ({
       ...h,
       id: String(h.id),
+      notes: h.notes ? await decryptString(h.notes) : null,
     }))
   );
+
+  return res.json(decryptedHistory);
 });
 
 // ─── PUT /api/patients/:id/odontogram ────────────────────────────────────────
@@ -223,23 +233,30 @@ router.put("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
     select: { id: true },
   });
 
-  const upserts = teeth.map((t: { toothNumber: number; arch: string; quadrant: string; condition: string; notes?: string }) =>
+  const encryptedTeeth = await Promise.all(
+    teeth.map(async (t: { toothNumber: number; arch: string; quadrant: string; condition: string; notes?: string }) => {
+      const encryptedNotes = t.notes ? JSON.stringify(await encryptField(t.notes)) : null;
+      return { ...t, encryptedNotes };
+    })
+  );
+
+  const upserts = encryptedTeeth.map((t) =>
     prisma.toothRecord.upsert({
       where: { patientId_toothNumber: { patientId: profile.id, toothNumber: t.toothNumber } },
-      update: { condition: t.condition as any, notes: t.notes },
+      update: { condition: t.condition as any, notes: t.encryptedNotes },
       create: {
         patientId: profile.id,
         toothNumber: t.toothNumber,
         arch: t.arch,
         quadrant: t.quadrant,
         condition: t.condition as any,
-        notes: t.notes,
+        notes: t.encryptedNotes,
       },
     })
   );
 
   // PT-3: Append-only tooth history
-  const historyInserts = teeth.map((t: { toothNumber: number; arch: string; quadrant: string; condition: string; notes?: string }) =>
+  const historyInserts = encryptedTeeth.map((t) =>
     prisma.toothHistory.create({
       data: {
         patientId: profile.id,
@@ -247,7 +264,7 @@ router.put("/:id/odontogram", requireAuth, validateParams(patientIdParamsSchema)
         arch: t.arch,
         quadrant: t.quadrant,
         condition: t.condition as any,
-        notes: t.notes,
+        notes: t.encryptedNotes,
         appointmentId: appointmentId || null,
         recordedBy: clinician?.id || null,
       },

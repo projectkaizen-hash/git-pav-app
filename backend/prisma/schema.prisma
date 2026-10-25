@@ -45,6 +45,7 @@ model User {
   rewardRedemptions       RewardRedemption[]
   rewardPointsAwards      RewardPointsAward[]
   oralHealthMetric        OralHealthMetric?
+  waitlistEntries         WaitlistEntry[]
 
   @@map("users")
 }
@@ -415,7 +416,7 @@ model AppointmentNote {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
   appointment   Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  clinician     ClinicianProfile @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+  clinician     ClinicianProfile @relation(fields: [clinicianId], references: [id], onDelete: Restrict)
   patient       PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId])
@@ -592,7 +593,9 @@ model WaitlistEntry {
   position      Int
   joinedAt      DateTime  @default(now()) @map("joined_at")
   claimedAt     DateTime? @map("claimed_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@unique([serviceId, preferredDate, userId])
   @@index([serviceId, preferredDate, position])
   @@map("waitlist_entries")
@@ -775,7 +778,7 @@ model MessageThread {
   id                  String            @id @default(uuid()) @db.Uuid
   patientUserId       String            @map("patient_user_id") @db.Uuid
   senderName          String            @map("sender_name") @db.VarChar(150)
-  subject             String            @db.VarChar(255)
+  subject             String
   preview             String
   isRead              Boolean           @default(false) @map("is_read")
   hasAttachment       Boolean           @default(false) @map("has_attachment")

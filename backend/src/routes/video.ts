@@ -223,16 +223,10 @@ router.post("/upload-triage-photo", requireAuth, upload.single("photo"), async (
     }
 
     if (existingAppointment) {
-      const currentTriage = (existingAppointment.triageData as Record<string, unknown>) || {};
-      const existingPhotos = Array.isArray(currentTriage.photos) ? (currentTriage.photos as string[]) : [];
       await prisma.appointment.update({
         where: { id: existingAppointment.id },
         data: {
           intraoralPhotos: [...(existingAppointment.intraoralPhotos || []), uploaded.key],
-          triageData: {
-            ...currentTriage,
-            photos: [...existingPhotos, uploaded.url],
-          },
         },
       });
     }

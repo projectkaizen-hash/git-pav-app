@@ -73,21 +73,24 @@ export class ObjectStorage {
       );
     }
 
-    if (
-      config.provider === "s3" &&
-      config.endpoint &&
-      config.accessKeyId &&
-      config.secretAccessKey
-    ) {
-      this.s3Client = new S3Client({
-        endpoint: config.endpoint,
+    if (config.provider === "s3") {
+      if (!config.bucket) {
+        throw new Error("CRITICAL: S3_BUCKET_NAME must be configured when S3 provider is used.");
+      }
+      const clientConfig: any = {
         region: config.region || "eu-west-2",
-        credentials: {
+        forcePathStyle: true,
+      };
+      if (config.endpoint) {
+        clientConfig.endpoint = config.endpoint;
+      }
+      if (config.accessKeyId && config.secretAccessKey) {
+        clientConfig.credentials = {
           accessKeyId: config.accessKeyId,
           secretAccessKey: config.secretAccessKey,
-        },
-        forcePathStyle: true,
-      });
+        };
+      }
+      this.s3Client = new S3Client(clientConfig);
     }
   }
 
@@ -112,7 +115,10 @@ export class ObjectStorage {
         : Buffer.from(file);
     const sha256 = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
+    if (this.config.provider === "s3") {
+      if (!this.s3Client || !this.config.bucket) {
+        throw new Error("CRITICAL: S3 client or bucket is not configured for upload");
+      }
       // OS-2: Enforce AES256 server-side encryption at rest
       const command = new PutObjectCommand({
         Bucket: this.config.bucket,
@@ -158,7 +164,10 @@ export class ObjectStorage {
   async download(rawKey: string): Promise<DownloadResult> {
     const key = this.sanitizeKey(rawKey);
 
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
+    if (this.config.provider === "s3") {
+      if (!this.s3Client || !this.config.bucket) {
+        throw new Error("CRITICAL: S3 client or bucket is not configured for download");
+      }
       const command = new GetObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
@@ -197,7 +206,10 @@ export class ObjectStorage {
    */
   async delete(rawKey: string): Promise<void> {
     const key = this.sanitizeKey(rawKey);
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
+    if (this.config.provider === "s3") {
+      if (!this.s3Client || !this.config.bucket) {
+        throw new Error("CRITICAL: S3 client or bucket is not configured for delete");
+      }
       const command = new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
@@ -257,7 +269,10 @@ export class ObjectStorage {
 
   async exists(rawKey: string): Promise<boolean> {
     const key = this.sanitizeKey(rawKey);
-    if (this.config.provider === "s3" && this.s3Client && this.config.bucket) {
+    if (this.config.provider === "s3") {
+      if (!this.s3Client || !this.config.bucket) {
+        throw new Error("CRITICAL: S3 client or bucket is not configured for exists check");
+      }
       try {
         await this.s3Client.send(
           new HeadObjectCommand({ Bucket: this.config.bucket, Key: key })
@@ -281,7 +296,7 @@ export function createStorageClient(config: StorageConfig): ObjectStorage {
 }
 
 export const objectStorage = createStorageClient({
-  provider: process.env.S3_BUCKET_NAME && process.env.S3_ENDPOINT ? "s3" : "local",
+  provider: process.env.S3_BUCKET_NAME ? "s3" : "local",
   endpoint: process.env.S3_ENDPOINT,
   bucket: process.env.S3_BUCKET_NAME,
   region: process.env.AWS_REGION || "eu-west-2",

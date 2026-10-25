@@ -24,7 +24,7 @@ import { cancelAppointmentReminders, scheduleAppointmentReminderLadder } from ".
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
-import { encryptField, decryptField, encryptAccessDetails, encryptClientAccessDetails, decryptAccessDetails } from "../lib/encryption";
+import { encryptField, decryptField, decryptString, encryptAccessDetails, encryptClientAccessDetails, decryptAccessDetails } from "../lib/encryption";
 
 const router = Router();
 
@@ -851,20 +851,24 @@ router.post(
 
     const { notes, diagnosis, treatmentPlan } = req.body;
 
+    const encNotes = JSON.stringify(await encryptField(notes));
+    const encDiagnosis = diagnosis ? JSON.stringify(await encryptField(diagnosis)) : null;
+    const encTreatmentPlan = treatmentPlan ? JSON.stringify(await encryptField(treatmentPlan)) : null;
+
     const record = await prisma.appointmentNote.upsert({
       where: { appointmentId },
       update: {
-        notes,
-        diagnosis: diagnosis || null,
-        treatmentPlan: treatmentPlan || null,
+        notes: encNotes,
+        diagnosis: encDiagnosis,
+        treatmentPlan: encTreatmentPlan,
       },
       create: {
         appointmentId,
         clinicianId: effectiveClinicianId,
         patientId: appointment.patientId,
-        notes,
-        diagnosis: diagnosis || null,
-        treatmentPlan: treatmentPlan || null,
+        notes: encNotes,
+        diagnosis: encDiagnosis,
+        treatmentPlan: encTreatmentPlan,
       },
     });
 
@@ -879,7 +883,17 @@ router.post(
       },
     }).catch(() => {});
 
-    return res.json(record);
+    return res.json({
+      id: record.id,
+      appointmentId: record.appointmentId,
+      clinicianId: record.clinicianId,
+      patientId: record.patientId,
+      notes,
+      diagnosis: diagnosis || null,
+      treatmentPlan: treatmentPlan || null,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    });
   }
 );
 
@@ -913,7 +927,19 @@ router.get(
       where: { appointmentId },
     });
 
-    return res.json(note || null);
+    if (!note) return res.json(null);
+
+    return res.json({
+      id: note.id,
+      appointmentId: note.appointmentId,
+      clinicianId: note.clinicianId,
+      patientId: note.patientId,
+      notes: await decryptString(note.notes),
+      diagnosis: note.diagnosis ? await decryptString(note.diagnosis) : null,
+      treatmentPlan: note.treatmentPlan ? await decryptString(note.treatmentPlan) : null,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+    });
   }
 );
 
