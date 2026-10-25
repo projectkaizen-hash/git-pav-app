@@ -51,26 +51,26 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-16 | Done | |
 | CS-19 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-20 | Partial | AU-5 throughput; the `audit_logs` index in `20261024070000` isn't `CONCURRENTLY` (already applied). Legacy hash, monitor window, 401 alerts and the tamper test fixed in #64 |
-| CS-21 | Partial | `fetch` lint rule; web refresh token |
+| CS-21 | Partial | Web refresh token in `localStorage` (lint rule against raw `fetch` added in #64) |
 | CS-22 | Done | |
 | CS-23 | Done | 🛑 Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
 | CS-24 | Done | SAR bundles hidden from clinicians in #64 |
 | CS-25 | Done | App side closed by CS-51 (not re-audited) |
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
 | CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
-| CS-28 | Partial | Notes closed by CS-50; `scope=today` in app; time windows |
-| CS-29 | Partial | Staff inbox for practice threads; per-side read state; thread delete audit |
+| CS-28 | Partial | Time windows for `/complete` and the active-appointment check (the app already sends `scope=today`; record screen shows a 403 since #64) |
+| CS-29 | Partial | Staff inbox for practice threads; per-side read state (thread delete audited in #64) |
 | CS-30, CS-32, CS-33 | Done | |
 | CS-31 | Partial | Team & Services screen and staff invite email in batch 2; clinic screen; 🛑 drop the dashboard `patients` table |
 | CS-34 | Done | Edit screen in batch 2; 🛑 whether a changed date of birth asks for consent again |
 | CS-35 | Done | 🛑 Which roles may prescribe |
 | CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |
-| CS-37 | Partial | Booking pickers, prescriptions, plan detail and messages fixed in batch 2; the operator, clinician inbox, financing, insights, payment methods and notifications screens still treat a failed load as empty |
+| CS-37 | Done | Every data screen shows loading and error states (batches 2 and 3 in #64); financing keeps its fallback link by design |
 | CS-38 | Partial | Remaining labels; screen-reader checklist; real tests |
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
 | CS-44 | Done | Merged as #62 (not re-audited) |
 | CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
-| CS-46 | Partial | Mobile lint errors fixed and lint in CI with a warning ratchet (233, mostly `any`), unused job queue removed, in batch 2; backend lint; mobile tests that assert constants |
+| CS-46 | Partial | Mobile tests that assert constants. Lint runs in CI for the app (233 warnings) and backend (585) with ratchets, in #64 |
 | CS-47 | Not started | 🛑 Legal sign-offs |
 | CS-48 to CS-50 | Done | #47 to #49, #50, #51 |
 | CS-51 | Done | Van visit summary fixed in #64 |
