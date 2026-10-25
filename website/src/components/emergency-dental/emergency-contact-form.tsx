@@ -4,13 +4,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 
 export function EmergencyContactForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const subject = String(formData.get("subject") || "Emergency Dental Consultation Request").trim();
+    const message = String(formData.get("message") || "").trim();
+
+    try {
+      await api.forms.submitContact({
+        name,
+        email,
+        phone: phone || undefined,
+        subject,
+        message,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.message || "Could not submit your emergency request. Please call directly.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -61,6 +87,7 @@ export function EmergencyContactForm() {
                   </Label>
                   <Input
                     id="em-name"
+                    name="name"
                     placeholder="e.g. John Doe"
                     required
                     className="h-12 rounded-xl border-[#e2d4c0] bg-white/70 focus-visible:ring-red-500/30"
@@ -72,6 +99,7 @@ export function EmergencyContactForm() {
                   </Label>
                   <Input
                     id="em-email"
+                    name="email"
                     type="email"
                     placeholder="john@example.com"
                     required
@@ -87,6 +115,7 @@ export function EmergencyContactForm() {
                   </Label>
                   <Input
                     id="em-subject"
+                    name="subject"
                     placeholder="e.g. Severe Toothache / Swelling"
                     className="h-12 rounded-xl border-[#e2d4c0] bg-white/70 focus-visible:ring-red-500/30"
                   />
@@ -97,6 +126,7 @@ export function EmergencyContactForm() {
                   </Label>
                   <Input
                     id="em-phone"
+                    name="phone"
                     type="tel"
                     placeholder="+44 7700 900123"
                     required
@@ -111,19 +141,23 @@ export function EmergencyContactForm() {
                 </Label>
                 <Textarea
                   id="em-message"
+                  name="message"
                   placeholder="Please describe what happened, when the pain started, and any swelling or bleeding..."
                   className="min-h-32 rounded-xl border-[#e2d4c0] bg-white/70 focus-visible:ring-red-500/30 resize-none"
                   required
                 />
               </div>
 
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <Button
                   type="submit"
+                  disabled={loading}
                   className="w-full sm:w-auto accent-gradient rounded-full px-8 h-12 text-white font-bold shadow-md hover:opacity-95"
                 >
                   <Send className="mr-2 size-4" />
-                  Send Message
+                  {loading ? "Sending..." : "Send Message"}
                 </Button>
                 <a
                   href="tel:07311871456"
