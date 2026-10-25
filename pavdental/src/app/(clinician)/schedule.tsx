@@ -9,7 +9,7 @@ import { useCurrentUser, useAuthStore } from "@/features/auth/auth-store";
 export default function ClinicianScheduleScreen() {
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const { data: liveAppointments, isLoading, error, refetch } = useMyAppointments();
+  const { data: liveAppointments, isLoading, error, refetch } = useMyAppointments({ scope: "today" });
 
   // MB-4: Prevent "Dr. Dr." double prefix
   const rawFirst = currentUser?.firstName || "";

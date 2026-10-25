@@ -764,11 +764,19 @@ router.post("/requests/:id/phase", requireAuth, requireRole("operator"), validat
   const { phase, notes } = req.body;
   const now = new Date();
 
-  // Validate no_show can only be set from on_site phase
-  if (phase === "no_show" && request.phase !== "on_site") {
-    return res.status(409).json({ 
-      error: "Cannot mark as no-show", 
-      message: "No-show can only be recorded when van is on site" 
+  // VR-3: Explicit phase transition validation table
+  const VALID_PHASE_TRANSITIONS: Record<string, string[]> = {
+    queued: ["en_route"],
+    en_route: ["on_site"],
+    on_site: ["in_treatment", "no_show"],
+    in_treatment: ["completed"],
+  };
+
+  const allowedNextPhases = VALID_PHASE_TRANSITIONS[request.phase] || [];
+  if (!allowedNextPhases.includes(phase)) {
+    return res.status(409).json({
+      error: "Illegal phase transition",
+      message: `Cannot transition stop from '${request.phase}' to '${phase}'. Allowed next phases: ${allowedNextPhases.join(", ") || "none (terminal state)"}`,
     });
   }
 
@@ -883,9 +891,11 @@ router.get("/availability", requireAuth, async (req: AuthRequest, res: Response)
 
     if (queueCount >= MAX_QUEUE_DEPTH) continue;
 
-    const vanPoint: Point = shift.lastLat != null && shift.lastLng != null
-      ? { lat: shift.lastLat, lng: shift.lastLng }
-      : { lat: 51.5074, lng: -0.1278 }; // London fallback
+    if (shift.lastLat == null || shift.lastLng == null) {
+      // VR-9: Shift has no recorded GPS fix yet; skip rather than assuming a fake London coordinate
+      continue;
+    }
+    const vanPoint: Point = { lat: shift.lastLat, lng: shift.lastLng };
 
     const etaSeconds = await etaSecondsToNewPatient(vanPoint, queueStops, patientPoint);
 
@@ -982,9 +992,11 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
     const queueCount = await getTotalQueueCount(shift.id);
     if (queueCount >= MAX_QUEUE_DEPTH) continue;
 
-    const vanPoint: Point = shift.lastLat != null && shift.lastLng != null
-      ? { lat: shift.lastLat, lng: shift.lastLng }
-      : { lat: 51.5074, lng: -0.1278 };
+    if (shift.lastLat == null || shift.lastLng == null) {
+      // VR-9: Shift has no recorded GPS fix yet; skip rather than assuming a fake London coordinate
+      continue;
+    }
+    const vanPoint: Point = { lat: shift.lastLat, lng: shift.lastLng };
 
     const eta = await etaSecondsToNewPatient(vanPoint, queueStops, patientPoint);
     if (eta < bestEta && eta <= MAX_ETA_SECONDS) {
@@ -1085,8 +1097,11 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
     { requestId: request.id, status: "pending" }
   );
 
+  // VR-10: Strip encrypted accessDetails ciphertext from response DTO
+  const { accessDetails: _, ...sanitizedRequest } = request;
+
   return res.status(201).json({
-    ...request,
+    ...sanitizedRequest,
     etaLabel: formatEtaLabel(Math.round(bestEta)),
     paymentRequired: true,
     depositAmount: service.depositPence,
