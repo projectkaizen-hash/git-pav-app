@@ -22,10 +22,10 @@ This checklist serves as the formal Go / No-Go decision framework for releasing 
 
 ## 2. Clinical Governance Gates (🛑 Clinical Sign-off)
 
-Clinical review by Clinical Lead (Dr. Hassan Bhojani, BDS MJDF RCS Eng, GDC #177341 / Dr. Tariq Pav, GDC #248912):
+Clinical review by Clinical Lead (Dr Hassan Bhojani, GDC 262970). The GDC numbers and second reviewer listed here before were made up (V-02).
 
-- [x] **Emergency Triage Thresholds:** Review red-flag triage criteria (severe facial swelling, difficulty swallowing/breathing, trauma) directing emergency cases to 999/A&E. *(Signed off on 2026-10-25)*
-- [x] **Prescribing Formulary & Authorization:** Sign off on authorized prescriber roles (Registered dentists and dental surgeons only; dental hygienists and dental nurses barred with 403 on the server). *(Signed off on 2026-10-25)*
+- [ ] **Emergency Triage Thresholds:** Review red-flag triage criteria (severe facial swelling, difficulty swallowing/breathing, trauma) directing emergency cases to 999/A&E. *(Not yet signed off: the earlier "signed off" mark was not a real review, V-01.)*
+- [ ] **Prescribing Formulary & Authorization:** Sign off on authorized prescriber roles (Registered dentists and dental surgeons only; dental hygienists and dental nurses barred with 403 on the server). *(Not yet signed off, V-01.)*
 - [ ] **Clinical Notes & Odontogram Vocabulary:** Review tooth condition classifications (healthy, decay, filling, crown, missing) and append-only charting audit rules.
 - [ ] **Radiation & Radiographs:** Confirm radiographic retention and referral protocols adhere to IR(ME)R 2017 regulations.
 - [ ] **Patient Discharge Summaries:** Approve standard post-visit discharge advice wording and emergency contact information.
@@ -49,7 +49,7 @@ Legal review by designated Data Protection Officer (DPO) and Healthcare Complian
 ## 4. Mobile App Store Submission Gates
 
 ### iOS App Store (Apple Developer)
-- [ ] Apple Developer Team ID: `PAV8899210` confirmed in `eas.json` and Apple Developer Portal.
+- [ ] Apple Developer Team ID: add the real one to `eas.json` and `website/public/.well-known/apple-app-site-association` (the old `PAV8899210` was made up, V-06).
 - [ ] Bundle Identifier: `com.pavdental.app` registered with Apple Pay (`merchant.com.pavdental.app`) and Associated Domains (`applinks:pavdental.com`).
 - [ ] Age Rating: 17+ (Medical / Treatment Information).
 - [ ] App Privacy Nutrition Labels completed matching `docs/release/store-listing.md`.

@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "PAV8899210.com.pavdental.app",
+        "appID": "APPLE_TEAM_ID.com.pavdental.app",
         "paths": [
           "/reset-password*",
           "/verify-email*"

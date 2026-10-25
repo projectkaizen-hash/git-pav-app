@@ -2,15 +2,15 @@
  * Automated tests for CS-43: Build Configuration (CG-1, CG-2, CG-3, CG-4).
  *
  * Verifies:
- * 1. app.json includes EAS projectId, runtimeVersion policy, and required plugins:
+ * 1. app.json has no invented EAS project ID (V-06), a runtimeVersion policy,
+ *    and required plugins:
  *    - expo-notifications (CG-1)
  *    - @stripe/stripe-react-native with Apple Pay merchant ID (CG-2)
  *    - iOS entitlements for Apple Pay
- * 2. eas.json defines distinct per-profile environment keys:
- *    - EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY per profile (CG-2)
- *    - preview profile uses pk_test_ key
- *    - production profile uses pk_live_ key
- *    - submit.production.ios.appleTeamId matches standard 10-character Apple Team ID format (CG-3)
+ * 2. eas.json commits no placeholder Stripe keys or invented Apple ids (V-06).
+ *    Stripe keys come from EAS environment variables; if one is committed,
+ *    preview must use pk_test_ and production pk_live_ (CG-2). An Apple Team
+ *    ID, if set, is 10 characters (CG-3).
  * 3. .env.example cleanliness (CG-4):
  *    - Dead variables EXPO_PUBLIC_DAILY_URL and EXPO_PUBLIC_DSPT_MODE are removed
  *    - EAS project ID and LAN configuration are documented
@@ -39,13 +39,27 @@ const envExamplePath = path.join(rootDir, ".env.example");
 assert(fs.existsSync(appJsonPath), "app.json exists");
 const appConfig = JSON.parse(fs.readFileSync(appJsonPath, "utf-8")).expo;
 
-// EAS Project ID
+// EAS Project ID: added by `eas init` once the real Expo account exists (C-03).
+// The one committed before was made up (V-06) and must not come back.
+const INVENTED_IDS = ["c8c3bb48-932f-4c57-89b5-c05333a4bf45", "PAV8899210", "6540192831"];
 const projectId = appConfig.extra?.eas?.projectId;
 assert(
-  typeof projectId === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId),
-  `app.json specifies a valid UUID format for extra.eas.projectId (${projectId})`
+  projectId === undefined ||
+    (typeof projectId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)),
+  `app.json extra.eas.projectId is unset or a UUID (${projectId})`
 );
+const appJsonText = fs.readFileSync(appJsonPath, "utf-8");
+assert(
+  INVENTED_IDS.every((id) => !appJsonText.includes(id)),
+  "app.json contains none of the invented Expo/Apple ids"
+);
+if (appConfig.updates?.url) {
+  assert(
+    projectId !== undefined && appConfig.updates.url.endsWith(projectId),
+    "app.json updates.url points at the configured EAS project"
+  );
+}
 
 // Runtime version policy
 assert(
@@ -98,23 +112,30 @@ assert(devEnv?.EXPO_PUBLIC_API_URL !== undefined, "Development profile has API U
 assert(previewEnv?.EXPO_PUBLIC_API_URL !== undefined, "Preview profile has API URL");
 assert(prodEnv?.EXPO_PUBLIC_API_URL !== undefined, "Production profile has API URL");
 
-// Stripe publishable keys per profile (CG-2)
+// Stripe publishable keys per profile (CG-2). They are set with `eas env`,
+// so a committed one must at least be for the right mode and not a placeholder.
+const easJsonText = fs.readFileSync(easJsonPath, "utf-8");
+assert(!/placeholder|replace_with/i.test(easJsonText), "eas.json commits no placeholder values");
+const previewKey = previewEnv?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const prodKey = prodEnv?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 assert(
-  typeof previewEnv?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
-    previewEnv.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_"),
-  "Preview build profile specifies pk_test_ Stripe key"
+  previewKey === undefined || String(previewKey).startsWith("pk_test_"),
+  "Preview build profile never uses a live Stripe key"
 );
 assert(
-  typeof prodEnv?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
-    prodEnv.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY.startsWith("pk_live_"),
-  "Production build profile specifies pk_live_ Stripe key"
+  prodKey === undefined || String(prodKey).startsWith("pk_live_"),
+  "Production build profile never uses a test Stripe key"
 );
 
-// Apple Team ID format (CG-3: exactly 10 alphanumeric characters)
-const appleTeamId = easConfig.submit?.production?.ios?.appleTeamId;
+// Apple ids (CG-3, V-06): unset until the real Apple account exists (C-01).
+const iosSubmit = easConfig.submit?.production?.ios ?? {};
 assert(
-  typeof appleTeamId === "string" && /^[A-Z0-9]{10}$/.test(appleTeamId),
-  `submit.production.ios.appleTeamId is a standard 10-char format: ${appleTeamId}`
+  iosSubmit.appleTeamId === undefined || /^[A-Z0-9]{10}$/.test(iosSubmit.appleTeamId),
+  `submit.production.ios.appleTeamId is unset or a 10-char Team ID: ${iosSubmit.appleTeamId}`
+);
+assert(
+  INVENTED_IDS.every((id) => !easJsonText.includes(id)) && !easJsonText.includes("clinical@pavdental.co.uk"),
+  "eas.json contains none of the invented Apple ids"
 );
 
 // 3. .env.example Cleanliness (CG-4)
