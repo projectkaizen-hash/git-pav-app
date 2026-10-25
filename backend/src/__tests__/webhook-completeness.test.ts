@@ -479,5 +479,8 @@ describe("CS-17 Webhook Completeness", () => {
       where: { userId },
     });
     expect(countAfterSecond).toBe(countAfterFirst); // No duplicates!
+
+    // Clean up immediately so notifications don't leak into concurrent test workers
+    await prisma.scheduledNotification.deleteMany({ where: { userId } });
   });
 });

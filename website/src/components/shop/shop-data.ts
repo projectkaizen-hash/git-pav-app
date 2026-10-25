@@ -15,6 +15,8 @@ export interface Product {
   howToUse: string;
   badge?: string;
   inStock: boolean;
+  variants?: any;
+  relatedProducts?: any;
 }
 
 export interface CartItem {

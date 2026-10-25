@@ -153,7 +153,7 @@ function SignInRoute() {
         testimonials={sampleTestimonials}
         onSignIn={handleSignIn}
         onGoogleSignIn={handleGoogleSignIn}
-        onResetPassword={() => navigate({ to: "/forgot-password" })}
+        onResetPassword={() => navigate({ to: "/contact" })}
         submitButtonText={loading ? "Signing in…" : "Sign In"}
       />
     </>
