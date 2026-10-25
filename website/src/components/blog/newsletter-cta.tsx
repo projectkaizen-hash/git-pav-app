@@ -6,17 +6,18 @@ export function NewsletterCta() {
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
+    setError(null)
     setLoading(true)
     try {
-      await api.forms.subscribeNewsletter({ email })
+      await api.forms.subscribeNewsletter({ email: email.trim() })
       setSubscribed(true)
-    } catch {
-      // still show subscribed gracefully
-      setSubscribed(true)
+    } catch (err: any) {
+      setError(err?.message || "Could not subscribe. Please check your email and try again.")
     } finally {
       setLoading(false)
     }
@@ -63,12 +64,14 @@ export function NewsletterCta() {
                 </div>
                 <button
                   type="submit"
-                  className="h-11 bg-white text-[#cf9448] hover:bg-white/90 font-bold text-xs sm:text-sm px-6 shrink-0 shadow-sm rounded-full transition-colors duration-150 cursor-pointer"
+                  disabled={loading}
+                  className="h-11 bg-white text-[#cf9448] hover:bg-white/90 font-bold text-xs sm:text-sm px-6 shrink-0 shadow-sm rounded-full transition-colors duration-150 cursor-pointer disabled:opacity-75"
                 >
-                  Subscribe
+                  {loading ? "Subscribing..." : "Subscribe"}
                 </button>
               </form>
             )}
+            {error && <p className="text-xs text-red-200 mt-2 font-medium">{error}</p>}
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/80 pt-2">
               <ShieldCheck className="w-3 h-3" />

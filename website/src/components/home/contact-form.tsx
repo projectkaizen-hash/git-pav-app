@@ -5,13 +5,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Reveal } from "./reveal";
+import { api } from "@/lib/api";
 
 export function ContactForm() {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSent(true);
+    setError(null);
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const subject = String(formData.get("subject") || "").trim();
+    const message = String(formData.get("message") || "").trim();
+
+    try {
+      await api.forms.submitContact({
+        name,
+        email,
+        phone: phone || undefined,
+        subject: subject || "Website Enquiry",
+        message,
+      });
+      setSent(true);
+    } catch (err: any) {
+      setError(err?.message || "Could not submit your message. Please try again or call our clinic directly.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,8 +115,9 @@ export function ContactForm() {
                 <Label htmlFor="message">Message</Label>
                 <Textarea id="message" name="message" required placeholder="How can we help?" />
               </div>
-              <Button type="submit" size="lg" className="w-full sm:w-auto">
-                Send message
+              {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+              <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={loading}>
+                {loading ? "Sending..." : "Send message"}
               </Button>
             </form>
           )}
