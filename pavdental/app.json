@@ -16,6 +16,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pavdental.app",
+      "merchantId": "merchant.com.pavdental.app",
+      "entitlements": {
+        "com.apple.developer.in-app-payments": [
+          "merchant.com.pavdental.app"
+        ]
+      },
       "associatedDomains": [
         "applinks:pavdental.com",
         "applinks:staging.pavdental.com"
@@ -77,6 +83,20 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0D9488"
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.pavdental.app",
+          "enableGooglePay": true
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Allow Pav Dental to use your location to share the mobile dental van's live position with patients and navigate to visit addresses."
@@ -89,10 +109,19 @@
         }
       ]
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c8c3bb48-932f-4c57-89b5-c05333a4bf45"
+    },
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "eas": {
+        "projectId": "c8c3bb48-932f-4c57-89b5-c05333a4bf45"
+      },
       "stage": "production",
       "status": "Production release"
     }

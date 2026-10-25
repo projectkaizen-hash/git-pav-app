@@ -1,6 +1,7 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { useIsAuthenticated } from "../auth/auth-store";
 import { authFetch } from "../auth/auth-api";
 
@@ -212,8 +213,12 @@ export function useNotificationManager() {
       return false;
     }
 
-    // Get push token
-    const token = await Notifications.getExpoPushTokenAsync();
+    // Get push token with configured EAS projectId (CG-1)
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      (Constants as any)?.easConfig?.projectId ??
+      process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    const token = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     if (token) {
       await registerToken.mutateAsync(token.data);
     }
