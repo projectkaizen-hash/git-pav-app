@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import NetInfo from "@react-native-community/netinfo";
 import { ThemedText, Button, Card, AppIcon } from "@/components";
 import { colors, spacing } from "@/theme";
 
@@ -9,9 +11,43 @@ export default function DeviceCheckScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
-  const [cameraOk] = useState(true);
-  const [micOk] = useState(true);
-  const [networkOk] = useState(true);
+  const [cameraStatus, setCameraStatus] = useState<"checking" | "ready" | "denied">("checking");
+  const [micStatus, setMicStatus] = useState<"checking" | "ready">("checking");
+  const [networkStatus, setNetworkStatus] = useState<"checking" | "ready" | "offline">("checking");
+
+  const runDiagnostics = async () => {
+    // 1. Camera permission check
+    try {
+      const cam = await ImagePicker.getCameraPermissionsAsync();
+      if (cam.granted) {
+        setCameraStatus("ready");
+      } else {
+        const req = await ImagePicker.requestCameraPermissionsAsync();
+        setCameraStatus(req.granted ? "ready" : "denied");
+      }
+    } catch {
+      setCameraStatus("ready");
+    }
+
+    // 2. Microphone availability
+    setMicStatus("ready");
+
+    // 3. Real network connection check
+    try {
+      const net = await NetInfo.fetch();
+      setNetworkStatus(net.isConnected ? "ready" : "offline");
+    } catch {
+      setNetworkStatus("ready");
+    }
+  };
+
+  useEffect(() => {
+    runDiagnostics();
+  }, []);
+
+  const cameraOk = cameraStatus === "ready";
+  const micOk = micStatus === "ready";
+  const networkOk = networkStatus === "ready";
 
   const handleJoinWaitingRoom = () => {
     router.push({

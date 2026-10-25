@@ -17,7 +17,14 @@ interface ReviewSlot {
 export default function PhotoReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const params = useLocalSearchParams<{
+    appointmentId?: string;
+    symptomText?: string;
+    painLevel?: string;
+    hasSwelling?: string;
+    duration?: string;
+  }>();
+  const appointmentId = params.appointmentId;
   const [slots, setSlots] = useState<ReviewSlot[]>([
     { id: "front", label: "Front teeth (bite closed)", captured: true },
     { id: "affected", label: "Affected / painful area", captured: true },
@@ -53,21 +60,71 @@ export default function PhotoReviewScreen() {
     setIsSubmitting(true);
     try {
       if (appointmentId) {
-        await authFetch("/api/video/submit-triage", {
+        // Upload any real photos captured by the patient
+        const uploadedPhotoUrls: string[] = [];
+        for (const slot of slots) {
+          if (slot.captured && slot.uri) {
+            try {
+              const formData = new FormData();
+              formData.append("photo", {
+                uri: slot.uri,
+                name: `triage-${slot.id}.jpg`,
+                type: "image/jpeg",
+              } as any);
+              formData.append("appointmentId", appointmentId);
+              formData.append("slotLabel", slot.label);
+
+              const uploadRes = await authFetch("/api/video/upload-triage-photo", {
+                method: "POST",
+                body: formData,
+              });
+              if (uploadRes.ok) {
+                const uploadJson = await uploadRes.json();
+                if (uploadJson.url) {
+                  uploadedPhotoUrls.push(uploadJson.url);
+                }
+              }
+            } catch {
+              // Proceed with triage even if individual photo upload fails
+            }
+          }
+        }
+
+        const chiefComplaint = params.symptomText?.trim() || "Intake triage review";
+        const painLevelNum = Number.isInteger(Number(params.painLevel))
+          ? Math.max(0, Math.min(10, Number(params.painLevel)))
+          : 5;
+        const symptomsList: string[] = [];
+        if (params.symptomText?.trim()) symptomsList.push(params.symptomText.trim());
+        if (params.hasSwelling === "true") symptomsList.push("Swelling");
+
+        const triagePayload: Record<string, unknown> = {
+          appointmentId,
+          chiefComplaint,
+          painLevel: painLevelNum,
+        };
+        if (params.duration?.trim()) triagePayload.duration = params.duration.trim();
+        if (symptomsList.length > 0) triagePayload.symptoms = symptomsList;
+        if (uploadedPhotoUrls.length > 0) triagePayload.photos = uploadedPhotoUrls;
+
+        const res = await authFetch("/api/video/submit-triage", {
           method: "POST",
-          body: JSON.stringify({
-            appointmentId,
-            painScore: 6,
-            symptoms: ["Sensitivity", "Photo triage reviewed"],
-            photoUrls: slots.map((s) => s.uri || `vault://triage/${s.id}.jpg`),
-          }),
-        }).catch(() => {});
+          body: JSON.stringify(triagePayload),
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || "Could not submit video triage data");
+        }
       }
-      setToast({ message: "Photos sent to your dentist", tone: "success" });
+
+      setToast({ message: "Intake details sent to your dentist", tone: "success" });
       router.push({
         pathname: "/(patient)/video/device-check" as any,
         params: { appointmentId: appointmentId || "" },
       });
+    } catch (err: any) {
+      setToast({ message: err?.message || "Failed to submit triage", tone: "error" });
     } finally {
       setIsSubmitting(false);
     }
