@@ -1,6 +1,6 @@
 # 03: Completion plan (Phase 3)
 
-**Status (24 Oct 2026):** approved and mostly built. CS-01 to CS-38 have merged, but a code audit (`05-audit-2026-10-24.md`) found many of them only partly done, plus new security and payment bugs. The table below is the current state; the original change set text further down is kept as written.
+**Status (25 Oct 2026):** approved and mostly built. CS-01 to CS-45 and CS-48 to CS-54 have merged. The 24 Oct code audit (`05-audit-2026-10-24.md`) found many earlier change sets only partly done; the table below is the current state. The original change set text further down is kept as written.
 
 Linear: project [Pav Dental: completion](https://linear.app/pavdental/project/pav-dental-completion-dd6261f921c6) in team ZIS. CS-NN maps to issue ZIS-(NN+4), for example CS-01 is ZIS-5 and CS-47 is ZIS-51.
 
@@ -27,9 +27,9 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 
 ---
 
-## Where things stand after the 24 Oct audit
+## Where things stand (25 Oct 2026, main at `1f7ddf2`)
 
-Verdicts come from the code on `main` at `6722739`, not from commit titles. Details, with file and line references, are in `05-audit-2026-10-24.md`.
+The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-audit-2026-10-24.md`). Since then CS-39 to CS-45 and CS-48 to CS-54 have merged (#46 to #63). Rows marked "not re-audited" are taken from their PRs; the leftovers named below were checked in the code.
 
 | CS | State | What's left (short) |
 |---|---|---|
@@ -38,43 +38,44 @@ Verdicts come from the code on `main` at `6722739`, not from commit titles. Deta
 | CS-03 | Partial | Dev-defaults opt-in; require Daily, email/SMS, S3, `APP_URL` when deployed; JWT `iss`/`aud` |
 | CS-04 | Done | |
 | CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
-| CS-06 | Partial | Veneers callout; van visit summary claims work was done; check-in column and window |
+| CS-06 | Partial | Veneers callout (`welcome.tsx`); van visit summary still says the exam and charting were done and a VAT invoice was emailed (`van/complete.tsx`); `van/confirm.tsx` falls back to `srv_checkup`; check-in column and window |
 | CS-07 | Done | Remove dead `daily-video-view.tsx` |
-| CS-08 | Partial | Phone change without OTP; atomic, non-DoS lockout |
+| CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-09 | Partial | Paginate `GET /api/messages` |
-| CS-10 | Done | Clinical sign-off of wording |
-| CS-11 | Partial | ~40 raw error logs; query strings and staff emails in audit metadata |
-| CS-12 | Partial | Seed guard checks the target database; split reference and demo data |
-| CS-13 | Partial | KMS (approved, decision #18); prescription link key |
-| CS-14 | Partial | Auth limiter scope; staging limits; `TRUST_PROXY` in deploy docs |
-| CS-15 | Partial | Decline, cancel, expiry and shift end need the accept lock and a compare-and-set |
+| CS-10 | Done | 🛑 Clinical sign-off of wording |
+| CS-11 | Partial | Raw error logs; audit metadata part done by CS-50 |
+| CS-12 | Partial | Split reference and demo data (seed guard done in #49) |
+| CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key |
+| CS-14 | Done | Remainders closed by CS-54 (not re-audited); `TRUST_PROXY` in deploy docs |
+| CS-15, CS-17, CS-18 | Done | Remainders closed by CS-49 and #59 |
 | CS-16 | Done | |
-| CS-17 | Partial | Moved to CS-49 |
-| CS-18 | Partial | Moved to CS-49 |
-| CS-19 | Partial | Logout and revoked sessions keep pushing; receipts; stuck `sending` rows; summer quiet hours; token takeover |
+| CS-19 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-20 | Partial | Old-hash fallback undoes the HMAC; monitor checks oldest rows; 401 alert flood; weakened tamper test; AU-5 |
 | CS-21 | Partial | `fetch` lint rule; web refresh token |
 | CS-22 | Done | |
-| CS-23 | Done | Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
-| CS-24 | Partial | App copy is false; authenticated download unused; clinicians can fetch SAR bundles |
-| CS-25 | Broken in app | Moved to CS-51 |
-| CS-26 | Partial | Moved to CS-50 (plaintext notes, previews, tooth notes; S3 fallback to disk) |
-| CS-27 | Partial | Moved to CS-51 (intake never sent, device check, summary never written); in-app SDK |
-| CS-28 | Partial | `scope=today` in app; notes history and author (CS-50); time windows |
+| CS-23 | Done | 🛑 Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
+| CS-24 | Partial | SAR copy fixed by CS-51. Care-team clinicians can still download a patient's SAR bundle through `GET /api/patients/:id/documents/:docId/download` |
+| CS-25 | Done | App side closed by CS-51 (not re-audited) |
+| CS-26 | Done | Closed by CS-50 (not re-audited) |
+| CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
+| CS-28 | Partial | Notes closed by CS-50; `scope=today` in app; time windows |
 | CS-29 | Partial | Staff inbox for practice threads; per-side read state; thread delete audit |
-| CS-30 | Done | |
-| CS-31 | Partial | Dashboard screens for onboarding clinicians, operators, vans, services; invite email; drop the dashboard `patients` table |
-| CS-32 | Done | |
-| CS-33 | Done | |
+| CS-30, CS-32, CS-33 | Done | |
+| CS-31 | Partial | Dashboard screens for onboarding clinicians, operators, vans, services; invite email; 🛑 drop the dashboard `patients` table |
 | CS-34 | Partial | Edit screen for dependants |
-| CS-35 | Done | 🛑 which roles may prescribe |
-| CS-36 | Built, not signed off | 🛑 clinical sign-off before release |
+| CS-35 | Done | 🛑 Which roles may prescribe |
+| CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |
 | CS-37 | Partial | Use `QueryState` on the screens; real tests |
 | CS-38 | Partial | Remaining labels; screen-reader checklist; real tests |
-| CS-39 to CS-43 | Not started | (CS-40: VR-2 done; CS-42: MB-3 done) |
-| CS-44 | Partial | Sentry done; shutdown, request id, health split remain |
-| CS-45 | Partial | Image prune, healthcheck, migrate step; compose ports; backups |
-| CS-46, CS-47 | Not started | |
+| CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
+| CS-44 | Done | Merged as #62 (not re-audited) |
+| CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
+| CS-46 | Not started | Lint, mobile tests that assert constants, lint step in CI |
+| CS-47 | Not started | 🛑 Legal sign-offs |
+| CS-48 to CS-50 | Done | #47 to #49, #50, #51 |
+| CS-51 | Partial | Merged as #53; the van visit summary (see CS-06) wasn't changed |
+| CS-52 | Partial | Forms and dashboard merged as #54; 🛑 team page, reviews and counters (real content or remove) |
+| CS-53, CS-54 | Done | #52, #55 (not re-audited) |
 
 ### New change sets from the audit
 
