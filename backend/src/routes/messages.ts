@@ -4,7 +4,7 @@ import { patientsInClinicianCare } from "../middleware/patient-access";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
-import { validateBody, validateParams } from "../middleware/validate";
+import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { encryptField, decryptString } from "../lib/encryption";
@@ -74,6 +74,11 @@ async function visibleThreadsWhere(req: AuthRequest): Promise<Prisma.MessageThre
 }
 
 const threadIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+// Newest threads first, a page at a time (CS-09).
+const listThreadsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+}).strict();
 
 const createThreadSchema = z
   .object({
@@ -99,8 +104,9 @@ router.get("/meta", requireAuth, (_req: AuthRequest, res: Response) => {
 
 // ─── GET /api/messages ────────────────────────────────────────────────────────
 // Returns persistent message threads for the authenticated user.
-router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
+router.get("/", requireAuth, validateQuery(listThreadsQuerySchema), async (req: AuthRequest, res: Response) => {
   const isStaff = req.user!.role === "clinician" || req.user!.role === "admin";
+  const { limit, offset } = req.query as unknown as { limit: number; offset: number };
   const threads = await prisma.messageThread.findMany({
     where: await visibleThreadsWhere(req),
     include: {
@@ -113,7 +119,10 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
         orderBy: { sentAt: "asc" },
       },
     },
-    orderBy: { updatedAt: "desc" },
+    // id breaks ties so a page boundary never repeats or skips a thread.
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    skip: offset,
   });
 
   return res.json(

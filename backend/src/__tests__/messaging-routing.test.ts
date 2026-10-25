@@ -234,4 +234,32 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect(found.from).toBe("Hannah Abbott");
     expect(found.isRead).toBe(false); // New message is unread for staff
   });
+  it("lists threads a page at a time, newest first, without repeats (CS-09)", async () => {
+    const patient = await makePatient("paging-pt", "Paging", "Patient");
+    const created: string[] = [];
+    for (const n of [1, 2, 3]) {
+      const res = await fetch(`${baseUrl}/api/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: `Synthetic question ${n}`, body: "Synthetic body." }),
+      });
+      expect(res.status).toBe(201);
+      const thread = (await res.json()) as any;
+      threadIds.push(thread.id);
+      created.push(thread.id);
+    }
+    // Distinct times, so the expected order doesn't depend on the clock.
+    for (const [i, id] of created.entries()) {
+      await prisma.messageThread.update({ where: { id }, data: { updatedAt: new Date(Date.UTC(2026, 0, 1, 9, i)) } });
+    }
+    const headers = { Authorization: `Bearer ${patient.token}` };
+
+    const first = (await (await fetch(`${baseUrl}/api/messages?limit=2`, { headers })).json()) as any[];
+    const second = (await (await fetch(`${baseUrl}/api/messages?limit=2&offset=2`, { headers })).json()) as any[];
+    expect(first.map((t) => t.id)).toEqual([created[2], created[1]]);
+    expect(second.map((t) => t.id)).toEqual([created[0]]);
+
+    expect((await fetch(`${baseUrl}/api/messages?limit=101`, { headers })).status).toBe(400);
+    expect((await fetch(`${baseUrl}/api/messages?offset=-1`, { headers })).status).toBe(400);
+  });
 });
