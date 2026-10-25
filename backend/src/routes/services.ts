@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { dateOnly, londonDate } from "../lib/availability";
 import { prisma } from "../lib/prisma";
-import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 

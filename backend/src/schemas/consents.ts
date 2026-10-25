@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
-
 export const consentTypes = z.enum([
   "data_processing",
   "telehealth",
