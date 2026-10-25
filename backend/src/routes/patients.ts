@@ -13,7 +13,10 @@ import {
   createTreatmentPlanSchema,
   planActionParamsSchema,
   signTreatmentPlanSchema,
+  requestPhoneChangeSchema,
+  verifyPhoneChangeSchema,
 } from "../schemas/patients";
+import { otpService, rateLimiter } from "../lib/otp-service";
 import { objectStorage } from "../lib/object-storage";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
@@ -106,7 +109,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
   const {
     firstName, lastName, dob, gender,
     addressLine1, addressLine2, city, postcode,
-    phone,
+    phone, phoneOtp,
     emergencyContactName, emergencyContactPhone,
     medicalHistory,
   } = req.body;
@@ -132,6 +135,26 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
       : null;
   }
 
+  // CS-54 (CS-08): Check phone change verification
+  const existingUser = await prisma.user.findUnique({
+    where: { id: profile.userId },
+    select: { phone: true, phoneVerified: true },
+  });
+
+  let newPhoneVerified = existingUser?.phoneVerified ?? false;
+  if (phone !== undefined && phone !== existingUser?.phone) {
+    if (phoneOtp) {
+      const valid = await otpService.verifyOTP(profile.userId, phoneOtp, "phone_change");
+      if (!valid) {
+        return res.status(400).json({ error: "Invalid or expired phone verification code" });
+      }
+      newPhoneVerified = true;
+    } else {
+      // Changing phone without OTP verification resets phoneVerified to false
+      newPhoneVerified = false;
+    }
+  }
+
   // PT-4: Consents are NOT mutable via profile PUT. One source of truth in ConsentRecord.
   const [updated] = await prisma.$transaction([
     prisma.patientProfile.update({
@@ -147,7 +170,7 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
     }),
     ...(phone !== undefined ? [prisma.user.update({
       where: { id: profile.userId },
-      data: { phone },
+      data: { phone, phoneVerified: newPhoneVerified },
     })] : []),
   ]);
 
@@ -174,6 +197,63 @@ router.put("/:id/profile", requireAuth, validateParams(patientIdParamsSchema), v
       phone: updated.emergencyContactPhone,
     },
     updatedAt: updated.updatedAt,
+  });
+});
+
+// ─── POST /api/patients/:id/phone/request ────────────────────────────────────
+// CS-54: Request OTP to verify a new phone number before updating
+router.post("/:id/phone/request", requireAuth, validateParams(patientIdParamsSchema), validateBody(requestPhoneChangeSchema), async (req: AuthRequest, res: Response) => {
+  const profile = await requirePatientRecordAccess(req, res);
+  if (!profile) return;
+  if (!requirePatientSelf(req, res, "request a phone number change")) return;
+
+  const { newPhone } = req.body;
+  const rateLimitKey = `phone-change-req:${profile.userId}`;
+  if (await rateLimiter.isRateLimited(rateLimitKey, 5, 3600)) {
+    return res.status(429).json({ error: "Too many phone change requests. Please try again later." });
+  }
+
+  const { delivered } = await otpService.createAndSendOTP({
+    userId: profile.userId,
+    phone: newPhone,
+    purpose: "phone_change",
+    deliveryMethod: "sms",
+  });
+
+  if (!delivered) {
+    return res.status(502).json({ error: "Could not send verification code to the new phone number" });
+  }
+
+  return res.json({ message: "Verification code sent to new phone number" });
+});
+
+// ─── POST /api/patients/:id/phone/verify ─────────────────────────────────────
+// CS-54: Verify OTP for the new phone and update user phone + phoneVerified: true
+router.post("/:id/phone/verify", requireAuth, validateParams(patientIdParamsSchema), validateBody(verifyPhoneChangeSchema), async (req: AuthRequest, res: Response) => {
+  const profile = await requirePatientRecordAccess(req, res);
+  if (!profile) return;
+  if (!requirePatientSelf(req, res, "verify a phone number change")) return;
+
+  const { newPhone, code } = req.body;
+  const rateLimitKey = `phone-change-ver:${profile.userId}`;
+  if (await rateLimiter.isRateLimited(rateLimitKey, 5, 900)) {
+    return res.status(429).json({ error: "Too many attempts. Please try again later." });
+  }
+
+  const valid = await otpService.verifyOTP(profile.userId, code, "phone_change");
+  if (!valid) {
+    return res.status(400).json({ error: "Invalid or expired verification code" });
+  }
+
+  await prisma.user.update({
+    where: { id: profile.userId },
+    data: { phone: newPhone, phoneVerified: true },
+  });
+
+  return res.json({
+    message: "Phone number updated and verified",
+    phone: newPhone,
+    phoneVerified: true,
   });
 });
 

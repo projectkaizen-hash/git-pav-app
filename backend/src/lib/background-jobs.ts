@@ -62,18 +62,20 @@ export function getNextQuietHoursEnd(
 ): Date {
   const [endH, endM] = endStr.split(":").map((v) => parseInt(v, 10));
 
-  const parts = new Intl.DateTimeFormat("en-GB", {
+  const dtf = new Intl.DateTimeFormat("en-GB", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hour12: false,
-  }).formatToParts(date);
+  });
+  const parts = dtf.formatToParts(date);
 
   const year = parseInt(parts.find((p) => p.type === "year")?.value || "1970", 10);
-  const month = parseInt(parts.find((p) => p.type === "month")?.value || "1", 10) - 1;
+  const month = parseInt(parts.find((p) => p.type === "month")?.value || "1", 10);
   const day = parseInt(parts.find((p) => p.type === "day")?.value || "1", 10);
   const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
   const minute = parseInt(parts.find((p) => p.type === "minute")?.value || "0", 10);
@@ -82,7 +84,23 @@ export function getNextQuietHoursEnd(
   const endMinutes = (endH || 0) * 60 + (endM || 0);
 
   const targetDay = currentMinutes >= endMinutes ? day + 1 : day;
-  return new Date(Date.UTC(year, month, targetDay, endH || 0, endM || 0));
+
+  // Approximate noon UTC on target day
+  const approxUtc = new Date(Date.UTC(year, month - 1, targetDay, 12, 0, 0));
+  const tParts = dtf.formatToParts(approxUtc);
+  const tYear = tParts.find((p) => p.type === "year")!.value;
+  const tMonth = tParts.find((p) => p.type === "month")!.value;
+  const tDay = tParts.find((p) => p.type === "day")!.value;
+
+  // CS-54: Determine exact UTC moment for endH:endM in timeZone (Europe/London handles GMT vs BST)
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const isoBase = `${tYear}-${tMonth}-${tDay}T${pad(endH || 0)}:${pad(endM || 0)}:00Z`;
+  const candidateUtc = new Date(isoBase);
+  const candParts = dtf.formatToParts(candidateUtc);
+  const candHour = parseInt(candParts.find((p) => p.type === "hour")?.value || "0", 10);
+  const offsetHours = candHour - (endH || 0);
+
+  return new Date(candidateUtc.getTime() - offsetHours * 60 * 60 * 1000);
 }
 
 /**
@@ -324,7 +342,8 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
       {
         hoursBefore: 48,
         title: "Appointment in 48 Hours - Pav Dental",
-        body: `Reminder: Your ${serviceName} is scheduled for ${dateFormatted} at ${timeFormatted}. Free cancellations available up to 48 hours prior.`,
+        // CS-54: Neutral copy on lock screen (no clinical service names)
+        body: `Reminder: Your appointment is scheduled for ${dateFormatted} at ${timeFormatted}. Free cancellations available up to 48 hours prior.`,
       },
       {
         hoursBefore: 24,
@@ -334,7 +353,8 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
       {
         hoursBefore: 2,
         title: "Appointment in 2 Hours - Pav Dental",
-        body: `See you soon! Your ${serviceName} is at ${timeFormatted} at ${clinicName}. Tap for directions and check-in info.`,
+        // CS-54: Neutral copy on lock screen (no clinical service names)
+        body: `See you soon! Your appointment is at ${timeFormatted} at ${clinicName}. Tap for directions and check-in info.`,
       },
     ];
 

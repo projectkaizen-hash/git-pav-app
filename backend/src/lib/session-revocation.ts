@@ -30,6 +30,16 @@ export async function denySessions(sessionIds: string[]): Promise<void> {
 
 /** Revokes the matching live sessions and denylists them. Returns how many. */
 export async function revokeSessions(where: Prisma.AuthSessionWhereInput): Promise<number> {
+  // CS-54 (CS-19): When all sessions for a user are revoked (e.g. password change,
+  // password reset, or account closure), deactivate their push tokens so logged-out
+  // devices stop receiving pushes.
+  if (where.userId && typeof where.userId === "string") {
+    await prisma.pushToken.updateMany({
+      where: { userId: where.userId },
+      data: { active: false },
+    }).catch(() => {});
+  }
+
   const live = await prisma.authSession.findMany({
     where: { ...where, revokedAt: null },
     select: { id: true },
@@ -38,6 +48,7 @@ export async function revokeSessions(where: Prisma.AuthSessionWhereInput): Promi
   const ids = live.map((s) => s.id);
   await prisma.authSession.updateMany({ where: { id: { in: ids } }, data: { revokedAt: new Date() } });
   await denySessions(ids);
+
   return ids.length;
 }
 

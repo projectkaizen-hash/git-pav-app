@@ -25,6 +25,15 @@ router.post("/register-token", requireAuth, validateBody(registerPushTokenSchema
     });
 
     if (existing) {
+      // CS-54: Prevent push token takeover without proof. If the token belongs to
+      // another user and is still active, reject the request (previous user must log out first).
+      if (existing.userId !== req.user!.sub && existing.active) {
+        return {
+          error: "Push token is already active for another account. The existing account must log out first.",
+          httpStatus: 409,
+        };
+      }
+
       const updated = await prisma.pushToken.update({
         where: { id: existing.id },
         data: {
@@ -36,7 +45,7 @@ router.post("/register-token", requireAuth, validateBody(registerPushTokenSchema
       });
       return {
         id: updated.id,
-        status: "already_registered",
+        status: existing.userId === req.user!.sub ? "already_registered" : "reassigned",
         platform: updated.platform,
         httpStatus: 200,
       };
