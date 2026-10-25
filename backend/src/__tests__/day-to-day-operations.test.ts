@@ -1,6 +1,6 @@
 import http from "http";
+import express from "express";
 import { prisma } from "../lib/prisma";
-import { redis } from "../lib/redis";
 import {
   remainingTreatmentSeconds,
   etaSecondsToNewPatient,
@@ -8,21 +8,30 @@ import {
   Point,
 } from "../lib/van-eta";
 import { signAccessToken } from "../lib/jwt";
+import { attachOptionalAuth, requireAuth } from "../middleware/auth";
+import vanRoutes from "../routes/van";
+import publicVanRoutes from "../routes/public-van";
 
 describe("CS-40: Clinician and Operator Day-to-Day Operations (VE-1, VE-2, VE-3, VR-3, VR-9, VR-10, PV-1)", () => {
   let server: http.Server;
   let baseUrl: string;
 
   beforeAll(async () => {
-    const serverModule = require("../server");
-    const app = serverModule.default ?? serverModule;
+    const app = express();
+    app.use(express.json());
+    app.use(attachOptionalAuth);
+    app.use("/api/van", requireAuth, vanRoutes);
+    app.use("/api/public/van", publicVanRoutes);
+
     server = http.createServer(app);
-    await new Promise<void>((resolve) => server.listen(3034, resolve));
-    baseUrl = "http://localhost:3034";
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as { port: number };
+    baseUrl = `http://127.0.0.1:${port}`;
   });
 
   afterAll(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    await prisma.$disconnect();
   });
 
   describe("1. Van ETA Overrun & Fallback Resilience (VE-1, VE-2, VE-3)", () => {
@@ -218,9 +227,6 @@ describe("CS-40: Clinician and Operator Day-to-Day Operations (VE-1, VE-2, VE-3,
       const uIds = [operatorUserId, patientUserId].filter(Boolean);
       if (uIds.length > 0) {
         await prisma.authSession.deleteMany({ where: { userId: { in: uIds } } });
-        if (operatorProfileId) await prisma.operatorProfile.deleteMany({ where: { id: operatorProfileId } });
-        if (patientProfileId) await prisma.patientProfile.deleteMany({ where: { id: patientProfileId } });
-        await prisma.user.deleteMany({ where: { id: { in: uIds } } });
       }
     });
 
@@ -386,10 +392,6 @@ describe("CS-40: Clinician and Operator Day-to-Day Operations (VE-1, VE-2, VE-3,
       await prisma.vanShift.delete({ where: { id: noGpsShift.id } });
       await prisma.van.delete({ where: { id: van.id } });
       await prisma.authSession.deleteMany({ where: { userId: patient.id } });
-      await prisma.patientProfile.deleteMany({ where: { userId: patient.id } });
-      await prisma.user.delete({ where: { id: patient.id } });
-      await prisma.operatorProfile.delete({ where: { id: op.operatorProfile!.id } });
-      await prisma.user.delete({ where: { id: op.id } });
     });
   });
 
@@ -468,8 +470,6 @@ describe("CS-40: Clinician and Operator Day-to-Day Operations (VE-1, VE-2, VE-3,
       // Cleanup
       await prisma.vanServiceRequest.deleteMany({ where: { patientId: (await prisma.patientProfile.findUnique({ where: { userId: patient.id } }))?.id } });
       await prisma.authSession.deleteMany({ where: { userId: patient.id } });
-      await prisma.patientProfile.deleteMany({ where: { userId: patient.id } });
-      await prisma.user.delete({ where: { id: patient.id } });
     });
   });
 });
