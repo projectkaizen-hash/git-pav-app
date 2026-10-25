@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge, EmptyState, AppIcon, Skeleton } from "@/components";
+import { ThemedText, Card, Badge, EmptyState, ErrorState, AppIcon, Skeleton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
@@ -17,7 +17,7 @@ export default function PrescriptionsScreen() {
   const router = useRouter();
   const user = useCurrentUser();
   const userId = user?.id || "";
-  const { data: rawList, isLoading } = usePatientPrescriptions(userId);
+  const { data: rawList, isLoading, isError, refetch } = usePatientPrescriptions(userId);
 
   const prescriptions: NormalizedPrescription[] = Array.isArray(rawList)
     ? rawList.map(normalizePrescription)
@@ -66,6 +66,17 @@ export default function PrescriptionsScreen() {
           <Skeleton height={76} />
           <Skeleton height={76} />
         </View>
+      </View>
+    );
+  }
+
+  if (isError && rawList === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your prescriptions. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
       </View>
     );
   }

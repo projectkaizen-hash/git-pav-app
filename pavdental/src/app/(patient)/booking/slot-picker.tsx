@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText, Card, Button, ProgressPills, ChipPill, Toast } from "@/components";
+import { ThemedText, Button, ProgressPills, ChipPill, Toast, QueryState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { TimeSlot } from "@/features/booking/booking-types";
@@ -36,7 +36,7 @@ export default function SlotPickerScreen() {
   const isoDate =
     upcomingDays.find((d) => d.label === selectedDate)?.iso ?? upcomingDays[0].iso;
 
-  const { data: apiSlots } = useSlots({
+  const { data: apiSlots, isLoading, isError, refetch } = useSlots({
     date: isoDate,
     channel: channel ?? "clinic",
     clinicId: clinic?.id,
@@ -177,40 +177,48 @@ export default function SlotPickerScreen() {
           Available Times for {selectedDate}
         </ThemedText>
 
-        {visibleSlots.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <ThemedText variant="body" style={styles.emptyText}>
-              No available slots for this date. Please check the next day or choose 'Any Practitioner'.
-            </ThemedText>
-          </Card>
-        ) : (
-          <View style={styles.slotGrid}>
-            {visibleSlots.map((slot) => {
-              const selected = selectedSlot?.id === slot.id;
-              return (
-                <Pressable
-                  key={slot.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`Appointment at ${slot.displayTime}`}
-                  onPress={() => setSelectedSlotState(slot)}
-                  style={({ pressed }) => [
-                    styles.slotItem,
-                    selected && styles.slotItemSelected,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <ThemedText
-                    variant="headline"
-                    style={[styles.slotTime, selected && styles.slotTimeSelected]}
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          data={apiSlots === undefined ? undefined : visibleSlots}
+          onRetry={() => refetch()}
+          errorMessage="We couldn't load times for this date. Check your connection and try again."
+          emptyHeading="No available times"
+          emptyBody="No available slots for this date. Please check the next day or choose 'Any Practitioner'."
+          emptyIcon="calendar"
+          skeletonType="box"
+          skeletonCount={1}
+          skeletonHeight={120}
+        >
+          {(list) => (
+            <View style={styles.slotGrid}>
+              {list.map((slot) => {
+                const selected = selectedSlot?.id === slot.id;
+                return (
+                  <Pressable
+                    key={slot.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Appointment at ${slot.displayTime}`}
+                    onPress={() => setSelectedSlotState(slot)}
+                    style={({ pressed }) => [
+                      styles.slotItem,
+                      selected && styles.slotItemSelected,
+                      pressed && { opacity: 0.85 },
+                    ]}
                   >
-                    {slot.displayTime}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+                    <ThemedText
+                      variant="headline"
+                      style={[styles.slotTime, selected && styles.slotTimeSelected]}
+                    >
+                      {slot.displayTime}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </QueryState>
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
@@ -261,15 +269,6 @@ const styles = StyleSheet.create({
   },
   dateTextActive: {
     color: colors.onInk,
-  },
-  emptyCard: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    padding: spacing.lg,
-  },
-  emptyText: {
-    color: colors.secondaryLabel,
-    textAlign: "center",
   },
   footerBar: {
     backgroundColor: colors.systemBackground,

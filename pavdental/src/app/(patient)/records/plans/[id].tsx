@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as LocalAuthentication from "expo-local-authentication";
-import { ThemedText, Card, Badge, Button, AppIcon, ConfirmSheet, Toast } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, ConfirmSheet, Toast, ErrorState } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import {
   useTreatmentPlans,
@@ -24,11 +24,11 @@ import { useBookingStore } from "@/features/booking/booking-store";
 export default function TreatmentPlanDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id, signSheet, signed } = useLocalSearchParams<{ id: string; signSheet?: string; signed?: string }>();
+  const { id, signSheet } = useLocalSearchParams<{ id: string; signSheet?: string }>();
   const user = useCurrentUser();
   const { setService } = useBookingStore();
   const userId = user?.id || "";
-  const { data: apiPlans, isLoading } = useTreatmentPlans(userId);
+  const { data: apiPlans, isLoading, isError, refetch } = useTreatmentPlans(userId);
   const { data: services = [] } = useServices();
   const signPlanMutation = useSignTreatmentPlanMutation(userId);
   const declinePlanMutation = useDeclineTreatmentPlanMutation(userId);
@@ -48,24 +48,16 @@ export default function TreatmentPlanDetailScreen() {
     if (signSheet === "true") {
       setShowSignSheet(true);
     }
-    if (signed === "true") {
-      setDecision("accepted");
-      setSignedInfo({
-        signedAt: new Date().toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-        hash: "SHA256: 7d4a·8f91·gdc·consent",
-        signerName: user?.firstName
-          ? `${user.firstName} ${user.lastName || ""}`.trim()
-          : "Authenticated Patient",
-      });
-    }
-  }, [signSheet, signed, user]);
+  }, [signSheet]);
 
   const source = (apiPlans ?? []) as any[];
   const plan = (id ? source.find((p) => p.id === id) : source[0]) ?? null;
+
+  // A plan answered on an earlier visit shows that answer, not the buttons again.
+  useEffect(() => {
+    if (plan?.status === "accepted") setDecision("accepted");
+    else if (plan?.status === "declined") setDecision("declined");
+  }, [plan?.status]);
 
   if (isLoading) {
     return (
@@ -73,6 +65,17 @@ export default function TreatmentPlanDetailScreen() {
         <View style={styles.centered}>
           <View style={{ padding: spacing.md, minHeight: 160, backgroundColor: colors.secondaryBackground, borderRadius: 16, width: "100%" }} />
         </View>
+      </View>
+    );
+  }
+
+  if (isError && apiPlans === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load this treatment plan. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
       </View>
     );
   }
@@ -152,7 +155,8 @@ export default function TreatmentPlanDetailScreen() {
       ? `${user.firstName} ${user.lastName || ""}`.trim()
       : user?.email || "Authenticated Patient";
     const now = new Date();
-    let hashDisplay = `SHA256: ${plan.id.slice(0, 8)}·gdc·consent`;
+    // Only the server's signature hash is shown; nothing is made up here.
+    let hashDisplay = "";
     let signedAtDisplay =
       now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) +
       ", " +
@@ -284,7 +288,7 @@ export default function TreatmentPlanDetailScreen() {
                   Audit Integrity Hash:
                 </ThemedText>
                 <ThemedText variant="mono" style={styles.certMetaMono}>
-                  {signedInfo.hash}
+                  {signedInfo.hash || "Recorded on our servers"}
                 </ThemedText>
               </View>
             </View>

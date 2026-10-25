@@ -6,6 +6,7 @@ import {
   Card,
   Badge,
   EmptyState,
+  ErrorState,
   AppIcon,
   Skeleton,
   Input,
@@ -44,7 +45,7 @@ export default function MessagesScreen() {
   const [newBody, setNewBody] = useState("");
   const [newRecipientType, setNewRecipientType] = useState<"practice" | "care_team">("practice");
 
-  const { data: rawThreads, isLoading, refetch } = useMessageThreads();
+  const { data: rawThreads, isLoading, isError, refetch } = useMessageThreads();
   const createMutation = useCreateMessageThreadMutation();
   const replyMutation = useReplyMessageThreadMutation();
   const markReadMutation = useMarkMessageThreadReadMutation();
@@ -182,6 +183,11 @@ export default function MessagesScreen() {
             <Skeleton height={84} />
             <Skeleton height={84} />
           </View>
+        ) : isError && rawThreads === undefined ? (
+          <ErrorState
+            message="We couldn't load your messages. Check your connection and try again."
+            onRetry={() => refetch()}
+          />
         ) : filtered.length === 0 ? (
           <EmptyState
             heading="No messages found"

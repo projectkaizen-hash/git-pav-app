@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Badge, AppIcon, ProgressPills, EmptyState } from "@/components";
+import { ThemedText, Card, Badge, AppIcon, ProgressPills, QueryState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { Clinician } from "@/features/booking/booking-types";
@@ -11,7 +11,7 @@ export default function ClinicianPickerScreen() {
   const router = useRouter();
   const { setClinician, clinic } = useBookingStore();
 
-  const { data: apiClinicians } = useClinicians();
+  const { data: apiClinicians, isLoading, isError, refetch } = useClinicians();
   const clinicians = (apiClinicians ?? []) as Clinician[];
 
   const handleSelectClinician = (clinician: Clinician | null) => {
@@ -56,69 +56,74 @@ export default function ClinicianPickerScreen() {
       </Pressable>
 
       {/* Clinicians List */}
-      {eligibleClinicians.length === 0 ? (
-        <EmptyState
-          heading="No specific clinicians listed"
-          body="Choose 'Any Practitioner (First Available)' above to see open slots."
-          icon="profile"
-        />
-      ) : (
-        <View style={styles.clinicianList}>
-          {eligibleClinicians.map((doc) => (
-            <Pressable
-              key={doc.id}
-              onPress={() => handleSelectClinician(doc)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-            >
-              <Card elevation="raised" style={styles.card}>
-                <View style={styles.docRow}>
-                  <View style={styles.avatar}>
-                    <ThemedText variant="title" style={styles.avatarText}>
-                      {doc.fullName[3] || "D"}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.docInfo}>
-                    <ThemedText variant="headline" style={styles.name}>
-                      {doc.fullName}
-                    </ThemedText>
-                    <ThemedText variant="caption" style={styles.role}>
-                      {doc.roleTitle} · GDC: #{doc.gdcNumber}
-                    </ThemedText>
-                    <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
-                      {doc.bio}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.specialismsRow}>
-                  {(doc.specialisms || []).map((spec) => (
-                    <Badge key={spec} label={spec} variant="default" />
-                  ))}
-                </View>
-
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        data={apiClinicians === undefined ? undefined : eligibleClinicians}
+        onRetry={() => refetch()}
+        errorMessage="We couldn't load the clinicians. You can still choose Any Practitioner above, or try again."
+        emptyHeading="No specific clinicians listed"
+        emptyBody="Choose 'Any Practitioner (First Available)' above to see open slots."
+        emptyIcon="profile"
+      >
+        {(list) => (
+            <View style={styles.clinicianList}>
+              {list.map((doc) => (
                 <Pressable
-                  accessibilityRole="link"
-                  accessibilityLabel={`View full profile for ${doc.fullName}`}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(patient)/booking/provider-profile" as never,
-                      params: { id: doc.id },
-                    })
-                  }
-                  style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                  key={doc.id}
+                  onPress={() => handleSelectClinician(doc)}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <View style={styles.profileLink}>
-                    <ThemedText variant="caption" style={styles.profileLinkText}>
-                      View profile & reviews
-                    </ThemedText>
-                    <AppIcon name="chevronRight" size={13} color={colors.ink} />
-                  </View>
+                  <Card elevation="raised" style={styles.card}>
+                    <View style={styles.docRow}>
+                      <View style={styles.avatar}>
+                        <ThemedText variant="title" style={styles.avatarText}>
+                          {doc.fullName[3] || "D"}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.docInfo}>
+                        <ThemedText variant="headline" style={styles.name}>
+                          {doc.fullName}
+                        </ThemedText>
+                        <ThemedText variant="caption" style={styles.role}>
+                          {doc.roleTitle} · GDC: #{doc.gdcNumber}
+                        </ThemedText>
+                        <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
+                          {doc.bio}
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <View style={styles.specialismsRow}>
+                      {(doc.specialisms || []).map((spec) => (
+                        <Badge key={spec} label={spec} variant="default" />
+                      ))}
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="link"
+                      accessibilityLabel={`View full profile for ${doc.fullName}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(patient)/booking/provider-profile" as never,
+                          params: { id: doc.id },
+                        })
+                      }
+                      style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <View style={styles.profileLink}>
+                        <ThemedText variant="caption" style={styles.profileLinkText}>
+                          View profile & reviews
+                        </ThemedText>
+                        <AppIcon name="chevronRight" size={13} color={colors.ink} />
+                      </View>
+                    </Pressable>
+                  </Card>
                 </Pressable>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-      )}
+              ))}
+            </View>
+        )}
+      </QueryState>
     </ScrollView>
   );
 }
