@@ -91,3 +91,14 @@ Adds composite index `(status, scheduled_for)` on `scheduled_notifications`, add
 Adds composite index `(archived, timestamp_utc, id)` on `audit_logs` to accelerate audit chain reads and integrity verification. Moves van service polygon SRID-4326 synchronization trigger and GeoJSON backfill into PostgreSQL migration (VC-1), allowing the runtime startup probe to be strictly read-only.
 
 
+
+## After deploying `20261025090000_cs29_per_side_read_state`
+
+The migration adds two unread flags to `message_threads` with constant defaults, so it doesn't rewrite the table. Existing threads start as read on both sides until the backfill runs. From `backend/`:
+
+```bash
+npm run messages:backfill-read            # counts unread threads to carry over; changes nothing
+npm run messages:backfill-read -- --apply # marks each one unread for whoever didn't send the last message
+```
+
+It prints counts only, leaves `updated_at` alone so inbox order is unchanged, and is safe to run again. The old `is_read` column is still written; dropping it is a later, separate change.

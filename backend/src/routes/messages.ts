@@ -145,7 +145,8 @@ router.get("/", requireAuth, validateQuery(listThreadsQuerySchema), async (req: 
           subject: decryptedSubject,
           preview,
           sentAtIso: t.updatedAt.toISOString(),
-          isRead: t.isRead,
+          // Each side has its own unread flag, so one side reading never clears the other's.
+          isRead: !(isStaff ? t.staffUnread : t.patientUnread),
           hasAttachment: t.hasAttachment,
           recipientType: t.recipientType,
           assignedClinicianId: t.assignedClinicianId,
@@ -233,6 +234,8 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
       subject: encryptedSubject,
       preview: "[Secure message]",
       isRead: false, // Unread for the receiving staff / recipient
+      staffUnread: true,
+      patientUnread: false,
       hasAttachment: false,
       recipientType: resolvedRecipientType,
       assignedClinicianId: resolvedAssignedClinicianId,
@@ -293,7 +296,7 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     subject: thread.subject,
     preview: thread.preview,
     sentAtIso: thread.updatedAt.toISOString(),
-    isRead: thread.isRead,
+    isRead: !thread.patientUnread,
     hasAttachment: thread.hasAttachment,
     recipientType: thread.recipientType,
     assignedClinicianId: thread.assignedClinicianId,
@@ -353,6 +356,8 @@ router.post(
         data: {
           preview: "[Secure message]",
           isRead: isStaff ? true : false,
+          staffUnread: !isStaff,
+          patientUnread: isStaff,
         },
         include: {
           messages: { orderBy: { sentAt: "asc" } },
@@ -434,7 +439,7 @@ router.post(
         subject: decryptedSubject,
         preview: `${senderDisplayName}: ${body.slice(0, 160)}`,
         sentAtIso: updatedThread.updatedAt.toISOString(),
-        isRead: updatedThread.isRead,
+        isRead: !(isStaff ? updatedThread.staffUnread : updatedThread.patientUnread),
         hasAttachment: updatedThread.hasAttachment,
       },
     });
@@ -452,12 +457,13 @@ router.patch("/:id/read", requireAuth, validateParams(threadIdParamsSchema), asy
     return res.status(404).json({ error: "Message thread not found" });
   }
 
+  const isStaff = req.user!.role === "clinician" || req.user!.role === "admin";
   const updated = await prisma.messageThread.update({
     where: { id: threadId },
-    data: { isRead: true },
+    data: isStaff ? { isRead: true, staffUnread: false } : { isRead: true, patientUnread: false },
   });
 
-  return res.json({ id: updated.id, isRead: updated.isRead });
+  return res.json({ id: updated.id, isRead: !(isStaff ? updated.staffUnread : updated.patientUnread) });
 });
 
 // ─── DELETE /api/messages/:id ─────────────────────────────────────────────────

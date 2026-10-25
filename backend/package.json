@@ -16,6 +16,7 @@
     "rewrap:encrypted": "tsx scripts/rewrap-encrypted-fields.ts",
     "consents:backfill": "tsx scripts/backfill-consents.ts",
     "phi:backfill": "tsx scripts/backfill-phi-encryption.ts",
+    "messages:backfill-read": "tsx scripts/backfill-thread-read-state.ts",
     "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"prisma/**/*.ts\" --max-warnings=585",
     "test": "tsx src/e2e-suite.ts",
     "test:auth": "jest src/__tests__/auth-integration.test.ts",

@@ -288,4 +288,41 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect(entry!.actorId).toBe(patient.user.id);
     expect(entry!.metadata).toMatchObject({ recipientType: "practice", messageCount: 1 });
   });
+
+  it("keeps a separate unread state for the patient and for staff (CS-29)", async () => {
+    const patient = await makePatient("read-pt", "Read", "Patient");
+    const clinician = await makeClinician("read-doc", "Read Clinician");
+    const asPatient = { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" };
+    const asClinician = { Authorization: `Bearer ${clinician.token}`, "Content-Type": "application/json" };
+    const readState = async (headers: Record<string, string>, id: string) => {
+      const list = (await (await fetch(`${baseUrl}/api/messages`, { headers })).json()) as { id: string; isRead: boolean }[];
+      return list.find((t) => t.id === id)?.isRead;
+    };
+
+    const created = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: asPatient,
+      body: JSON.stringify({ subject: "Synthetic question", body: "Synthetic body.", recipientClinicianId: clinician.profile.id }),
+    });
+    const thread = (await created.json()) as { id: string };
+    threadIds.push(thread.id);
+    expect(await readState(asPatient, thread.id)).toBe(true);
+    expect(await readState(asClinician, thread.id)).toBe(false);
+
+    // The patient opening their own thread must not clear the clinician's unread.
+    expect((await fetch(`${baseUrl}/api/messages/${thread.id}/read`, { method: "PATCH", headers: asPatient })).status).toBe(200);
+    expect(await readState(asClinician, thread.id)).toBe(false);
+
+    expect((await fetch(`${baseUrl}/api/messages/${thread.id}/read`, { method: "PATCH", headers: asClinician })).status).toBe(200);
+    expect(await readState(asClinician, thread.id)).toBe(true);
+
+    const reply = await fetch(`${baseUrl}/api/messages/${thread.id}/reply`, {
+      method: "POST",
+      headers: asClinician,
+      body: JSON.stringify({ body: "Synthetic reply." }),
+    });
+    expect(reply.status).toBe(201);
+    expect(await readState(asPatient, thread.id)).toBe(false);
+    expect(await readState(asClinician, thread.id)).toBe(true);
+  });
 });
