@@ -32,11 +32,13 @@ curl -s https://pavdental-api.onrender.com/health
 {
   "status": "ok",
   "service": "pavdental-backend-api",
+  "timestamp": "2026-10-25T16:04:25.231Z",
   "checks": {
     "database": "ok",
     "redis": "ok"
   },
-  "dsptMode": "active"
+  "dsptMode": "active",
+  "requestId": "979b9524-ad22-465a-8f13-3b7ef04aefb5"
 }
 ```
 
@@ -52,11 +54,12 @@ curl -s -X POST https://pavdental-api.onrender.com/api/auth/login \
 ### Database Schema Status
 - **App Database (`wcyrylagoulmtcqpzfem`)**:
   - `postgis` (v3.3.7) and `btree_gist` (v1.7) extensions active.
-  - All **29 Prisma migrations** applied (`20260918200550_initial_schema` through `20261024040000_appointments_no_clinician_overlap`).
+  - All **37 Prisma migrations** applied (`20260918200550_initial_schema` through `20261025140000_cs05_schema_defaults`).
   - Baseline seed (`npm run prisma:seed`) and default practice hours (`npm run hours:defaults`) populated.
   - Zero schema drift against `schema.prisma`.
 - **Dashboard Database (`gtbvlqdurhwnrzjlikav`)**:
-  - All **10 SQL migrations** applied (`001_initial_schema.sql` through `010_add_variant_to_order_items.sql`).
+  - All **11 SQL migrations** applied (`001_initial_schema.sql` through `010_add_variant_to_order_items.sql`, plus `002_drop_patients_table.sql` per Decision #26).
+  - Redundant `patients` table dropped; patient directory proxied directly to backend API via `pavApi`.
   - 24 tables active for shop, blog, newsletter, pricing, inventory, and forms.
 
 ### Stripe Webhook Integration
