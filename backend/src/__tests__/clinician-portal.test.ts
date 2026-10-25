@@ -336,6 +336,15 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
   });
 
   it("gaps §2: clinician marks appointment completed and no-show", async () => {
+    // Cannot complete a future appointment (CS-28 time check)
+    const futureCompleteRes = await fetch(`${baseUrl}/api/booking/appointments/${ids.appointmentFutureId}/complete`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${clinicianToken}` },
+    });
+    expect(futureCompleteRes.status).toBe(400);
+    const futureCompleteBody: any = await futureCompleteRes.json();
+    expect(futureCompleteBody.error).toContain("future date");
+
     // Complete today's appointment
     const completeRes = await fetch(`${baseUrl}/api/booking/appointments/${ids.appointmentTodayId}/complete`, {
       method: "POST",

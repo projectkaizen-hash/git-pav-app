@@ -1,5 +1,6 @@
-import { formatGbp, mockServices, mockClinics, mockClinicians } from "./src/__mocks__/booking-mock-data";
-import { mockOdontogram } from "./src/__mocks__/records-mock-data";
+// CS-46: Core Mobile Domain Integrity Test Suite
+import { formatGbp } from "./src/features/booking/booking-api";
+import { personalInfoSchema } from "./src/features/account/account-schemas";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -10,41 +11,28 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-console.log("\n🏥 RUNNING PAV DENTAL AUTOMATED TEST SUITE...\n");
+console.log("\n🏥 RUNNING PAV DENTAL CORE DOMAIN INTEGRITY SUITE...\n");
 
-// 1. Currency & Pricing Integrity
+// 1. Currency & Pricing Integrity (real module)
 assert(formatGbp(6500) === "£65.00", "Formats £65.00 examination price");
 assert(formatGbp(2000) === "£20.00", "Formats £20.00 deposit amount");
 assert(formatGbp(49500) === "£495.00", "Formats £495.00 whitening price");
 assert(formatGbp(0) === "£0.00", "Formats £0.00 baseline");
 
-// 2. Service Catalogue Categorisation
-const categories = mockServices.map((s: any) => s.category);
-assert(categories.includes("checkup"), "Contains checkup service");
-assert(categories.includes("hygiene"), "Contains hygiene service");
-assert(categories.includes("emergency"), "Contains emergency triage service");
-assert(categories.includes("cosmetic"), "Contains cosmetic treatment");
+// 2. Personal Info Schema Core Validation (real schema)
+const validPatient = {
+  firstName: "Jane",
+  lastName: "Doe",
+  dob: "1990-01-01",
+  gender: "female" as const,
+  addressLine1: "10 Downing Street",
+  city: "London",
+  postcode: "SW1A 2AA",
+  phone: "+447911123456",
+};
+assert(personalInfoSchema.safeParse(validPatient).success, "Valid patient profile parses successfully");
+assert(!personalInfoSchema.safeParse({ ...validPatient, postcode: "INVALID" }).success, "Rejects invalid UK postcode");
+assert(!personalInfoSchema.safeParse({ ...validPatient, firstName: "" }).success, "Rejects empty first name");
+assert(!personalInfoSchema.safeParse({ ...validPatient, phone: "123" }).success, "Rejects short phone number");
 
-// 3. Clinical GDC & Practice Checks
-assert(mockClinics.length >= 2, "Contains at least 2 physical clinic locations");
-for (const clinic of mockClinics) {
-  assert(clinic.postcode.length >= 5, `Valid UK postcode for ${clinic.name}`);
-}
-
-assert(mockClinicians.length >= 3, "Contains registered dental clinicians");
-for (const doc of mockClinicians) {
-  assert(doc.gdcNumber.length === 6, `GDC 6-digit registration verified for ${doc.fullName}`);
-}
-
-// 4. Odontogram 32-Tooth Integrity
-assert(mockOdontogram.length === 32, "Odontogram has exactly 32 universal teeth");
-const upper = mockOdontogram.filter((t: any) => t.arch === "upper");
-const lower = mockOdontogram.filter((t: any) => t.arch === "lower");
-assert(upper.length === 16, "Maxillary (upper) arch contains 16 teeth");
-assert(lower.length === 16, "Mandibular (lower) arch contains 16 teeth");
-
-const decayingMolar = mockOdontogram.find((t: any) => t.number === 31);
-assert(decayingMolar !== undefined && decayingMolar.condition === "decay", "Correctly flags decaying LR7 tooth #31");
-
-console.log("\n🎉 ALL 12 AUTOMATED TESTS PASSED SUCCESSFULLY (0 FAILURES)!\n");
-
+console.log("\n🎉 CORE DOMAIN INTEGRITY TESTS PASSED SUCCESSFULLY (0 FAILURES)!\n");

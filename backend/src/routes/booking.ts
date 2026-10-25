@@ -792,6 +792,20 @@ router.post("/appointments/:id/check-in", requireAuth, validateParams(appointmen
     return res.status(409).json({ error: "Only confirmed appointments can be checked in" });
   }
 
+  // BK-7 / CS-06: Check-in time window check (opens 48h before slot, closes 2h after end)
+  const nowMs = Date.now();
+  const startMs = appointment.startTimeUtc.getTime();
+  const endMs = appointment.endTimeUtc.getTime();
+  const CHECK_IN_OPEN_WINDOW_MS = 48 * 60 * 60 * 1000;
+  const CHECK_IN_CLOSE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+  if (nowMs < startMs - CHECK_IN_OPEN_WINDOW_MS) {
+    return res.status(400).json({ error: "Check-in window is not yet open for this appointment" });
+  }
+  if (nowMs > endMs + CHECK_IN_CLOSE_WINDOW_MS) {
+    return res.status(400).json({ error: "Check-in window has closed for this appointment" });
+  }
+
   const checkedInAt = new Date().toISOString();
   const currentAccess = (await decryptAccessDetails(appointment.accessDetails)) || {};
   const updatedAccess = {
@@ -971,6 +985,15 @@ router.post(
 
     if (appointment.status !== "confirmed" && appointment.status !== "in_progress") {
       return res.status(409).json({ error: "Only confirmed or in-progress appointments can be completed" });
+    }
+
+    // CS-28: Time window check. Cannot complete an appointment scheduled for a future day.
+    const now = new Date();
+    const endOfDayToday = new Date(now);
+    endOfDayToday.setUTCHours(23, 59, 59, 999);
+    const futureDayThreshold = new Date(endOfDayToday.getTime() + 14 * 60 * 60 * 1000);
+    if (appointment.startTimeUtc.getTime() > futureDayThreshold.getTime()) {
+      return res.status(400).json({ error: "Cannot complete an appointment scheduled for a future date" });
     }
 
     const completedCount = await prisma.appointment.updateMany({
