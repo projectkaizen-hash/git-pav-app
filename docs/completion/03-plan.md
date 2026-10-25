@@ -35,7 +35,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 |---|---|---|
 | CS-01 | Done | |
 | CS-02 | Partial | Query logging in dev and CI (PR-1); postcodes.io DPIA note |
-| CS-03 | Partial | Dev-defaults opt-in; require Daily, email/SMS, S3, `APP_URL` when deployed; JWT `iss`/`aud` |
+| CS-03 | Partial | `ALLOW_DEV_DEFAULTS` opt-in (needs local setup and CI changes). Production now requires email, video, storage and `APP_URL`, and tokens carry `iss`/`aud`, in #64 |
 | CS-04 | Done | |
 | CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
 | CS-06 | Partial | Check-in column and window (van summary, Veneers callout and `srv_checkup` fallback fixed in #64) |
@@ -44,7 +44,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-09 | Done | Message list paged in #64 |
 | CS-10 | Done | 🛑 Clinical sign-off of wording |
 | CS-11 | Done | Raw error logs fixed in #64, with a test that stops new ones |
-| CS-12 | Partial | Split reference and demo data (seed guard done in #49) |
+| CS-12 | Done | Reference-only seed added in #64 (seed guard in #49) |
 | CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key |
 | CS-14 | Done | Remainders closed by CS-54 (not re-audited); `TRUST_PROXY` in deploy docs |
 | CS-15, CS-17, CS-18 | Done | Remainders closed by CS-49 and #59 |
@@ -59,14 +59,14 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
 | CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
 | CS-28 | Partial | Time windows for `/complete` and the active-appointment check (the app already sends `scope=today`; record screen shows a 403 since #64) |
-| CS-29 | Partial | Staff inbox for practice threads; per-side read state (thread delete audited in #64) |
+| CS-29 | Done | Staff inbox, per-side read state and delete audit in #64; 🛑 the notice's hours and "1 business day" promise |
 | CS-30, CS-32, CS-33 | Done | |
 | CS-31 | Partial | Team & Services screen and staff invite email in batch 2; clinic screen; 🛑 drop the dashboard `patients` table |
 | CS-34 | Done | Edit screen in batch 2; 🛑 whether a changed date of birth asks for consent again |
 | CS-35 | Done | 🛑 Which roles may prescribe |
 | CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |
 | CS-37 | Done | Every data screen shows loading and error states (batches 2 and 3 in #64); financing keeps its fallback link by design |
-| CS-38 | Partial | Remaining labels; screen-reader checklist; real tests |
+| CS-38 | Partial | Run the screen-reader checklist on devices (`docs/completion/screen-reader-checklist.md`). Labels done and checked by a real test in #64 |
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
 | CS-44 | Done | Merged as #62 (not re-audited) |
 | CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
