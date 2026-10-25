@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
-import { useCurrentUser } from "@/features/auth/auth-store";
-import { usePatientProfile } from "@/features/hooks/use-dental-api";
 import { requestDataAccessExport } from "@/features/records/records-api";
 import { authFetch } from "@/features/auth/auth-api";
 import { colors, spacing, type } from "@/theme";
 
 export default function ConsentScreen() {
-  const user = useCurrentUser();
-  const userId = user?.id || "";
   const [isExporting, setIsExporting] = useState(false);
   const [isUpdatingMarketing, setIsUpdatingMarketing] = useState(false);
   const [activeConsents, setActiveConsents] = useState<any[]>([]);
-  const [isLoadingConsents, setIsLoadingConsents] = useState(true);
+  const [, setIsLoadingConsents] = useState(true);
 
   const fetchConsents = async () => {
     try {

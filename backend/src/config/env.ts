@@ -80,6 +80,10 @@ export function validateDeployedConfig(envName: NodeEnv, values: {
   stripeWebhookSecret?: string;
   stripePublishableKey?: string;
   allowedOrigins: string[];
+  appUrl?: string;
+  postmarkServerToken?: string;
+  dailyApiKey?: string;
+  s3BucketName?: string;
 }) {
   if (envName !== "production" && envName !== "staging") return;
   const isProduction = envName === "production";
@@ -142,6 +146,39 @@ export function validateDeployedConfig(envName: NodeEnv, values: {
   if (!webhookSecret.startsWith("whsec_") || webhookSecret.includes("replace_with")) {
     throw new Error(`STRIPE_WEBHOOK_SECRET must be a real webhook signing secret in ${envName}`);
   }
+
+  // Production also needs the services patients depend on. Without them,
+  // sign-in codes, password resets and invites aren't emailed, links point
+  // nowhere, video consults can't start and documents can't be stored, all
+  // silently. Staging (the free test environment) only gets a warning.
+  if (isProduction) {
+    const gaps = deployedServiceGaps(values);
+    if (gaps.length > 0) {
+      throw new Error(`Missing or placeholder production services: ${gaps.join(", ")}`);
+    }
+  }
+}
+
+/** Services that are missing or still set to a placeholder or stub. */
+export function deployedServiceGaps(values: {
+  appUrl?: string;
+  postmarkServerToken?: string;
+  dailyApiKey?: string;
+  s3BucketName?: string;
+}): string[] {
+  const placeholder = (value?: string) => !value || /^(mock|stub)|replace_?with|replace_me/i.test(value);
+  const gaps: string[] = [];
+  let appUrlOk = false;
+  try {
+    appUrlOk = !!values.appUrl && new URL(values.appUrl).protocol === "https:";
+  } catch {
+    appUrlOk = false;
+  }
+  if (!appUrlOk) gaps.push("APP_URL (an https URL)");
+  if (placeholder(values.postmarkServerToken)) gaps.push("POSTMARK_SERVER_TOKEN");
+  if (placeholder(values.dailyApiKey)) gaps.push("DAILY_API_KEY");
+  if (!values.s3BucketName) gaps.push("S3_BUCKET_NAME");
+  return gaps;
 }
 
 function printConfigurationSummary(values: {
@@ -154,6 +191,10 @@ function printConfigurationSummary(values: {
   stripeWebhookSecret?: string;
   stripePublishableKey?: string;
   allowedOrigins: string[];
+  appUrl?: string;
+  postmarkServerToken?: string;
+  dailyApiKey?: string;
+  s3BucketName?: string;
 }) {
   console.log("╔═══════════════════════════════════════════════════════════════╗");
   console.log("║          Pav Dental API - Configuration Summary                ║");
@@ -177,6 +218,10 @@ function printConfigurationSummary(values: {
     console.log("⚠️  PRODUCTION MODE - All secrets must be properly configured");
   } else if (isStaging) {
     console.log("⚠️  STAGING MODE - Secrets must be properly configured for testing");
+    const gaps = deployedServiceGaps(values);
+    if (gaps.length > 0) {
+      console.log(`⚠️  Not configured (required in production): ${gaps.join(", ")}`);
+    }
   } else {
     console.log("⚠️  DEVELOPMENT MODE - Using development defaults for missing secrets");
     console.log("⚠️  DO NOT use development defaults in production or staging");
@@ -198,6 +243,10 @@ const values = {
   stripeWebhookSecret: readOptional("STRIPE_WEBHOOK_SECRET"),
   stripePublishableKey: readOptional("STRIPE_PUBLISHABLE_KEY"),
   allowedOrigins,
+  appUrl: readOptional("APP_URL"),
+  postmarkServerToken: readOptional("POSTMARK_SERVER_TOKEN"),
+  dailyApiKey: readOptional("DAILY_API_KEY"),
+  s3BucketName: readOptional("S3_BUCKET_NAME"),
 };
 
 // Print configuration summary before validation

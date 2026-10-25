@@ -149,7 +149,7 @@ export default function ClinicianConsultRoomScreen() {
             </ThemedText>
             <Badge label={`${formatTime(seconds)}`} variant="success" />
           </View>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Exit consultation room"
             onPress={() => router.replace("/(clinician)/schedule")}
             style={styles.exitBtn}
           >
@@ -161,7 +161,7 @@ export default function ClinicianConsultRoomScreen() {
 
         {/* Tab Switcher for Clinician Multi-Tasking */}
         <View style={styles.tabRow}>
-          <Pressable
+          <Pressable accessibilityRole="tab" accessibilityLabel="Video call" accessibilityState={{ selected: activeTab === "video" }}
             onPress={() => setActiveTab("video")}
             style={[styles.tabItem, activeTab === "video" && styles.tabItemActive]}
           >
@@ -172,7 +172,7 @@ export default function ClinicianConsultRoomScreen() {
               📹 Video Call
             </ThemedText>
           </Pressable>
-          <Pressable
+          <Pressable accessibilityRole="tab" accessibilityLabel="Triage and photos" accessibilityState={{ selected: activeTab === "triage" }}
             onPress={() => setActiveTab("triage")}
             style={[styles.tabItem, activeTab === "triage" && styles.tabItemActive]}
           >
@@ -183,7 +183,7 @@ export default function ClinicianConsultRoomScreen() {
               📋 Triage & Photos
             </ThemedText>
           </Pressable>
-          <Pressable
+          <Pressable accessibilityRole="tab" accessibilityLabel="Tooth chart" accessibilityState={{ selected: activeTab === "chart" }}
             onPress={() => setActiveTab("chart")}
             style={[styles.tabItem, activeTab === "chart" && styles.tabItemActive]}
           >
@@ -257,7 +257,7 @@ export default function ClinicianConsultRoomScreen() {
                 {Array.from({ length: 16 }, (_, i) => i + 1).map((num) => {
                   const isSelected = selectedTooth === num;
                   return (
-                    <Pressable
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Tooth ${num}`} accessibilityState={{ selected: isSelected }}
                       key={num}
                       onPress={() => setSelectedTooth(num)}
                       style={[
@@ -287,7 +287,7 @@ export default function ClinicianConsultRoomScreen() {
                 {Array.from({ length: 16 }, (_, i) => i + 17).map((num) => {
                   const isSelected = selectedTooth === num;
                   return (
-                    <Pressable
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Tooth ${num}`} accessibilityState={{ selected: isSelected }}
                       key={num}
                       onPress={() => setSelectedTooth(num)}
                       style={[

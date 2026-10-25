@@ -234,4 +234,133 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect(found.from).toBe("Hannah Abbott");
     expect(found.isRead).toBe(false); // New message is unread for staff
   });
+  it("lists threads a page at a time, newest first, without repeats (CS-09)", async () => {
+    const patient = await makePatient("paging-pt", "Paging", "Patient");
+    const created: string[] = [];
+    for (const n of [1, 2, 3]) {
+      const res = await fetch(`${baseUrl}/api/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: `Synthetic question ${n}`, body: "Synthetic body." }),
+      });
+      expect(res.status).toBe(201);
+      const thread = (await res.json()) as any;
+      threadIds.push(thread.id);
+      created.push(thread.id);
+    }
+    // Distinct times, so the expected order doesn't depend on the clock.
+    for (const [i, id] of created.entries()) {
+      await prisma.messageThread.update({ where: { id }, data: { updatedAt: new Date(Date.UTC(2026, 0, 1, 9, i)) } });
+    }
+    const headers = { Authorization: `Bearer ${patient.token}` };
+
+    const first = (await (await fetch(`${baseUrl}/api/messages?limit=2`, { headers })).json()) as any[];
+    const second = (await (await fetch(`${baseUrl}/api/messages?limit=2&offset=2`, { headers })).json()) as any[];
+    expect(first.map((t) => t.id)).toEqual([created[2], created[1]]);
+    expect(second.map((t) => t.id)).toEqual([created[0]]);
+
+    expect((await fetch(`${baseUrl}/api/messages?limit=101`, { headers })).status).toBe(400);
+    expect((await fetch(`${baseUrl}/api/messages?offset=-1`, { headers })).status).toBe(400);
+  });
+
+  it("records an audit entry when a patient deletes a thread (CS-29)", async () => {
+    const patient = await makePatient("delete-pt", "Delete", "Patient");
+    const res = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: "Synthetic question", body: "Synthetic body." }),
+    });
+    expect(res.status).toBe(201);
+    const thread = (await res.json()) as { id: string };
+    threadIds.push(thread.id);
+
+    const del = await fetch(`${baseUrl}/api/messages/${thread.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${patient.token}` },
+    });
+    expect(del.status).toBe(200);
+    expect(await prisma.messageThread.findUnique({ where: { id: thread.id } })).toBeNull();
+
+    const entry = await prisma.auditLog.findFirst({
+      where: { action: "message.thread_deleted", resourceId: thread.id },
+    });
+    expect(entry).not.toBeNull();
+    expect(entry!.actorId).toBe(patient.user.id);
+    expect(entry!.metadata).toMatchObject({ recipientType: "practice", messageCount: 1 });
+  });
+
+  it("keeps a separate unread state for the patient and for staff (CS-29)", async () => {
+    const patient = await makePatient("read-pt", "Read", "Patient");
+    const clinician = await makeClinician("read-doc", "Read Clinician");
+    const asPatient = { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" };
+    const asClinician = { Authorization: `Bearer ${clinician.token}`, "Content-Type": "application/json" };
+    const readState = async (headers: Record<string, string>, id: string) => {
+      const list = (await (await fetch(`${baseUrl}/api/messages`, { headers })).json()) as { id: string; isRead: boolean }[];
+      return list.find((t) => t.id === id)?.isRead;
+    };
+
+    const created = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: asPatient,
+      body: JSON.stringify({ subject: "Synthetic question", body: "Synthetic body.", recipientClinicianId: clinician.profile.id }),
+    });
+    const thread = (await created.json()) as { id: string };
+    threadIds.push(thread.id);
+    expect(await readState(asPatient, thread.id)).toBe(true);
+    expect(await readState(asClinician, thread.id)).toBe(false);
+
+    // The patient opening their own thread must not clear the clinician's unread.
+    expect((await fetch(`${baseUrl}/api/messages/${thread.id}/read`, { method: "PATCH", headers: asPatient })).status).toBe(200);
+    expect(await readState(asClinician, thread.id)).toBe(false);
+
+    expect((await fetch(`${baseUrl}/api/messages/${thread.id}/read`, { method: "PATCH", headers: asClinician })).status).toBe(200);
+    expect(await readState(asClinician, thread.id)).toBe(true);
+
+    const reply = await fetch(`${baseUrl}/api/messages/${thread.id}/reply`, {
+      method: "POST",
+      headers: asClinician,
+      body: JSON.stringify({ body: "Synthetic reply." }),
+    });
+    expect(reply.status).toBe(201);
+    expect(await readState(asPatient, thread.id)).toBe(false);
+    expect(await readState(asClinician, thread.id)).toBe(true);
+  });
+
+  it("gives admins a practice inbox under /api/admin/messages (CS-29)", async () => {
+    const patient = await makePatient("inbox-pt", "Inbox", "Patient");
+    const admin = await prisma.user.create({
+      data: { email: `inbox-admin-${tag}@example.test`, passwordHash: "x", role: "admin" },
+    });
+    const asAdmin = {
+      Authorization: `Bearer ${signAccessToken({ sub: admin.id, role: "admin", sessionId: crypto.randomUUID() })}`,
+      "Content-Type": "application/json",
+    };
+
+    const created = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: "Synthetic practice question", body: "Synthetic body." }),
+    });
+    const thread = (await created.json()) as { id: string; recipientType: string };
+    threadIds.push(thread.id);
+    expect(thread.recipientType).toBe("practice");
+
+    const list = await fetch(`${baseUrl}/api/admin/messages?recipientType=practice&limit=100`, { headers: asAdmin });
+    expect(list.status).toBe(200);
+    const threads = (await list.json()) as { id: string; isRead: boolean; recipientType: string; from: string }[];
+    expect(threads.every((t) => t.recipientType === "practice")).toBe(true);
+    const found = threads.find((t) => t.id === thread.id);
+    expect(found).toMatchObject({ isRead: false, from: "Inbox Patient" });
+
+    const reply = await fetch(`${baseUrl}/api/admin/messages/${thread.id}/reply`, {
+      method: "POST",
+      headers: asAdmin,
+      body: JSON.stringify({ body: "Synthetic practice reply." }),
+    });
+    expect(reply.status).toBe(201);
+    expect(((await reply.json()) as { message: { senderName: string } }).message.senderName).toBe("Pav Dental Practice Team");
+
+    // Patients and clinicians can't use the admin inbox.
+    expect((await fetch(`${baseUrl}/api/admin/messages`, { headers: { Authorization: `Bearer ${patient.token}` } })).status).toBe(403);
+  });
 });

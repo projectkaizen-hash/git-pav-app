@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert, Modal, ActivityIndicator } from "react-native";
 import * as Haptics from "expo-haptics";
 import { CardField, useStripe, CardFieldInput } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, ErrorState, Skeleton } from "@/components";
 import {
   usePaymentMethods,
   useRemovePaymentMethodMutation,
@@ -14,7 +14,8 @@ import { TouchableOpacity } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function PaymentMethodsScreen() {
-  const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: paymentMethodsData, isLoading, isError, refetch } = usePaymentMethods();
+  const paymentMethods = paymentMethodsData ?? [];
   const removeMethod = useRemovePaymentMethodMutation();
   const setDefault = useSetDefaultPaymentMethodMutation();
   const { confirmSetupIntent } = useStripe();
@@ -113,6 +114,28 @@ export default function PaymentMethodsScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Skeleton height={76} />
+          <Skeleton height={76} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && paymentMethodsData === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your saved cards. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerBox}>
@@ -145,7 +168,7 @@ export default function PaymentMethodsScreen() {
               {pm.isDefault ? (
                 <Badge variant="success" label="Default" />
               ) : (
-                <TouchableOpacity onPress={() => handleSetDefault(pm.id)}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Make this card the default" onPress={() => handleSetDefault(pm.id)}>
                   <ThemedText variant="caption" style={styles.setDefaultText}>
                     Make Default
                   </ThemedText>
@@ -154,7 +177,7 @@ export default function PaymentMethodsScreen() {
             </View>
 
             <View style={styles.cardBottom}>
-              <TouchableOpacity onPress={() => handleRemove(pm.id, pm.isDefault)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove card" onPress={() => handleRemove(pm.id, pm.isDefault)}>
                 <ThemedText variant="caption" style={styles.deleteText}>
                   Remove Card
                 </ThemedText>

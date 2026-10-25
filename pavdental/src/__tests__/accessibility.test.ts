@@ -1,5 +1,16 @@
 // Tests for CS-38: Accessibility and small screens pass (MB-6, MB-7)
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join, relative } from "path";
 import { colors, spacing } from "../theme";
+import { contrastRatio, findA11yGaps } from "../lib/a11y-scan";
+
+function tsxFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name === "__tests__" ? [] : tsxFiles(path);
+    return path.endsWith(".tsx") ? [path] : [];
+  });
+}
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -51,6 +62,30 @@ async function runTests() {
   // ─── Test 4: Semantic Color Contrast Verification ───────────────────────────
   assert(colors.ink.length > 0 && colors.systemBackground.length > 0, "Color system specifies foreground and background tokens");
   assert(colors.label.length > 0 && colors.secondaryLabel.length > 0, "Accessible hierarchical label tokens are present");
+
+  // ─── Test 5: The scanner itself catches what it should ──────────────────────
+  assert(findA11yGaps(`<Pressable onPress={() => go()}><Text>Go</Text></Pressable>`).length === 1, "Scanner flags a Pressable with no role or label");
+  assert(
+    findA11yGaps(`<Pressable onPress={() => go()} accessibilityRole="button" accessibilityLabel="Go">`).length === 0,
+    "Scanner reads past => inside an attribute and accepts a labelled button"
+  );
+  assert(findA11yGaps(`<Pressable accessible={false} onPress={close} />`).length === 0, "Scanner skips elements hidden on purpose");
+
+  // ─── Test 6: Every touchable in the app has a role and a label (CS-38) ──────
+  const srcRoot = join(__dirname, "..");
+  const gaps = tsxFiles(srcRoot).flatMap((file) =>
+    findA11yGaps(readFileSync(file, "utf8")).map(
+      (g) => `${relative(srcRoot, file)}:${g.line} <${g.element}> missing ${g.missing.join(" and ")}`
+    )
+  );
+  if (gaps.length > 0) console.error(gaps.join("\n"));
+  assert(gaps.length === 0, `Every Pressable and Touchable has an accessibilityRole and accessibilityLabel (${gaps.length} missing)`);
+
+  // ─── Test 7: Text colours meet WCAG AA contrast on the main background ──────
+  for (const name of ["label", "secondaryLabel", "ink"] as const) {
+    const ratio = contrastRatio(colors[name], colors.systemBackground);
+    assert(ratio >= 4.5, `colors.${name} on systemBackground is ${ratio.toFixed(1)}:1 (AA needs 4.5:1)`);
+  }
 
   console.log("\n✅ ALL ACCESSIBILITY & SMALL SCREEN TESTS PASSED!\n");
 }

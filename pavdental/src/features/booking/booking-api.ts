@@ -1,17 +1,17 @@
-import { authFetch, API_URL } from "../auth/auth-api";
+import { authFetch, publicFetch } from "../auth/auth-api";
 import { DentalService, ClinicLocation, Clinician, TimeSlot } from "./booking-types";
 import { ukDayLabel, ukDate, ukTime } from "./uk-time";
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 export async function fetchServices(): Promise<DentalService[]> {
-  const res = await fetch(`${API_URL}/api/services`);
+  const res = await publicFetch(`/api/services`);
   if (!res.ok) throw new Error("Could not load services");
   return res.json();
 }
 
 // ─── Clinics ──────────────────────────────────────────────────────────────────
 export async function fetchClinics(): Promise<ClinicLocation[]> {
-  const res = await fetch(`${API_URL}/api/services/clinics`);
+  const res = await publicFetch(`/api/services/clinics`);
   if (!res.ok) throw new Error("Could not load clinics");
   return res.json();
 }
@@ -19,7 +19,7 @@ export async function fetchClinics(): Promise<ClinicLocation[]> {
 // ─── Clinicians ───────────────────────────────────────────────────────────────
 export async function fetchClinicians(channel?: string): Promise<Clinician[]> {
   const qs = channel ? `?channel=${channel}` : "";
-  const res = await fetch(`${API_URL}/api/services/clinicians${qs}`);
+  const res = await publicFetch(`/api/services/clinicians${qs}`);
   if (!res.ok) throw new Error("Could not load clinicians");
   return res.json();
 }
@@ -163,7 +163,7 @@ export async function cancelAppointment(appointmentId: string): Promise<Cancella
 
 // ─── Van coverage check ────────────────────────────────────────────────────────
 export async function checkVanCoverage(params: { lat?: number; lng?: number; postcode?: string }) {
-  const res = await fetch(`${API_URL}/api/public/van/coverage-check`, {
+  const res = await publicFetch(`/api/public/van/coverage-check`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),

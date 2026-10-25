@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button, AppIcon, EmptyState } from "@/components";
+import { ThemedText, Card, Badge, Button, EmptyState } from "@/components";
 import { colors, spacing } from "@/theme";
 import {
   fetchPatientProfile,
@@ -24,7 +24,7 @@ export default function ClinicianPatientRecordScreen() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [, setProfile] = useState<any>(null);
   const [teeth, setTeeth] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [notes, setNotes] = useState<any>(null);
@@ -44,7 +44,8 @@ export default function ClinicianPatientRecordScreen() {
     setError(null);
     try {
       const [profData, odontData, planData, noteData] = await Promise.all([
-        fetchPatientProfile(patientId).catch(() => null),
+        // A refused or failed profile load is shown as an error, not as an empty record.
+        fetchPatientProfile(patientId),
         fetchOdontogram(patientId).catch(() => []),
         fetchTreatmentPlans(patientId).catch(() => []),
         appointmentId ? fetchAppointmentNotes(appointmentId).catch(() => null) : null,

@@ -93,7 +93,7 @@ export function EmergencyContactForm({
             {RELATIONSHIP_OPTIONS.map((rel) => {
               const active = selectedRelationship === rel;
               return (
-                <Pressable
+                <Pressable accessibilityLabel={rel}
                   key={rel}
                   disabled={isLoading}
                   onPress={() => setValue("relationship", rel, { shouldDirty: true, shouldValidate: true })}
@@ -175,14 +175,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
-  },
-  infoIconWrap: {
-    alignItems: "center",
-    backgroundColor: colors.inkSubtle,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
   },
   infoText: {
     color: colors.secondaryLabel,

@@ -20,7 +20,7 @@ export default function VanServiceAreaScreen() {
   const [loading, setLoading] = useState(false);
   const [locationPermission, setLocationPermission] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [usingGPS, setUsingGPS] = useState(false);
+  const [, setUsingGPS] = useState(false);
 
   useEffect(() => {
     requestLocationPermission();

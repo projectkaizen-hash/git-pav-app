@@ -249,9 +249,6 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
     padding: spacing.md,
   },
-  savedCover: {
-    color: colors.secondaryLabel,
-  },
   savedInsurer: {
     color: colors.label,
     flex: 1,

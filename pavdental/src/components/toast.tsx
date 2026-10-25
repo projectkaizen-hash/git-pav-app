@@ -53,7 +53,6 @@ export function Toast({ message, tone = "info", duration = 3000, onDismiss }: To
       );
       opacity.value = withDelay(exitDelay, withTiming(0, { duration: motion.base }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const style = useAnimatedStyle(() => ({

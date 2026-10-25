@@ -25,6 +25,7 @@ import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
 import { encryptField, decryptField, decryptString, encryptAccessDetails, encryptClientAccessDetails, decryptAccessDetails } from "../lib/encryption";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 
@@ -734,7 +735,7 @@ router.patch("/appointments/:id/confirm", requireAuth, validateParams(appointmen
     });
     if (result.count === 1) {
       await scheduleAppointmentReminderLadder(apptId).catch((err) => {
-        console.error("[Booking] Failed to schedule reminders:", err);
+        console.error("[Booking] Failed to schedule reminders:", safeError(err));
       });
     }
 

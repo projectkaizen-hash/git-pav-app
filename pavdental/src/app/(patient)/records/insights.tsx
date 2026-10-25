@@ -1,13 +1,13 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { ThemedText, Card, Button, AppIcon, Badge } from "@/components";
+import { ThemedText, Card, Button, AppIcon, Badge, ErrorState, Skeleton } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useOralHealthInsights } from "@/features/hooks/use-dental-api";
 
 export default function OralHealthInsightsScreen() {
   const router = useRouter();
-  const { data: insightsData } = useOralHealthInsights();
+  const { data: insightsData, isLoading, isError, refetch } = useOralHealthInsights();
 
   // Every figure here comes from the API. Clinical measurements (plaque,
   // bleeding on probing, recall) are only shown when a clinician recorded them;
@@ -32,6 +32,28 @@ export default function OralHealthInsightsScreen() {
     typeof insightsData?.practitionerAdvice === "string" && insightsData.practitionerAdvice.trim()
       ? insightsData.practitionerAdvice.trim()
       : null;
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Skeleton height={140} />
+          <Skeleton height={200} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && insightsData === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your insights. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

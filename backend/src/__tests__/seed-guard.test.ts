@@ -3,13 +3,29 @@ import path from "path";
 import { planSeed } from "../lib/seed-guard";
 
 describe("planSeed", () => {
+  it("seeds reference data only when asked, locally or on a deployed database (CS-12)", () => {
+    expect(planSeed({ NODE_ENV: "development", SEED_SCOPE: "reference" }).scope).toBe("reference");
+    expect(planSeed({ NODE_ENV: "development" }).scope).toBe("demo");
+    const remote = "postgresql://u:p@db.example.test:5432/pav";
+    for (const NODE_ENV of ["staging", "production", "development"]) {
+      expect(planSeed({ NODE_ENV, DATABASE_URL: remote, ALLOW_SEED: "reference" })).toEqual({
+        scope: "reference",
+        demoPassword: "",
+        printPassword: false,
+      });
+    }
+    // SEED_SCOPE alone doesn't unlock a deployed database.
+    expect(() => planSeed({ NODE_ENV: "staging", SEED_SCOPE: "reference" })).toThrow(/Refusing to seed/);
+  });
+
   it("uses the well-known local password in development and test", () => {
-    expect(planSeed({ NODE_ENV: "development" })).toEqual({ demoPassword: "Password123!", printPassword: true });
+    expect(planSeed({ NODE_ENV: "development" })).toEqual({ scope: "demo", demoPassword: "Password123!", printPassword: true });
     expect(planSeed({ NODE_ENV: "test" }).demoPassword).toBe("Password123!");
   });
 
   it("uses SEED_DEMO_PASSWORD locally when set, without printing it", () => {
     expect(planSeed({ NODE_ENV: "development", SEED_DEMO_PASSWORD: "local-only-pass" })).toEqual({
+      scope: "demo",
       demoPassword: "local-only-pass",
       printPassword: false,
     });
@@ -53,13 +69,13 @@ describe("planSeed", () => {
     );
     expect(
       planSeed({ NODE_ENV: "development", DATABASE_URL, ALLOW_SEED: "demo", SEED_DEMO_PASSWORD: "a-long-unique-password" })
-    ).toEqual({ demoPassword: "a-long-unique-password", printPassword: false });
+    ).toEqual({ scope: "demo", demoPassword: "a-long-unique-password", printPassword: false });
   });
 
   it("allows an explicit demo seed with a unique password", () => {
     expect(
       planSeed({ NODE_ENV: "staging", ALLOW_SEED: "demo", SEED_DEMO_PASSWORD: "a-long-unique-password" })
-    ).toEqual({ demoPassword: "a-long-unique-password", printPassword: false });
+    ).toEqual({ scope: "demo", demoPassword: "a-long-unique-password", printPassword: false });
   });
 });
 

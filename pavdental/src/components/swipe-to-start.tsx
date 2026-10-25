@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
-import { colors, radius, spacing } from "@/theme";
+import { colors, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
 

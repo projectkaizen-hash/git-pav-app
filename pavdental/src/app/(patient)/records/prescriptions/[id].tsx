@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Linking, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button, AppIcon, EmptyState, Skeleton } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, EmptyState, ErrorState, Skeleton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
@@ -13,7 +13,7 @@ export default function PrescriptionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useCurrentUser();
   const userId = user?.id || "";
-  const { data: rawList, isLoading } = usePatientPrescriptions(userId);
+  const { data: rawList, isLoading, isError, refetch } = usePatientPrescriptions(userId);
   const [openingPdf, setOpeningPdf] = useState(false);
 
   // The PDF opens in the phone's browser through a link that works for five
@@ -43,8 +43,20 @@ export default function PrescriptionDetailScreen() {
     );
   }
 
+  if (isError && rawList === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load this prescription. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
+
   const prescriptions = Array.isArray(rawList) ? rawList.map(normalizePrescription) : [];
-  const rx = prescriptions.find((p) => p.id === id) || prescriptions[0];
+  // Never show a different prescription than the one asked for.
+  const rx = prescriptions.find((p) => p.id === id);
 
   if (!rx) {
     return (

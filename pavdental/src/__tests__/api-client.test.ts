@@ -2,7 +2,7 @@
 // Verifies single-flight token refresh, signOut clearing queryClient and all stores (MA-2),
 // and FormData boundary handling in authFetch.
 
-import { authFetch, clearSessionState, authApi, API_URL } from "../features/auth/auth-api";
+import { authFetch, clearSessionState, API_URL } from "../features/auth/auth-api";
 import { useAuthStore } from "../features/auth/auth-store";
 import { useBookingStore } from "../features/booking/booking-store";
 import { useVanStore } from "../features/van/van-store";
@@ -140,6 +140,7 @@ async function runTests() {
   assert(res1.status === 200, "First concurrent request succeeded after transparent refresh");
   assert(res2.status === 200, "Second concurrent request succeeded after transparent refresh");
   assert(refreshCount === 1, "Only a single refresh request was made across concurrent 401s (deduplicated)");
+  assert(protectedCallCount === 4, "Each request was tried once with the expired token and retried once");
   assert(useAuthStore.getState().accessToken === "new-refreshed-token", "Store accessToken was updated with refreshed token");
 
   // Restore fetch

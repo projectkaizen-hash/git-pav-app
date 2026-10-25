@@ -216,7 +216,7 @@ export default function BookingSummaryScreen() {
                 (option) => {
                   const selected = dependantId === option.id;
                   return (
-                    <Pressable
+                    <Pressable accessibilityLabel={option.label}
                       key={option.id ?? "me"}
                       accessibilityRole="radio"
                       accessibilityState={{ selected }}
@@ -309,7 +309,7 @@ export default function BookingSummaryScreen() {
           </View>
 
           {voucherFits && (
-            <Pressable
+            <Pressable accessibilityLabel="Use rewards voucher"
               accessibilityRole="checkbox"
               accessibilityState={{ checked: useVoucher }}
               onPress={() => setUseVoucher((v) => !v)}

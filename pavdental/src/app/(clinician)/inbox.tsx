@@ -4,8 +4,8 @@ import * as Haptics from "expo-haptics";
 import {
   ThemedText,
   Card,
-  Badge,
   EmptyState,
+  ErrorState,
   AppIcon,
   Skeleton,
   Input,
@@ -45,7 +45,7 @@ export default function ClinicianInboxScreen() {
   const [replyText, setReplyText] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
-  const { data: rawThreads, isLoading, refetch, isRefetching } = useMessageThreads();
+  const { data: rawThreads, isLoading, isError, refetch, isRefetching } = useMessageThreads();
   const replyMutation = useReplyMessageThreadMutation();
   const markReadMutation = useMarkMessageThreadReadMutation();
 
@@ -186,6 +186,11 @@ export default function ClinicianInboxScreen() {
             <Skeleton height={80} />
             <Skeleton height={80} />
           </View>
+        ) : isError && rawThreads === undefined ? (
+          <ErrorState
+            message="We couldn't load messages. Check your connection and try again."
+            onRetry={() => refetch()}
+          />
         ) : filteredThreads.length === 0 ? (
           <EmptyState
             heading={filter === "unread" ? "No unread messages" : "No messages found"}

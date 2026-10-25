@@ -163,12 +163,6 @@ const styles = StyleSheet.create({
   downloadBtnPressed: {
     opacity: 0.7,
   },
-  emptyCard: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
   header: {
     gap: spacing.xxs,
   },
@@ -179,11 +173,6 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     width: 44,
-  },
-  loadingBox: {
-    alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.xl,
   },
   securityBanner: {
     alignItems: "center",
@@ -196,10 +185,6 @@ const styles = StyleSheet.create({
   securityText: {
     color: colors.secondaryLabel,
     lineHeight: 16,
-  },
-  sub: {
-    color: colors.secondaryLabel,
-    textAlign: "center",
   },
   subtitle: {
     color: colors.secondaryLabel,

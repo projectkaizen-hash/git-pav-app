@@ -295,7 +295,7 @@ export default function OdontogramScreen() {
         onRequestClose={() => setShowToothModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setShowToothModal(false)} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Close tooth details" style={styles.modalBackdrop} onPress={() => setShowToothModal(false)} />
 
           <View style={styles.sheetContainer}>
             {/* Grabber handle */}

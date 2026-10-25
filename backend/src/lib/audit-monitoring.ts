@@ -1,6 +1,7 @@
 import { verifyAuditIntegrity, applyAuditRetentionPolicy, checkAuditFailures } from "./audit-integrity";
 import { communicationService } from "./communication-service";
 import { env } from "../config/env";
+import { safeError } from "./log-safety";
 
 // Audit monitoring configuration
 const AUDIT_CONFIG = {
@@ -21,7 +22,7 @@ export function startAuditMonitoring() {
   // Integrity verification every hour
   integrityCheckTimer = setInterval(async () => {
     try {
-      const result = await verifyAuditIntegrity(1000);
+      const result = await verifyAuditIntegrity({ limit: 1000, newest: true });
       if (!result.verified) {
         console.error("[AUDIT INTEGRITY] Integrity check failed:", result.issues);
         await communicationService.sendEmail({
@@ -34,7 +35,7 @@ export function startAuditMonitoring() {
         console.log(`[AUDIT INTEGRITY] Verified ${result.checkedCount} audit logs`);
       }
     } catch (error) {
-      console.error("[AUDIT INTEGRITY] Integrity check error:", error);
+      console.error("[AUDIT INTEGRITY] Integrity check error:", safeError(error));
     }
   }, AUDIT_CONFIG.integrityCheckIntervalMs);
 
@@ -44,7 +45,7 @@ export function startAuditMonitoring() {
       const result = await applyAuditRetentionPolicy(AUDIT_CONFIG.retentionDays);
       console.log(`[AUDIT RETENTION] ${result.message}`);
     } catch (error) {
-      console.error("[AUDIT RETENTION] Retention policy error:", error);
+      console.error("[AUDIT RETENTION] Retention policy error:", safeError(error));
     }
   }, AUDIT_CONFIG.retentionCheckIntervalMs);
 
@@ -62,7 +63,7 @@ export function startAuditMonitoring() {
         }).catch(() => {});
       }
     } catch (error) {
-      console.error("[AUDIT FAILURES] Failure check error:", error);
+      console.error("[AUDIT FAILURES] Failure check error:", safeError(error));
     }
   }, AUDIT_CONFIG.failureCheckIntervalMs);
 
@@ -74,14 +75,14 @@ export function startAuditMonitoring() {
 async function runInitialChecks() {
   try {
     console.log("[AUDIT MONITORING] Running initial integrity check");
-    const integrityResult = await verifyAuditIntegrity(1000);
+    const integrityResult = await verifyAuditIntegrity({ limit: 1000, newest: true });
     if (!integrityResult.verified) {
       console.error("[AUDIT MONITORING] Initial integrity check failed:", integrityResult.issues);
     } else {
       console.log(`[AUDIT MONITORING] Initial integrity check passed: ${integrityResult.checkedCount} logs verified`);
     }
   } catch (error) {
-    console.error("[AUDIT MONITORING] Initial integrity check error:", error);
+    console.error("[AUDIT MONITORING] Initial integrity check error:", safeError(error));
   }
 
   try {
@@ -89,7 +90,7 @@ async function runInitialChecks() {
     const failureResult = await checkAuditFailures();
     console.log(`[AUDIT MONITORING] Initial failure check: ${failureResult.failureCount} failures in 24h`);
   } catch (error) {
-    console.error("[AUDIT MONITORING] Initial failure check error:", error);
+    console.error("[AUDIT MONITORING] Initial failure check error:", safeError(error));
   }
 }
 
@@ -115,7 +116,7 @@ export function stopAuditMonitoring() {
 
 // Manual trigger for integrity check (for health checks)
 export async function manualIntegrityCheck() {
-  return verifyAuditIntegrity(1000);
+  return verifyAuditIntegrity({ limit: 1000, newest: true });
 }
 
 // Manual trigger for retention policy (for admin operations)

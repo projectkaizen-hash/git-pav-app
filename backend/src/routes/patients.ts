@@ -37,6 +37,14 @@ function requirePatientSelf(req: AuthRequest, res: Response, action: string): bo
   return false;
 }
 
+// A patient's own copy of their data (SAR bundle) is theirs alone, even for
+// clinicians who may otherwise see the record.
+const PATIENT_ONLY_DOC_TYPES = ["gdpr_sar_export"];
+
+function visibleDocTypes(req: AuthRequest) {
+  return req.user!.role === "patient" ? {} : { docType: { notIn: PATIENT_ONLY_DOC_TYPES } };
+}
+
 // A plan can be accepted or declined once, while it's waiting for an answer.
 const OPEN_PLAN_STATUSES = ["pending_acceptance", "proposed"];
 
@@ -581,7 +589,7 @@ router.get("/:id/documents", requireAuth, validateParams(patientIdParamsSchema),
   if (!profile) return;
 
   const docs = await prisma.documentVault.findMany({
-    where: { patientId: profile.id },
+    where: { patientId: profile.id, ...visibleDocTypes(req) },
     orderBy: { createdAt: "desc" },
   });
 
@@ -616,7 +624,7 @@ router.get(
 
     const docId = String(req.params.docId);
     const doc = await prisma.documentVault.findFirst({
-      where: { id: docId, patientId: profile.id },
+      where: { id: docId, patientId: profile.id, ...visibleDocTypes(req) },
     });
 
     if (!doc) {

@@ -171,7 +171,7 @@ export default function SignUpScreen() {
               <ThemedText variant="subhead" style={styles.footerLabel}>
                 Already registered?{" "}
               </ThemedText>
-              <Pressable onPress={() => router.push("/(auth)/sign-in")}>
+              <Pressable accessibilityRole="link" accessibilityLabel="Sign in" onPress={() => router.push("/(auth)/sign-in")}>
                 <ThemedText variant="subhead" style={styles.footerLink}>
                   Sign in
                 </ThemedText>

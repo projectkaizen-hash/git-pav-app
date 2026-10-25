@@ -84,6 +84,7 @@ export async function fetchPatientPrescriptions(userId: string) {
 // ─── Patient Profile ──────────────────────────────────────────────────────────
 export async function fetchPatientProfile(userId: string) {
   const res = await authFetch(`/api/patients/${userId}/profile`);
+  if (res.status === 403) throw new Error("You don't have access to this patient's record.");
   if (!res.ok) throw new Error("Could not load profile");
   return res.json();
 }

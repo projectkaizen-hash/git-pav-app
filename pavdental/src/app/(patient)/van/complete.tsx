@@ -20,7 +20,7 @@ export default function VanCompleteScreen() {
         : fetchActiveVanRequest(),
   });
 
-  const serviceName = request?.service?.name || "Mobile Surgery Consultation";
+  const serviceName = request?.service?.name || "Van visit";
   const priceLabel =
     request?.service?.pricePence != null
       ? formatGbp(request.service.pricePence)
@@ -38,43 +38,34 @@ export default function VanCompleteScreen() {
               Van Visit Complete!
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              Thank you for trusting Pav Dental. Your driveway clinical visit has finished and your digital records are updated.
+              Thank you for choosing Pav Dental. Your van visit has finished.
             </ThemedText>
           </View>
 
-          {/* Treatment Performed Card */}
+          {/* What the visit was booked for. What was actually done is in the clinician's notes. */}
           <Card elevation="raised" style={styles.card}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Procedures Completed On Board
+              Your Visit
             </ThemedText>
             <View style={styles.treatmentRow}>
               <AppIcon name="check" size={15} color={colors.success} />
               <ThemedText variant="body" style={styles.treatmentName}>
                 {serviceName}
               </ThemedText>
-              <ThemedText variant="caption" style={styles.okTag}>
-                {priceLabel ? `${priceLabel} · Done` : "Done"}
-              </ThemedText>
-            </View>
-            <View style={styles.treatmentRow}>
-              <AppIcon name="check" size={15} color={colors.success} />
-              <ThemedText variant="body" style={styles.treatmentName}>Dental examination & gum check</ThemedText>
-              <ThemedText variant="caption" style={styles.okTag}>Done</ThemedText>
-            </View>
-            <View style={styles.treatmentRow}>
-              <AppIcon name="check" size={15} color={colors.success} />
-              <ThemedText variant="body" style={styles.treatmentName}>Digital clinical notes & charting</ThemedText>
-              <ThemedText variant="caption" style={styles.okTag}>Done</ThemedText>
+              {priceLabel ? (
+                <ThemedText variant="caption" style={styles.okTag}>
+                  {priceLabel}
+                </ThemedText>
+              ) : null}
             </View>
           </Card>
 
-          {/* Digital Vault Notice */}
           <Card elevation="raised" style={styles.card}>
             <ThemedText variant="headline" style={styles.cardTitle}>
               Post-Care & Records
             </ThemedText>
             <ThemedText variant="caption" style={styles.sub}>
-              Your dental radiographs and odontogram chart are now available in your encrypted Records tab. A full VAT invoice has been sent to your email.
+              Your clinician's notes from today will appear in your Records tab once they've been written up.
             </ThemedText>
           </Card>
         </ScrollView>

@@ -781,6 +781,9 @@ model MessageThread {
   subject             String
   preview             String
   isRead              Boolean           @default(false) @map("is_read")
+  /// Per-side unread flags (CS-29). is_read is still written for older clients.
+  patientUnread       Boolean           @default(false) @map("patient_unread")
+  staffUnread         Boolean           @default(false) @map("staff_unread")
   hasAttachment       Boolean           @default(false) @map("has_attachment")
   recipientType       String            @default("practice") @map("recipient_type") @db.VarChar(50)
   assignedClinicianId String?           @map("assigned_clinician_id") @db.Uuid

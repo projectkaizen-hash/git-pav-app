@@ -8,7 +8,7 @@ import {
   AppIcon,
   ServiceHeroCard,
   ProgressPills,
-  EmptyState,
+  QueryState,
 } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useServices } from "@/features/hooks/use-dental-api";
@@ -51,7 +51,7 @@ export default function ServiceCatalogScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState("");
 
-  const { data: apiServices } = useServices();
+  const { data: apiServices, isLoading, isError, refetch } = useServices();
   const services = useMemo(
     () => ((apiServices as DentalService[] | undefined) ?? []),
     [apiServices]
@@ -130,7 +130,7 @@ export default function ServiceCatalogScreen() {
           {CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat.value;
             return (
-              <Pressable
+              <Pressable accessibilityLabel={cat.label}
                 key={cat.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
@@ -163,28 +163,33 @@ export default function ServiceCatalogScreen() {
         </ScrollView>
 
         {/* Live Service Catalog Cards */}
-        {filteredServices.length === 0 ? (
-          <EmptyState
-            heading="No matching services"
-            body="Try clearing your search or choosing another treatment category."
-            icon="search"
-          />
-        ) : (
-          <View style={styles.cardList}>
-            {filteredServices.map((srv) => (
-              <ServiceHeroCard
-                key={srv.id}
-                title={srv.name}
-                badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
-                image={getServiceImage(srv.category, srv.name)}
-                actionLabel="Book Appointment"
-                onPressAction={() => handleSelectService(srv)}
-                onPressChat={() => router.push("/(patient)/(tabs)/messages" as never)}
-                onPressInfo={() => handleSelectService(srv)}
-              />
-            ))}
-          </View>
-        )}
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          data={apiServices === undefined ? undefined : filteredServices}
+          onRetry={() => refetch()}
+          errorMessage="We couldn't load treatments. Check your connection and try again."
+          emptyHeading="No matching services"
+          emptyBody="Try clearing your search or choosing another treatment category."
+          emptyIcon="search"
+        >
+          {(list) => (
+            <View style={styles.cardList}>
+              {list.map((srv) => (
+                <ServiceHeroCard
+                  key={srv.id}
+                  title={srv.name}
+                  badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
+                  image={getServiceImage(srv.category, srv.name)}
+                  actionLabel="Book Appointment"
+                  onPressAction={() => handleSelectService(srv)}
+                  onPressChat={() => router.push("/(patient)/(tabs)/messages" as never)}
+                  onPressInfo={() => handleSelectService(srv)}
+                />
+              ))}
+            </View>
+          )}
+        </QueryState>
       </ScrollView>
     </View>
   );

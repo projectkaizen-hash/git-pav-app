@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { useStripe } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Button, Badge, AppIcon } from "@/components";
+import { ThemedText, Card, Button, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 import {
   createVanRequest,
@@ -32,12 +32,19 @@ export default function VanConfirmScreen() {
    * accepts; if the request is declined or times out the backend releases
    * the hold automatically.
    */
+  const hasService = Boolean(store.serviceId);
+  const depositPence = store.serviceDepositPence ?? 0;
+
   const submitRequest = async () => {
+    if (!hasService) {
+      Alert.alert("No Service Selected", "Please choose a service before requesting the van.");
+      return;
+    }
     setIsSubmitting(true);
     let requestId: string | null = null;
     try {
       const request = await createVanRequest({
-        serviceId: store.serviceId || "srv_checkup",
+        serviceId: store.serviceId,
         accessDetails: accessPayload,
       });
       requestId = request.id;
@@ -197,16 +204,9 @@ export default function VanConfirmScreen() {
               Clinical Procedure:
             </ThemedText>
             <ThemedText variant="body" style={styles.val}>
-              {store.serviceName || "Routine Dental Examination"} ({store.serviceDurationMinutes || 45} min clinical block)
-            </ThemedText>
-          </View>
-
-          <View style={styles.item}>
-            <ThemedText variant="caption" style={styles.label}>
-              Vehicle & Unit:
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.subVal}>
-              Mercedes Sprinter Mobile Surgical Suite (Low-dose X-Ray on board)
+              {hasService
+                ? `${store.serviceName} (${store.serviceDurationMinutes} min clinical block)`
+                : "No service selected"}
             </ThemedText>
           </View>
         </Card>
@@ -222,23 +222,25 @@ export default function VanConfirmScreen() {
               Clinical Treatment & Call-Out:
             </ThemedText>
             <ThemedText variant="mono">
-              £{((store.servicePricePence || 8500) / 100).toFixed(2)}
+              {hasService ? `£${(store.servicePricePence / 100).toFixed(2)}` : "–"}
             </ThemedText>
           </View>
 
           <View style={styles.rowBetween}>
             <ThemedText variant="headline">Deposit Due on Accept:</ThemedText>
             <ThemedText variant="title" style={styles.depositPrice}>
-              £{(((store.serviceDepositPence ?? 0) || 2500) / 100).toFixed(2)}
+              {depositPence > 0 ? `£${(depositPence / 100).toFixed(2)}` : "None"}
             </ThemedText>
           </View>
 
           <View style={styles.policyBox}>
             <ThemedText variant="caption" style={styles.policyNote}>
-              No charge right now. You will be prompted to confirm your deposit only after the mobile clinical team accepts your request.
+              {depositPence > 0
+                ? "We place a hold for the deposit when you confirm. It's only taken if the van team accepts your request."
+                : "No deposit is needed for this service."}
             </ThemedText>
             <ThemedText variant="caption" style={styles.policyNote}>
-              If the request times out or is declined, you pay nothing.
+              If the request times out or is declined, any hold is released and you pay nothing.
             </ThemedText>
           </View>
         </Card>
@@ -250,6 +252,7 @@ export default function VanConfirmScreen() {
           title={isSubmitting ? "Dispatching..." : "Confirm & Request Van Visit ›"}
           size="lg"
           loading={isSubmitting}
+          disabled={!hasService}
           onPress={() => requestMutation.mutate()}
         />
       </View>

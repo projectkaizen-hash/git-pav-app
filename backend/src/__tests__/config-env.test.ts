@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import { env, parseNodeEnv, validateDeployedConfig } from "../config/env";
-import { signAccessToken, verifyAccessToken } from "../lib/jwt";
+import { deployedServiceGaps, env, parseNodeEnv, validateDeployedConfig } from "../config/env";
+import { LEGACY_TOKEN_CUTOFF, signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from "../lib/jwt";
 
 // Synthetic values only: none of these are real keys.
 const strong = (label: string) => `${label}_unit_test_secret_0123456789abcdef0123`;
@@ -17,6 +17,10 @@ function deployed(overrides: Record<string, unknown> = {}) {
     stripeWebhookSecret: "whsec_unittestnotarealsecret",
     stripePublishableKey: "pk_live_unittestnotarealkey",
     allowedOrigins: ["https://app.example.com"],
+    appUrl: "https://app.example.com",
+    postmarkServerToken: "unittest-postmark-token-not-real",
+    dailyApiKey: "unittest-daily-key-not-real",
+    s3BucketName: "unittest-bucket",
     ...overrides,
   };
 }
@@ -108,6 +112,37 @@ describe("validateDeployedConfig", () => {
   it("requires an HTTPS origin in production", () => {
     expect(() => validateDeployedConfig("production", deployed({ allowedOrigins: [] }))).toThrow(/ALLOWED_ORIGINS/);
   });
+
+  it.each([
+    ["appUrl", undefined, /APP_URL/],
+    ["appUrl", "http://app.example.com", /APP_URL/],
+    ["postmarkServerToken", undefined, /POSTMARK_SERVER_TOKEN/],
+    ["postmarkServerToken", "pm_server_token_replace_me", /POSTMARK_SERVER_TOKEN/],
+    ["postmarkServerToken", "mock-token", /POSTMARK_SERVER_TOKEN/],
+    ["dailyApiKey", "stub", /DAILY_API_KEY/],
+    ["dailyApiKey", "replace_with_daily_api_key", /DAILY_API_KEY/],
+    ["s3BucketName", undefined, /S3_BUCKET_NAME/],
+  ])("production rejects %s = %p", (field, value, pattern) => {
+    expect(() => validateDeployedConfig("production", deployed({ [field]: value }))).toThrow(pattern);
+  });
+
+  it("staging boots without email, video or storage, which it only warns about", () => {
+    const staging = deployed({
+      stripeSecretKey: "sk_test_unittest",
+      stripePublishableKey: "pk_test_unittestnotarealkey",
+      appUrl: undefined,
+      postmarkServerToken: undefined,
+      dailyApiKey: "stub",
+      s3BucketName: undefined,
+    });
+    expect(() => validateDeployedConfig("staging", staging)).not.toThrow();
+    expect(deployedServiceGaps(staging)).toEqual([
+      "APP_URL (an https URL)",
+      "POSTMARK_SERVER_TOKEN",
+      "DAILY_API_KEY",
+      "S3_BUCKET_NAME",
+    ]);
+  });
 });
 
 describe("JWT algorithm pinning", () => {
@@ -121,5 +156,45 @@ describe("JWT algorithm pinning", () => {
       algorithm: "HS384",
     });
     expect(() => verifyAccessToken(other)).toThrow(/invalid algorithm/);
+  });
+});
+
+describe("JWT issuer and audience (JW-1)", () => {
+  const before = new Date(LEGACY_TOKEN_CUTOFF.getTime() - 1000);
+  const after = new Date(LEGACY_TOKEN_CUTOFF.getTime() + 1000);
+
+  it("signs tokens with an issuer and a per-type audience", () => {
+    const access = jwt.decode(signAccessToken({ sub: "u1", role: "patient", sessionId: "s1" })) as jwt.JwtPayload;
+    const refresh = jwt.decode(signRefreshToken({ sub: "u1", sessionId: "s1" })) as jwt.JwtPayload;
+    expect(access).toMatchObject({ iss: "pavdental-api", aud: "pavdental-access" });
+    expect(refresh).toMatchObject({ iss: "pavdental-api", aud: "pavdental-refresh" });
+  });
+
+  it("never accepts one token type as the other, even with the same secret", () => {
+    // Re-sign a refresh-shaped token with the access secret: only the audience tells them apart.
+    const swapped = jwt.sign({ sub: "u1", sessionId: "s1" }, env.jwtAccessSecret, {
+      algorithm: "HS256",
+      issuer: "pavdental-api",
+      audience: "pavdental-refresh",
+      expiresIn: "5m",
+    });
+    expect(() => verifyAccessToken(swapped, before)).toThrow(/issuer or audience/);
+    expect(() => verifyAccessToken(swapped, after)).toThrow(/issuer or audience/);
+  });
+
+  it("accepts a token from before iss/aud only until the cutoff", () => {
+    const legacy = jwt.sign({ sub: "u1", sessionId: "s1" }, env.jwtRefreshSecret, { algorithm: "HS256", expiresIn: "5m" });
+    expect(verifyRefreshToken(legacy, before).sub).toBe("u1");
+    expect(() => verifyRefreshToken(legacy, after)).toThrow(/issuer or audience/);
+  });
+
+  it("rejects a foreign issuer", () => {
+    const foreign = jwt.sign({ sub: "u1", role: "admin", sessionId: "s1" }, env.jwtAccessSecret, {
+      algorithm: "HS256",
+      issuer: "someone-else",
+      audience: "pavdental-access",
+      expiresIn: "5m",
+    });
+    expect(() => verifyAccessToken(foreign)).toThrow(/issuer or audience/);
   });
 });

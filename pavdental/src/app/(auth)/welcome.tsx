@@ -123,21 +123,6 @@ export default function WelcomeScreen() {
           </Pressable>
         </View>
 
-        {/* Interactive Clinical Callout Annotation */}
-        {!showEmailSheet ? (
-          <View style={styles.annotationBox}>
-            <View style={styles.calloutTag}>
-              <ThemedText variant="caption" style={styles.calloutText}>
-                Veneers Installation
-              </ThemedText>
-            </View>
-            <View style={styles.pointerLine} />
-            <View style={styles.pointerTarget}>
-              <View style={styles.targetInner} />
-            </View>
-          </View>
-        ) : null}
-
         {/* Bottom Container: Either the Hero Swipe to Start, or the Email Sheet */}
         {!showEmailSheet ? (
           <View style={[styles.bottomContent, { paddingBottom: Math.max(spacing.lg, insets.bottom) }]}>
@@ -243,12 +228,6 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  annotationBox: {
-    alignItems: "flex-end",
-    position: "absolute",
-    right: 32,
-    top: "36%",
-  },
   bottomContent: {
     gap: spacing.md,
     marginTop: "auto",
@@ -272,19 +251,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     letterSpacing: -0.5,
-  },
-  calloutTag: {
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
-    borderColor: "rgba(255, 255, 255, 0.25)",
-    borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  calloutText: {
-    color: colors.alwaysWhite,
-    fontSize: 11,
-    fontWeight: "600",
   },
   container: {
     backgroundColor: colors.alwaysBlack,
@@ -347,22 +313,6 @@ const styles = StyleSheet.create({
     color: colors.alwaysWhite,
     fontWeight: "600",
   },
-  pointerLine: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    height: 36,
-    marginRight: 24,
-    width: 1.5,
-  },
-  pointerTarget: {
-    alignItems: "center",
-    borderColor: "rgba(255, 255, 255, 0.8)",
-    borderRadius: radius.full,
-    borderWidth: 2,
-    height: 20,
-    justifyContent: "center",
-    marginRight: 15,
-    width: 20,
-  },
   safe: {
     flex: 1,
     justifyContent: "space-between",
@@ -388,12 +338,6 @@ const styles = StyleSheet.create({
   },
   sliderWrap: {
     marginTop: spacing.xs,
-  },
-  targetInner: {
-    backgroundColor: colors.alwaysWhite,
-    borderRadius: radius.full,
-    height: 8,
-    width: 8,
   },
   topHeader: {
     alignItems: "center",

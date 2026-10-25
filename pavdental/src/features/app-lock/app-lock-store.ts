@@ -4,8 +4,11 @@ import { useAuthStore } from '@/features/auth/auth-store';
 
 let localAuthModule: any = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires -- loaded lazily so this file also runs in the Node tests
   localAuthModule = require('expo-local-authentication');
-} catch {}
+} catch {
+  // Not available on this platform.
+}
 
 export function setLocalAuthModuleForTesting(mock: any) {
   localAuthModule = mock;

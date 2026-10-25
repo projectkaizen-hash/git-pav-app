@@ -16,6 +16,7 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateParams } from "../middleware/validate";
 import { sendPatientNotification } from "../lib/patient-push";
 import { broadcastEtaUpdates } from "../lib/van-eta-broadcast";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 
@@ -74,7 +75,7 @@ router.post(
 
     // VS-1: Broadcast ETA updates for remaining stops on shift
     void broadcastEtaUpdates(shift.id).catch((err) =>
-      console.error("[VAN ETA PUSH] check-in broadcast failed:", err)
+      console.error("[VAN ETA PUSH] check-in broadcast failed:", safeError(err))
     );
 
     return res.json({ ok: true, phase: "on_site" });

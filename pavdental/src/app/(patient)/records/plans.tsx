@@ -282,10 +282,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.sm,
   },
-  sub: {
-    color: colors.secondaryLabel,
-    textAlign: "center",
-  },
   subtitle: {
     color: colors.secondaryLabel,
   },

@@ -4,7 +4,7 @@ import { patientsInClinicianCare } from "../middleware/patient-access";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
-import { validateBody, validateParams } from "../middleware/validate";
+import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { encryptField, decryptString } from "../lib/encryption";
@@ -74,6 +74,12 @@ async function visibleThreadsWhere(req: AuthRequest): Promise<Prisma.MessageThre
 }
 
 const threadIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+// Newest threads first, a page at a time (CS-09).
+const listThreadsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  recipientType: z.enum(["practice", "care_team", "clinician"]).optional(),
+}).strict();
 
 const createThreadSchema = z
   .object({
@@ -99,10 +105,16 @@ router.get("/meta", requireAuth, (_req: AuthRequest, res: Response) => {
 
 // ─── GET /api/messages ────────────────────────────────────────────────────────
 // Returns persistent message threads for the authenticated user.
-router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
+router.get("/", requireAuth, validateQuery(listThreadsQuerySchema), async (req: AuthRequest, res: Response) => {
   const isStaff = req.user!.role === "clinician" || req.user!.role === "admin";
+  const { limit, offset, recipientType } = req.query as unknown as {
+    limit: number;
+    offset: number;
+    recipientType?: string;
+  };
+  const visible = await visibleThreadsWhere(req);
   const threads = await prisma.messageThread.findMany({
-    where: await visibleThreadsWhere(req),
+    where: recipientType ? { AND: [visible, { recipientType }] } : visible,
     include: {
       patientUser: {
         include: {
@@ -113,7 +125,10 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
         orderBy: { sentAt: "asc" },
       },
     },
-    orderBy: { updatedAt: "desc" },
+    // id breaks ties so a page boundary never repeats or skips a thread.
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    skip: offset,
   });
 
   return res.json(
@@ -136,7 +151,8 @@ router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
           subject: decryptedSubject,
           preview,
           sentAtIso: t.updatedAt.toISOString(),
-          isRead: t.isRead,
+          // Each side has its own unread flag, so one side reading never clears the other's.
+          isRead: !(isStaff ? t.staffUnread : t.patientUnread),
           hasAttachment: t.hasAttachment,
           recipientType: t.recipientType,
           assignedClinicianId: t.assignedClinicianId,
@@ -224,6 +240,8 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
       subject: encryptedSubject,
       preview: "[Secure message]",
       isRead: false, // Unread for the receiving staff / recipient
+      staffUnread: true,
+      patientUnread: false,
       hasAttachment: false,
       recipientType: resolvedRecipientType,
       assignedClinicianId: resolvedAssignedClinicianId,
@@ -284,7 +302,7 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     subject: thread.subject,
     preview: thread.preview,
     sentAtIso: thread.updatedAt.toISOString(),
-    isRead: thread.isRead,
+    isRead: !thread.patientUnread,
     hasAttachment: thread.hasAttachment,
     recipientType: thread.recipientType,
     assignedClinicianId: thread.assignedClinicianId,
@@ -344,6 +362,8 @@ router.post(
         data: {
           preview: "[Secure message]",
           isRead: isStaff ? true : false,
+          staffUnread: !isStaff,
+          patientUnread: isStaff,
         },
         include: {
           messages: { orderBy: { sentAt: "asc" } },
@@ -425,7 +445,7 @@ router.post(
         subject: decryptedSubject,
         preview: `${senderDisplayName}: ${body.slice(0, 160)}`,
         sentAtIso: updatedThread.updatedAt.toISOString(),
-        isRead: updatedThread.isRead,
+        isRead: !(isStaff ? updatedThread.staffUnread : updatedThread.patientUnread),
         hasAttachment: updatedThread.hasAttachment,
       },
     });
@@ -443,12 +463,13 @@ router.patch("/:id/read", requireAuth, validateParams(threadIdParamsSchema), asy
     return res.status(404).json({ error: "Message thread not found" });
   }
 
+  const isStaff = req.user!.role === "clinician" || req.user!.role === "admin";
   const updated = await prisma.messageThread.update({
     where: { id: threadId },
-    data: { isRead: true },
+    data: isStaff ? { isRead: true, staffUnread: false } : { isRead: true, patientUnread: false },
   });
 
-  return res.json({ id: updated.id, isRead: updated.isRead });
+  return res.json({ id: updated.id, isRead: !(isStaff ? updated.staffUnread : updated.patientUnread) });
 });
 
 // ─── DELETE /api/messages/:id ─────────────────────────────────────────────────
@@ -464,8 +485,24 @@ router.delete("/:id", requireAuth, validateParams(threadIdParamsSchema), async (
     return res.status(404).json({ error: "Message thread not found" });
   }
 
+  const messageCount = await prisma.message.count({ where: { threadId } });
+
   await prisma.messageThread.delete({
     where: { id: threadId },
+  });
+
+  // CS-29: the thread is gone for good, so record who removed it and its shape.
+  await createAuditLogWithIntegrity({
+    action: "message.thread_deleted",
+    actorId: userId,
+    resourceId: threadId,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: {
+      recipientType: existing.recipientType,
+      assignedClinicianId: existing.assignedClinicianId,
+      messageCount,
+    },
   });
 
   return res.json({ success: true, id: threadId });

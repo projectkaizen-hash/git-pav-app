@@ -12,6 +12,7 @@ import { revokeSessions } from "../lib/session-revocation";
 import { redis } from "../lib/redis";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { requireMFA, verifyMFAForRequest } from "../middleware/mfa";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 
@@ -87,10 +88,10 @@ router.post("/register", authLimiterMiddleware, validateBody(registerSchema), as
       },
     });
     communicationService.sendVerificationEmail(user.email, token).catch((err) => {
-      console.error("[Auth] Failed to dispatch registration verification email:", err);
+      console.error("[Auth] Failed to dispatch registration verification email:", safeError(err));
     });
   } catch (err) {
-    console.error("[Auth] Error creating registration verification token:", err);
+    console.error("[Auth] Error creating registration verification token:", safeError(err));
   }
 
   const authResponse = {

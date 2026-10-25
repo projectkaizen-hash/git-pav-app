@@ -201,6 +201,37 @@ export class CommunicationService {
     return result.success;
   }
 
+  /** A new staff member sets their own password from this link. */
+  async sendStaffInviteEmail(email: string, token: string, roleLabel: string): Promise<boolean> {
+    const appUrl = process.env.APP_URL || "http://localhost:8081";
+    const setUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #0D9488;">Welcome to Pav Dental</h2>
+        <p>An account has been created for you as a ${roleLabel}. Choose a password to sign in to the Pav Dental app.</p>
+        <p style="margin: 30px 0;">
+          <a href="${setUrl}" style="background-color: #0D9488; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            Set your password
+          </a>
+        </p>
+        <p style="color: #64748B; font-size: 13px;">Or enter token: <strong>${token}</strong></p>
+        <p style="color: #64748B; font-size: 12px;">This link expires in 72 hours. If you weren't expecting it, you can ignore this email.</p>
+      </div>
+    `;
+
+    const text = `Welcome to Pav Dental\n\nAn account has been created for you as a ${roleLabel}. Set your password at:\n${setUrl}\n\nOr enter token: ${token}\n\nExpires in 72 hours.`;
+
+    const result = await this.sendEmail({
+      to: email,
+      subject: "Set up your Pav Dental account",
+      html,
+      text,
+    });
+
+    return result.success;
+  }
+
   async sendMfaCode(destination: string, code: string): Promise<boolean> {
     const isEmail = destination.includes("@");
 

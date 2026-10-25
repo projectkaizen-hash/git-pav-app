@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText, Card, Badge, Button, AppIcon, ChipPill } from "@/components";
+import { ThemedText, Card, Button, AppIcon, ChipPill } from "@/components";
 import { colors, spacing } from "@/theme";
 import { useClinicians } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";

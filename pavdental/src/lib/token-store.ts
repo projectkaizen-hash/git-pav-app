@@ -1,16 +1,22 @@
+// Native modules are loaded lazily so this file also runs in the Node tests.
+/* eslint-disable @typescript-eslint/no-var-requires */
 let Platform: any = { OS: "web" };
 try {
   Platform = require("react-native").Platform ?? require("react-native-web").Platform;
 } catch {
   try {
     Platform = require("react-native-web").Platform;
-  } catch {}
+  } catch {
+  // Not available on this platform.
+}
 }
 
 let SecureStore: any = null;
 try {
   SecureStore = require("expo-secure-store");
-} catch {}
+} catch {
+  // Not available on this platform.
+}
 
 // ─── SecureStore key constants ────────────────────────────────────────────────
 // NEVER store access tokens here — they live in memory only.
@@ -41,7 +47,9 @@ async function setItem(key: string, value: string, options?: any): Promise<void>
   if (isWeb) {
     try {
       if (typeof window !== "undefined") window.localStorage.setItem(key, value);
-    } catch {}
+    } catch {
+  // Not available on this platform.
+}
     return;
   }
   if (!SecureStore?.setItemAsync) return;
@@ -53,7 +61,9 @@ async function deleteItem(key: string): Promise<void> {
   if (isWeb) {
     try {
       if (typeof window !== "undefined") window.localStorage.removeItem(key);
-    } catch {}
+    } catch {
+  // Not available on this platform.
+}
     return;
   }
   if (!SecureStore?.deleteItemAsync) return;

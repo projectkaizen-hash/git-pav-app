@@ -1,10 +1,14 @@
+// Native modules are loaded lazily so this file also runs in the Node tests.
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { onlineManager } from "@tanstack/react-query";
 import { create } from "zustand";
 
 let NetInfo: any = null;
 try {
   NetInfo = require("@react-native-community/netinfo").default ?? require("@react-native-community/netinfo");
-} catch {}
+} catch {
+  // Not available on this platform.
+}
 
 let Platform: any = { OS: "web" };
 try {
@@ -12,7 +16,9 @@ try {
 } catch {
   try {
     Platform = require("react-native-web").Platform;
-  } catch {}
+  } catch {
+  // Not available on this platform.
+}
 }
 
 interface NetworkState {

@@ -8,6 +8,8 @@ import {
   verifyAuditIntegrity,
   applyAuditRetentionPolicy,
   isCriticalAuditEvent,
+  LEGACY_AUDIT_HASH_CUTOFF,
+  legacyAuditHashAllowed,
 } from "../lib/audit-integrity";
 import { communicationService } from "../lib/communication-service";
 
@@ -178,7 +180,19 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       try {
         const check = await verifyAuditIntegrity({ fromId: logA.id });
         expect(check.valid).toBe(false);
-        expect(check.issues.length).toBeGreaterThanOrEqual(1);
+        // The row that chained off B is the one that breaks. That's C, unless
+        // another suite wrote a row between B and C.
+        const afterB = await prisma.auditLog.findFirstOrThrow({
+          where: {
+            OR: [
+              { timestampUtc: { gt: logB.timestampUtc } },
+              { timestampUtc: logB.timestampUtc, id: { gt: logB.id } },
+            ],
+          },
+          orderBy: [{ timestampUtc: "asc" }, { id: "asc" }],
+        });
+        expect(afterB.id <= logC.id).toBe(true);
+        expect(check.issues.some((i) => i.includes(`log ${afterB.id} `))).toBe(true);
       } finally {
         // Restore row so concurrent test suites in CI don't see a broken chain
         await prisma.auditLog.create({
@@ -236,7 +250,33 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
     });
   });
 
+  // These don't tamper with rows: other suites verify the chain at the same time.
+  describe("AU-3: the old unkeyed hash", () => {
+    it("is accepted only on rows from before keyed hashes shipped, and never after a keyed row", () => {
+      const before = new Date(LEGACY_AUDIT_HASH_CUTOFF.getTime() - 60_000);
+      const after = new Date(LEGACY_AUDIT_HASH_CUTOFF.getTime() + 60_000);
+      expect(legacyAuditHashAllowed(before, false)).toBe(true);
+      expect(legacyAuditHashAllowed(before, true)).toBe(false);
+      expect(legacyAuditHashAllowed(after, false)).toBe(false);
+      expect(legacyAuditHashAllowed(new Date(), false)).toBe(false);
+    });
+  });
+
+  describe("monitoring window", () => {
+    it("checks the newest rows when asked", async () => {
+      const log = await createAuditLogWithIntegrity({ action: "newest.window.entry" });
+      const newest = await verifyAuditIntegrity({ limit: 5, newest: true });
+      expect(newest.checkedCount).toBeGreaterThan(0);
+      expect(BigInt(newest.lastId!) >= log.id).toBe(true);
+    });
+  });
+
   describe("AU-6: Critical event alerts", () => {
+    it("doesn't treat a missing or expired token (401) as a critical event", () => {
+      expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 401)).toBe(false);
+      expect(isCriticalAuditEvent("GET /api/admin/users", 401)).toBe(false);
+    });
+
     it("recognizes 403 denied attempts on patient data as critical audit events", () => {
       expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 403)).toBe(true);
       expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 200)).toBe(false);

@@ -51,7 +51,9 @@ export default function BiometricUnlockScreen() {
   const handleSignOut = async () => {
     try {
       await authApi.signOut();
-    } catch {}
+    } catch {
+      // Signed out locally either way.
+    }
     router.replace("/(auth)/welcome");
   };
 

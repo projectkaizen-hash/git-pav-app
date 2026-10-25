@@ -211,6 +211,8 @@ app.use("/api/prescription-files", prescriptionFileRoutes);
 app.use("/api/notifications", requireAuth, auditMiddleware, notificationRoutes);
 app.use("/api/waitlist", requireAuth, auditMiddleware, waitlistRoutes);
 app.use("/api/dspt", requireAuth, auditMiddleware, dsptAuditRoutes);
+// The dashboard's staff inbox (CS-29): the same message routes, as an admin, who sees every thread.
+app.use("/api/admin/messages", requireAuth, requireRole("admin"), auditMiddleware, messageRoutes);
 app.use("/api/admin", requireAuth, auditMiddleware, adminRoutes, adminScheduleRoutes, adminErasureRoutes);
 app.use("/api/consents", requireAuth, auditMiddleware, consentRoutes);
 app.use("/api/triage", requireAuth, auditMiddleware, triageRoutes);
@@ -339,7 +341,7 @@ if (require.main === module) {
     // polygon geometry when PostGIS is available, and defuse the derived-
     // geometry trigger when it is not.
     getCoverageBackend().catch((err) =>
-      console.warn("[VAN COVERAGE] Startup probe failed:", err)
+      console.warn("[VAN COVERAGE] Startup probe failed:", safeError(err))
     );
   });
 }

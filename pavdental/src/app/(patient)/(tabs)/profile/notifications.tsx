@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import * as Haptics from "expo-haptics";
-import { ThemedText, AppIcon } from "@/components";
+import { ThemedText, AppIcon, ErrorState, Skeleton } from "@/components";
 import { ToggleSwitch } from "@/components/settings/ToggleSwitch";
 import {
   useNotificationPreferences,
@@ -11,7 +11,7 @@ import {
 import { colors, spacing, type } from "@/theme";
 
 export default function NotificationsScreen() {
-  const { data: prefs } = useNotificationPreferences();
+  const { data: prefs, isLoading, isError, refetch } = useNotificationPreferences();
   const updatePrefs = useUpdateNotificationPreferences();
   const { requestPermissions, permissions } = useNotificationPermissions();
 
@@ -77,6 +77,28 @@ export default function NotificationsScreen() {
       ...updated,
     });
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Skeleton height={76} />
+          <Skeleton height={76} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && prefs === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your notification settings. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

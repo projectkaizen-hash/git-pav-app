@@ -8,10 +8,12 @@ import {
   Inbox,
   type LucideIcon,
   Mail,
+  MessagesSquare,
   ReceiptText,
   ShoppingBag,
   Tag,
   User,
+  UserPlus,
   Users,
   UserX,
 } from "lucide-react";
@@ -76,6 +78,18 @@ export const sidebarItems: NavGroup[] = [
         title: "Rota",
         url: "/dashboard/rota",
         icon: CalendarClock,
+      },
+      {
+        id: "pav-team",
+        title: "Team & Services",
+        url: "/dashboard/team",
+        icon: UserPlus,
+      },
+      {
+        id: "pav-inbox",
+        title: "Patient Inbox",
+        url: "/dashboard/inbox",
+        icon: MessagesSquare,
       },
       {
         id: "pav-submissions",
