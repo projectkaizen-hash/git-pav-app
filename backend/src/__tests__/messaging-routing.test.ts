@@ -38,11 +38,6 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     // ON DELETE SET NULL, which mutates actor_id on existing audit log rows and breaks
     // their cryptographic HMAC integrity chain in CI.
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    try {
-      const { redis } = require("../lib/redis");
-      await redis.quit();
-    } catch {}
-    await prisma.$disconnect();
   });
 
   async function makePatient(label: string, firstName = "Alice", lastName = "Smith") {

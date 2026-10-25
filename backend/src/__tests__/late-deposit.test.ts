@@ -59,11 +59,6 @@ describe("late deposits", () => {
   afterAll(async () => {
     await prisma.appointment.deleteMany({ where: { id: { in: createdIds } } });
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    try {
-      const { redis } = require("../lib/redis");
-      await redis.quit();
-    } catch {}
-    await prisma.$disconnect();
     // process.env is shared by later test files in this jest worker.
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) delete process.env[key];

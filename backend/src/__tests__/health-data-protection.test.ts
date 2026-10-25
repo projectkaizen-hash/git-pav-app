@@ -46,11 +46,6 @@ describe("CS-50: Health data protection at rest and in transit", () => {
       await prisma.appointment.deleteMany({ where: { id: { in: createdApptIds } } }).catch(() => {});
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    try {
-      const { redis } = require("../lib/redis");
-      await redis.quit();
-    } catch {}
-    await prisma.$disconnect();
   });
 
   // ─── Test 1: Message threads encryption & neutral preview at rest ───────────

@@ -70,9 +70,12 @@ export function computeAuditIntegrityHash(previousHash: string, dataString: stri
     .digest("hex");
 }
 
-export function scrubAuditMetadata(meta: unknown): unknown {
+export function scrubAuditMetadata(meta: unknown, seen = new WeakSet()): unknown {
   if (!meta || typeof meta !== "object") return meta;
-  if (Array.isArray(meta)) return meta.map(scrubAuditMetadata);
+  if (meta instanceof Date) return meta;
+  if (seen.has(meta)) return "[CIRCULAR]";
+  seen.add(meta);
+  if (Array.isArray(meta)) return meta.map((item) => scrubAuditMetadata(item, seen));
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(meta as Record<string, unknown>)) {
     const lk = k.toLowerCase();
@@ -88,7 +91,7 @@ export function scrubAuditMetadata(meta: unknown): unknown {
     } else if (lk === "path" || lk === "url" || lk === "originalurl") {
       out[k] = typeof v === "string" ? v.split("?")[0] : v;
     } else if (typeof v === "object" && v !== null) {
-      out[k] = scrubAuditMetadata(v);
+      out[k] = scrubAuditMetadata(v, seen);
     } else {
       out[k] = v;
     }

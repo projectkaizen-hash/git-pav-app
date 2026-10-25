@@ -37,7 +37,12 @@ const CLINICAL_DATA_FIELDS = [
   "postcode",
 ];
 
-function redactMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+function redactMetadata(metadata: Record<string, unknown>, seen = new WeakSet()): Record<string, unknown> {
+  if (typeof metadata !== "object" || metadata === null) return metadata;
+  if (metadata instanceof Date) return metadata;
+  if (seen.has(metadata)) return "[CIRCULAR]" as any;
+  seen.add(metadata);
+
   const redacted: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(metadata)) {
@@ -53,14 +58,16 @@ function redactMetadata(metadata: Record<string, unknown>): Record<string, unkno
 
     // Recursively redact nested objects and arrays
     if (typeof value === "object" && value !== null) {
-      if (Array.isArray(value)) {
+      if (value instanceof Date) {
+        redacted[key] = value;
+      } else if (Array.isArray(value)) {
         redacted[key] = value.map(item =>
           typeof item === "object" && item !== null
-            ? redactMetadata(item as Record<string, unknown>)
+            ? (item instanceof Date ? item : redactMetadata(item as Record<string, unknown>, seen))
             : item
         );
       } else {
-        redacted[key] = redactMetadata(value as Record<string, unknown>);
+        redacted[key] = redactMetadata(value as Record<string, unknown>, seen);
       }
     } else {
       redacted[key] = value;

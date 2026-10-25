@@ -5,5 +5,5 @@
 afterAll(async () => {
   const queue = (globalThis as { __pavAuditWriteQueue?: Promise<unknown> }).__pavAuditWriteQueue;
   if (queue) await queue;
-});
+}, 30_000);
 export {};
