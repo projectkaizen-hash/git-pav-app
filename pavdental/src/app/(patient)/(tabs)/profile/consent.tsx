@@ -10,25 +10,41 @@ import { colors, spacing, type } from "@/theme";
 export default function ConsentScreen() {
   const user = useCurrentUser();
   const userId = user?.id || "";
-  const { data: profile, refetch } = usePatientProfile(userId);
   const [isExporting, setIsExporting] = useState(false);
   const [isUpdatingMarketing, setIsUpdatingMarketing] = useState(false);
+  const [activeConsents, setActiveConsents] = useState<any[]>([]);
+  const [isLoadingConsents, setIsLoadingConsents] = useState(true);
 
-  const consents = (profile?.consents as any) || {
-    healthData: { signed: true, version: "v2.1", date: "2026-01-10" },
-    treatment: { signed: true, version: "v2.1", date: "2026-01-10" },
-    marketing: { signed: false, version: "v2.1", date: null },
+  const fetchConsents = async () => {
+    try {
+      setIsLoadingConsents(true);
+      const res = await authFetch("/api/consents/current");
+      if (res.ok) {
+        const data = await res.json();
+        setActiveConsents(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // Offline fallback
+    } finally {
+      setIsLoadingConsents(false);
+    }
   };
 
-  const [marketingOptedIn, setMarketingOptedIn] = useState<boolean>(
-    Boolean(consents.marketing?.signed)
+  useEffect(() => {
+    fetchConsents();
+  }, []);
+
+  const healthDataConsent = activeConsents.find(
+    (c) => c.consentType === "data_processing" || c.consentType === "treatment_data_processing"
+  );
+  const treatmentConsent = activeConsents.find(
+    (c) => c.consentType === "clinical_records"
+  );
+  const marketingConsent = activeConsents.find(
+    (c) => c.consentType === "marketing" || c.consentType === "marketing_communications"
   );
 
-  useEffect(() => {
-    if (profile?.consents) {
-      setMarketingOptedIn(Boolean((profile.consents as any).marketing?.signed));
-    }
-  }, [profile]);
+  const marketingOptedIn = Boolean(marketingConsent?.isGranted);
 
   const handleToggleMarketingConsent = async () => {
     const nextState = !marketingOptedIn;
@@ -36,8 +52,8 @@ export default function ConsentScreen() {
     try {
       const endpoint = nextState ? "/api/consents/grant" : "/api/consents/withdraw";
       const payload = nextState
-        ? { consentType: "direct_marketing", lawfulBasis: "consent" }
-        : { consentType: "direct_marketing", reason: "Withdrawn by patient in mobile app" };
+        ? { consentType: "marketing", lawfulBasis: "consent" }
+        : { consentType: "marketing" };
       const res = await authFetch(endpoint, {
         method: "POST",
         body: JSON.stringify(payload),
@@ -46,8 +62,7 @@ export default function ConsentScreen() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as any).error || "Could not update marketing consent");
       }
-      setMarketingOptedIn(nextState);
-      refetch();
+      await fetchConsents();
     } catch (err: any) {
       Alert.alert(
         "Consent Update Error",
@@ -68,14 +83,27 @@ export default function ConsentScreen() {
       Alert.alert(
         "GDPR Export Generated",
         res?.sha256
-          ? `Your encrypted Subject Access Request (SAR) bundle (SHA-256: ${String(res.sha256).slice(0, 12)}…) has been stored in your Document Vault and emailed to your registered address.`
-          : "Your encrypted Subject Access Request (SAR) bundle has been prepared and sent to your registered email address.",
+          ? `Your encrypted Subject Access Request (SAR) bundle (SHA-256: ${String(res.sha256).slice(0, 12)}…) has been generated and securely stored in your Document Vault for download.`
+          : "Your encrypted Subject Access Request (SAR) bundle has been generated and stored in your Document Vault for download.",
         [{ text: "OK" }]
       );
     } catch (err: any) {
       Alert.alert("Export Error", err?.message || "Could not generate GDPR export bundle.");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return "Recorded";
+    try {
+      return new Date(isoString).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return isoString;
     }
   };
 
@@ -102,17 +130,17 @@ export default function ConsentScreen() {
             <ThemedText variant="headline" style={styles.cardTitle}>
               Special Category Health Data
             </ThemedText>
-            <Badge variant="success" label="Active" />
+            <Badge variant={healthDataConsent ? "success" : "default"} label={healthDataConsent ? "Active" : "Pending"} />
           </View>
           <ThemedText variant="caption" style={styles.cardDesc}>
             Explicit consent for Pav Dental to store, process, and clinically review your dental odontograms, X-rays, medications, and medical conditions (UK GDPR Article 9).
           </ThemedText>
           <View style={styles.metaRow}>
             <ThemedText variant="caption" style={styles.metaText}>
-              Version: {consents.healthData?.version || "v2.1"}
+              Version: {healthDataConsent?.version ? `v${healthDataConsent.version}` : "v1"}
             </ThemedText>
             <ThemedText variant="caption" style={styles.metaText}>
-              Signed: {consents.healthData?.date || "At Onboarding"}
+              Signed: {formatDate(healthDataConsent?.grantedAt)}
             </ThemedText>
           </View>
         </Card>
@@ -122,17 +150,17 @@ export default function ConsentScreen() {
             <ThemedText variant="headline" style={styles.cardTitle}>
               Clinical Treatment & Examination
             </ThemedText>
-            <Badge variant="success" label="Active" />
+            <Badge variant={treatmentConsent ? "success" : "default"} label={treatmentConsent ? "Active" : "Pending"} />
           </View>
           <ThemedText variant="caption" style={styles.cardDesc}>
             Consent to receive oral examinations, emergency dental triage, telehealth triage, and mobile van care by registered GDC professionals.
           </ThemedText>
           <View style={styles.metaRow}>
             <ThemedText variant="caption" style={styles.metaText}>
-              Version: {consents.treatment?.version || "v2.1"}
+              Version: {treatmentConsent?.version ? `v${treatmentConsent.version}` : "v1"}
             </ThemedText>
             <ThemedText variant="caption" style={styles.metaText}>
-              Signed: {consents.treatment?.date || "At Onboarding"}
+              Signed: {formatDate(treatmentConsent?.grantedAt)}
             </ThemedText>
           </View>
         </Card>
@@ -187,10 +215,10 @@ export default function ConsentScreen() {
         <Card style={styles.card}>
           <ThemedText variant="headline">Export Your Dental Records</ThemedText>
           <ThemedText variant="caption" style={styles.cardDesc}>
-            Receive a secure, password-protected ZIP archive containing your treatment plans, odontogram history, signed consents, and invoices.
+            Receive an authenticated data export bundle containing your treatment plans, odontogram history, and signed consents, securely saved to your Document Vault.
           </ThemedText>
           <Button
-            title={isExporting ? "Generating Bundle..." : "Download GDPR Data Bundle"}
+            title={isExporting ? "Generating Bundle..." : "Request GDPR Data Bundle"}
             variant="secondary"
             onPress={handleExportData}
             disabled={isExporting}

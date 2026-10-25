@@ -93,6 +93,17 @@ export default function ClinicianRxDispenseScreen() {
         throw new Error(err.error || "The prescription wasn't saved");
       }
       const issued = await res.json().catch(() => ({}));
+
+      // Conclude video consultation and record summary if this visit was a video consult
+      await authFetch("/api/video/end-consult", {
+        method: "POST",
+        body: JSON.stringify({
+          appointmentId,
+          notes: `Prescription issued: ${medication.trim()} (${dosageInstructions.trim()}). Dispensing via ${pharmacyName.trim()}.`,
+          treatmentPlan: "Complete medication course as prescribed. Follow up if symptoms worsen.",
+          followUpRecommended: "clinic",
+        }),
+      }).catch(() => {});
       // Decisions log #4: a pharmacy needs the prescriber's own signature, so
       // the PDF is printed and signed in ink before it goes to the patient.
       const next = "Print the PDF and sign it in ink before giving it to the patient. A copy is in their app for their records.";

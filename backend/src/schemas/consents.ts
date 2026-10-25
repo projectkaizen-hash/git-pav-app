@@ -41,7 +41,12 @@ export const withdrawConsentSchema = z.object({
 
 export const consentHistoryQuerySchema = z.object({
   consentType: consentTypes.optional(),
-  includeWithdrawn: z.coerce.boolean().optional(),
+  includeWithdrawn: z
+    .preprocess((val) => {
+      if (typeof val === "string") return val.toLowerCase() === "true";
+      return Boolean(val);
+    }, z.boolean())
+    .optional(),
 }).strict();
 
 export const dataAccessRequestSchema = z.object({

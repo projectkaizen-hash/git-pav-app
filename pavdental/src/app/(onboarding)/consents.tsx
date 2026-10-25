@@ -78,10 +78,10 @@ export default function OnboardingConsentsScreen() {
 
       // 2. Consents → consent records (versioned, DSPT-auditable)
       const grants: Array<{ consentType: string; lawfulBasis: string }> = [
-        { consentType: "data_processing", lawfulBasis: "vital_interests" },
+        { consentType: "data_processing", lawfulBasis: "consent" },
         { consentType: "clinical_records", lawfulBasis: "consent" },
         ...(directMarketing
-          ? [{ consentType: "direct_marketing", lawfulBasis: "consent" }]
+          ? [{ consentType: "marketing", lawfulBasis: "consent" }]
           : []),
       ];
       for (const grant of grants) {

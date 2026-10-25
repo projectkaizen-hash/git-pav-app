@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText, Card, Badge, Button, AppIcon } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, Input } from "@/components";
 import { colors, spacing } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 
@@ -28,6 +28,37 @@ export default function ClinicianConsultRoomScreen() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [admitted, setAdmitted] = useState(false);
   const [admitting, setAdmitting] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [concludeNotes, setConcludeNotes] = useState("");
+  const [concludeDiagnosis, setConcludeDiagnosis] = useState("");
+  const [concludePlan, setConcludePlan] = useState("");
+  const [isEnding, setIsEnding] = useState(false);
+
+  const handleEndConsultation = async () => {
+    if (!appointmentId) return;
+    setIsEnding(true);
+    try {
+      const res = await authFetch("/api/video/end-consult", {
+        method: "POST",
+        body: JSON.stringify({
+          appointmentId,
+          notes: concludeNotes.trim() || "Consultation concluded via video call.",
+          diagnosis: concludeDiagnosis.trim() || undefined,
+          treatmentPlan: concludePlan.trim() || undefined,
+          followUpRecommended: "none",
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Could not complete consultation");
+      }
+      router.replace("/(clinician)/schedule");
+    } catch (err: any) {
+      setRoomError(err?.message || "Failed to end consultation");
+    } finally {
+      setIsEnding(false);
+    }
+  };
 
   useEffect(() => {
     async function initRoom() {
@@ -299,12 +330,51 @@ export default function ClinicianConsultRoomScreen() {
           </ScrollView>
         )}
 
+        {showSummaryModal && (
+          <Card elevation="raised" style={styles.summaryFormCard}>
+            <ThemedText variant="headline">Record Consultation Summary</ThemedText>
+            <Input
+              label="Diagnosis"
+              placeholder="e.g. Localized dentine hypersensitivity"
+              value={concludeDiagnosis}
+              onChangeText={setConcludeDiagnosis}
+            />
+            <Input
+              label="Clinical Notes"
+              placeholder="Observations and discussion during video consult"
+              multiline
+              numberOfLines={3}
+              value={concludeNotes}
+              onChangeText={setConcludeNotes}
+            />
+            <Input
+              label="Treatment Plan / Advice"
+              placeholder="Recommended home care or next steps"
+              multiline
+              numberOfLines={3}
+              value={concludePlan}
+              onChangeText={setConcludePlan}
+            />
+            <Button
+              title="Save Summary & Complete Visit"
+              loading={isEnding}
+              onPress={handleEndConsultation}
+            />
+          </Card>
+        )}
+
         {/* Clinician Action Control Bar */}
         <View style={styles.controls}>
           <Button
             title="End call and write prescription"
             size="lg"
             onPress={handleEndAndPrescribe}
+          />
+          <Button
+            title={showSummaryModal ? "Hide Summary Form" : "End call & record summary"}
+            variant="secondary"
+            size="md"
+            onPress={() => setShowSummaryModal(!showSummaryModal)}
           />
         </View>
       </View>
@@ -326,6 +396,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.systemBackground,
     borderTopColor: colors.separator,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  summaryFormCard: {
+    backgroundColor: colors.systemBackground,
+    borderTopColor: colors.separator,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
     padding: spacing.md,
   },
   exitBtn: {

@@ -147,7 +147,6 @@ router.post("/withdraw", requireAuth, validateBody(withdrawConsentSchema), async
       data: {
         isGranted: false,
         withdrawnAt: new Date(),
-        ipAddress: serverIpHash,
       },
     });
   });
@@ -291,12 +290,16 @@ router.post("/data-access-request", requireAuth, validateBody(dataAccessRequestS
     },
   });
 
+  // Server-observed IP only (client cannot spoof IP evidence)
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
+
   await createAuditLogWithIntegrity({
     action: "gdpr.data_access_request.completed",
     actorId: userId,
     resourceId: profile.id,
     sessionId: req.user!.sessionId,
-    ipHash: pseudonymiseIp(ipAddress || req.ip || ""),
+    ipHash: serverIpHash,
     metadata: {
       requestId,
       fileKey: uploaded.key,
@@ -345,12 +348,16 @@ router.post("/data-deletion-request", requireAuth, validateBody(dataDeletionRequ
   // standardResponse overwrites that key with the trace id.
   const erasureRequestId = request.id;
 
+  // Server-observed IP only (client cannot spoof IP evidence)
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  const serverIpHash = pseudonymiseIp(rawIp);
+
   await createAuditLogWithIntegrity({
     action: "gdpr.data_deletion_requested",
     actorId: userId,
     resourceId: profile.id,
     sessionId: req.user!.sessionId,
-    ipHash: pseudonymiseIp(ipAddress || req.ip || ""),
+    ipHash: serverIpHash,
     // The free-text reason stays on the request, out of the audit log.
     metadata: { erasureRequestId, hasReason: !!reason },
   });
