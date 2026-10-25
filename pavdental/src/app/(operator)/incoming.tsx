@@ -10,7 +10,7 @@ export default function OperatorIncomingScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ["operator-shift"],
     queryFn: fetchCurrentShift,
     refetchInterval: 5000, // Poll every 5s for new requests

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Switch, Alert, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Switch, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemedText, Card, Badge, Button } from "@/components";
@@ -18,7 +18,7 @@ export default function OperatorShiftScreen() {
   const queryClient = useQueryClient();
   const [gpsActive, setGpsActive] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data } = useQuery({
     queryKey: ["operator-shift"],
     queryFn: fetchCurrentShift,
     refetchInterval: 10000,

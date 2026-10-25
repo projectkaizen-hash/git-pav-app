@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { useStripe } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Button, Badge, AppIcon } from "@/components";
+import { ThemedText, Card, Button, Badge } from "@/components";
 import { colors, spacing } from "@/theme";
 import {
   createVanRequest,

@@ -176,14 +176,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
   },
-  infoIconWrap: {
-    alignItems: "center",
-    backgroundColor: colors.inkSubtle,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
   infoText: {
     color: colors.secondaryLabel,
     flex: 1,

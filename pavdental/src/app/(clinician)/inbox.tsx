@@ -4,7 +4,6 @@ import * as Haptics from "expo-haptics";
 import {
   ThemedText,
   Card,
-  Badge,
   EmptyState,
   AppIcon,
   Skeleton,

@@ -131,6 +131,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
       - name: Content and routing tests
         run: npm run test:all
 

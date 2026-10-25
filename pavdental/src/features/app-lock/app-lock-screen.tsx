@@ -50,9 +50,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     maxWidth: 320,
   },
-  icon: {
-    marginBottom: 24,
-  },
   title: {
     color: colors.alwaysWhite,
     marginBottom: 12,

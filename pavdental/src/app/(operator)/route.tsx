@@ -14,7 +14,7 @@ export default function OperatorRouteScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ["operator-shift"],
     queryFn: fetchCurrentShift,
     refetchInterval: 10000,

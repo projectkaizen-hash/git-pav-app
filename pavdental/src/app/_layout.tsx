@@ -35,7 +35,6 @@ function NotificationSetup() {
   useEffect(() => {
     if (!accessToken || __DEV__) return;
     setupNotifications().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
   return null;

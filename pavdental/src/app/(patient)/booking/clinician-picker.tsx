@@ -151,9 +151,6 @@ const styles = StyleSheet.create({
   anyTitle: {
     color: colors.ink,
   },
-  arrow: {
-    color: colors.ink,
-  },
   avatar: {
     alignItems: "center",
     backgroundColor: colors.secondaryBackground,

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, TextInput } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button, EmptyState } from "@/components";
+import { ThemedText, Card, Button, EmptyState } from "@/components";
 import { colors, spacing } from "@/theme";
 import { createTreatmentPlan } from "@/features/records/records-api";
 

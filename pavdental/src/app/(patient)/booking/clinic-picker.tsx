@@ -88,9 +88,6 @@ const styles = StyleSheet.create({
   address: {
     color: colors.secondaryLabel,
   },
-  arrow: {
-    color: colors.tertiaryLabel,
-  },
   card: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
@@ -108,11 +105,6 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     padding: spacing.md,
-  },
-  emptyCard: {
-    alignItems: "center",
-    gap: spacing.xs,
-    padding: spacing.lg,
   },
   header: {
     gap: spacing.xxs,
@@ -138,11 +130,6 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     gap: 2,
-  },
-  loadingBox: {
-    alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.xl,
   },
   name: {
     color: colors.label,

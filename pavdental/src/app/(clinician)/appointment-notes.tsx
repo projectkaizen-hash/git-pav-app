@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TextInput, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Button } from "@/components";
 import { colors, spacing } from "@/theme";
 import {
   fetchAppointmentNotes,
