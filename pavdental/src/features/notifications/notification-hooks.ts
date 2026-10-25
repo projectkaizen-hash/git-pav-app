@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { useIsAuthenticated } from "../auth/auth-store";
-import { authFetch } from "../auth/auth-api";
+import { authFetch, rememberPushToken } from "../auth/auth-api";
 
 // Conditionally import expo-notifications to prevent crash in Expo Go
 let Notifications: any;
@@ -120,7 +120,8 @@ export function useRegisterPushToken() {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, expoPushToken) => {
+      rememberPushToken(expoPushToken);
       queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
     },
   });

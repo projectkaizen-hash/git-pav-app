@@ -2,7 +2,7 @@
 // Verifies single-flight token refresh, signOut clearing queryClient and all stores (MA-2),
 // and FormData boundary handling in authFetch.
 
-import { authFetch, clearSessionState, API_URL } from "../features/auth/auth-api";
+import { authApi, authFetch, clearSessionState, rememberPushToken, API_URL } from "../features/auth/auth-api";
 import { useAuthStore } from "../features/auth/auth-store";
 import { useBookingStore } from "../features/booking/booking-store";
 import { useVanStore } from "../features/van/van-store";
@@ -142,6 +142,33 @@ async function runTests() {
   assert(refreshCount === 1, "Only a single refresh request was made across concurrent 401s (deduplicated)");
   assert(protectedCallCount === 4, "Each request was tried once with the expired token and retried once");
   assert(useAuthStore.getState().accessToken === "new-refreshed-token", "Store accessToken was updated with refreshed token");
+
+  // ─── Test 4: signOut sends this device's push token (MF-03) ───────────────
+  const logoutBodies: string[] = [];
+  (global as any).fetch = async (url: string, init?: RequestInit) => {
+    if (String(url).endsWith("/api/auth/logout")) logoutBodies.push(String(init?.body ?? ""));
+    return new Response(JSON.stringify({ message: "Logged out" }), { status: 200 });
+  };
+  const signedInUser = {
+    id: "usr_123",
+    sub: "usr_123",
+    email: "patient@example.test",
+    role: "patient",
+    emailVerified: true,
+    phoneVerified: true,
+    isMfaEnabled: false,
+    mfaEnabled: false,
+  };
+  useAuthStore.getState().setAuth("logout-token", signedInUser);
+  rememberPushToken("ExponentPushToken[test-device]");
+  await authApi.signOut();
+  assert(
+    logoutBodies[0] === JSON.stringify({ pushToken: "ExponentPushToken[test-device]" }),
+    "signOut sends the registered push token so the server stops pushing to this device"
+  );
+  useAuthStore.getState().setAuth("logout-token-2", signedInUser);
+  await authApi.signOut();
+  assert(logoutBodies[1] === "{}", "The token is forgotten after sign-out");
 
   // Restore fetch
   global.fetch = originalFetch;
