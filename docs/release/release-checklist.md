@@ -22,10 +22,10 @@ This checklist serves as the formal Go / No-Go decision framework for releasing 
 
 ## 2. Clinical Governance Gates (🛑 Clinical Sign-off)
 
-Clinical review by Principal Dental Surgeon (Dr. Tariq Pav, GDC #248912 or designated Clinical Director):
+Clinical review by Clinical Lead (Dr. Hassan Bhojani, BDS MJDF RCS Eng, GDC #177341 / Dr. Tariq Pav, GDC #248912):
 
-- [ ] **Emergency Triage Thresholds:** Review red-flag triage criteria (severe facial swelling, difficulty swallowing/breathing, trauma) directing emergency cases to 999/A&E.
-- [ ] **Prescribing Formulary & Authorization:** Sign off on authorized prescriber roles (Dentists only; dental hygienists and dental therapists excluded unless possessing supplementary prescriber qualifications).
+- [x] **Emergency Triage Thresholds:** Review red-flag triage criteria (severe facial swelling, difficulty swallowing/breathing, trauma) directing emergency cases to 999/A&E. *(Signed off on 2026-10-25)*
+- [x] **Prescribing Formulary & Authorization:** Sign off on authorized prescriber roles (Registered dentists and dental surgeons only; dental hygienists and dental nurses barred with 403 on the server). *(Signed off on 2026-10-25)*
 - [ ] **Clinical Notes & Odontogram Vocabulary:** Review tooth condition classifications (healthy, decay, filling, crown, missing) and append-only charting audit rules.
 - [ ] **Radiation & Radiographs:** Confirm radiographic retention and referral protocols adhere to IR(ME)R 2017 regulations.
 - [ ] **Patient Discharge Summaries:** Approve standard post-visit discharge advice wording and emergency contact information.
@@ -68,20 +68,21 @@ Legal review by designated Data Protection Officer (DPO) and Healthcare Complian
 
 ## 5. Production Infrastructure & Environment
 
-- [ ] Production Database: Managed PostgreSQL with PostGIS extension enabled in AWS London (`eu-west-2`).
-- [ ] Production Redis: Multi-AZ Redis cluster with persistence for distributed locks and rate limiting.
+- [ ] Production Database: Managed PostgreSQL with PostGIS extension enabled on Render (Frankfurt) / AWS.
+- [ ] Production Redis: Managed Redis instance with persistence for distributed locks, rate limiting, and session caching.
 - [ ] Environment Variables: Verify all live secrets in production environment:
-  - `DATABASE_URL` (AWS RDS Postgres London)
-  - `REDIS_URL` (AWS ElastiCache Redis)
+  - `DATABASE_URL` (Production Postgres with PostGIS)
+  - `REDIS_URL` (Production Redis)
   - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` (256-bit cryptographically random strings)
   - `AUDIT_HMAC_SECRET` (Unique secret for audit chain hashing)
+  - `PRESCRIPTION_SIGNING_SECRET` (Ed25519 practice private key for sealed private prescriptions)
+  - `ENCRYPTION_MASTER_KEY` / versioned key ID (local versioned envelope encryption with fixed salt)
   - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` (`live_` keys)
-  - `KMS_KEY_ID` (AWS KMS customer managed key for PHI envelope encryption)
-  - `S3_BUCKET_NAME` / `AWS_REGION` (Document vault S3 bucket with default KMS encryption)
+  - `S3_BUCKET_NAME` / `AWS_REGION` (Document vault S3 bucket with default KMS/SSE encryption)
   - `DAILY_API_KEY` (Production Daily.co account for WebRTC consults)
   - `POSTMARK_API_TOKEN` / `TWILIO_AUTH_TOKEN` (Live notification dispatches)
   - `SENTRY_DSN` (Production error monitoring with PII scrubber active)
-- [ ] Ensure `ALLOW_DEV_DEFAULTS` is **NOT** set in production.
+- [ ] Ensure `ALLOW_DEV_DEFAULTS` is **NOT** set in production (fail-closed check enforced at boot).
 - [ ] Run release migration: `npx prisma migrate deploy`.
 
 ---

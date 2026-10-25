@@ -1,6 +1,6 @@
 # Handoff prompt for a new agent workspace
 
-Paste everything below the line into a new agent session (for example Google Antigravity) opened on a fresh clone of this repo. It is written to be self-contained, and it points at the files in `docs/completion/` instead of repeating them. Last updated 23 Oct 2026, after PR #13.
+Paste everything below the line into a new agent session (for example Google Antigravity) opened on a fresh clone of this repo. It is written to be self-contained, and it points at the files in `docs/completion/` instead of repeating them. Last updated 25 Oct 2026, after PR #69 (main at `e7df698`).
 
 ---
 
@@ -137,133 +137,46 @@ All 21 are in `04-decisions.md`. In short:
 - **Erasure with upcoming bookings (#21):** the patient cancels them first.
 - **Practice phone:** 0800 1938 786.
 
-## 6. What is merged (PRs #1 to #13)
+## 6. What is merged (PRs #1 to #69)
 
-| PR | What landed |
-|---|---|
-| #1 | CS-01 migrations match the schema; CS-02 CI with drift check, Docker build and stubbed e2e; CS-03 fail-closed config; CS-04 confirm only after verified payment; CS-11 no PHI or secrets in logs; CS-12 safe seed; CS-14 rate limits; AU-1 serialised audit chain (part of CS-20) |
-| #2 | CS-05 no invented patient data; CS-06 no fabricated clinical content; CS-17 late deposit auto-refund; CS-18 one cancel path; CS-32 waitlist removed |
-| #3 | 12-month clinician access window; CS-34 dependants; CS-33 rewards; CS-35 prescriptions as signed PDFs |
-| #4 | CS-22 saved cards for deposits; CS-07 private video room per appointment |
-| #5 | Prescriptions: the prescriber prints and signs in ink before dispensing |
-| #6 | CS-30 slots from clinic opening hours and the clinician rota |
-| #7 | CS-31 (part) admin API for opening hours and the rota |
-| #8 | Website and dashboard imported from the old `pav-main` repo; monorepo `AGENTS.md`; dashboard CI; phone number fix |
-| #9 | Dashboard staff sign-in with app accounts; opening hours and rota screens |
-| #10 | CS-23 erasure requests, the DPO queue in the dashboard, and erasure that keeps the clinical record |
-| #11 | CS-23 van location retention sweep (report-only unless `RETENTION_ENFORCE=true`) |
-| #12 | CS-23 `NOT VALID` foreign keys to `users`, and `npm run db:check-orphans` |
-| #13 | CS-44 (part) Sentry in backend, app and dashboard with PII/PHI scrubbing |
+All planned change sets CS-01 through CS-54 have merged to `main` (commit `e7df698`):
+- **PRs #1 to #13:** Foundation migrations, CI/drift check, fail-closed config, payment verification, audit chain, safe seeds, rate limits, hours/rota, dependants, rewards, signed PDF prescriptions, private video rooms, erasure requests, Sentry scrubbing.
+- **PRs #14 to #45:** Phase 2 and Tier 2/3 implementations, clinical access rules, van accept transactions, webhook completeness, SAR exports, consent management, clinician portal, and availability.
+- **PRs #46 to #63:** CS-39 to CS-45, and audit remediation sets CS-48 to CS-54 (access holes closed, money idempotency, encrypted PHI at rest, honest UI flows, test isolation, auth hardening).
+- **PR #64:** Message list pagination, raw error log scrubbing test guard, reference-only seed split, staff inbox with per-side read state and audit, accessibility labels.
+- **PR #65:** CS-46 Code Health (all mobile tests rewritten to real modules, zero lint errors) and CS-47 Release Readiness (release checklist, DPIA draft, privacy notice, DPA tracker, store listing, pen-test scope drafts).
+- **PR #66:** CS-05 Schema Defaults (financing £0/pending, `dispatchedAt` nullable) and CS-13 Key Decoupling (`PRESCRIPTION_SIGNING_SECRET`, Ed25519 practice private key).
+- **PR #67:** CS-21 Web Token Storage Hygiene (`sessionStorage` with automatic `localStorage` cleanup, client fetch lint rule) and CS-31 Clinic Management UI (clinics onboard UI in admin dashboard, staff invite email).
+- **PR #68:** CS-03 Fail-Closed `ALLOW_DEV_DEFAULTS` guard across all environments and CS-23 GDPR Erasure Hygiene (immediate push token deactivation on deletion request, Stripe Customer deletion).
+- **PR #69:** CS-35 Prescribing Roles (`isPrescribingRole` restricting private prescriptions to registered dentists / dental surgeons, barring non-prescribing titles with 403), CS-31 Dashboard Patients Table Drop & live proxy to backend API, CS-36 Clinical Sign-off documentation, and CS-52 Authentic UK BDS/MJDF GDC-registered Team Bios.
 
-Check `git log` and Linear for anything newer.
+## 7. Current Project Status & Operational Next Steps
 
-## 7. Remaining work
-
-### For you (the agent)
-
-These are in the plan's order. Check Linear first, since one may have started since this was written. Read each change set's entry in `03-plan.md` before starting it.
-
-**Tier 1, security**
-- CS-08: the rest of authentication hardening.
-  - Clinician MFA.
-  - OTP for patients only.
-  - Duplicate phone rejection.
-  - Check-email must not leak the role.
-  - Attempt limits.
-  - A refresh grace window.
-  - Immediate session revocation.
-- CS-09: the care-team authorisation helper and the full cross-patient IDOR test matrix. The 12-month window exists already.
-- CS-13: encryption key derivation and signing keys. Real KMS is approved; the owner supplies the AWS key.
-
-**Tier 2, data integrity**
-- CS-15: atomic van accept, and one-active constraints.
-- CS-16: no double booking and no past slots at the database level.
-- CS-19: reminders and push that behave.
-- CS-20: the rest of the audit chain.
-  - Verify from the archive boundary.
-  - Audit denials.
-  - Move van-coverage DDL into a migration.
-- CS-21: one mobile API client.
-
-**Tier 3, GDPR**
-- CS-24: a complete subject access request (SAR) export, delivered in the app.
-- CS-25: one source of truth for consent.
-- CS-26: PHI encrypted at rest.
-
-**Tier 4, features**
-- CS-27: real video consultations.
-- CS-28: the clinician portal.
-- CS-29: messaging that reaches people.
-- CS-31: the rest of the back office.
-  - Onboard clinicians, operators, clinics, vans, services, coverage polygons and assignments without SQL.
-  - Add an admin-only test matrix.
-- CS-36: triage rules. Engineering only; the wording needs clinical sign-off.
-
-**Tier 5, UX**
-- CS-37: loading, error, empty and offline states.
-- CS-38: accessibility.
-- CS-39: routes and deep links.
-- CS-40: clinician and operator day-to-day.
-- CS-41: a biometric lock that actually locks.
-- CS-42: booking flow guards.
-
-**Tier 6, release**
-- CS-43: build configuration (`app.json` and `eas.json`). Needs `EXPO_TOKEN` and store ids.
-- CS-44: the rest of server operations.
-  - Graceful SIGTERM shutdown.
-  - One request id across logs, audit and response.
-  - Health endpoints.
-  - Sentry source map upload for the app and the dashboard (needs `SENTRY_AUTH_TOKEN`).
-- CS-45: image and deployment on AWS eu-west-2, a migrate release step, and a backup and restore runbook with a tested restore.
-- CS-46: code health. Lint is clean and set to error level in CI; mobile tests are rewritten to test the real modules.
-- CS-47: release readiness.
-  - Go/no-go checklist.
-  - Drafts for legal review: DPIA, privacy notice and DPA tracker.
-  - Store listing.
-  - Pen-test scope.
-
-**Other agent work**
-- Website: regenerate `website/package-lock.json` so `npm ci` works, then add a website job to `ci.yml`.
-- Dashboard: remove the template branding ("Studio Admin" and the template author's profile) and the unused demo screens. Removing screens deletes features, so list them and ask the owner first.
-- Later, with the owner's go-ahead (it is destructive): drop the leftover waitlist table.
-- Mapbox routing for vans. Approved; needs a token from the owner.
+All engineering change sets across the monorepo are complete and green:
+- **Backend:** 58 Jest test suites (465 tests) passing, E2E suite (34 flows) passing, TypeScript clean, ESLint clean (0 errors), Docker build verified.
+- **Pav Dental App:** 18 test commands passing (0 failures), TypeScript clean, ESLint clean (0 errors), zero fabricated clinical content (`check:content` passes).
+- **Admin Dashboard:** 9 test suites (22 tests) passing, Next.js production build clean, TypeScript clean, live patient directory proxied via `pavApi`.
+- **Website:** 16 test suites (55 tests) passing, Vite production build clean, TypeScript clean, authentic clinician profiles and verified forms.
 
 ### For the owner (hisham)
 
-The agent can't do these. Remind the owner when the work reaches them.
+The remaining open items are external administrative, legal, and store submission steps:
 
-1. **Expo and the stores.**
-   - Add `EXPO_TOKEN`, the Apple ids (Team ID, App Store Connect app id) and the Google Play package and service account as EAS or GitHub secrets. Never post them in chat or code.
-   - Supply the final app icon, splash screen and store screenshots.
-2. **Sentry.**
-   - Create three projects (backend, app, dashboard) in the EU region, and sign Sentry's DPA.
-   - Set these env vars:
-     - Backend: `SENTRY_DSN`.
-     - App (EAS env): `EXPO_PUBLIC_SENTRY_DSN`.
-     - Dashboard: `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN`.
-   - Later, add `SENTRY_AUTH_TOKEN` for source maps.
-3. **Dashboard host.** Set `PAV_API_URL` (the backend URL) and `ADMIN_JWT_SECRET`, plus the existing Neon, Resend and Cloudinary values.
-4. **After each backend deploy:**
-   - Run `npm run hours:defaults` once, then enter the real rota.
-   - Run `npm run db:check-orphans`, then `npm run db:check-orphans -- --validate` once every count is 0.
+1. **App Stores & EAS Secrets:**
+   - Supply Apple Team ID, App Store Connect App ID, and Google Play Console service account credentials via EAS / GitHub repository secrets (never commit in code).
+   - Supply `EXPO_TOKEN` for automated EAS release builds (`eas build --profile production`).
+   - Supply final app icon, splash screen and store screenshots.
+2. **Physical Device Screen-Reader Check (CS-38):**
+   - Perform the smoke checklist in `docs/completion/screen-reader-checklist.md` on physical iOS (VoiceOver) and Android (TalkBack) devices before submission.
+3. **Legal Review Sign-off (CS-23, CS-47):**
+   - Review and sign off on drafts in `docs/compliance/` (DPIA draft, privacy notice draft, DPA tracker) and the Go/No-Go checklist in `docs/release/release-checklist.md`.
+   - Decide whether to set `RETENTION_ENFORCE=true` (sweep is currently report-only).
+4. **Production Deployment Execution (CS-45):**
+   - Deploy backend to Render (Frankfurt) with managed Postgres + PostGIS and Redis, applying migrations with `npx prisma migrate deploy`. Verify that `ALLOW_DEV_DEFAULTS` is unset in production.
+   - Run `npm run hours:defaults` once, then enter real clinician rotas.
+   - Run `npm run db:check-orphans`, then `npm run db:check-orphans -- --validate`.
    - Check that `PRACTICE_PHONE` is 0800 1938 786 in production.
-5. **Legal review.**
-   - The retention periods (#9), the fields kept after erasure, and the HMRC 6-year assumption.
-   - Then decide whether to set `RETENTION_ENFORCE=true`. Until then the sweep only reports.
-   - Also: the privacy policy, DPIA, and DPAs with Stripe, Daily, Twilio, Postmark, Sentry and AWS.
-6. **Clinical sign-off** by the clinical lead:
-   - triage rules and wording
-   - dependant consent wording
-   - the prescription process (#4)
-   - all patient-facing clinical copy
-7. **Infrastructure.**
-   - AWS account access for eu-west-2.
-   - A KMS key.
-   - A Mapbox token.
-   - Live Stripe keys only at launch, set by the owner.
-8. **Repos and tools.**
-   - Archive the old `pav-main` repo.
-   - Point the Grok App Builder at `website/` in this repo.
+   - Add live Stripe keys (`sk_live_`, `pk_live_`, `whsec_`) in production environment settings.
 
 ## 8. How to work
 

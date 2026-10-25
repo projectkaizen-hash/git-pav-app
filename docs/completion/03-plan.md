@@ -27,7 +27,7 @@ Every finding ID in `01-findings.md` maps to exactly one change set (see the cov
 
 ---
 
-## Where things stand (25 Oct 2026, main at `1f7ddf2`)
+## Where things stand (25 Oct 2026, main at `e7df698`)
 
 The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-audit-2026-10-24.md`). Since then CS-39 to CS-45 and CS-48 to CS-54 have merged (#46 to #63). Rows marked "not re-audited" are taken from their PRs; the leftovers named below were checked in the code.
 
