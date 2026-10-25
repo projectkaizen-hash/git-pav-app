@@ -45,7 +45,7 @@ curl -s https://pavdental-api.onrender.com/health
 ```bash
 curl -s -X POST https://pavdental-api.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "patient@pavdental.com", "password": "Password123!"}'
+  -d '{"email": "patient@pavdental.com", "password": "<SEED_DEMO_PASSWORD>"}'
 ```
 - Returned HTTP 200 with signed JWT access token, refresh token, and patient identity `Alexander Wright`.
 
@@ -101,7 +101,7 @@ VITE_API_BASE_URL=https://pavdental-admin.vercel.app
 
 ## 4. Synthetic Demo Accounts
 
-All seeded passwords are `Password123!` (synthetic data only):
+All seeded accounts use the `SEED_DEMO_PASSWORD` chosen when the database was seeded (see [free-test-setup.md](free-test-setup.md), step 2). It is kept outside the repo, because this API is public. The data is synthetic only.
 
 | Role | Email | Description |
 |---|---|---|
