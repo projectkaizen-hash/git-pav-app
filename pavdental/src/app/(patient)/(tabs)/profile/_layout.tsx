@@ -62,6 +62,12 @@ export default function ProfileSubLayout() {
         }}
       />
       <Stack.Screen
+        name="refer"
+        options={{
+          title: "Refer a friend",
+        }}
+      />
+      <Stack.Screen
         name="dependants"
         options={{
           title: "Dependants & family",
