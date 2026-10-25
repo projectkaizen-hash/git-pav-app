@@ -34,7 +34,7 @@ export const ARTICLES: Article[] = [
     author: {
       name: "Dr. Hassan Bhojani",
       role: "Principal Dentist & Clinical Director",
-      avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=85",
+      avatar: "/media/team-photo-pending.svg",
     },
     date: "14 Oct 2025",
     readingTime: "5 min read",
@@ -175,7 +175,7 @@ export const ARTICLES: Article[] = [
     author: {
       name: "Dr. Hassan Bhojani",
       role: "Principal Dentist",
-      avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=85",
+      avatar: "/media/team-photo-pending.svg",
     },
     date: "10 Oct 2025",
     readingTime: "4 min read",
@@ -241,9 +241,9 @@ export const ARTICLES: Article[] = [
     category: "hygiene",
     categoryLabel: "Oral Health & Hygiene",
     author: {
-      name: "Dr. Amara Okafor",
-      role: "Pediatric & Preventive Specialist",
-      avatar: "https://images.unsplash.com/photo-1584467735815-f778f274e296?auto=format&fit=crop&w=300&q=85",
+      name: "Pav Dental team",
+      role: "Pav Dental",
+      avatar: "/media/team-photo-pending.svg",
     },
     date: "25 Sep 2025",
     readingTime: "5 min read",

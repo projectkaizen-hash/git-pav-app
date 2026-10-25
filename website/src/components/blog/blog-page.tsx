@@ -30,7 +30,7 @@ export function BlogPage() {
             name: b.author || "Dr. Hassan Bhojani",
             role: "Dental Care Team",
             avatar:
-              "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=85",
+              "/media/team-photo-pending.svg",
           },
           date: b.published_at
             ? new Date(b.published_at).toLocaleDateString("en-GB", {
