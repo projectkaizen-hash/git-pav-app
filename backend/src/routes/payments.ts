@@ -319,12 +319,19 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Invalid Stripe signature" });
   }
 
-  // Deduplicate Stripe webhooks (WH-3, BJ-4)
-  const existingEvent = await prisma.processedStripeEvent.findUnique({
-    where: { id: event.id },
-  });
-  if (existingEvent) {
-    return res.status(200).json({ received: true, duplicate: true });
+  // Deduplicate Stripe webhooks by claiming the row first (WH-3, BJ-4, CS-49)
+  try {
+    await prisma.processedStripeEvent.create({
+      data: {
+        id: event.id,
+        type: event.type,
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002" || err?.message?.includes("Unique constraint")) {
+      return res.status(200).json({ received: true, duplicate: true });
+    }
+    throw err;
   }
 
   if (event.type === "payment_intent.succeeded") {
@@ -352,15 +359,20 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
           console.error("[Stripe Webhook] Failed to schedule reminders:", err);
         });
       } else {
-        // Not confirmed by this event. Fine if it is already confirmed with
-        // this payment (a duplicate event, or the confirm call won); otherwise
-        // the money arrived too late for its hold and goes back (CS-17).
+        // Not confirmed by this event. Fine if it is already confirmed / completed
+        // with this payment (a duplicate event, or the confirm call won); otherwise
+        // the money arrived too late for its hold and goes back (CS-17, CS-49).
         const appointment = await prisma.appointment.findUnique({
           where: { id: appointmentId },
-          select: { status: true, stripePaymentId: true, patientId: true },
+          select: { status: true, stripePaymentId: true, patientId: true, holdExpiresAt: true, depositPaidPence: true },
         });
-        const alreadyConfirmed = appointment?.status === "confirmed" && appointment.stripePaymentId === intent.id;
-        if (!alreadyConfirmed) {
+        const POST_CONFIRMATION_STATUSES = new Set(["confirmed", "in_progress", "completed", "no_show"]);
+        const alreadyApplied = appointment && (
+          POST_CONFIRMATION_STATUSES.has(appointment.status) ||
+          (appointment.status === "cancelled" && (appointment.depositPaidPence > 0 || appointment.holdExpiresAt === null))
+        ) && appointment.stripePaymentId === intent.id;
+
+        if (!alreadyApplied) {
           try {
             await refundLateDeposit({
               appointmentId: appointment ? appointmentId : null,
@@ -371,6 +383,8 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
           } catch (err) {
             console.error("[Stripe Webhook] Late deposit refund failed:", err instanceof Error ? err.name : "unknown error");
             // A non-2xx makes Stripe retry the event, and with it the refund.
+            // Release the claimed event row so Stripe can retry successfully
+            await prisma.processedStripeEvent.delete({ where: { id: event.id } }).catch(() => {});
             return res.status(500).json({ error: "Late deposit refund failed" });
           }
         }
@@ -636,7 +650,9 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
       });
 
       if (appt) {
-        const newDeposit = Math.max(0, (appt.depositPaidPence || 0) - (charge.amount_refunded || 0));
+        // Stripe charge.amount_refunded is cumulative. Deposit is captured amount minus cumulative refunded amount (CS-49)
+        const capturedPence = charge.amount_captured || (appt.depositPaidPence || 0) + (charge.amount_refunded || 0);
+        const newDeposit = Math.max(0, capturedPence - (charge.amount_refunded || 0));
         await prisma.appointment.update({
           where: { id: appt.id },
           data: { depositPaidPence: newDeposit },
@@ -743,16 +759,6 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
       },
     }).catch(() => {});
   }
-
-  // Record that this Stripe event has been successfully processed (WH-3, BJ-4)
-  await prisma.processedStripeEvent
-    .create({
-      data: {
-        id: event.id,
-        type: event.type,
-      },
-    })
-    .catch(() => {});
 
   return res.status(200).json({ received: true });
 }

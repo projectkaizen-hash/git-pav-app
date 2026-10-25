@@ -946,10 +946,17 @@ router.post(
       return res.status(409).json({ error: "Only confirmed or in-progress appointments can be completed" });
     }
 
-    const updated = await prisma.appointment.update({
-      where: { id: appointmentId },
+    const completedCount = await prisma.appointment.updateMany({
+      where: {
+        id: appointmentId,
+        status: { in: ["confirmed", "in_progress"] },
+      },
       data: { status: "completed" },
     });
+    if (completedCount.count === 0) {
+      return res.status(409).json({ error: "Appointment cannot be completed from its current status" });
+    }
+    const updated = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
 
     await cancelAppointmentReminders(appointmentId).catch(() => {});
 
@@ -993,10 +1000,17 @@ router.post(
       return res.status(409).json({ error: "Appointment cannot be marked as no-show from its current status" });
     }
 
-    const updated = await prisma.appointment.update({
-      where: { id: appointmentId },
+    const noShowCount = await prisma.appointment.updateMany({
+      where: {
+        id: appointmentId,
+        status: { in: ["confirmed", "in_progress", "draft_hold"] },
+      },
       data: { status: "no_show" },
     });
+    if (noShowCount.count === 0) {
+      return res.status(409).json({ error: "Appointment cannot be marked as no-show from its current status" });
+    }
+    const updated = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
 
     await cancelAppointmentReminders(appointmentId).catch(() => {});
 

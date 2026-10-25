@@ -423,37 +423,53 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
         id: true,
         patientId: true,
         paymentIntentId: true,
+        shiftId: true,
       },
       take: 50, // Batch limit per cycle
     });
 
     let expiredCount = 0;
     for (const request of stale) {
-      // Release the deposit hold first. On failure, depositReleaseStatus is marked
-      // as 'failed' so retryFailedVanDepositReleases retries it.
+      if (!request.shiftId) continue;
       let releaseStatus: string | null = null;
-      let releasedAt: Date | null = null;
-      if (request.paymentIntentId) {
-        const release = await releaseVanDeposit(request.paymentIntentId, "expired");
-        releaseStatus = release.status;
-        if (["released", "already_released", "refunded", "mock"].includes(release.status)) {
-          releasedAt = new Date();
-        }
-      }
+      let shouldNotify = false;
 
-      // Idempotent re-check: only transition requests that are still pending
-      // (an operator may have accepted/declined mid-sweep).
-      const result = await prisma.vanServiceRequest.updateMany({
-        where: { id: request.id, status: "pending" },
-        data: {
-          status: "expired",
-          depositReleaseStatus: releaseStatus,
-          depositReleasedAt: releasedAt,
+      await prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`van-accept:${request.shiftId}`}))`;
+
+          // Compare-and-set: only expire if still pending under the lock (CS-49)
+          const result = await tx.vanServiceRequest.updateMany({
+            where: { id: request.id, status: "pending" },
+            data: { status: "expired" },
+          });
+
+          if (result.count === 0) return; // Operator accepted or declined mid-sweep
+
+          let releasedAt: Date | null = null;
+          if (request.paymentIntentId) {
+            const release = await releaseVanDeposit(request.paymentIntentId, "expired");
+            releaseStatus = release.status;
+            if (["released", "already_released", "refunded", "mock"].includes(release.status)) {
+              releasedAt = new Date();
+            }
+          }
+
+          await tx.vanServiceRequest.update({
+            where: { id: request.id },
+            data: {
+              depositReleaseStatus: releaseStatus as any,
+              depositReleasedAt: releasedAt,
+            },
+          });
+
+          expiredCount++;
+          shouldNotify = true;
         },
-      });
+        { maxWait: 10_000, timeout: 30_000 }
+      );
 
-      if (result.count === 1) {
-        expiredCount++;
+      if (shouldNotify) {
         const message = releaseStatus === "failed"
           ? "No operator accepted your van request in time, so it has expired. We are releasing your deposit hold."
           : "No operator accepted your van request in time, so it has expired. No deposit was taken — please try again later.";
@@ -463,7 +479,7 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
           "Van Request Expired",
           message,
           { requestId: request.id, status: "expired" }
-        );
+        ).catch(() => {});
       }
     }
 
