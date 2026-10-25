@@ -1,22 +1,29 @@
 import { useState, useEffect } from "react";
 import { ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { loadAnalyticsIfConsented } from "@/lib/analytics";
 
 export function CookieConsent() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem("cookie_consent");
+    let consent: string | null = null;
+    try {
+      consent = localStorage.getItem("cookie_consent");
+    } catch {
+      // Storage blocked: ask each visit, load nothing.
+    }
     if (!consent) {
       setShow(true);
+    } else {
+      loadAnalyticsIfConsented();
     }
   }, []);
 
   function handleAccept() {
     localStorage.setItem("cookie_consent", "accepted");
     setShow(false);
-    // Dispatch custom event if analytics listener exists
-    window.dispatchEvent(new Event("cookie_consent_accepted"));
+    loadAnalyticsIfConsented();
   }
 
   function handleDecline() {
@@ -36,7 +43,8 @@ export function CookieConsent() {
           <div className="space-y-1">
             <h4 className="text-sm font-semibold text-fg">Cookie & Privacy Preferences</h4>
             <p className="text-xs text-muted leading-relaxed">
-              We use analytics cookies to understand website visitor engagement and ensure optimal dental care service.
+              With your permission we use Google Analytics cookies to see how people use this site. Nothing
+              is loaded unless you accept, and no health information is sent.
             </p>
           </div>
         </div>
