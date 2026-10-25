@@ -203,7 +203,7 @@ export function MedicalHistoryForm({
           {COMMON_CONDITIONS.map((cond) => {
             const active = selectedConditions.includes(cond);
             return (
-              <Pressable
+              <Pressable accessibilityLabel={cond}
                 key={cond}
                 onPress={() => toggleCondition(cond)}
                 style={[styles.conditionRow, active && styles.conditionRowActive]}

@@ -155,7 +155,7 @@ export default function VanAccessDetailsScreen() {
               {services.map((srv) => {
                 const isSelected = selectedServiceId === srv.id;
                 return (
-                  <Pressable
+                  <Pressable accessibilityLabel={srv.name}
                     key={srv.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isSelected }}
@@ -191,7 +191,7 @@ export default function VanAccessDetailsScreen() {
         <View style={styles.section}>
           <ThemedText variant="headline">Where will the surgical van park?</ThemedText>
           <View style={styles.optionGroup}>
-            <Pressable
+            <Pressable accessibilityLabel="Private driveway"
               accessibilityRole="radio"
               accessibilityState={{ selected: parkingType === "private_driveway" }}
               onPress={() => setParkingType("private_driveway")}
@@ -212,7 +212,7 @@ export default function VanAccessDetailsScreen() {
               </Card>
             </Pressable>
 
-            <Pressable
+            <Pressable accessibilityLabel="Permit bay"
               accessibilityRole="radio"
               accessibilityState={{ selected: parkingType === "permit_bay" }}
               onPress={() => setParkingType("permit_bay")}
@@ -233,7 +233,7 @@ export default function VanAccessDetailsScreen() {
               </Card>
             </Pressable>
 
-            <Pressable
+            <Pressable accessibilityLabel="Visitor parking bay"
               accessibilityRole="radio"
               accessibilityState={{ selected: parkingType === "visitor" }}
               onPress={() => setParkingType("visitor")}
@@ -254,7 +254,7 @@ export default function VanAccessDetailsScreen() {
               </Card>
             </Pressable>
 
-            <Pressable
+            <Pressable accessibilityLabel="Other safe kerb or loading bay"
               accessibilityRole="radio"
               accessibilityState={{ selected: parkingType === "other" }}
               onPress={() => setParkingType("other")}

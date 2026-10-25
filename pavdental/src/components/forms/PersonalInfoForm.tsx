@@ -133,7 +133,7 @@ export function PersonalInfoForm({
             {GENDER_OPTIONS.map((opt) => {
               const active = selectedGender === opt.value;
               return (
-                <Pressable
+                <Pressable accessibilityLabel={opt.label}
                   key={opt.value}
                   disabled={isLoading}
                   onPress={() => setValue("gender", opt.value, { shouldDirty: true, shouldValidate: true })}

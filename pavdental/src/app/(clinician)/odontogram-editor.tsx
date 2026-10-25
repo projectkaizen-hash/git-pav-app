@@ -244,7 +244,7 @@ export default function OdontogramEditorScreen() {
                   const state = teethState[num];
                   const isSelected = selectedTooth === num;
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Tooth ${num}${state?.condition ? `, ${state.condition}` : ""}`} accessibilityState={{ selected: isSelected }}
                       key={num}
                       style={[
                         styles.toothButton,
@@ -271,7 +271,7 @@ export default function OdontogramEditorScreen() {
                   const state = teethState[num];
                   const isSelected = selectedTooth === num;
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Tooth ${num}${state?.condition ? `, ${state.condition}` : ""}`} accessibilityState={{ selected: isSelected }}
                       key={num}
                       style={[
                         styles.toothButton,
@@ -316,7 +316,7 @@ export default function OdontogramEditorScreen() {
                 {TOOTH_CONDITIONS.map((cond) => {
                   const isActive = teethState[selectedTooth]?.condition === cond;
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="radio" accessibilityLabel={cond} accessibilityState={{ selected: isActive }}
                       key={cond}
                       style={[styles.condChip, isActive && styles.condChipActive]}
                       onPress={() => handleConditionChange(cond)}

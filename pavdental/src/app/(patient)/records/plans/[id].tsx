@@ -401,7 +401,7 @@ export default function TreatmentPlanDetailScreen() {
         onRequestClose={() => setShowSignSheet(false)}
       >
         <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setShowSignSheet(false)} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.modalBackdrop} onPress={() => setShowSignSheet(false)} />
 
           <View style={styles.sheetContainer}>
             <View style={styles.sheetGrabber} />

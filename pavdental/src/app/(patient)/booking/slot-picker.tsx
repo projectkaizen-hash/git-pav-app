@@ -114,7 +114,7 @@ export default function SlotPickerScreen() {
           {dates.map((d) => {
             const active = selectedDate === d;
             return (
-              <Pressable
+              <Pressable accessibilityLabel={d}
                 key={d}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}

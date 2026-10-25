@@ -111,7 +111,7 @@ export default function IntraoralPhotosScreen() {
         {/* Photo Slots */}
         <View style={styles.slotList}>
           {photoSlots.map((slot) => (
-            <Pressable
+            <Pressable accessibilityRole="checkbox" accessibilityLabel={slot.label} accessibilityState={{ checked: slot.isCaptured }}
               key={slot.id}
               onPress={() => toggleCapture(slot.id)}
               style={[styles.slotCard, slot.isCaptured && styles.slotCardCaptured]}

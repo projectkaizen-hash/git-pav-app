@@ -196,7 +196,7 @@ export default function DependantsScreen() {
                       Edit
                     </ThemedText>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleRemove(dep.id, dep.firstName)}>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Unlink ${dep.firstName}`} onPress={() => handleRemove(dep.id, dep.firstName)}>
                     <ThemedText variant="caption" style={styles.unlinkText}>
                       Unlink
                     </ThemedText>
@@ -260,7 +260,7 @@ export default function DependantsScreen() {
               </ThemedText>
               <View style={styles.relPills}>
                 {RELATIONSHIPS.map((r) => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="radio" accessibilityLabel={r} accessibilityState={{ selected: relationship === r }}
                     key={r}
                     onPress={() => setRelationship(r)}
                     style={[styles.relPill, relationship === r && styles.relPillActive]}
@@ -277,7 +277,7 @@ export default function DependantsScreen() {
             </View>
 
             {editing ? null : (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="I am this child's parent or legal guardian"
               accessibilityRole="checkbox"
               accessibilityState={{ checked: isGuardian }}
               onPress={() => setIsGuardian((v) => !v)}

@@ -65,7 +65,7 @@ export function PasswordChangeForm({
           <ThemedText variant="subhead" style={styles.sectionTitle}>
             CURRENT CREDENTIALS
           </ThemedText>
-          <TouchableOpacity onPress={() => setShowCurrent(!showCurrent)}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={showCurrent ? "Hide current password" : "Show current password"} onPress={() => setShowCurrent(!showCurrent)}>
             <ThemedText variant="caption" style={styles.toggleShow}>
               {showCurrent ? "Hide" : "Show"}
             </ThemedText>
@@ -87,7 +87,7 @@ export function PasswordChangeForm({
           <ThemedText variant="subhead" style={styles.sectionTitle}>
             NEW PASSWORD
           </ThemedText>
-          <TouchableOpacity onPress={() => setShowNew(!showNew)}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={showNew ? "Hide new password" : "Show new password"} onPress={() => setShowNew(!showNew)}>
             <ThemedText variant="caption" style={styles.toggleShow}>
               {showNew ? "Hide" : "Show"}
             </ThemedText>

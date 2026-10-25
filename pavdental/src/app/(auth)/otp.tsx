@@ -105,7 +105,7 @@ export default function OtpScreen() {
                     if (error) setError(null);
                   }}
                 />
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Change phone number"
                   onPress={() => setStep("phone")}
                   style={styles.changePhonePressable}
                 >

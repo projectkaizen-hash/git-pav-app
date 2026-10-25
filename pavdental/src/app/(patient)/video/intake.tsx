@@ -90,7 +90,7 @@ export default function VideoIntakeScreen() {
             {painLevels.map((lvl) => {
               const selected = painLevel === lvl;
               return (
-                <Pressable
+                <Pressable accessibilityRole="radio" accessibilityLabel={`Pain level ${lvl}`} accessibilityState={{ selected }}
                   key={lvl}
                   onPress={() => setPainLevel(lvl)}
                   style={[styles.painPill, selected && styles.painPillSelected]}

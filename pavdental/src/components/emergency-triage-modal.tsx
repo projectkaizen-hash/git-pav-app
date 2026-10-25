@@ -127,7 +127,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.modalBackdrop} onPress={onClose} />
 
         <View style={styles.sheetContainer}>
           <View style={styles.sheetGrabber} />

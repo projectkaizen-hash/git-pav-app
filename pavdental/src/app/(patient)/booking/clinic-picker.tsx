@@ -51,7 +51,7 @@ export default function ClinicPickerScreen() {
       ) : (
         <View style={styles.clinicList}>
           {clinics.map((clinic) => (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={clinic.name}
               key={clinic.id}
               onPress={() => handleSelectClinic(clinic)}
               style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}

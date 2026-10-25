@@ -130,7 +130,7 @@ export default function ServiceCatalogScreen() {
           {CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat.value;
             return (
-              <Pressable
+              <Pressable accessibilityLabel={cat.label}
                 key={cat.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}

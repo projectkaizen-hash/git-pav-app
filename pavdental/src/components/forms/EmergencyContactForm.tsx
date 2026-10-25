@@ -93,7 +93,7 @@ export function EmergencyContactForm({
             {RELATIONSHIP_OPTIONS.map((rel) => {
               const active = selectedRelationship === rel;
               return (
-                <Pressable
+                <Pressable accessibilityLabel={rel}
                   key={rel}
                   disabled={isLoading}
                   onPress={() => setValue("relationship", rel, { shouldDirty: true, shouldValidate: true })}

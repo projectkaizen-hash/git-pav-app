@@ -35,7 +35,7 @@ export default function ClinicianPickerScreen() {
       </View>
 
       {/* First Available Option */}
-      <Pressable
+      <Pressable accessibilityRole="button" accessibilityLabel="Any available clinician"
         onPress={() => handleSelectClinician(null)}
         style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
       >
@@ -69,7 +69,7 @@ export default function ClinicianPickerScreen() {
         {(list) => (
             <View style={styles.clinicianList}>
               {list.map((doc) => (
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel={doc.fullName}
                   key={doc.id}
                   onPress={() => handleSelectClinician(doc)}
                   style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
