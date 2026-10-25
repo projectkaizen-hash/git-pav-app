@@ -25,7 +25,7 @@ export default function OnboardingMedicalHistoryScreen() {
       isBleedingRisk,
       gpSurgery: gpSurgery.trim(),
     });
-    router.push("/(onboarding)/consents");
+    router.push("/onboarding/consents");
   };
 
   return (

@@ -46,6 +46,7 @@ export default function AuthLayout() {
       <Stack.Screen name="guest-limit" />
       <Stack.Screen name="forgot" />
       <Stack.Screen name="reset" />
+      <Stack.Screen name="reset-password" />
       <Stack.Screen name="biometric-unlock" />
       <Stack.Screen name="access-denied" />
     </Stack>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -8,12 +8,42 @@ import { authApi } from "@/features/auth/auth-api";
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const { email } = useLocalSearchParams<{ email?: string }>();
-  const [code, setCode] = useState("");
+  const { email, token } = useLocalSearchParams<{ email?: string; token?: string }>();
+  const [code, setCode] = useState(token ? String(token) : "");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
+  // Auto-verify if opened from email deep link containing token
+  useEffect(() => {
+    let mounted = true;
+    if (token && typeof token === "string" && token.trim().length > 0) {
+      const cleanToken = token.trim();
+      setCode(cleanToken);
+      (async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          await authApi.confirmEmailVerification(cleanToken);
+          if (mounted) {
+            router.replace("/(auth)/account-created");
+          }
+        } catch (err: any) {
+          if (mounted) {
+            setError(err?.message || "Verification failed. Please check the link or enter the code manually.");
+          }
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
+      })();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [token]);
 
   const handleVerify = async () => {
     if (!code.trim()) {

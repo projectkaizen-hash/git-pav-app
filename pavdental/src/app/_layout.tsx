@@ -159,7 +159,7 @@ export default function RootLayout() {
               <OfflineBanner />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen name="onboarding" />
                 <Stack.Screen name="(patient)" />
                 <Stack.Screen name="(clinician)" />
                 <Stack.Screen name="(operator)" />

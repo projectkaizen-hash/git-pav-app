@@ -34,7 +34,7 @@ export default function OnboardingProfileScreen() {
       emergencyContactName: emergencyContact.trim(),
       emergencyContactPhone: emergencyPhone.trim(),
     });
-    router.push("/(onboarding)/address");
+    router.push("/onboarding/address");
   };
 
   return (

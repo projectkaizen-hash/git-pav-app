@@ -32,7 +32,7 @@ export default function OnboardingAddressScreen() {
       addressLine2: addressLine2.trim() || undefined,
       city: city.trim(),
     } as any);
-    router.push("/(onboarding)/insurance");
+    router.push("/onboarding/insurance");
   };
 
   return (

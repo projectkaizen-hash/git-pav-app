@@ -13,7 +13,7 @@ const RULES = [
   {
     name: "drug name",
     // Allergy pickers list common allergens for the patient to choose from.
-    allow: ["src/components/forms/MedicalHistoryForm.tsx", "src/app/(onboarding)/medical-history.tsx"],
+    allow: ["src/components/forms/MedicalHistoryForm.tsx", "src/app/onboarding/medical-history.tsx", "src/app/(onboarding)/medical-history.tsx"],
     re: /\b(amoxicillin|metronidazole|clindamycin|ibuprofen|paracetamol|co-codamol|chlorhexidine|fluconazole|penicillin|duraphat)\b/i,
   },
   { name: "tooth-specific finding", re: /\b(LR|LL|UR|UL)[1-8]\b|Tooth #\d+(?!\})/ },

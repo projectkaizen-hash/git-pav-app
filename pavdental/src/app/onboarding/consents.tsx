@@ -95,7 +95,7 @@ export default function OnboardingConsentsScreen() {
         }
       }
 
-      router.push("/(onboarding)/complete");
+      router.push("/onboarding/complete");
     } catch (err: any) {
       setError(err?.message || "Could not finish setup. Please try again.");
     } finally {

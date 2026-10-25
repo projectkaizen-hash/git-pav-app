@@ -56,7 +56,7 @@ export default function OnboardingInsuranceScreen() {
     } else if (hasInsurance === false) {
       setInsurance(null);
     }
-    router.push("/(onboarding)/medical-history");
+    router.push("/onboarding/medical-history");
   };
 
   return (
@@ -185,7 +185,7 @@ export default function OnboardingInsuranceScreen() {
             title="Skip for now"
             variant="ghost"
             size="sm"
-            onPress={() => router.push("/(onboarding)/medical-history")}
+            onPress={() => router.push("/onboarding/medical-history")}
           />
         </View>
       </ScrollView>
