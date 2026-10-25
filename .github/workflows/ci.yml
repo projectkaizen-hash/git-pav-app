@@ -66,6 +66,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
       - name: Apply migrations
         run: |
           echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin --url "$DATABASE_URL"

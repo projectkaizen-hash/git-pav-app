@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Response, NextFunction } from "express";
 import crypto from "crypto";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
@@ -56,7 +56,7 @@ const POSTCODE_DISTANCE_TOLERANCE_M = parseInt(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function requireRole(role: string) {
-  return (req: AuthRequest, res: Response, next: Function) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.user?.role !== role) {
       return res.status(403).json({ error: `Requires ${role} role` });
     }
@@ -972,7 +972,7 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
   }
 
   // Encrypt sensitive fields before storage
-  let encryptedAccessDetails = { ...accessDetails };
+  const encryptedAccessDetails = { ...accessDetails };
   if (accessDetails.gateCode) {
     const encryptedGateCode = await clinicalRecordEncryptionService.encryptField(accessDetails.gateCode);
     encryptedAccessDetails.gateCode = encryptedGateCode;
