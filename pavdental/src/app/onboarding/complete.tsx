@@ -40,7 +40,7 @@ export default function OnboardingCompleteScreen() {
                 <AppIcon name="checkCircle" size={16} color={colors.success} />
               </View>
               <ThemedText variant="subhead" style={styles.summaryText}>
-                NHS & Private patient record active
+                Patient record created
               </ThemedText>
             </View>
 
@@ -58,7 +58,7 @@ export default function OnboardingCompleteScreen() {
                 <AppIcon name="checkCircle" size={16} color={colors.success} />
               </View>
               <ThemedText variant="subhead" style={styles.summaryText}>
-                DSPT-compliant GDPR consents granted
+                Your consent choices are saved
               </ThemedText>
             </View>
           </Card>

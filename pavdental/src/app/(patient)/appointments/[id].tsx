@@ -58,7 +58,6 @@ export default function AppointmentDetailScreen() {
 
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
-  const [myRating, setMyRating] = useState(0);
 
   const source: Booking[] = (apiAppointments ?? []) as Booking[];
   const booking = source.find((b) => b.id === id);
@@ -198,29 +197,6 @@ export default function AppointmentDetailScreen() {
           </Pressable>
         ) : null}
 
-        {/* Post-visit rating (Zocdoc pattern) */}
-        {isPast && !isCancelled ? (
-          <Card elevation="flat" style={styles.card}>
-            <ThemedText variant="overline" style={styles.cardOverline}>HOW WAS YOUR VISIT?</ThemedText>
-            <View style={styles.ratingRow}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Pressable
-                  key={n}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Rate ${n} out of 5`}
-                  accessibilityState={{ selected: myRating >= n }}
-                  onPress={() => {
-                    setMyRating(n);
-                    setToast({ message: "Thanks — feedback saved", tone: "success" });
-                  }}
-                  style={{ padding: 6 }}
-                >
-                  <AppIcon name="star" size={28} color={n <= myRating ? colors.ink : colors.separator} />
-                </Pressable>
-              ))}
-            </View>
-          </Card>
-        ) : null}
       </ScrollView>
 
       {/* Lifecycle actions */}
@@ -390,12 +366,6 @@ const styles = StyleSheet.create({
   navTitle: {
     color: colors.label,
     fontWeight: "700",
-  },
-  ratingRow: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: spacing.xs,
   },
   serviceTitle: {
     color: colors.label,

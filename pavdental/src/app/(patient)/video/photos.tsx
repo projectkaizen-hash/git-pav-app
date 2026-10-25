@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import { ThemedText, Button, AppIcon } from "@/components";
-import { colors, spacing, radius } from "@/theme";
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { ThemedText, Button, AppIcon } from '@/components';
+import { colors, spacing, radius } from '@/theme';
 
 interface PhotoSlot {
   id: string;
@@ -27,27 +27,27 @@ export default function IntraoralPhotosScreen() {
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([
     {
-      id: "front",
-      label: "1. Front Teeth (Bite Closed)",
-      description: "Smile showing front top and bottom teeth together.",
-      isCaptured: true,
-    },
-    {
-      id: "affected",
-      label: "2. Affected Area / Pain Area",
-      description: "Close-up photo of the hurting tooth, filling or gum.",
-      isCaptured: true,
-    },
-    {
-      id: "upper",
-      label: "3. Upper Arch (Roof of Mouth)",
-      description: "Tilt head back, mouth open wide showing top teeth.",
+      id: 'front',
+      label: '1. Front Teeth (Bite Closed)',
+      description: 'Smile showing front top and bottom teeth together.',
       isCaptured: false,
     },
     {
-      id: "lower",
-      label: "4. Lower Arch (Floor of Mouth)",
-      description: "Tilt chin down, tongue relaxed behind front teeth.",
+      id: 'affected',
+      label: '2. Affected Area / Pain Area',
+      description: 'Close-up photo of the hurting tooth, filling or gum.',
+      isCaptured: false,
+    },
+    {
+      id: 'upper',
+      label: '3. Upper Arch (Roof of Mouth)',
+      description: 'Tilt head back, mouth open wide showing top teeth.',
+      isCaptured: false,
+    },
+    {
+      id: 'lower',
+      label: '4. Lower Arch (Floor of Mouth)',
+      description: 'Tilt chin down, tongue relaxed behind front teeth.',
       isCaptured: false,
     },
   ]);
@@ -55,7 +55,7 @@ export default function IntraoralPhotosScreen() {
   const toggleCapture = async (id: string) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+        mediaTypes: ['images'],
         quality: 0.85,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
@@ -64,27 +64,26 @@ export default function IntraoralPhotosScreen() {
             slot.id === id ? { ...slot, isCaptured: true, uri: result.assets[0].uri } : slot
           )
         );
-        return;
       }
     } catch {
-      // Fallback
+      // No photo library available: the slot stays empty.
     }
-    setPhotoSlots((prev) =>
-      prev.map((slot) =>
-        slot.id === id ? { ...slot, isCaptured: !slot.isCaptured } : slot
-      )
-    );
   };
 
   const handleContinue = () => {
     router.push({
-      pathname: "/(patient)/video/photo-review" as any,
+      pathname: '/(patient)/video/photo-review' as any,
       params: {
-        appointmentId: params.appointmentId || "",
-        symptomText: params.symptomText || "",
-        painLevel: params.painLevel || "5",
-        hasSwelling: params.hasSwelling || "false",
-        duration: params.duration || "",
+        appointmentId: params.appointmentId || '',
+        symptomText: params.symptomText || '',
+        painLevel: params.painLevel || '5',
+        hasSwelling: params.hasSwelling || 'false',
+        duration: params.duration || '',
+        photos: JSON.stringify(
+          Object.fromEntries(
+            photoSlots.filter((slot) => slot.uri).map((slot) => [slot.id, slot.uri])
+          )
+        ),
       },
     });
   };
@@ -97,28 +96,34 @@ export default function IntraoralPhotosScreen() {
             Guided dental photos
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
-            Clear photos help your dentist diagnose issues and prescribe antibiotics or pain relief before surgery.
+            Clear photos help your dentist understand the problem before your video call.
           </ThemedText>
         </View>
 
         {/* Tip Banner */}
         <View style={styles.tipBox}>
           <ThemedText variant="caption" style={styles.tipText}>
-            <ThemedText variant="caption" style={styles.tipBold}>Tip:</ThemedText> Use your smartphone's camera flash or stand near natural window light.
+            <ThemedText variant="caption" style={styles.tipBold}>
+              Tip:
+            </ThemedText>{' '}
+            Use your smartphone's camera flash or stand near natural window light.
           </ThemedText>
         </View>
 
         {/* Photo Slots */}
         <View style={styles.slotList}>
           {photoSlots.map((slot) => (
-            <Pressable accessibilityRole="checkbox" accessibilityLabel={slot.label} accessibilityState={{ checked: slot.isCaptured }}
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityLabel={slot.label}
+              accessibilityState={{ checked: slot.isCaptured }}
               key={slot.id}
               onPress={() => toggleCapture(slot.id)}
               style={[styles.slotCard, slot.isCaptured && styles.slotCardCaptured]}
             >
               <View style={styles.thumbnailBox}>
                 <AppIcon
-                  name={slot.isCaptured ? "image" : "plus"}
+                  name={slot.isCaptured ? 'image' : 'plus'}
                   size={22}
                   color={slot.isCaptured ? colors.success : colors.ink}
                 />
@@ -132,8 +137,11 @@ export default function IntraoralPhotosScreen() {
                 </ThemedText>
               </View>
               <View style={styles.statusBox}>
-                <ThemedText variant="caption" style={slot.isCaptured ? styles.statusDone : styles.statusPending}>
-                  {slot.isCaptured ? "Captured" : "Tap to Take"}
+                <ThemedText
+                  variant="caption"
+                  style={slot.isCaptured ? styles.statusDone : styles.statusPending}
+                >
+                  {slot.isCaptured ? 'Added' : 'Tap to add'}
                 </ThemedText>
               </View>
             </Pressable>
@@ -143,17 +151,20 @@ export default function IntraoralPhotosScreen() {
 
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
+        <Button title="Review photos" arrow size="lg" onPress={handleContinue} />
         <Button
-          title="Review photos"
-              arrow
-          size="lg"
-          onPress={handleContinue}
-        />
-        <Button
-          title="Skip photo step"
+          title="Continue without photos"
           variant="ghost"
           size="sm"
-          onPress={handleContinue}
+          onPress={() => {
+            setPhotoSlots((prev) =>
+              prev.map((slot) => ({ ...slot, isCaptured: false, uri: undefined }))
+            );
+            router.push({
+              pathname: '/(patient)/video/photo-review' as any,
+              params: { ...params, photos: '{}' },
+            });
+          }}
         />
       </View>
     </View>
@@ -181,10 +192,10 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   slotCard: {
-    alignItems: "center",
+    alignItems: 'center',
     backgroundColor: colors.systemBackground,
     borderRadius: radius.lg,
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.md,
     padding: spacing.md,
   },
@@ -207,11 +218,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   statusBox: {
-    alignItems: "flex-end",
+    alignItems: 'flex-end',
   },
   statusDone: {
     color: colors.ink,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   statusPending: {
     color: colors.secondaryLabel,
@@ -220,16 +231,16 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   thumbnailBox: {
-    alignItems: "center",
+    alignItems: 'center',
     backgroundColor: colors.inkSubtle,
     borderRadius: radius.md,
     height: 48,
-    justifyContent: "center",
+    justifyContent: 'center',
     width: 48,
   },
   tipBold: {
     color: colors.info,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   tipBox: {
     backgroundColor: colors.infoSubtle,
@@ -243,4 +254,3 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
 });
-

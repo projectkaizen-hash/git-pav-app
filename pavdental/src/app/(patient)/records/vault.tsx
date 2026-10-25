@@ -41,7 +41,7 @@ export default function DocumentVaultScreen() {
             Document vault
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            Digital health documents, X-rays, and invoices encrypted at rest.
+            Documents your dental team shares with you, stored encrypted.
           </ThemedText>
         </View>
 
@@ -68,7 +68,7 @@ export default function DocumentVaultScreen() {
         ) : documents.length === 0 ? (
           <EmptyState
             heading="No documents yet"
-            body="Your X-rays, prescriptions, and invoices will appear here after your appointments."
+            body="Documents your dental team shares with you will appear here."
             icon="fileText"
           />
         ) : (

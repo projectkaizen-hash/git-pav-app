@@ -19,6 +19,13 @@ const RULES = [
   { name: "tooth-specific finding", re: /\b(LR|LL|UR|UL)[1-8]\b|Tooth #\d+(?!\})/ },
   { name: "AI clinical claim", re: /24\/7 AI/i },
   { name: "made-up service id", re: /["']srv_[a-z_]+["']/ },
+  // Claims the restyle in #70 brought back (06-completion-plan.md TC-01..TC-07).
+  { name: "referral offer with no scheme behind it", re: /refer (friends|and earn)|invite link/i },
+  { name: "security claim the app can't back", re: /Secure Enclave|FaceID Verified|bank-grade/i },
+  { name: "NHS or DSPT compliance claim", re: /\bDSPT\b|NHS (&|and) Private|NHS scale/i },
+  { name: "finance promotion", re: /\b(Tabeo|Chrysalis)\b|0% (interest|APR)/i },
+  { name: "insurance coverage claim", re: /— covered|member discount|Accepts (Denplan|Bupa|AXA)/i },
+  { name: "feedback that goes nowhere", re: /feedback saved/i },
   {
     name: "claim that care was given",
     re: /Veneers Installation|clinical notes & charting|Dental examination & gum check|invoice has been sent/i,

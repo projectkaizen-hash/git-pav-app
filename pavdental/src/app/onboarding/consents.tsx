@@ -76,7 +76,7 @@ export default function OnboardingConsentsScreen() {
         throw new Error(err.error || "Could not save your profile");
       }
 
-      // 2. Consents → consent records (versioned, DSPT-auditable)
+      // 2. Consents → consent records (versioned and audited)
       const grants: Array<{ consentType: string; lawfulBasis: string }> = [
         { consentType: "data_processing", lawfulBasis: "consent" },
         { consentType: "clinical_records", lawfulBasis: "consent" },
@@ -115,7 +115,7 @@ export default function OnboardingConsentsScreen() {
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
-          <ProgressPills total={5} current={5} />
+          <ProgressPills total={4} current={4} />
         </View>
         <View style={styles.navSpacer} />
       </View>
@@ -129,7 +129,7 @@ export default function OnboardingConsentsScreen() {
             Privacy & consents
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            We adhere strictly to UK GDPR and NHS Data Security & Protection standards (DSPT).
+            We handle your data under UK GDPR. Our privacy notice explains how.
           </ThemedText>
         </View>
 

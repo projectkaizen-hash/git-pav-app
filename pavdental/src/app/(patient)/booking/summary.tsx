@@ -288,22 +288,6 @@ export default function BookingSummaryScreen() {
           </View>
         </Card>
 
-        {/* Insurance & eligibility (optional, Mobbin Zocdoc pattern) */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add or verify insurance"
-          onPress={() => router.push("/(patient)/booking/insurance" as never)}
-          style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-        >
-          <Card elevation="flat" style={styles.insuranceRow}>
-            <AppIcon name="shield" size={16} color={colors.ink} />
-            <ThemedText variant="caption" style={styles.insuranceText}>
-              Insurance & eligibility — scan a policy to auto-claim
-            </ThemedText>
-            <AppIcon name="chevronRight" size={14} color={colors.tertiaryLabel} />
-          </Card>
-        </Pressable>
-
         {/* Payment & Deposit Summary */}
         <Card style={styles.card}>
           <ThemedText variant="headline" style={styles.sectionTitle}>
@@ -464,19 +448,6 @@ const styles = StyleSheet.create({
   dateHighlight: {
     color: colors.ink,
     fontWeight: "700",
-  },
-  insuranceRow: {
-    alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: radius.lg,
-    flexDirection: "row",
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  insuranceText: {
-    color: colors.label,
-    flex: 1,
-    fontWeight: "600",
   },
   priceRow: {
     alignItems: "center",

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { ThemedText, Input, Button, Card, Badge } from "@/components";
+import { ThemedText, Input, Button, Badge } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { authFetch } from "@/features/auth/auth-api";
@@ -181,19 +181,6 @@ export default function OfflineCaptureScreen() {
           containerStyle={styles.notesContainer}
         />
 
-        {/* Procedures Completed Summary */}
-        <Card style={styles.card}>
-          <ThemedText variant="headline">Procedures billed today</ThemedText>
-          <View style={styles.procRow}>
-            <ThemedText variant="body">• {params.procedure || "Dental Examination"}</ThemedText>
-            <ThemedText variant="mono">TBD</ThemedText>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.procRow}>
-            <ThemedText variant="headline">Status:</ThemedText>
-            <ThemedText variant="mono" style={styles.totalDue}>Pending Billing</ThemedText>
-          </View>
-        </Card>
 
         {isSavedOffline ? (
           <View style={styles.successBanner}>
@@ -218,11 +205,6 @@ export default function OfflineCaptureScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.systemBackground,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
   container: {
     backgroundColor: colors.background,
     flex: 1,
@@ -249,17 +231,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     height: 8,
     width: 8,
-  },
-  procRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 2,
-  },
-  separator: {
-    backgroundColor: colors.separator,
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 4,
   },
   subtitle: {
     color: colors.secondaryLabel,
@@ -292,9 +263,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.label,
-  },
-  totalDue: {
-    color: colors.ink,
   },
 });
 

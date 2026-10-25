@@ -18,8 +18,8 @@ import { useBookingStore } from "@/features/booking/booking-store";
 
 // ─── Treatment plan detail — items, costs, progress, accept/decline ───────────
 // Reference pattern: Neo Financial Contract Confirmation & Aspen Clinical E-Sign.
-// Reachable from the Plans list; the accept/decline decision and digital signature
-// are recorded with GDC audit compliance.
+// Reachable from the Plans list. "Accepting" records that the patient read the
+// plan (decisions log D-06); consent to treatment is taken in person.
 
 export default function TreatmentPlanDetailScreen() {
   const router = useRouter();
@@ -134,7 +134,7 @@ export default function TreatmentPlanDetailScreen() {
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (hasHardware && isEnrolled) {
         const auth = await LocalAuthentication.authenticateAsync({
-          promptMessage: "Authenticate to sign your treatment plan",
+          promptMessage: "Confirm it's you",
           fallbackLabel: "Use passcode",
           disableDeviceFallback: false,
         });
@@ -166,7 +166,7 @@ export default function TreatmentPlanDetailScreen() {
       const res = await signPlanMutation.mutateAsync({
         planId: plan.id,
         signerName,
-        signatureData: `FaceID:${signerName}`,
+        signatureData: `read-confirmation:${signerName}`,
       });
       if (res?.signatureHash) {
         hashDisplay = res.signatureHash;
@@ -192,7 +192,7 @@ export default function TreatmentPlanDetailScreen() {
     } catch (err: any) {
       setShowSignSheet(false);
       setToast({
-        message: err?.message || "Could not sign treatment plan. Please try again.",
+        message: err?.message || "Could not save your confirmation. Please try again.",
         tone: "error",
       });
     }
@@ -239,7 +239,7 @@ export default function TreatmentPlanDetailScreen() {
             </ThemedText>
             <Badge
               label={
-                decision === "accepted" ? "Accepted & Signed" : decision === "declined" ? "Declined" : "Awaiting Review"
+                decision === "accepted" ? "Read" : decision === "declined" ? "Declined" : "Awaiting Review"
               }
               variant={decision === "declined" ? "danger" : decision === "accepted" ? "success" : "warning"}
             />
@@ -258,10 +258,10 @@ export default function TreatmentPlanDetailScreen() {
               </View>
               <View style={styles.certHeaderText}>
                 <ThemedText variant="headline" style={styles.certTitle}>
-                  Clinical consent signed & recorded
+                  You've confirmed you read this plan
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.certMeta}>
-                  GDC Principle 2 Compliant Audit Trail
+                  Your dentist will go through it with you and take your consent in person
                 </ThemedText>
               </View>
             </View>
@@ -269,7 +269,7 @@ export default function TreatmentPlanDetailScreen() {
             <View style={styles.certDetailsBox}>
               <View style={styles.certDetailRow}>
                 <ThemedText variant="caption" style={styles.certFieldLabel}>
-                  Authorized Signer:
+                  Confirmed by:
                 </ThemedText>
                 <ThemedText variant="subhead" style={styles.certFieldValue}>
                   {signedInfo.signerName}
@@ -277,7 +277,7 @@ export default function TreatmentPlanDetailScreen() {
               </View>
               <View style={styles.certDetailRow}>
                 <ThemedText variant="caption" style={styles.certFieldLabel}>
-                  Signed Timestamp:
+                  Confirmed at:
                 </ThemedText>
                 <ThemedText variant="mono" style={styles.certMetaMono}>
                   {signedInfo.signedAt}
@@ -285,7 +285,7 @@ export default function TreatmentPlanDetailScreen() {
               </View>
               <View style={styles.certDetailRow}>
                 <ThemedText variant="caption" style={styles.certFieldLabel}>
-                  Audit Integrity Hash:
+                  Record reference:
                 </ThemedText>
                 <ThemedText variant="mono" style={styles.certMetaMono}>
                   {signedInfo.hash || "Recorded on our servers"}
@@ -379,7 +379,7 @@ export default function TreatmentPlanDetailScreen() {
       {!decision ? (
         <View style={[styles.footerBar, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
           <Button
-            title={`Review & Sign Plan (${formatGbp(totalCostPence)})`}
+            title="Review this plan"
             size="lg"
             style={styles.footerBtn}
             onPress={() => setShowSignSheet(true)}
@@ -411,10 +411,10 @@ export default function TreatmentPlanDetailScreen() {
             <View style={styles.sheetHeader}>
               <View>
                 <ThemedText variant="headline" style={styles.sheetTitle}>
-                  Clinical consent & agreement
+                  Confirm you have read this plan
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.sheetSub}>
-                  GDC Compliant Treatment Plan Authorization
+                  This is not consent to treatment
                 </ThemedText>
               </View>
               <Pressable
@@ -480,17 +480,17 @@ export default function TreatmentPlanDetailScreen() {
                 <View style={styles.consentHeader}>
                   <AppIcon name="shieldCheck" size={16} color={colors.ink} />
                   <ThemedText variant="caption" style={styles.consentHeaderText}>
-                    GENERAL DENTAL COUNCIL (GDC) DISCLOSURE
+                    WHAT THIS MEANS
                   </ThemedText>
                 </View>
                 <ThemedText variant="caption" style={styles.consentBody}>
-                  “I confirm my clinician has explained the diagnostic indications, alternatives, risks, and post-procedure care for each procedure in this plan. I consent to treatment commencement and agree to the fees above.”
+                  I have read this treatment plan and the estimated fees. I understand my dentist will explain the options, risks and alternatives, and ask for my consent, before any treatment starts.
                 </ThemedText>
 
                 {/* Consent checkbox */}
                 <Pressable
                   accessibilityRole="checkbox"
-                  accessibilityLabel="I acknowledge and accept the clinical terms and conditions"
+                  accessibilityLabel="I have read this treatment plan"
                   accessibilityState={{ checked: consentChecked }}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -502,37 +502,17 @@ export default function TreatmentPlanDetailScreen() {
                     {consentChecked && <AppIcon name="check" size={12} color={colors.alwaysWhite} />}
                   </View>
                   <ThemedText variant="caption" style={styles.checkboxLabel}>
-                    I acknowledge and accept the clinical terms & conditions
+                    I have read this treatment plan
                   </ThemedText>
                 </Pressable>
               </Card>
 
-              {/* Simulated Digital Signature Pad */}
-              <View style={styles.signaturePad}>
-                <View style={styles.sigPadHeader}>
-                  <ThemedText variant="caption" style={styles.sigPadLabel}>
-                    PATIENT DIGITAL SIGNATURE
-                  </ThemedText>
-                  <ThemedText variant="mono" style={styles.sigPadMeta}>
-                    FaceID Verified
-                  </ThemedText>
-                </View>
-                <View style={styles.sigDisplayRow}>
-                  <ThemedText variant="title" style={styles.cursiveSignature}>
-                    {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Patient"}
-                  </ThemedText>
-                </View>
-                <View style={styles.sigBaseline} />
-                <ThemedText variant="caption" style={styles.sigPadSub}>
-                  Cryptographically secured with Apple Secure Enclave
-                </ThemedText>
-              </View>
             </ScrollView>
 
             {/* Authorize CTA */}
             <View style={styles.sheetFooter}>
               <Button
-                title={consentChecked ? "Sign & accept plan (Face ID)" : "Check agreement to sign"}
+                title={consentChecked ? "Confirm" : "Tick the box to confirm"}
                 variant="primary"
                 size="lg"
                 disabled={!consentChecked}
@@ -911,49 +891,6 @@ const styles = StyleSheet.create({
     color: colors.label,
     flex: 1,
     fontSize: 13,
-  },
-  signaturePad: {
-    backgroundColor: colors.systemBackground,
-    borderRadius: radius.lg,
-    gap: 6,
-    padding: spacing.sm,
-  },
-  sigPadHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  sigPadLabel: {
-    color: colors.secondaryLabel,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  sigPadMeta: {
-    color: colors.info,
-    fontSize: 11,
-  },
-  sigDisplayRow: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-  },
-  cursiveSignature: {
-    color: colors.ink,
-    fontFamily: "System",
-    fontSize: 22,
-    fontStyle: "italic",
-    fontWeight: "600",
-    letterSpacing: 1,
-  },
-  sigBaseline: {
-    backgroundColor: colors.separator,
-    height: 1,
-    width: "100%",
-  },
-  sigPadSub: {
-    alignSelf: "center",
-    color: colors.secondaryLabel,
-    fontSize: 11,
   },
   sheetFooter: {
     gap: spacing.xs,

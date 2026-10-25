@@ -130,7 +130,7 @@ export default function ResetPasswordScreen() {
                   Ready to sign in
                 </ThemedText>
                 <ThemedText variant="subhead" style={styles.successBody}>
-                  Your password meets all NHS and DSPT security standards.
+                  Your password meets our requirements.
                 </ThemedText>
               </View>
             </View>

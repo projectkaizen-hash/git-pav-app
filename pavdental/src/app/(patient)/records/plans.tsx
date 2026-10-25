@@ -96,7 +96,7 @@ export default function TreatmentPlansScreen() {
                     {plan.title}
                   </ThemedText>
                   <Badge
-                    label={isAccepted ? "Accepted & Signed" : "Pending Signature"}
+                    label={isAccepted ? "Read" : "Not read yet"}
                     variant={isAccepted ? "success" : "warning"}
                   />
                 </View>
@@ -104,7 +104,7 @@ export default function TreatmentPlansScreen() {
                   Prescribed by {clinicianName} on {createdAt}.
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.legalNotice}>
-                  Itemised breakdown of recommended clinical interventions according to UK Private & NHS scale rules.
+                  Itemised estimate of the treatment your dentist recommends. Your dentist will go through it with you before treatment starts.
                 </ThemedText>
               </Card>
               </Pressable>
@@ -141,17 +141,12 @@ export default function TreatmentPlansScreen() {
                   </ThemedText>
                 </View>
                 {totalCostPence > 0 && (
-                  <View style={styles.financeBox}>
-                    <View style={styles.financeTitleRow}>
-                      <AppIcon name="creditCard" size={14} color={colors.ink} />
-                      <ThemedText variant="caption" style={styles.financeTitle}>
-                        0% interest finance available
-                      </ThemedText>
-                    </View>
-                    <ThemedText variant="caption" style={styles.financeBody}>
-                      Spread over 6 months at {formatGbp(Math.round(totalCostPence / 6))} / month with Tabeo / Chrysalis.
-                    </ThemedText>
-                  </View>
+                  <Button
+                    title="Ways to pay"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => router.push("/(patient)/records/financing" as never)}
+                  />
                 )}
               </Card>
 
@@ -159,13 +154,13 @@ export default function TreatmentPlansScreen() {
                 <View style={styles.signatureBox}>
                   <AppIcon name="checkCircle" size={16} color={colors.success} />
                   <ThemedText variant="caption" style={styles.sigText}>
-                    Digitally signed and accepted.
+                    You've confirmed you read this plan.
                   </ThemedText>
                 </View>
               ) : (
                 <View style={styles.footer}>
                   <Button
-                    title={`Digitally Accept Plan (${formatGbp(totalCostPence)})`}
+                    title="I've read this plan"
                     size="lg"
                     onPress={() => handleAcceptPlan(plan.id)}
                   />
@@ -200,24 +195,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
-  },
-  financeBody: {
-    color: colors.ink,
-  },
-  financeBox: {
-    backgroundColor: colors.inkSubtle,
-    borderRadius: radius.sm,
-    gap: 4,
-    padding: spacing.sm,
-  },
-  financeTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xxs,
-  },
-  financeTitle: {
-    color: colors.ink,
-    fontWeight: "700",
   },
   footer: {
     backgroundColor: colors.background,

@@ -30,13 +30,13 @@ const links: RecordLink[] = [
   {
     icon: "droplet",
     title: "Prescriptions & dispensing",
-    subtitle: "View electronic pharmacy notes",
+    subtitle: "Prescriptions from your dentist",
     route: "/(patient)/records/prescriptions",
   },
   {
     icon: "image",
-    title: "Radiographs & x-rays",
-    subtitle: "Your X-rays and clinical images",
+    title: "Documents",
+    subtitle: "Documents your dental team shares with you",
     route: "/(patient)/records/vault",
   },
   {

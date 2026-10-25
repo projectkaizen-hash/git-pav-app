@@ -32,7 +32,7 @@ export default function OnboardingAddressScreen() {
       addressLine2: addressLine2.trim(),
       city: city.trim(),
     });
-    router.push("/onboarding/insurance");
+    router.push("/onboarding/medical-history");
   };
 
   return (
@@ -50,7 +50,7 @@ export default function OnboardingAddressScreen() {
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
-            <ProgressPills total={5} current={2} />
+            <ProgressPills total={4} current={2} />
           </View>
           <View style={styles.navSpacer} />
         </View>
@@ -114,7 +114,7 @@ export default function OnboardingAddressScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Continue to insurance"
+              title="Continue"
               size="lg"
               arrow={true}
               onPress={handleNext}
