@@ -18,7 +18,7 @@ export default function PatientLayout() {
       <Stack.Screen name="records" />
       <Stack.Screen name="van" />
       <Stack.Screen name="video" />
-      <Stack.Screen name="check-in" options={{ ...stackScreenOptions, title: "Pre-Visit Check-In" }} />
+      <Stack.Screen name="check-in" options={{ ...stackScreenOptions, title: "Pre-visit check-in", headerTitle: "" }} />
       <Stack.Screen name="perks" />
     </Stack>
   );

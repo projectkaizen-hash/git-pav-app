@@ -38,7 +38,7 @@ export default function PrescriptionsScreen() {
       }
       style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
     >
-      <Card elevation="raised" style={styles.rowCard}>
+      <Card style={styles.rowCard}>
         <View style={styles.rowIcon}>
           <AppIcon name="droplet" size={18} color={colors.ink} />
         </View>
@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   group: {

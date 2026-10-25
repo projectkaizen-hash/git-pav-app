@@ -63,10 +63,10 @@ export default function OnboardingInsuranceScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -82,7 +82,7 @@ export default function OnboardingInsuranceScreen() {
       >
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Dental Insurance
+            Dental insurance
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Optional — add a policy to speed up claims and check what's covered before you book.
@@ -121,7 +121,7 @@ export default function OnboardingInsuranceScreen() {
               <>
                 {insurer === "Other" ? (
                   <Input
-                    label="Insurance Provider Name"
+                    label="Insurance provider name"
                     placeholder="e.g. Vitality Health"
                     value={customProvider}
                     onChangeText={setCustomProvider}
@@ -195,7 +195,7 @@ export default function OnboardingInsuranceScreen() {
 
         <View style={styles.actions}>
           <Button
-            title={hasInsurance === true ? "Save & Continue" : "Continue to Medical History"}
+            title={hasInsurance === true ? "Save & continue" : "Continue to medical history"}
             size="lg"
             arrow={true}
             disabled={hasInsurance === null}

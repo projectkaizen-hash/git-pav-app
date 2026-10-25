@@ -95,10 +95,10 @@ export default function VerifyEmailScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
         </View>
@@ -141,7 +141,7 @@ export default function VerifyEmailScreen() {
 
           <View style={styles.form}>
             <Input
-              label="Verification Code / Link Token"
+              label="Verification code / link token"
               placeholder="Enter code"
               autoCapitalize="none"
               value={code}
@@ -154,7 +154,7 @@ export default function VerifyEmailScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Verify & Continue"
+              title="Verify & continue"
               size="lg"
               arrow={true}
               loading={loading}
@@ -177,8 +177,8 @@ export default function VerifyEmailScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
     paddingTop: spacing.sm,
   },
   emailHighlight: {
@@ -230,9 +230,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {

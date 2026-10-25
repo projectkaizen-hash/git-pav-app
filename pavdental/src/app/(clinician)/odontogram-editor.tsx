@@ -146,13 +146,13 @@ export default function OdontogramEditorScreen() {
         {/* Navigation */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Patient File"
+            title="‹ Patient file"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
           />
           <Button
-            title={showHistory ? "View Chart" : "View History"}
+            title={showHistory ? "View chart" : "View history"}
             variant="ghost"
             size="sm"
             onPress={() => setShowHistory(!showHistory)}
@@ -161,7 +161,7 @@ export default function OdontogramEditorScreen() {
 
         <View style={styles.headerBlock}>
           <ThemedText variant="title" style={styles.title}>
-            Odontogram Editor
+            Odontogram editor
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Patient: {params.patientName || "Verified Patient"}
@@ -193,7 +193,7 @@ export default function OdontogramEditorScreen() {
           </Card>
         ) : showHistory ? (
           /* History View (PT-3 audit) */
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.sectionHeading}>
               Append-Only Tooth History ({history.length} Entries)
             </ThemedText>
@@ -236,7 +236,7 @@ export default function OdontogramEditorScreen() {
         ) : (
           <>
             {/* Tooth Grid */}
-            <Card elevation="raised" style={styles.chartCard}>
+            <Card style={styles.chartCard}>
               <ThemedText variant="caption" style={styles.archLabel}>
                 MAXILLARY ARCH (UPPER JAW: 1 - 16)
               </ThemedText>
@@ -293,7 +293,7 @@ export default function OdontogramEditorScreen() {
             </Card>
 
             {/* Tooth Inspector & Editor */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.inspectorHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
                   Tooth #{selectedTooth} Details
@@ -348,7 +348,7 @@ export default function OdontogramEditorScreen() {
 
               <View style={styles.saveChartRow}>
                 <Button
-                  title={saving ? "Saving Chart…" : "Save Dental Chart"}
+                  title={saving ? "Saving chart…" : "Save dental chart"}
                   size="md"
                   variant="primary"
                   disabled={saving}
@@ -407,7 +407,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   emptyNote: {

@@ -104,7 +104,7 @@ export default function SecurityScreen() {
         </ThemedText>
         <Card padding="none">
           <ListRow
-            title="Change Account Password"
+            title="Change account password"
             subtitle="Update your master security password"
             left={<ThemedText>🔑</ThemedText>}
             right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
@@ -112,7 +112,7 @@ export default function SecurityScreen() {
             separator
           />
           <ListRow
-            title="Active Logged-in Sessions"
+            title="Active logged-in sessions"
             subtitle="View devices and sign out other sessions"
             left={<AppIcon name="smartphone" size={18} color={colors.ink} />}
             right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
@@ -141,7 +141,7 @@ export default function SecurityScreen() {
           </View>
           {!user?.emailVerified && (
             <Button
-              title={resendVerification.isPending ? "Sending..." : "Resend Verification Email"}
+              title={resendVerification.isPending ? "Sending..." : "Resend verification email"}
               variant="secondary"
               size="sm"
               onPress={handleResendEmail}
@@ -158,7 +158,7 @@ export default function SecurityScreen() {
         </ThemedText>
         <Card padding="none">
           <ListRow
-            title="Consent & Data Usage"
+            title="Consent & data usage"
             subtitle="Signed GDPR records & retention disclosures"
             left={<ThemedText>📄</ThemedText>}
             right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
@@ -166,7 +166,7 @@ export default function SecurityScreen() {
             separator
           />
           <ListRow
-            title="Encryption Standards"
+            title="Encryption standards"
             subtitle="Development prototype - independent security review required for production"
             left={<ThemedText>🛡️</ThemedText>}
           />
@@ -182,7 +182,7 @@ export default function SecurityScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <ThemedText variant="headline">Change Password</ThemedText>
+            <ThemedText variant="headline">Change password</ThemedText>
             <Button
               title="Close"
               variant="ghost"
@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   modalContainer: {

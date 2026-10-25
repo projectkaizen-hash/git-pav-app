@@ -36,10 +36,10 @@ export default function OnboardingMedicalHistoryScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
@@ -55,7 +55,7 @@ export default function OnboardingMedicalHistoryScreen() {
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Medical History
+              Medical history
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Essential clinical questions to keep you safe during dental treatments and anaesthetics.
@@ -67,7 +67,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Known Allergies</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Known allergies</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     e.g. Latex, Penicillin, Anaesthetics
                   </ThemedText>
@@ -97,7 +97,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Regular Medications</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Regular medications</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     Prescription or regular over-the-counter
                   </ThemedText>
@@ -127,7 +127,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Blood Thinners / Bleeding</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Blood thinners / bleeding</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     e.g. Warfarin, Apixaban, Clopidogrel
                   </ThemedText>
@@ -144,7 +144,7 @@ export default function OnboardingMedicalHistoryScreen() {
 
             {/* GP Surgery */}
             <Input
-              label="GP Surgery / Practice Name"
+              label="GP surgery / practice name"
               placeholder="e.g. High Street Medical Centre"
               value={gpSurgery}
               onChangeText={setGpSurgery}
@@ -153,7 +153,7 @@ export default function OnboardingMedicalHistoryScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Continue to Consents"
+              title="Continue to consents"
               size="lg"
               arrow={true}
               onPress={handleNext}
@@ -167,7 +167,7 @@ export default function OnboardingMedicalHistoryScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    marginTop: spacing.xl,
+    marginTop: "auto",
     paddingTop: spacing.sm,
   },
   card: {
@@ -208,9 +208,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {

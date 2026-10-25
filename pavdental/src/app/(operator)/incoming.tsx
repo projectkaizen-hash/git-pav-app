@@ -76,7 +76,7 @@ export default function OperatorIncomingScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <ThemedText variant="largeTitle">Incoming Requests</ThemedText>
+          <ThemedText variant="largeTitle">Incoming requests</ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Requests expire in 4 minutes if not accepted.
           </ThemedText>
@@ -85,13 +85,13 @@ export default function OperatorIncomingScreen() {
         {incoming.length === 0 ? (
           <Card style={styles.emptyCard}>
             <ThemedText variant="headline" style={styles.emptyTitle}>
-              No Incoming Requests
+              No incoming requests
             </ThemedText>
             <ThemedText variant="caption" style={styles.emptyBody}>
               New patient requests in your coverage area will appear here automatically.
             </ThemedText>
             <Button
-              title="Return to Shift Console"
+              title="Return to shift console"
               variant="secondary"
               onPress={() => router.back()}
             />
@@ -105,7 +105,7 @@ export default function OperatorIncomingScreen() {
             );
 
             return (
-              <Card key={req.id} elevation="raised" style={styles.requestCard}>
+              <Card key={req.id} style={styles.requestCard}>
                 <View style={styles.cardHeader}>
                   <Badge label={`Expires in ~${timeRemaining}m`} variant="warning" />
                   <ThemedText variant="caption" style={styles.procedure}>
@@ -147,7 +147,8 @@ export default function OperatorIncomingScreen() {
                     onPress={() => handleDecline(req.id, patientName)}
                   />
                   <Button
-                    title="Accept Stop ›"
+                    title="Accept stop"
+              arrow
                     variant="primary"
                     size="sm"
                     loading={acceptMutation.isPending}
@@ -184,7 +185,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   detail: {

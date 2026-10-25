@@ -6,14 +6,14 @@ export default function RecordsLayout() {
     <Stack
       screenOptions={stackScreenOptions}
     >
-      <Stack.Screen name="odontogram" options={{ title: "Dental Odontogram" }} />
-      <Stack.Screen name="plans" options={{ title: "Treatment Plans" }} />
-      <Stack.Screen name="plans/[id]" options={{ title: "Plan Details" }} />
-      <Stack.Screen name="prescriptions" options={{ title: "Prescriptions & Meds" }} />
-      <Stack.Screen name="prescriptions/[id]" options={{ title: "Prescription Details" }} />
-      <Stack.Screen name="vault" options={{ title: "Document Vault" }} />
-      <Stack.Screen name="financing" options={{ title: "Payment plans" }} />
-      <Stack.Screen name="insights" options={{ title: "Oral Health Insights" }} />
+      <Stack.Screen name="odontogram" options={{ title: "Dental odontogram", headerShown: false }} />
+      <Stack.Screen name="plans" options={{ title: "Treatment plans", headerTitle: "" }} />
+      <Stack.Screen name="plans/[id]" options={{ title: "Plan details" }} />
+      <Stack.Screen name="prescriptions" options={{ title: "Prescriptions & meds" }} />
+      <Stack.Screen name="prescriptions/[id]" options={{ title: "Prescription details" }} />
+      <Stack.Screen name="vault" options={{ title: "Document vault", headerTitle: "" }} />
+      <Stack.Screen name="financing" options={{ title: "Payment plans", headerTitle: "" }} />
+      <Stack.Screen name="insights" options={{ title: "Oral health insights", headerTitle: "" }} />
     </Stack>
   );
 }

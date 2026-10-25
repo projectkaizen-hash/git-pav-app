@@ -33,22 +33,22 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Account",
     rows: [
       {
-        title: "Personal Information",
+        title: "Personal information",
         icon: "profile",
         route: "/(patient)/(tabs)/profile/personal-info",
       },
       {
-        title: "Medical History",
+        title: "Medical history",
         icon: "clipboard",
         route: "/(patient)/(tabs)/profile/medical-history",
       },
       {
-        title: "Emergency Contact",
+        title: "Emergency contact",
         icon: "heart",
         route: "/(patient)/(tabs)/profile/emergency-contact",
       },
       {
-        title: "Dependants & Family",
+        title: "Dependants & family",
         icon: "users",
         route: "/(patient)/(tabs)/profile/dependants",
       },
@@ -58,12 +58,12 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Preferences",
     rows: [
       {
-        title: "Notification Preferences",
+        title: "Notification preferences",
         icon: "bell",
         route: "/(patient)/(tabs)/profile/notifications",
       },
       {
-        title: "Payment Methods",
+        title: "Payment methods",
         icon: "creditCard",
         route: "/(patient)/(tabs)/profile/payment-methods",
       },
@@ -73,12 +73,12 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Security & Privacy",
     rows: [
       {
-        title: "Security & Privacy",
+        title: "Security & privacy",
         icon: "lock",
         route: "/(patient)/(tabs)/profile/security",
       },
       {
-        title: "Active Sessions",
+        title: "Active sessions",
         icon: "smartphone",
         route: "/(patient)/(tabs)/profile/sessions",
       },
@@ -197,7 +197,7 @@ export default function ProfileScreen() {
             </ThemedText>
             <Card padding="none">
               <ListRow
-                title="Clinician Portal (Dentist)"
+                title="Clinician portal (dentist)"
                 subtitle="Schedule, tooth chart and prescriptions"
                 left={
                   <View style={styles.rowIcon}>
@@ -217,7 +217,7 @@ export default function ProfileScreen() {
                 separator
               />
               <ListRow
-                title="Mobile Van Operator Portal"
+                title="Mobile van operator portal"
                 subtitle="Unit 01 Dispatch · Real-time Stops, En Route & On-Site Triage"
                 left={
                   <View style={styles.rowIcon}>
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
           </ThemedText>
           <Card padding="none">
             <ListRow
-              title="Sign Out"
+              title="Sign out"
               left={
                 <View style={styles.rowIcon}>
                   <AppIcon name="logOut" size={18} color={colors.label} />
@@ -256,7 +256,7 @@ export default function ProfileScreen() {
               separator
             />
             <ListRow
-              title="Delete Account"
+              title="Delete account"
               subtitle="Permanently remove your account and data"
               left={
                 <View style={[styles.rowIcon, styles.rowIconDanger]}>

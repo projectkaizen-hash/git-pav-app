@@ -108,10 +108,10 @@ export default function SlotPickerScreen() {
       {/* Top Navigation */}
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -261,7 +261,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxxl,
   },
   dateBar: {
@@ -292,10 +293,9 @@ const styles = StyleSheet.create({
     color: colors.onInk,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   progressWrap: {
     flex: 1,

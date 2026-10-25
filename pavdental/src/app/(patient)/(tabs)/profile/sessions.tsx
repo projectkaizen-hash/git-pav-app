@@ -116,7 +116,7 @@ export default function SessionsScreen() {
       {hasOtherSessions && (
         <View style={styles.actionWrap}>
           <Button
-            title={revokeAllOthers.isPending ? "Signing out others..." : "Sign Out All Other Devices"}
+            title={revokeAllOthers.isPending ? "Signing out others..." : "Sign out all other devices"}
             variant="destructive"
             onPress={handleRevokeAllOthers}
             disabled={revokeAllOthers.isPending}
@@ -143,7 +143,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   headerBox: {

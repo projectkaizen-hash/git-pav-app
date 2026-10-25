@@ -45,10 +45,10 @@ export default function OnboardingProfileScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
@@ -64,7 +64,7 @@ export default function OnboardingProfileScreen() {
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Personal Details
+              Personal details
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Required for your legal NHS/private dental patient record.
@@ -73,7 +73,7 @@ export default function OnboardingProfileScreen() {
 
           <View style={styles.form}>
             <Input
-              label="Date of Birth"
+              label="Date of birth"
               placeholder="DD / MM / YYYY"
               keyboardType="numbers-and-punctuation"
               value={dob}
@@ -85,21 +85,21 @@ export default function OnboardingProfileScreen() {
             />
 
             <Input
-              label="Gender / Pronouns (Optional)"
+              label="Gender / pronouns (optional)"
               placeholder="e.g. Female, Male, Non-binary"
               value={gender}
               onChangeText={setGender}
             />
 
             <Input
-              label="Emergency Contact Name"
+              label="Emergency contact name"
               placeholder="Next of kin or contact"
               value={emergencyContact}
               onChangeText={setEmergencyContact}
             />
 
             <Input
-              label="Emergency Contact Phone"
+              label="Emergency contact phone"
               placeholder="+44 7123 456789"
               keyboardType="phone-pad"
               value={emergencyPhone}
@@ -109,7 +109,7 @@ export default function OnboardingProfileScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Continue to Address"
+              title="Continue to address"
               size="lg"
               arrow={true}
               onPress={handleNext}
@@ -123,7 +123,7 @@ export default function OnboardingProfileScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    marginTop: spacing.xl,
+    marginTop: "auto",
     paddingTop: spacing.sm,
   },
   flex: {
@@ -150,9 +150,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {

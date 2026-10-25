@@ -35,10 +35,10 @@ export default function ForgotPasswordScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
         </View>
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.actions}>
             {!submitted ? (
               <Button
-                title="Send Reset Instructions"
+                title="Send reset instructions"
                 size="lg"
                 arrow={true}
                 loading={loading}
@@ -99,7 +99,7 @@ export default function ForgotPasswordScreen() {
             ) : null}
 
             <Button
-              title="Return to Sign In"
+              title="Return to sign in"
               variant={submitted ? "primary" : "ghost"}
               size="lg"
               arrow={submitted}
@@ -114,8 +114,8 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
     paddingTop: spacing.sm,
   },
   flex: {
@@ -135,9 +135,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {

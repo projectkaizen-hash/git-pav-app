@@ -98,7 +98,7 @@ export default function ClinicianPatientRecordScreen() {
         {/* Navigation & Header */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Daily Schedule"
+            title="‹ Daily schedule"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
@@ -140,7 +140,7 @@ export default function ClinicianPatientRecordScreen() {
         ) : error ? (
           <Card elevation="flat" style={styles.errorCard}>
             <ThemedText variant="headline" style={styles.errorTitle}>
-              Record Load Error
+              Record load error
             </ThemedText>
             <ThemedText variant="caption" style={styles.errorBody}>
               {error}
@@ -150,13 +150,14 @@ export default function ClinicianPatientRecordScreen() {
         ) : (
           <>
             {/* Quick Actions */}
-            <Card elevation="raised" style={styles.actionCard}>
+            <Card style={styles.actionCard}>
               <ThemedText variant="headline" style={styles.sectionHeading}>
-                Consultation Actions
+                Consultation actions
               </ThemedText>
               <View style={styles.actionGrid}>
                 <Button
-                  title="Edit Odontogram ›"
+                  title="Edit odontogram"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -167,7 +168,8 @@ export default function ClinicianPatientRecordScreen() {
                   }
                 />
                 <Button
-                  title="Build Treatment Plan ›"
+                  title="Build treatment plan"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -178,7 +180,8 @@ export default function ClinicianPatientRecordScreen() {
                   }
                 />
                 <Button
-                  title="Examination Notes ›"
+                  title="Examination notes"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -192,14 +195,14 @@ export default function ClinicianPatientRecordScreen() {
               {appointmentId ? (
                 <View style={styles.statusActionRow}>
                   <Button
-                    title="Mark Completed"
+                    title="Mark completed"
                     size="sm"
                     variant="primary"
                     disabled={actionInProgress}
                     onPress={handleComplete}
                   />
                   <Button
-                    title="Mark No-Show"
+                    title="Mark no-show"
                     size="sm"
                     variant="destructive"
                     disabled={actionInProgress}
@@ -210,13 +213,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Examination Notes Summary */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
-                  Clinical Examination Notes
+                  Clinical examination notes
                 </ThemedText>
                 <Button
-                  title="Edit Notes"
+                  title="Edit notes"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -263,13 +266,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Odontogram Overview */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
-                  Dental Chart (Odontogram)
+                  Dental chart (odontogram)
                 </ThemedText>
                 <Button
-                  title="Update Chart"
+                  title="Update chart"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -310,13 +313,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Treatment Plans */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
                   Treatment Plans ({plans.length})
                 </ThemedText>
                 <Button
-                  title="New Plan"
+                  title="New plan"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -386,7 +389,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   diagRow: {

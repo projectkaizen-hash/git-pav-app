@@ -193,14 +193,14 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: 2,

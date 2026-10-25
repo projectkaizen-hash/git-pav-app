@@ -146,7 +146,7 @@ export default function PhotoReviewScreen() {
 
         <View style={styles.list}>
           {slots.map((slot) => (
-            <Card key={slot.id} elevation="raised" style={styles.rowCard}>
+            <Card key={slot.id} style={styles.rowCard}>
               <View style={[styles.thumb, !slot.captured && styles.thumbEmpty]}>
                 <AppIcon name={slot.captured ? "image" : "camera"} size={22} color={slot.captured ? colors.onInk : colors.ink} />
               </View>
@@ -202,15 +202,15 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,

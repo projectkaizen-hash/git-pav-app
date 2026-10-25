@@ -8,6 +8,7 @@ import { ToothRecord, ToothCondition } from "@/features/records/records-types";
 import { useOdontogram } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { toLabel } from "@/lib/text";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const STANDARD_TEETH: ToothRecord[] = Array.from({ length: 32 }, (_, idx) => {
   const num = idx + 1;
@@ -169,7 +170,7 @@ export default function OdontogramScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Top Header: Back + Title "Clean Progress" + Right Hygiene Icon */}
         <View style={styles.header}>
@@ -179,11 +180,11 @@ export default function OdontogramScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
           >
-            <AppIcon name="chevronLeft" size={16} color={colors.ink} />
+            <AppIcon name="arrowLeft" size={22} color={colors.ink} />
           </Pressable>
 
           <ThemedText variant="headline" style={styles.headerTitle}>
-            Clean Progress
+            Clean progress
           </ThemedText>
 
           <View style={styles.hygieneIconCircle}>
@@ -192,7 +193,7 @@ export default function OdontogramScreen() {
         </View>
 
         {/* 3D Visual Dental Arch Model with Interactive Risk Annotation */}
-        <Card elevation="raised" style={styles.archContainer}>
+        <Card style={styles.archContainer}>
           <View style={styles.archModelWrapper}>
             {/* Upper Jaw Arch */}
             <View style={styles.archRow}>
@@ -394,7 +395,7 @@ export default function OdontogramScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -419,10 +420,10 @@ const styles = StyleSheet.create({
   backBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    height: 38,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 38,
+    width: 40,
   },
   container: {
     backgroundColor: colors.background,
@@ -430,7 +431,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   enamelDot: {
@@ -576,10 +578,10 @@ const styles = StyleSheet.create({
   closeBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    height: 32,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 32,
+    width: 40,
   },
   sheetScroll: {
     gap: spacing.sm,

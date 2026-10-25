@@ -93,17 +93,17 @@ export default function SignUpScreen() {
           {/* Top Bar with circular back button */}
           <View style={styles.topNav}>
             <IconButton
-              icon="chevronLeft"
+              icon="arrowLeft"
               label="Go back"
               variant="soft"
-              size={18}
+              size={22}
               onPress={() => router.back()}
             />
           </View>
 
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Create Account
+              Create account
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Complete registration details for{" "}
@@ -162,7 +162,7 @@ export default function SignUpScreen() {
             />
 
             <Input
-              label="UK Mobile number (Optional)"
+              label="UK mobile number (optional)"
               placeholder="+44 7123 456789"
               keyboardType="phone-pad"
               value={phone}
@@ -229,7 +229,7 @@ export default function SignUpScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Create Account"
+              title="Create account"
               size="lg"
               arrow
               loading={loading}
@@ -255,8 +255,8 @@ export default function SignUpScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
   },
   emailHighlight: {
     color: colors.label,
@@ -329,10 +329,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,

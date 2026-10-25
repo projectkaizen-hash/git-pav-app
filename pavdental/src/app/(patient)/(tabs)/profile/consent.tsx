@@ -108,7 +108,7 @@ export default function ConsentScreen() {
       <View style={styles.banner}>
         <AppIcon name="clipboard" size={24} color={colors.ink} />
         <View style={styles.bannerTextWrap}>
-          <ThemedText variant="headline">UK GDPR & NHS DSPT Standards</ThemedText>
+          <ThemedText variant="headline">UK GDPR & NHS DSPT standards</ThemedText>
           <ThemedText variant="caption" style={styles.bannerSub}>
             You have legal control over your clinical consents and data processing choices.
           </ThemedText>
@@ -124,7 +124,7 @@ export default function ConsentScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Special Category Health Data
+              Special category health data
             </ThemedText>
             <Badge variant={healthDataConsent ? "success" : "default"} label={healthDataConsent ? "Active" : "Pending"} />
           </View>
@@ -144,7 +144,7 @@ export default function ConsentScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Clinical Treatment & Examination
+              Clinical treatment & examination
             </ThemedText>
             <Badge variant={treatmentConsent ? "success" : "default"} label={treatmentConsent ? "Active" : "Pending"} />
           </View>
@@ -164,7 +164,7 @@ export default function ConsentScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Recall & Preventive Reminders
+              Recall & preventive reminders
             </ThemedText>
             <Badge
               variant={marketingOptedIn ? "success" : "default"}
@@ -196,7 +196,7 @@ export default function ConsentScreen() {
           STATUTORY DATA RETENTION
         </ThemedText>
         <Card style={styles.card}>
-          <ThemedText variant="headline">How Long Records Are Stored</ThemedText>
+          <ThemedText variant="headline">How long records are stored</ThemedText>
           <ThemedText variant="caption" style={styles.cardDesc}>
             Under UK NHS and Private Dental regulations, dental records, radiographs, and clinical consultation notes must be preserved for a minimum of 11 years after completion of treatment (or until age 25 for children, whichever is longer).
           </ThemedText>
@@ -209,12 +209,12 @@ export default function ConsentScreen() {
           RIGHT OF ACCESS (SAR)
         </ThemedText>
         <Card style={styles.card}>
-          <ThemedText variant="headline">Export Your Dental Records</ThemedText>
+          <ThemedText variant="headline">Export your dental records</ThemedText>
           <ThemedText variant="caption" style={styles.cardDesc}>
             Receive an authenticated data export bundle containing your treatment plans, odontogram history, and signed consents, securely saved to your Document Vault.
           </ThemedText>
           <Button
-            title={isExporting ? "Generating Bundle..." : "Request GDPR Data Bundle"}
+            title={isExporting ? "Generating bundle..." : "Request GDPR data bundle"}
             variant="secondary"
             onPress={handleExportData}
             disabled={isExporting}
@@ -268,7 +268,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   metaRow: {

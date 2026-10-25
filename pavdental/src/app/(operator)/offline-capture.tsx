@@ -163,7 +163,7 @@ export default function OfflineCaptureScreen() {
 
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Clinical Note & Discharge
+            Clinical note & discharge
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Logged by {clinicianName} for {patientName}.
@@ -172,7 +172,7 @@ export default function OfflineCaptureScreen() {
 
         {/* Clinical Note Capture */}
         <Input
-          label="Clinical Consultation & Treatment Notes"
+          label="Clinical consultation & treatment notes"
           multiline
           numberOfLines={6}
           placeholder="Enter examination findings, procedures performed, and any recommendations..."
@@ -182,8 +182,8 @@ export default function OfflineCaptureScreen() {
         />
 
         {/* Procedures Completed Summary */}
-        <Card elevation="raised" style={styles.card}>
-          <ThemedText variant="headline">Procedures Billed Today</ThemedText>
+        <Card style={styles.card}>
+          <ThemedText variant="headline">Procedures billed today</ThemedText>
           <View style={styles.procRow}>
             <ThemedText variant="body">• {params.procedure || "Dental Examination"}</ThemedText>
             <ThemedText variant="mono">TBD</ThemedText>
@@ -207,7 +207,7 @@ export default function OfflineCaptureScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Button
-          title={isSyncing ? "Saving..." : "Save Note & Complete Visit"}
+          title={isSyncing ? "Saving..." : "Save note & complete visit"}
           size="lg"
           loading={isSyncing}
           onPress={handleSaveAndSync}
@@ -229,14 +229,14 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,

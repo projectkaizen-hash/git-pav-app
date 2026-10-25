@@ -28,10 +28,10 @@ export default function ClinicianPickerScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -41,7 +41,7 @@ export default function ClinicianPickerScreen() {
 
       <View style={styles.header}>
         <ThemedText variant="largeTitle" style={styles.title}>
-          Select a Practitioner
+          Select a practitioner
         </ThemedText>
         <ThemedText variant="subhead" style={styles.sub}>
           Or choose 'First Available' for the earliest appointment slot.
@@ -61,7 +61,7 @@ export default function ClinicianPickerScreen() {
           </View>
           <View style={styles.anyInfo}>
             <ThemedText variant="headline" style={styles.anyTitle}>
-              Any Practitioner (First Available)
+              Any practitioner (first available)
             </ThemedText>
             <ThemedText variant="caption" style={styles.anySub}>
               Recommended for urgent care or fastest booking dates.
@@ -209,7 +209,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   docInfo: {

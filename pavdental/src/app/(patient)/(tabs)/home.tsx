@@ -150,7 +150,7 @@ export default function PatientHomeScreen() {
           </View>
           <IconButton
             icon="profile"
-            label="Profile & Settings"
+            label="Profile & settings"
             variant="soft"
             onPress={() => router.push("/(patient)/(tabs)/profile" as never)}
           />
@@ -300,7 +300,7 @@ export default function PatientHomeScreen() {
 
       {/* Active Van Dispatch banner (if running) */}
       {activeVanRequest && (
-        <Card elevation="raised" style={styles.dispatchCard}>
+        <Card style={styles.dispatchCard}>
           <View style={styles.dispatchHeader}>
             <View style={styles.dispatchTitleRow}>
               <View style={styles.liveDot} />
@@ -363,7 +363,7 @@ export default function PatientHomeScreen() {
             <AppIcon name="video" size={20} color={colors.ink} />
           </View>
           <ThemedText variant="headline" style={styles.quickTitle}>
-            Video Consult
+            Video consult
           </ThemedText>
           <ThemedText variant="caption" style={styles.quickSub}>
             Speak to a dentist by video
@@ -380,7 +380,7 @@ export default function PatientHomeScreen() {
             <AppIcon name="activity" size={20} color={colors.ink} />
           </View>
           <ThemedText variant="headline" style={styles.quickTitle}>
-            Clean Progress
+            Clean progress
           </ThemedText>
           <ThemedText variant="caption" style={styles.quickSub}>
             3D Dental arch & gauges
@@ -627,17 +627,6 @@ const styles = StyleSheet.create({
   eyeToggleBtn: {
     height: 32,
     width: 32,
-  },
-  careStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  careOverline: {
-    color: colors.secondaryLabel,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
   },
   quickBookBtn: {
     marginHorizontal: spacing.gutter,

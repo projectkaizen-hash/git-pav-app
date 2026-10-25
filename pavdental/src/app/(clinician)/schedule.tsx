@@ -65,9 +65,10 @@ export default function ClinicianScheduleScreen() {
             </View>
           </View>
           <View style={styles.badgeWrapper}>
-            <Badge label="Clinical Duty Active" variant="success" />
+            <Badge label="Clinical duty active" variant="success" />
             <Button
-              title="Patient Inbox ›"
+              title="Patient inbox"
+              arrow
               variant="secondary"
               size="sm"
               onPress={() => router.push("/(clinician)/inbox" as any)}
@@ -96,7 +97,7 @@ export default function ClinicianScheduleScreen() {
               <ThemedText variant="caption" style={styles.errorBody}>
                 An error occurred while fetching your rota for today.
               </ThemedText>
-              <Button title="Try Again" size="sm" variant="secondary" onPress={() => refetch()} />
+              <Button title="Try again" size="sm" variant="secondary" onPress={() => refetch()} />
             </Card>
           ) : sessions.length === 0 ? (
             <EmptyState
@@ -112,7 +113,7 @@ export default function ClinicianScheduleScreen() {
                 return (
                   <Card
                     key={s.id}
-                    elevation="raised"
+                   
                     style={[styles.card, isReady && styles.cardReady]}
                   >
                     <View style={styles.cardTop}>
@@ -147,7 +148,8 @@ export default function ClinicianScheduleScreen() {
                       <View style={styles.actionRow}>
                         {isVideo ? (
                           <Button
-                            title="Open Video Consult Room ›"
+                            title="Open video consult room"
+              arrow
                             size="md"
                             onPress={() =>
                               router.push({
@@ -162,7 +164,8 @@ export default function ClinicianScheduleScreen() {
                           />
                         ) : (
                           <Button
-                            title="Open Patient Record & Notes ›"
+                            title="Open patient record & notes"
+              arrow
                             size="md"
                             variant="primary"
                             onPress={() =>
@@ -190,13 +193,13 @@ export default function ClinicianScheduleScreen() {
 
         {/* Portal Role Switcher for Simulator Verification (development opt-in only) */}
         {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (
-          <Card elevation="raised" style={styles.roleCard}>
+          <Card style={styles.roleCard}>
             <ThemedText variant="caption" style={styles.roleHint}>
               🔄 Switch Mobile Portal (Demo Verification)
             </ThemedText>
             <View style={styles.roleBtnRow}>
               <Button
-                title="‹ Patient Portal"
+                title="‹ Patient portal"
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -210,7 +213,8 @@ export default function ClinicianScheduleScreen() {
                 }}
               />
               <Button
-                title="Operator Van ›"
+                title="Operator van"
+              arrow
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -280,7 +284,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   docInfo: {

@@ -61,7 +61,7 @@ export default function OralHealthInsightsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Oral Health Insights
+            Oral health insights
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Your brushing log and the measurements your dentist records.
@@ -69,7 +69,7 @@ export default function OralHealthInsightsScreen() {
         </View>
 
         {/* Recall Countdown Hero (Neo Financial Style) */}
-        <Card elevation="raised" style={styles.recallCard}>
+        <Card style={styles.recallCard}>
           <View style={styles.recallTop}>
             <View>
               <ThemedText variant="caption" style={styles.recallSub}>Preventive recall cycle</ThemedText>
@@ -86,7 +86,8 @@ export default function OralHealthInsightsScreen() {
 
           <View style={styles.recallBottom}>
             <Button
-              title="Book Early ›"
+              title="Book early"
+              arrow
               variant="secondary"
               size="sm"
               onPress={() => router.push("/(patient)/booking/service-catalog" as any)}
@@ -95,9 +96,9 @@ export default function OralHealthInsightsScreen() {
         </Card>
 
         {/* Weekly AM / PM Brushing Bar Chart */}
-        <Card elevation="raised" style={styles.chartCard}>
+        <Card style={styles.chartCard}>
           <View style={styles.chartHeaderRow}>
-            <ThemedText variant="headline">Weekly Brushing Adherence</ThemedText>
+            <ThemedText variant="headline">Weekly brushing adherence</ThemedText>
             {adherenceRate !== null ? <Badge label={`${adherenceRate}% Goal Met`} variant="info" /> : null}
           </View>
           <ThemedText variant="caption" style={styles.muted}>
@@ -152,7 +153,7 @@ export default function OralHealthInsightsScreen() {
 
         {/* Clinical Health Gauges */}
         <View style={styles.gaugesGrid}>
-          <Card elevation="raised" style={styles.gaugeCard}>
+          <Card style={styles.gaugeCard}>
             <ThemedText variant="caption" style={styles.gaugeSub}>Plaque index</ThemedText>
             <ThemedText variant="largeTitle" style={styles.gaugeNum}>
               {plaqueIndex === null ? "—" : `${plaqueIndex}%`}
@@ -162,7 +163,7 @@ export default function OralHealthInsightsScreen() {
             </ThemedText>
           </Card>
 
-          <Card elevation="raised" style={styles.gaugeCard}>
+          <Card style={styles.gaugeCard}>
             <ThemedText variant="caption" style={styles.gaugeSub}>Bleeding on probe</ThemedText>
             <ThemedText variant="largeTitle" style={styles.gaugeNum}>
               {bleedingIndex === null ? "—" : `${bleedingIndex}%`}
@@ -271,7 +272,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   dayLabel: {

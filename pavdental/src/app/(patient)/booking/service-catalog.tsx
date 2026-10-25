@@ -94,7 +94,7 @@ export default function ServiceCatalogScreen() {
         {/* Top Header: "Choose a Service" + Search Icon button */}
         <View style={styles.headerRow}>
           <ThemedText variant="largeTitle" style={styles.headerTitle}>
-            Choose{"\n"}a Service
+            Choose a treatment
           </ThemedText>
 
           <Pressable
@@ -240,7 +240,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   headerRow: {
@@ -261,9 +262,9 @@ const styles = StyleSheet.create({
   searchIconBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    height: 44,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 44,
+    width: 40,
   },
 });

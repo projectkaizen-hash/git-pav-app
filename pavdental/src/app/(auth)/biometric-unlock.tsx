@@ -66,7 +66,7 @@ export default function BiometricUnlockScreen() {
               <AppIcon name="lock" size={32} color={colors.ink} />
             </View>
             <ThemedText variant="title" style={styles.title}>
-              App Locked
+              App locked
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Authenticate with Face ID or biometrics to protect your confidential dental charts and health history.
@@ -85,21 +85,21 @@ export default function BiometricUnlockScreen() {
         <View style={styles.actions}>
           {hasHardware ? (
             <Button
-              title="Unlock with Biometrics"
+              title="Unlock with biometrics"
               size="lg"
               icon={<AppIcon name="shieldCheck" size={20} color={colors.onInk} />}
               onPress={authenticate}
             />
           ) : (
             <Button
-              title="Unlock Account"
+              title="Unlock account"
               size="lg"
               onPress={authenticate}
             />
           )}
 
           <Button
-            title="Sign Out"
+            title="Sign out"
             variant="ghost"
             size="md"
             onPress={handleSignOut}

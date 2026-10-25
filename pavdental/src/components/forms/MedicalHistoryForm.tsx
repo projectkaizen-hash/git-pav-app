@@ -151,7 +151,7 @@ export function MedicalHistoryForm({
             </View>
 
             <Input
-              label="Specific Allergy Details / Symptoms"
+              label="Specific allergy details / symptoms"
               placeholder="e.g. Anaphylaxis to penicillin, rash with latex"
               value={watch("allergyDetails")}
               onChangeText={(txt) => setValue("allergyDetails", txt, { shouldDirty: true })}
@@ -229,7 +229,7 @@ export function MedicalHistoryForm({
         </ThemedText>
 
         <Input
-          label="GP Surgery / Practice Name *"
+          label="GP surgery / practice name *"
           placeholder="e.g. St. Mary's Medical Practice"
           error={errors.gpSurgery?.message}
           value={watch("gpSurgery")}
@@ -238,7 +238,7 @@ export function MedicalHistoryForm({
         />
 
         <Input
-          label="Named Doctor / GP (Optional)"
+          label="Named doctor / GP (optional)"
           placeholder="e.g. Dr. Jane Smith"
           value={watch("gpDoctorName")}
           onChangeText={(txt) => setValue("gpDoctorName", txt, { shouldDirty: true })}
@@ -246,7 +246,7 @@ export function MedicalHistoryForm({
         />
 
         <Input
-          label="GP Surgery Telephone"
+          label="GP surgery telephone"
           placeholder="e.g. 020 7946 0123"
           keyboardType="phone-pad"
           value={watch("gpPhone")}
@@ -274,7 +274,7 @@ export function MedicalHistoryForm({
       {/* Actions */}
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Saving clinical records..." : "Save Medical History"}
+          title={isLoading ? "Saving clinical records..." : "Save medical history"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || (!isDirty && !hasAllergies && !isTakingMeds)}
           loading={isLoading}

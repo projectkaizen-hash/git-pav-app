@@ -94,7 +94,7 @@ export default function VideoCallScreen() {
           )}
 
           {!loading && !error && (
-            <Card elevation="raised" style={styles.infoCard}>
+            <Card style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <AppIcon name="lock" size={14} color={colors.secondaryLabel} />
                 <ThemedText variant="caption" style={styles.muted}>

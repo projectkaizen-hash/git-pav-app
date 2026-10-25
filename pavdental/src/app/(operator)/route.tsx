@@ -188,13 +188,13 @@ export default function OperatorRouteScreen() {
         {queue.length === 0 ? (
           <Card style={styles.emptyCard}>
             <ThemedText variant="headline" style={styles.emptyTitle}>
-              No Stops in Queue
+              No stops in queue
             </ThemedText>
             <ThemedText variant="caption" style={styles.emptyBody}>
               Accepted requests will appear here in delivery order.
             </ThemedText>
             <Button
-              title="Go to Shift Console"
+              title="Go to shift console"
               variant="secondary"
               onPress={() => router.push("/(operator)/shift" as any)}
             />
@@ -210,7 +210,7 @@ export default function OperatorRouteScreen() {
               return (
                 <Card
                   key={s.id}
-                  elevation="raised"
+                 
                   style={[styles.card, isCurrent && styles.cardNext]}
                 >
                   <View style={styles.stopTop}>
@@ -278,7 +278,8 @@ export default function OperatorRouteScreen() {
 
                   {/* Turn-by-turn: hands off to the native maps app */}
                   <Button
-                    title="Navigate with Maps ›"
+                    title="Navigate with maps"
+              arrow
                     size="sm"
                     variant="secondary"
                     onPress={() => handleNavigate(s, patientName)}
@@ -289,7 +290,8 @@ export default function OperatorRouteScreen() {
                     <View style={styles.actionRow}>
                       {s.phase === "queued" && (
                         <Button
-                          title="Start Driving (En Route) ›"
+                          title="Start driving (en route)"
+              arrow
                           size="md"
                           loading={phaseMutation.isPending}
                           onPress={() =>
@@ -299,7 +301,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "en_route" && (
                         <Button
-                          title="Arrived On Site ›"
+                          title="Arrived on site"
+              arrow
                           size="md"
                           loading={phaseMutation.isPending}
                           onPress={() =>
@@ -309,7 +312,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "on_site" && (
                         <Button
-                          title="Start Treatment ›"
+                          title="Start treatment"
+              arrow
                           size="md"
                           variant="primary"
                           loading={phaseMutation.isPending}
@@ -320,7 +324,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "in_treatment" && (
                         <Button
-                          title="Complete Visit & Add Notes ›"
+                          title="Complete visit & add notes"
+              arrow
                           size="md"
                           onPress={() =>
                             router.push({
@@ -335,7 +340,7 @@ export default function OperatorRouteScreen() {
                         />
                       )}
                       <Button
-                        title="Mark No-Show"
+                        title="Mark no-show"
                         size="sm"
                         variant="ghost"
                         onPress={() => {
@@ -364,13 +369,13 @@ export default function OperatorRouteScreen() {
 
         {/* Portal Role Switcher for Simulator Verification (development opt-in only) */}
         {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (
-          <Card elevation="raised" style={styles.roleCard}>
+          <Card style={styles.roleCard}>
             <ThemedText variant="caption" style={styles.roleHint}>
               🔄 Switch Mobile Portal (Demo Verification)
             </ThemedText>
             <View style={styles.roleBtnRow}>
               <Button
-                title="‹ Patient Portal"
+                title="‹ Patient portal"
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -384,7 +389,8 @@ export default function OperatorRouteScreen() {
                 }}
               />
               <Button
-                title="Clinician Portal ›"
+                title="Clinician portal"
+              arrow
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -457,7 +463,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   emptyBody: {

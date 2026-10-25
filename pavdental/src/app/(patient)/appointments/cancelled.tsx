@@ -38,7 +38,7 @@ export default function CancelledAppointmentScreen() {
         </View>
 
         {refundPence > 0 ? (
-          <Card elevation="raised" style={styles.refundCard}>
+          <Card style={styles.refundCard}>
             <View style={styles.refundRow}>
               <AppIcon name="creditCard" size={16} color={colors.ink} />
               <ThemedText variant="subhead" style={styles.refundTitle}>
@@ -51,7 +51,7 @@ export default function CancelledAppointmentScreen() {
             </ThemedText>
           </Card>
         ) : policyNotice ? (
-          <Card elevation="raised" style={styles.refundCard}>
+          <Card style={styles.refundCard}>
             <ThemedText variant="caption" style={styles.muted}>
               {policyNotice}
             </ThemedText>
@@ -90,7 +90,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   hero: {

@@ -60,7 +60,7 @@ export default function VanNotCoveredScreen() {
               onPress={() => router.push(opt.route as never)}
               style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
             >
-              <Card elevation="raised" style={styles.optionCard}>
+              <Card style={styles.optionCard}>
                 <View style={styles.optionIcon}>
                   <AppIcon name={opt.icon} size={20} color={colors.ink} />
                 </View>
@@ -100,14 +100,14 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   hero: {
     alignItems: "center",

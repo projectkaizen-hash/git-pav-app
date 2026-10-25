@@ -130,17 +130,17 @@ export default function VanLiveTrackScreen() {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <AppIcon name="truck" size={32} color={colors.secondaryLabel} />
-        <ThemedText variant="headline">No Active Van Request</ThemedText>
+        <ThemedText variant="headline">No active van request</ThemedText>
         <ThemedText variant="caption" style={styles.loadingText}>
           You don't have a mobile surgery visit in progress right now.
         </ThemedText>
         <Button
-          title="Request Mobile Dental Van"
+          title="Request mobile dental van"
           variant="primary"
           onPress={() => router.replace("/(patient)/van/service-area" as any)}
         />
         <Button
-          title="Return Home"
+          title="Return home"
           variant="ghost"
           size="sm"
           onPress={() => router.replace("/(patient)/(tabs)/home")}
@@ -237,7 +237,7 @@ export default function VanLiveTrackScreen() {
         </View>
 
         {/* Bottom Dispatch Control Sheet */}
-        <Card elevation="raised" style={styles.bottomCard}>
+        <Card style={styles.bottomCard}>
           {/* Status Headline */}
           <View style={styles.statusHeader}>
             <View style={styles.statusDotRow}>
@@ -392,7 +392,8 @@ export default function VanLiveTrackScreen() {
           {/* Action Buttons */}
           {status === "completed" && (
             <Button
-              title="View Treatment Summary & Records ›"
+              title="View treatment summary & records"
+              arrow
               variant="primary"
               onPress={() =>
                 router.push({
@@ -405,7 +406,7 @@ export default function VanLiveTrackScreen() {
 
           {isTerminal && status !== "completed" && (
             <Button
-              title="Return to Home Screen"
+              title="Return to home screen"
               variant="primary"
               onPress={() => router.replace("/(patient)/(tabs)/home")}
             />

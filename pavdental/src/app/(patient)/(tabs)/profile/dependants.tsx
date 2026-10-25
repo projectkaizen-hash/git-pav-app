@@ -209,7 +209,7 @@ export default function DependantsScreen() {
       </View>
 
       <Button
-        title="+ Add Child / Dependant Profile"
+        title="+ Add child / dependant profile"
         variant="secondary"
         onPress={openAdd}
       />
@@ -234,21 +234,21 @@ export default function DependantsScreen() {
 
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <Input
-              label="Child's First Name *"
+              label="Child's first name *"
               placeholder="e.g. Leo"
               value={firstName}
               onChangeText={setFirstName}
             />
 
             <Input
-              label="Child's Last Name *"
+              label="Child's last name *"
               placeholder="e.g. Jenkins"
               value={lastName}
               onChangeText={setLastName}
             />
 
             <Input
-              label="Date of Birth (YYYY-MM-DD) *"
+              label="Date of birth (YYYY-MM-DD) *"
               placeholder="e.g. 2018-06-15"
               value={dob}
               onChangeText={setDob}
@@ -295,14 +295,14 @@ export default function DependantsScreen() {
 
             {editing ? (
               <Button
-                title={updateDependant.isPending ? "Saving..." : "Save Changes"}
+                title={updateDependant.isPending ? "Saving..." : "Save changes"}
                 onPress={handleSaveEdit}
                 disabled={updateDependant.isPending || !firstName || !lastName || !dob}
                 loading={updateDependant.isPending}
               />
             ) : (
               <Button
-                title={addDependant.isPending ? "Linking..." : "Link Profile"}
+                title={addDependant.isPending ? "Linking..." : "Link profile"}
                 onPress={handleAdd}
                 disabled={addDependant.isPending || !firstName || !lastName || !isGuardian}
                 loading={addDependant.isPending}
@@ -346,7 +346,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   depBottom: {

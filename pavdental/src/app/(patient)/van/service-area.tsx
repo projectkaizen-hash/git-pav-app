@@ -174,7 +174,7 @@ export default function VanServiceAreaScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Live Van Dispatch Area
+            Live van dispatch area
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Enter your location to verify coverage and view live estimated arrival times from our active surgery van.
@@ -217,7 +217,7 @@ export default function VanServiceAreaScreen() {
             }}
           />
           <Button
-            title={loading ? "Checking Dispatch Status..." : "Check Live Van Availability"}
+            title={loading ? "Checking dispatch status..." : "Check live van availability"}
             variant="secondary"
             loading={loading}
             onPress={handleCheckCoverage}
@@ -227,7 +227,7 @@ export default function VanServiceAreaScreen() {
         {/* Results */}
         {checked && (
           isCovered ? (
-            <Card elevation="raised" style={styles.coveredCard}>
+            <Card style={styles.coveredCard}>
               <View style={styles.badgeRow}>
                 <Badge
                   label={isVanOnline ? "Van on shift" : "Van off duty"}
@@ -253,7 +253,7 @@ export default function VanServiceAreaScreen() {
               ) : (
                 <View style={styles.dispatchOfflineBanner}>
                   <ThemedText variant="headline" style={styles.offlineTitle}>
-                    No Van Currently on Duty in Your Area
+                    No van currently on duty in your area
                   </ThemedText>
                   <ThemedText variant="caption" style={styles.offlineSub}>
                     Our surgery van operates live dispatch shifts. No operator is currently online in this polygon.
@@ -303,7 +303,7 @@ export default function VanServiceAreaScreen() {
           ) : (
             <Card style={styles.outOfAreaCard}>
               <ThemedText variant="headline" style={styles.outTitle}>
-                Outside Van Coverage Sector
+                Outside van coverage sector
               </ThemedText>
               <ThemedText variant="caption" style={styles.outBody}>
                 Our mobile surgery van does not currently cover this postcode. You can book an appointment at our central clinic practice or schedule a video consult.
@@ -363,7 +363,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   coveredBody: {
@@ -419,10 +420,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   gpsSection: {
     gap: spacing.xs,

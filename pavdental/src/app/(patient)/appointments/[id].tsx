@@ -126,13 +126,13 @@ export default function AppointmentDetailScreen() {
 
       <View style={[styles.topNav, { paddingTop: Math.max(spacing.xs, insets.top) }]}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
-        <ThemedText variant="headline" style={styles.navTitle}>Appointment Details</ThemedText>
+        <ThemedText variant="headline" style={styles.navTitle}>Appointment details</ThemedText>
         <View style={styles.navSpacer} />
       </View>
 
@@ -251,8 +251,8 @@ export default function AppointmentDetailScreen() {
               }
             />
             <Button
-              title="Cancel appointment"
-              variant="ghost"
+              title="Cancel"
+              variant="destructive"
               size="lg"
               style={styles.footerBtn}
               onPress={() => setConfirmCancel(true)}
@@ -323,7 +323,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   detailIconBox: {
@@ -356,12 +357,11 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   footerBtn: {
     flex: 1,

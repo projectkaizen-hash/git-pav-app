@@ -14,14 +14,14 @@ export default function ClinicianLayout() {
     <Stack
       screenOptions={stackScreenOptions}
     >
-      <Stack.Screen name="schedule" options={{ title: "Clinician Daily Schedule" }} />
-      <Stack.Screen name="inbox" options={{ title: "Clinician Messages" }} />
+      <Stack.Screen name="schedule" options={{ title: "Clinician daily schedule" }} />
+      <Stack.Screen name="inbox" options={{ title: "Clinician messages" }} />
       <Stack.Screen name="consult-room" options={{ headerShown: false }} />
-      <Stack.Screen name="rx-dispense" options={{ title: "Private prescription" }} />
-      <Stack.Screen name="patient-record" options={{ title: "Patient Clinical Record" }} />
-      <Stack.Screen name="odontogram-editor" options={{ title: "Odontogram Editor" }} />
-      <Stack.Screen name="treatment-plan-builder" options={{ title: "Treatment Plan Builder" }} />
-      <Stack.Screen name="appointment-notes" options={{ title: "Examination Notes" }} />
+      <Stack.Screen name="rx-dispense" options={{ title: "Private prescription", headerTitle: "" }} />
+      <Stack.Screen name="patient-record" options={{ title: "Patient clinical record", headerTitle: "" }} />
+      <Stack.Screen name="odontogram-editor" options={{ title: "Odontogram editor", headerTitle: "" }} />
+      <Stack.Screen name="treatment-plan-builder" options={{ title: "Treatment plan builder", headerTitle: "" }} />
+      <Stack.Screen name="appointment-notes" options={{ title: "Examination notes", headerTitle: "" }} />
     </Stack>
   );
 }

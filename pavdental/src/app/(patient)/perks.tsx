@@ -58,13 +58,13 @@ export default function OralHealthPerksScreen() {
 
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
-        <ThemedText variant="headline" style={styles.navTitle}>Rewards & Perks</ThemedText>
+        <ThemedText variant="headline" style={styles.navTitle}>Rewards & perks</ThemedText>
         <View style={styles.navSpacer} />
       </View>
 
@@ -200,7 +200,7 @@ export default function OralHealthPerksScreen() {
 
               <View style={styles.modalActions}>
                 <Button
-                  title={redeemMutation.isPending ? "Redeeming…" : "Confirm & Redeem"}
+                  title={redeemMutation.isPending ? "Redeeming…" : "Confirm & redeem"}
                   size="lg"
                   arrow={true}
                   loading={redeemMutation.isPending}
@@ -378,7 +378,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   sectionHeader: {

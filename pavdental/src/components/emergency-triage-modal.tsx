@@ -246,7 +246,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
             </Card>
 
             {/* Selected Assessment & Clinical Advice Card */}
-            <Card elevation="raised" style={styles.assessmentCard}>
+            <Card style={styles.assessmentCard}>
               <View style={styles.assessmentTopRow}>
                 <ThemedText variant="headline" style={styles.assessmentTitle}>
                   {selected.title}
@@ -309,7 +309,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
               onPress={handleBookEmergency}
             />
             <Button
-              title="Start 15-Min Video Triage Now"
+              title="Start 15-min video triage now"
               variant="secondary"
               size="md"
               onPress={handleStartVideo}
@@ -386,10 +386,10 @@ const styles = StyleSheet.create({
   closeBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    height: 32,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 32,
+    width: 40,
   },
   scrollContent: {
     gap: spacing.sm,

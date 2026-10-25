@@ -38,7 +38,7 @@ export default function DocumentVaultScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Document Vault
+            Document vault
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Digital health documents, X-rays, and invoices encrypted at rest.
@@ -86,7 +86,7 @@ export default function DocumentVaultScreen() {
                 : "";
 
               return (
-                <Card key={doc.id} elevation="raised" style={styles.docCard}>
+                <Card key={doc.id} style={styles.docCard}>
                   <View style={styles.docRow}>
                     <View style={styles.iconCircle}>
                       <AppIcon name={getDocIcon(doc.docType || doc.type || "")} size={18} color={colors.ink} />
@@ -127,7 +127,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   docCard: {

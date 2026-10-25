@@ -66,7 +66,7 @@ export default function ProviderProfileScreen() {
           headerShown: true,
           title: clinician.fullName,
           headerTitleStyle: { color: colors.label, fontWeight: "700" },
-          headerStyle: { backgroundColor: colors.systemBackground },
+          headerStyle: { backgroundColor: colors.background },
           headerShadowVisible: false,
         }}
       />
@@ -93,7 +93,7 @@ export default function ProviderProfileScreen() {
         </View>
 
         {/* Bio */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="overline">About</ThemedText>
           <ThemedText variant="body" style={styles.bioText}>
             {clinician.bio}
@@ -218,14 +218,14 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   galleryRow: {
     flexDirection: "row",

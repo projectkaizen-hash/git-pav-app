@@ -6,7 +6,7 @@ import { colors, spacing } from "@/theme";
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: "Page Not Found" }} />
+      <Stack.Screen options={{ title: "Page not found" }} />
       <View style={styles.container}>
         <ThemedText variant="title">This screen doesn't exist.</ThemedText>
         <Link href="/" style={styles.link}>
@@ -25,7 +25,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.lg,
   },
   link: {
     marginTop: spacing.md,

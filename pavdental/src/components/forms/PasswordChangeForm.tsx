@@ -143,7 +143,7 @@ export function PasswordChangeForm({
         </View>
 
         <Input
-          label="Confirm New Password *"
+          label="Confirm new password *"
           placeholder="Repeat new password"
           secureTextEntry={!showNew}
           error={errors.confirmPassword?.message}
@@ -155,7 +155,7 @@ export function PasswordChangeForm({
 
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Updating password..." : "Update Password"}
+          title={isLoading ? "Updating password..." : "Update password"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || !isDirty}
           loading={isLoading}

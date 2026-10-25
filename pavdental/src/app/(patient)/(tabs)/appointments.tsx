@@ -271,7 +271,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   metaRow: {

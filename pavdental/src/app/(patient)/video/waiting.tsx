@@ -47,7 +47,7 @@ export default function WaitingRoomScreen() {
           </View>
 
           <ThemedText variant="largeTitle" style={styles.title}>
-            Telehealth Waiting Room
+            Telehealth waiting room
           </ThemedText>
 
           <ThemedText variant="subhead" style={styles.subtitle}>
@@ -55,10 +55,10 @@ export default function WaitingRoomScreen() {
           </ThemedText>
 
           {/* Consultation Pre-flight Checklist */}
-          <Card elevation="raised" style={styles.queueCard}>
+          <Card style={styles.queueCard}>
             <View style={styles.queueHeaderRow}>
               <ThemedText variant="headline" style={styles.queueCardTitle}>
-                Consultation Ready
+                Consultation ready
               </ThemedText>
               <Badge label={statusLabel} />
             </View>
@@ -90,7 +90,7 @@ export default function WaitingRoomScreen() {
 
         <View style={styles.actions}>
           <Button
-            title="Cancel & Leave Waiting Room"
+            title="Cancel & leave waiting room"
             variant="ghost"
             size="md"
             onPress={() => router.replace("/(patient)/(tabs)/home")}

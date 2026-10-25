@@ -67,7 +67,8 @@ const errorStyles = StyleSheet.create({
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.lg,
   },
 });
 

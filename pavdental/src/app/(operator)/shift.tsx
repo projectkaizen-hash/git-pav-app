@@ -134,7 +134,7 @@ export default function OperatorShiftScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Shift Status Header */}
-        <Card elevation="raised" style={styles.statusCard}>
+        <Card style={styles.statusCard}>
           <View style={styles.statusRow}>
             <View style={styles.statusTextCol}>
               <ThemedText variant="largeTitle" style={styles.vanTitle}>
@@ -171,7 +171,7 @@ export default function OperatorShiftScreen() {
           <View style={styles.controlRow}>
             {isOnline ? (
               <Button
-                title="Pause New Requests (Busy)"
+                title="Pause new requests (busy)"
                 variant="secondary"
                 size="sm"
                 loading={pauseMutation.isPending}
@@ -179,7 +179,7 @@ export default function OperatorShiftScreen() {
               />
             ) : (
               <Button
-                title="Resume Accepting Requests"
+                title="Resume accepting requests"
                 variant="primary"
                 size="sm"
                 loading={resumeMutation.isPending}
@@ -191,13 +191,14 @@ export default function OperatorShiftScreen() {
 
         {/* Incoming Requests Banner */}
         {incoming.length > 0 && (
-          <Card elevation="raised" style={styles.incomingBanner}>
+          <Card style={styles.incomingBanner}>
             <View style={styles.incomingRow}>
               <ThemedText variant="headline" style={styles.incomingTitle}>
                 {incoming.length} New Request{incoming.length > 1 ? "s" : ""}
               </ThemedText>
               <Button
-                title="Review ›"
+                title="Review"
+              arrow
                 size="sm"
                 onPress={() => router.push("/(operator)/incoming" as any)}
               />
@@ -212,7 +213,8 @@ export default function OperatorShiftScreen() {
           </ThemedText>
           {queue.length > 0 && (
             <Button
-              title="Full Queue ›"
+              title="Full queue"
+              arrow
               variant="ghost"
               size="sm"
               onPress={() => router.push("/(operator)/route" as any)}
@@ -256,7 +258,8 @@ export default function OperatorShiftScreen() {
         {/* Quick Navigation Links */}
         <View style={styles.quickNav}>
           <Button
-            title="View Live Queue Route ›"
+            title="View live queue route"
+              arrow
             variant="secondary"
             onPress={() => router.push("/(operator)/route" as any)}
           />
@@ -292,7 +295,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   controlRow: {

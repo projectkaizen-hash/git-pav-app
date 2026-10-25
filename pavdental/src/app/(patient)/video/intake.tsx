@@ -110,7 +110,7 @@ export default function VideoIntakeScreen() {
         {/* Swelling Switch */}
         <View style={styles.switchCard}>
           <View style={styles.switchInfo}>
-            <ThemedText variant="headline">Facial Swelling or Gum Boil</ThemedText>
+            <ThemedText variant="headline">Facial swelling or gum boil</ThemedText>
             <ThemedText variant="caption" style={styles.sub}>
               Is there any visible swelling on your cheek, jaw or gums?
             </ThemedText>
@@ -126,7 +126,7 @@ export default function VideoIntakeScreen() {
 
         {/* Duration */}
         <View style={styles.section}>
-          <ThemedText variant="headline">Duration of Problem</ThemedText>
+          <ThemedText variant="headline">Duration of problem</ThemedText>
           <View style={styles.durationList}>
             {durations.map((d) => {
               const active = duration === d;
@@ -155,7 +155,7 @@ export default function VideoIntakeScreen() {
         <Card style={styles.consentCard}>
           <View style={styles.consentRow}>
             <View style={styles.consentInfo}>
-              <ThemedText variant="headline">Clinical Video Record Consent</ThemedText>
+              <ThemedText variant="headline">Clinical video record consent</ThemedText>
               <ThemedText variant="caption" style={styles.sub}>
                 I consent to this remote video examination under UK General Dental Council guidelines.
               </ThemedText>
@@ -177,7 +177,8 @@ export default function VideoIntakeScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Button
-          title="Take Intraoral Photos ›"
+          title="Take intraoral photos"
+              arrow
           size="lg"
           onPress={handleContinue}
         />
@@ -207,7 +208,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   durationItem: {
@@ -244,10 +246,9 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,

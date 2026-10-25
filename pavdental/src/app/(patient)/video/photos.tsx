@@ -94,7 +94,7 @@ export default function IntraoralPhotosScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="headline" style={styles.title}>
-            Guided Dental Photos
+            Guided dental photos
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Clear photos help your dentist diagnose issues and prescribe antibiotics or pain relief before surgery.
@@ -144,12 +144,13 @@ export default function IntraoralPhotosScreen() {
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title="Review Photos ›"
+          title="Review photos"
+              arrow
           size="lg"
           onPress={handleContinue}
         />
         <Button
-          title="Skip Photo Step"
+          title="Skip photo step"
           variant="ghost"
           size="sm"
           onPress={handleContinue}
@@ -166,15 +167,15 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,

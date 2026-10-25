@@ -108,10 +108,10 @@ export default function OnboardingConsentsScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -126,7 +126,7 @@ export default function OnboardingConsentsScreen() {
       >
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Privacy & Consents
+            Privacy & consents
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             We adhere strictly to UK GDPR and NHS Data Security & Protection standards (DSPT).
@@ -148,7 +148,7 @@ export default function OnboardingConsentsScreen() {
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <ThemedText variant="headline" style={styles.cardTitle}>
-                  Health Data Processing
+                  Health data processing
                 </ThemedText>
                 <View style={styles.mandatoryBadge}>
                   <ThemedText variant="caption" style={styles.mandatoryText}>Required</ThemedText>
@@ -175,7 +175,7 @@ export default function OnboardingConsentsScreen() {
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <ThemedText variant="headline" style={styles.cardTitle}>
-                  General Treatment
+                  General treatment
                 </ThemedText>
                 <View style={styles.mandatoryBadge}>
                   <ThemedText variant="caption" style={styles.mandatoryText}>Required</ThemedText>
@@ -202,7 +202,7 @@ export default function OnboardingConsentsScreen() {
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <ThemedText variant="headline" style={styles.cardTitle}>
-                  Recall & Reminders
+                  Recall & reminders
                 </ThemedText>
                 <View style={styles.optionalBadge}>
                   <ThemedText variant="caption" style={styles.optionalText}>Optional</ThemedText>
@@ -224,7 +224,7 @@ export default function OnboardingConsentsScreen() {
 
         <View style={styles.actions}>
           <Button
-            title={isSubmitting ? "Saving your details..." : "Complete Registration"}
+            title={isSubmitting ? "Saving your details..." : "Complete registration"}
             size="lg"
             arrow={true}
             loading={isSubmitting}
@@ -238,7 +238,7 @@ export default function OnboardingConsentsScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    marginTop: spacing.xl,
+    marginTop: "auto",
     paddingTop: spacing.sm,
   },
   cardBody: {
@@ -325,9 +325,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {

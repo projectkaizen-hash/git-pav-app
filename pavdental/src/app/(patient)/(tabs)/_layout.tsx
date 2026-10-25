@@ -77,7 +77,7 @@ export default function PatientTabsLayout() {
       <Tabs.Screen
         name="records"
         options={{
-          title: "Dental Records",
+          title: "Dental records",
           tabBarLabel: tabLabel("Records"),
           tabBarIcon: ({ focused }) => <TabIcon name="records" focused={focused} />,
         }}
@@ -93,7 +93,7 @@ export default function PatientTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile & Settings",
+          title: "Profile & settings",
           tabBarLabel: tabLabel("Profile"),
           headerShown: false,
           tabBarIcon: ({ focused }) => <TabIcon name="profile" focused={focused} />,

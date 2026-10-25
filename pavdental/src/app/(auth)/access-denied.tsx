@@ -32,7 +32,8 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.lg,
   },
   title: { color: colors.label, textAlign: "center" },
 });

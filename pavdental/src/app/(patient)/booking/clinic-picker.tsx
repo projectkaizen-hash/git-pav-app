@@ -24,10 +24,10 @@ export default function ClinicPickerScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -120,7 +120,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   header: {

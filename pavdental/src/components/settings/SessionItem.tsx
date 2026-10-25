@@ -58,7 +58,7 @@ export function SessionItem({ session, onRevoke, isRevoking = false }: SessionIt
                 {deviceTitle}
               </ThemedText>
               {session.isCurrent && (
-                <Badge variant="success" label="This Device" />
+                <Badge variant="success" label="This device" />
               )}
             </View>
             <ThemedText variant="caption" style={styles.timeText}>

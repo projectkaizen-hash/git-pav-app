@@ -132,7 +132,7 @@ export default function BookingConfirmedScreen() {
         <View style={styles.actions}>
           {isConfirmed ? (
             <Button
-              title={calendarAdded ? "Added to Calendar ✓" : "Add to Calendar"}
+              title={calendarAdded ? "Added to calendar ✓" : "Add to calendar"}
               variant="secondary"
               size="lg"
               disabled={calendarAdded}
@@ -140,7 +140,7 @@ export default function BookingConfirmedScreen() {
             />
           ) : null}
           <Button
-            title="View My Appointments"
+            title="View my appointments"
             size="lg"
             arrow={true}
             onPress={handleFinish}

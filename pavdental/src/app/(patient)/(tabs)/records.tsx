@@ -17,25 +17,25 @@ interface RecordLink {
 const links: RecordLink[] = [
   {
     icon: "activity",
-    title: "Digital Odontogram",
+    title: "Digital odontogram",
     subtitle: "Interactive 32-tooth dental chart",
     route: "/(patient)/records/odontogram",
   },
   {
     icon: "clipboard",
-    title: "Treatment Estimates & Plans",
+    title: "Treatment estimates & plans",
     subtitle: "Review and approve digital treatment plans",
     route: "/(patient)/records/plans",
   },
   {
     icon: "droplet",
-    title: "Prescriptions & Dispensing",
+    title: "Prescriptions & dispensing",
     subtitle: "View electronic pharmacy notes",
     route: "/(patient)/records/prescriptions",
   },
   {
     icon: "image",
-    title: "Radiographs & X-Rays",
+    title: "Radiographs & x-rays",
     subtitle: "Your X-rays and clinical images",
     route: "/(patient)/records/vault",
   },
@@ -47,7 +47,7 @@ const links: RecordLink[] = [
   },
   {
     icon: "clock",
-    title: "Oral Health Activity & Insights",
+    title: "Oral health activity & insights",
     subtitle: "Weekly brushing streaks & recall timer",
     route: "/(patient)/records/insights",
   },
@@ -122,7 +122,7 @@ export default function PatientRecordsScreen() {
 
         <View style={styles.metricColumn}>
           <ThemedText variant="largeTitle" style={styles.metricVal}>
-            3m
+            3M
           </ThemedText>
           <ThemedText variant="caption" style={styles.metricLabel}>
             Next Recall
@@ -178,7 +178,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   segmentContainer: {

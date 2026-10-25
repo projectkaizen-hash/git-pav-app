@@ -211,7 +211,7 @@ export default function ClinicianInboxScreen() {
                   style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Card
-                    elevation="raised"
+                   
                     style={[
                       styles.threadCard,
                       unread && styles.threadCardUnread,
@@ -382,7 +382,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   scrollContent: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   stack: {

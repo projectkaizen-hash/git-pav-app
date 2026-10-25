@@ -54,10 +54,10 @@ export default function SignInScreen() {
           {/* Top Bar with Neo Financial circular back button */}
           <View style={styles.topNav}>
             <IconButton
-              icon="chevronLeft"
+              icon="arrowLeft"
               label="Go back"
               variant="soft"
-              size={18}
+              size={22}
               onPress={() => router.back()}
             />
           </View>
@@ -183,7 +183,7 @@ export default function SignInScreen() {
 
           <View style={styles.actions}>
             <Button
-              title={codeSent ? "Verify and sign in" : "Sign In"}
+              title={codeSent ? "Verify and sign in" : "Sign in"}
               size="lg"
               arrow
               loading={loading}
@@ -191,7 +191,7 @@ export default function SignInScreen() {
             />
 
             <Button
-              title="Use Phone OTP Instead"
+              title="Use phone OTP instead"
               variant="secondary"
               size="md"
               onPress={() => router.push("/(auth)/otp")}
@@ -220,8 +220,8 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
   },
   emailHighlight: {
     color: colors.label,
@@ -297,10 +297,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,

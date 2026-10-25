@@ -197,10 +197,10 @@ export default function BookingSummaryScreen() {
     <View style={styles.container}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -218,7 +218,7 @@ export default function BookingSummaryScreen() {
         </View>
 
         {dependants.length > 0 && (
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.sectionTitle}>
               Who is this appointment for?
             </ThemedText>
@@ -246,9 +246,9 @@ export default function BookingSummaryScreen() {
         )}
 
         {/* Appointment Breakdown Card */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="headline" style={styles.sectionTitle}>
-            Appointment Details
+            Appointment details
           </ThemedText>
 
           <View style={styles.row}>
@@ -305,9 +305,9 @@ export default function BookingSummaryScreen() {
         </Pressable>
 
         {/* Payment & Deposit Summary */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="headline" style={styles.sectionTitle}>
-            Payment Breakdown
+            Payment breakdown
           </ThemedText>
 
           <View style={styles.priceRow}>
@@ -335,7 +335,7 @@ export default function BookingSummaryScreen() {
 
           <View style={styles.priceRow}>
             <ThemedText variant="headline" style={styles.depositLabel}>
-              Deposit Due Today (Stripe):
+              Deposit due today (Stripe):
             </ThemedText>
             <ThemedText variant="mono" style={styles.depositAmount}>
               {formatGbp(depositDuePence)}
@@ -381,7 +381,7 @@ export default function BookingSummaryScreen() {
           </ThemedText>
         </Pressable>
         <Button
-          title={secondsRemaining === 0 ? "Slot Expired - Select New Time" : `Pay by card instead`}
+          title={secondsRemaining === 0 ? "Slot expired - select new time" : `Pay by card instead`}
           size="lg"
           variant="secondary"
           arrow={true}
@@ -417,7 +417,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   timerBanner: {
@@ -533,11 +534,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   walletButton: {
     alignItems: "center",

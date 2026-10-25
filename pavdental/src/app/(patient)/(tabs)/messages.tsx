@@ -129,7 +129,7 @@ export default function MessagesScreen() {
             {unreadCount > 0 ? <Badge label={`${unreadCount} NEW`} variant="info" /> : null}
           </View>
           <Button
-            title="+ New Message"
+            title="+ New message"
             variant="secondary"
             size="sm"
             onPress={() => setIsComposing(true)}
@@ -206,7 +206,7 @@ export default function MessagesScreen() {
                   onPress={() => openMessage(msg)}
                   style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Card elevation="raised" style={[styles.threadCard, unread && styles.threadCardUnread]}>
+                  <Card style={[styles.threadCard, unread && styles.threadCardUnread]}>
                     <View style={styles.avatarTile}>
                       <AppIcon name="message" size={18} color={unread ? colors.onInk : colors.ink} />
                     </View>
@@ -288,7 +288,7 @@ export default function MessagesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText variant="headline">New Message</ThemedText>
+              <ThemedText variant="headline">New message</ThemedText>
               <Button title="Cancel" variant="ghost" size="sm" onPress={() => setIsComposing(false)} />
             </View>
 
@@ -353,7 +353,7 @@ export default function MessagesScreen() {
 
             <View style={styles.modalActions}>
               <Button
-                title={createMutation.isPending ? "Sending…" : "Send Message"}
+                title={createMutation.isPending ? "Sending…" : "Send message"}
                 variant="primary"
                 size="md"
                 disabled={!newSubject.trim() || !newBody.trim() || createMutation.isPending}
@@ -508,7 +508,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   headerRow: {

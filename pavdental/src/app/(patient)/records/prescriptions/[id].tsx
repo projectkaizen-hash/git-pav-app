@@ -84,7 +84,7 @@ export default function PrescriptionDetailScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
-        <Card elevation="raised" style={styles.headerCard}>
+        <Card style={styles.headerCard}>
           <View style={styles.headerTop}>
             <View style={styles.headerIcon}>
               <AppIcon name="droplet" size={22} color={colors.onInk} />
@@ -105,7 +105,7 @@ export default function PrescriptionDetailScreen() {
         </Card>
 
         {/* Dosage card */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="overline">How to take it</ThemedText>
           <View style={styles.detailRow}>
             <ThemedText variant="subhead" style={styles.detailLabel}>
@@ -143,7 +143,7 @@ export default function PrescriptionDetailScreen() {
         </Card>
 
         {/* Pharmacy + prescriber */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.pharmRow}>
             <AppIcon name="mapPin" size={15} color={colors.secondaryLabel} />
             <View style={styles.pharmInfo}>
@@ -212,7 +212,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   detailLabel: {

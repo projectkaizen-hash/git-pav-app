@@ -32,7 +32,11 @@ export function Card({
   children,
   ...props
 }: CardProps) {
-  const isRaised = elevation === "raised" || variant === "elevated";
+  // The reference has no shadowed cards; only the "elevated" variant (for
+  // content floating over other content) keeps a shadow. `elevation` is kept
+  // for call-site compatibility.
+  void elevation;
+  const isRaised = variant === "elevated";
 
   return (
     <View

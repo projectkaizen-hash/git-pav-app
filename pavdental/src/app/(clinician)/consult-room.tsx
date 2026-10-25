@@ -232,7 +232,7 @@ export default function ClinicianConsultRoomScreen() {
           </View>
         ) : activeTab === "triage" ? (
           <ScrollView contentContainerStyle={styles.triageScroll}>
-            <Card elevation="raised" style={styles.triageCard}>
+            <Card style={styles.triageCard}>
               <ThemedText variant="headline">Patient reported symptoms</ThemedText>
               <ThemedText variant="body" style={styles.triageText}>
                 {chiefComplaint ? `"${chiefComplaint}"` : "The patient has not submitted any symptoms for this appointment."}
@@ -241,7 +241,7 @@ export default function ClinicianConsultRoomScreen() {
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.triageScroll}>
-            <Card elevation="raised" style={styles.triageCard}>
+            <Card style={styles.triageCard}>
               <View style={styles.odontogramHeader}>
                 <ThemedText variant="headline">Tooth chart</ThemedText>
               </View>
@@ -311,7 +311,7 @@ export default function ClinicianConsultRoomScreen() {
             </Card>
 
             {/* Selected Tooth Detail */}
-            <Card elevation="raised" style={styles.triageCard}>
+            <Card style={styles.triageCard}>
               <View style={styles.odontogramHeader}>
                 <ThemedText variant="headline">Tooth #{selectedTooth}</ThemedText>
               </View>
@@ -331,8 +331,8 @@ export default function ClinicianConsultRoomScreen() {
         )}
 
         {showSummaryModal && (
-          <Card elevation="raised" style={styles.summaryFormCard}>
-            <ThemedText variant="headline">Record Consultation Summary</ThemedText>
+          <Card style={styles.summaryFormCard}>
+            <ThemedText variant="headline">Record consultation summary</ThemedText>
             <Input
               label="Diagnosis"
               placeholder="e.g. Localized dentine hypersensitivity"
@@ -340,7 +340,7 @@ export default function ClinicianConsultRoomScreen() {
               onChangeText={setConcludeDiagnosis}
             />
             <Input
-              label="Clinical Notes"
+              label="Clinical notes"
               placeholder="Observations and discussion during video consult"
               multiline
               numberOfLines={3}
@@ -348,7 +348,7 @@ export default function ClinicianConsultRoomScreen() {
               onChangeText={setConcludeNotes}
             />
             <Input
-              label="Treatment Plan / Advice"
+              label="Treatment plan / advice"
               placeholder="Recommended home care or next steps"
               multiline
               numberOfLines={3}
@@ -356,7 +356,7 @@ export default function ClinicianConsultRoomScreen() {
               onChangeText={setConcludePlan}
             />
             <Button
-              title="Save Summary & Complete Visit"
+              title="Save summary & complete visit"
               loading={isEnding}
               onPress={handleEndConsultation}
             />
@@ -371,7 +371,7 @@ export default function ClinicianConsultRoomScreen() {
             onPress={handleEndAndPrescribe}
           />
           <Button
-            title={showSummaryModal ? "Hide Summary Form" : "End call & record summary"}
+            title={showSummaryModal ? "Hide summary form" : "End call & record summary"}
             variant="secondary"
             size="md"
             onPress={() => setShowSummaryModal(!showSummaryModal)}

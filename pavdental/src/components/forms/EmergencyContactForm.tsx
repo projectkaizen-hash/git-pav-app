@@ -77,7 +77,7 @@ export function EmergencyContactForm({
         </ThemedText>
 
         <Input
-          label="Full Name *"
+          label="Full name *"
           placeholder="e.g. Eleanor Jenkins"
           error={errors.name?.message}
           value={watch("name")}
@@ -111,7 +111,7 @@ export function EmergencyContactForm({
         </View>
 
         <Input
-          label="Primary Phone Number *"
+          label="Primary phone number *"
           placeholder="+44 7XXX XXXXXX"
           keyboardType="phone-pad"
           error={errors.phone?.message}
@@ -121,7 +121,7 @@ export function EmergencyContactForm({
         />
 
         <Input
-          label="Alternative Phone (Optional)"
+          label="Alternative phone (optional)"
           placeholder="e.g. Work or landline"
           keyboardType="phone-pad"
           error={errors.alternativePhone?.message}
@@ -133,7 +133,7 @@ export function EmergencyContactForm({
 
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Saving contact..." : "Save Emergency Contact"}
+          title={isLoading ? "Saving contact..." : "Save emergency contact"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || !isDirty}
           loading={isLoading}

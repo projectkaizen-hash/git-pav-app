@@ -99,7 +99,7 @@ export function PersonalInfoForm({
         </ThemedText>
 
         <Input
-          label="First Name *"
+          label="First name *"
           placeholder="Enter your first name"
           error={errors.firstName?.message}
           value={watch("firstName")}
@@ -108,7 +108,7 @@ export function PersonalInfoForm({
         />
 
         <Input
-          label="Last Name *"
+          label="Last name *"
           placeholder="Enter your last name"
           error={errors.lastName?.message}
           value={watch("lastName")}
@@ -117,7 +117,7 @@ export function PersonalInfoForm({
         />
 
         <Input
-          label="Date of Birth (YYYY-MM-DD) *"
+          label="Date of birth (YYYY-MM-DD) *"
           placeholder="e.g. 1990-05-14"
           error={errors.dob?.message}
           value={watch("dob")}
@@ -166,7 +166,7 @@ export function PersonalInfoForm({
         </ThemedText>
 
         <Input
-          label="Address Line 1 *"
+          label="Address line 1 *"
           placeholder="Street name & house number"
           error={errors.addressLine1?.message}
           value={watch("addressLine1")}
@@ -175,7 +175,7 @@ export function PersonalInfoForm({
         />
 
         <Input
-          label="Address Line 2 (Optional)"
+          label="Address line 2 (optional)"
           placeholder="Flat, suite, unit"
           error={errors.addressLine2?.message}
           value={watch("addressLine2")}
@@ -184,7 +184,7 @@ export function PersonalInfoForm({
         />
 
         <Input
-          label="City / Town *"
+          label="City / town *"
           placeholder="e.g. London"
           error={errors.city?.message}
           value={watch("city")}
@@ -210,7 +210,7 @@ export function PersonalInfoForm({
         </ThemedText>
 
         <Input
-          label="Mobile Phone *"
+          label="Mobile phone *"
           placeholder="+44 7XXX XXXXXX"
           keyboardType="phone-pad"
           error={errors.phone?.message}
@@ -223,7 +223,7 @@ export function PersonalInfoForm({
       {/* Form Actions */}
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Saving changes..." : "Save Changes"}
+          title={isLoading ? "Saving changes..." : "Save changes"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || !isDirty}
           loading={isLoading}

@@ -232,7 +232,7 @@ export default function TreatmentPlanDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header card */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.topRow}>
             <ThemedText variant="title" style={styles.planTitle}>
               {plan.title}
@@ -251,14 +251,14 @@ export default function TreatmentPlanDetailScreen() {
 
         {/* Signed Legal Audit Certificate Card (Visible when signed) */}
         {decision === "accepted" && signedInfo ? (
-          <Card elevation="raised" style={styles.signedCertificateCard}>
+          <Card style={styles.signedCertificateCard}>
             <View style={styles.certHeader}>
               <View style={styles.certShield}>
                 <AppIcon name="shieldCheck" size={16} color={colors.success} />
               </View>
               <View style={styles.certHeaderText}>
                 <ThemedText variant="headline" style={styles.certTitle}>
-                  Clinical Consent Signed & Recorded
+                  Clinical consent signed & recorded
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.certMeta}>
                   GDC Principle 2 Compliant Audit Trail
@@ -294,7 +294,8 @@ export default function TreatmentPlanDetailScreen() {
             </View>
 
             <Button
-              title="Book First Treatment Appointment ›"
+              title="Book first treatment appointment"
+              arrow
               variant="primary"
               size="lg"
               onPress={handleBookFirstAppointment}
@@ -344,7 +345,7 @@ export default function TreatmentPlanDetailScreen() {
         </View>
 
         {/* Total + finance callout */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.topRow}>
             <ThemedText variant="subhead" style={styles.muted}>
               Total Treatment Estimate
@@ -410,7 +411,7 @@ export default function TreatmentPlanDetailScreen() {
             <View style={styles.sheetHeader}>
               <View>
                 <ThemedText variant="headline" style={styles.sheetTitle}>
-                  Clinical Consent & Agreement
+                  Clinical consent & agreement
                 </ThemedText>
                 <ThemedText variant="caption" style={styles.sheetSub}>
                   GDC Compliant Treatment Plan Authorization
@@ -531,7 +532,7 @@ export default function TreatmentPlanDetailScreen() {
             {/* Authorize CTA */}
             <View style={styles.sheetFooter}>
               <Button
-                title={consentChecked ? "Sign & Accept Plan (Face ID)" : "Check Agreement to Sign"}
+                title={consentChecked ? "Sign & accept plan (Face ID)" : "Check agreement to sign"}
                 variant="primary"
                 size="lg"
                 disabled={!consentChecked}
@@ -582,7 +583,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   financeBox: {
@@ -612,12 +614,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   footerBtn: {
     flex: 2,
@@ -802,10 +803,10 @@ const styles = StyleSheet.create({
   closeBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
-    height: 32,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 32,
+    width: 40,
   },
   sheetScroll: {
     gap: spacing.sm,

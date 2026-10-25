@@ -75,14 +75,14 @@ export default function BookingInsuranceScreen() {
             </View>
 
             <Input
-              label="Insurance Provider"
+              label="Insurance provider"
               placeholder="e.g. Denplan"
               value={provider}
               onChangeText={setProvider}
             />
 
             <Input
-              label="Membership / Policy Number"
+              label="Membership / policy number"
               placeholder="e.g. DP-4471-8820"
               value={policyNumber}
               onChangeText={setPolicyNumber}
@@ -100,7 +100,7 @@ export default function BookingInsuranceScreen() {
                 }}
                 style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
               >
-                <Card elevation="raised" style={styles.savedCard}>
+                <Card style={styles.savedCard}>
                   <View style={styles.savedTop}>
                     <AppIcon name="creditCard" size={18} color={colors.ink} />
                     <ThemedText variant="headline" style={styles.savedInsurer}>
@@ -116,7 +116,7 @@ export default function BookingInsuranceScreen() {
             ) : null}
 
             <Button
-              title="Review Coverage"
+              title="Review coverage"
               size="lg"
               disabled={!provider.trim() || !policyNumber.trim()}
               onPress={() => setStep("preview")}
@@ -161,7 +161,7 @@ export default function BookingInsuranceScreen() {
             </Card>
 
             <View style={styles.choiceRow}>
-              <ChipPill label="Number looks wrong? Retake" onPress={() => setStep("scan")} />
+              <ChipPill label="Number looks wrong? retake" onPress={() => setStep("scan")} />
             </View>
 
             <Button title="Confirm & continue" size="lg" onPress={confirm} />
@@ -218,7 +218,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   header: {

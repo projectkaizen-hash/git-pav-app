@@ -188,7 +188,7 @@ export default function PaymentMethodsScreen() {
       </View>
 
       <Button
-        title="+ Add Payment Method"
+        title="+ Add payment method"
         variant="secondary"
         onPress={() => setModalVisible(true)}
       />
@@ -202,7 +202,7 @@ export default function PaymentMethodsScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <ThemedText variant="headline">Add Card</ThemedText>
+            <ThemedText variant="headline">Add card</ThemedText>
             <Button
               title="Close"
               variant="ghost"
@@ -233,7 +233,7 @@ export default function PaymentMethodsScreen() {
             />
 
             <Button
-              title={isSaving ? "Saving Card..." : "Save Card Securely"}
+              title={isSaving ? "Saving card..." : "Save card securely"}
               onPress={handleAddCard}
               disabled={isSaving || !cardDetails?.complete}
               loading={isSaving}
@@ -297,7 +297,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   deleteText: {

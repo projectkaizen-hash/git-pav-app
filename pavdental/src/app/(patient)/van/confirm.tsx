@@ -169,12 +169,12 @@ export default function VanConfirmScreen() {
         </View>
 
         {/* Visit Breakdown */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <ThemedText variant="headline" style={styles.title}>
-              Mobile Van Visit Summary
+              Mobile van visit summary
             </ThemedText>
-            <Badge label="Live Dispatch" variant="info" />
+            <Badge label="Live dispatch" variant="info" />
           </View>
 
           <View style={styles.item}>
@@ -212,9 +212,9 @@ export default function VanConfirmScreen() {
         </Card>
 
         {/* Financials & Transparent Policy */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="headline" style={styles.title}>
-            Pricing & Payment Terms
+            Pricing & payment terms
           </ThemedText>
 
           <View style={styles.rowBetween}>
@@ -227,7 +227,7 @@ export default function VanConfirmScreen() {
           </View>
 
           <View style={styles.rowBetween}>
-            <ThemedText variant="headline">Deposit Due on Accept:</ThemedText>
+            <ThemedText variant="headline">Deposit due on accept:</ThemedText>
             <ThemedText variant="title" style={styles.depositPrice}>
               {depositPence > 0 ? `£${(depositPence / 100).toFixed(2)}` : "None"}
             </ThemedText>
@@ -249,7 +249,7 @@ export default function VanConfirmScreen() {
       {/* Action Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title={isSubmitting ? "Dispatching..." : "Confirm & Request Van Visit ›"}
+          title={isSubmitting ? "Dispatching..." : "Confirm & request van visit ›"}
           size="lg"
           loading={isSubmitting}
           disabled={!hasService}
@@ -282,7 +282,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   depositPrice: {
@@ -290,10 +291,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   holdBanner: {
     alignItems: "center",

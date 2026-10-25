@@ -63,10 +63,10 @@ export default function ResetPasswordScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
         </View>
@@ -139,7 +139,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.actions}>
             {!completed ? (
               <Button
-                title="Update Password"
+                title="Update password"
                 size="lg"
                 arrow={true}
                 loading={loading}
@@ -147,7 +147,7 @@ export default function ResetPasswordScreen() {
               />
             ) : (
               <Button
-                title="Proceed to Sign In"
+                title="Proceed to sign in"
                 size="lg"
                 arrow={true}
                 onPress={() => router.replace("/(auth)/sign-in")}
@@ -162,8 +162,8 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
     paddingTop: spacing.sm,
   },
   errorBox: {
@@ -197,9 +197,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {
