@@ -325,4 +325,42 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect(await readState(asPatient, thread.id)).toBe(false);
     expect(await readState(asClinician, thread.id)).toBe(true);
   });
+
+  it("gives admins a practice inbox under /api/admin/messages (CS-29)", async () => {
+    const patient = await makePatient("inbox-pt", "Inbox", "Patient");
+    const admin = await prisma.user.create({
+      data: { email: `inbox-admin-${tag}@example.test`, passwordHash: "x", role: "admin" },
+    });
+    const asAdmin = {
+      Authorization: `Bearer ${signAccessToken({ sub: admin.id, role: "admin", sessionId: crypto.randomUUID() })}`,
+      "Content-Type": "application/json",
+    };
+
+    const created = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: "Synthetic practice question", body: "Synthetic body." }),
+    });
+    const thread = (await created.json()) as { id: string; recipientType: string };
+    threadIds.push(thread.id);
+    expect(thread.recipientType).toBe("practice");
+
+    const list = await fetch(`${baseUrl}/api/admin/messages?recipientType=practice&limit=100`, { headers: asAdmin });
+    expect(list.status).toBe(200);
+    const threads = (await list.json()) as { id: string; isRead: boolean; recipientType: string; from: string }[];
+    expect(threads.every((t) => t.recipientType === "practice")).toBe(true);
+    const found = threads.find((t) => t.id === thread.id);
+    expect(found).toMatchObject({ isRead: false, from: "Inbox Patient" });
+
+    const reply = await fetch(`${baseUrl}/api/admin/messages/${thread.id}/reply`, {
+      method: "POST",
+      headers: asAdmin,
+      body: JSON.stringify({ body: "Synthetic practice reply." }),
+    });
+    expect(reply.status).toBe(201);
+    expect(((await reply.json()) as { message: { senderName: string } }).message.senderName).toBe("Pav Dental Practice Team");
+
+    // Patients and clinicians can't use the admin inbox.
+    expect((await fetch(`${baseUrl}/api/admin/messages`, { headers: { Authorization: `Bearer ${patient.token}` } })).status).toBe(403);
+  });
 });

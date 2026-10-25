@@ -78,6 +78,7 @@ const threadIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
 const listThreadsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+  recipientType: z.enum(["practice", "care_team", "clinician"]).optional(),
 }).strict();
 
 const createThreadSchema = z
@@ -106,9 +107,14 @@ router.get("/meta", requireAuth, (_req: AuthRequest, res: Response) => {
 // Returns persistent message threads for the authenticated user.
 router.get("/", requireAuth, validateQuery(listThreadsQuerySchema), async (req: AuthRequest, res: Response) => {
   const isStaff = req.user!.role === "clinician" || req.user!.role === "admin";
-  const { limit, offset } = req.query as unknown as { limit: number; offset: number };
+  const { limit, offset, recipientType } = req.query as unknown as {
+    limit: number;
+    offset: number;
+    recipientType?: string;
+  };
+  const visible = await visibleThreadsWhere(req);
   const threads = await prisma.messageThread.findMany({
-    where: await visibleThreadsWhere(req),
+    where: recipientType ? { AND: [visible, { recipientType }] } : visible,
     include: {
       patientUser: {
         include: {

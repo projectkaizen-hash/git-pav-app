@@ -8,6 +8,7 @@ import {
   Inbox,
   type LucideIcon,
   Mail,
+  MessagesSquare,
   ReceiptText,
   ShoppingBag,
   Tag,
@@ -83,6 +84,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Team & Services",
         url: "/dashboard/team",
         icon: UserPlus,
+      },
+      {
+        id: "pav-inbox",
+        title: "Patient Inbox",
+        url: "/dashboard/inbox",
+        icon: MessagesSquare,
       },
       {
         id: "pav-submissions",
