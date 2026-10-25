@@ -5,9 +5,11 @@ import { ThemedText, Card, Badge, Button, Input } from "@/components";
 import {
   useDependants,
   useAddDependantMutation,
+  useUpdateDependantMutation,
   useRemoveDependantMutation,
 } from "@/features/account/account-hooks";
-import type { DependantRelationship } from "@/features/account/account-api";
+import type { DependantItem, DependantRelationship } from "@/features/account/account-api";
+import { changedDependantFields } from "@/features/account/dependant-edits";
 import { colors, spacing, type } from "@/theme";
 
 // Only a parent or guardian adds a child under 16 (decisions log #17).
@@ -16,14 +18,69 @@ const RELATIONSHIPS: DependantRelationship[] = ["Son", "Daughter", "Ward"];
 export default function DependantsScreen() {
   const { data: dependants = [] } = useDependants();
   const addDependant = useAddDependantMutation();
+  const updateDependant = useUpdateDependantMutation();
   const removeDependant = useRemoveDependantMutation();
 
   const [modalVisible, setModalVisible] = useState(false);
+  // The dependant being edited, or null when adding a new one.
+  const [editing, setEditing] = useState<DependantItem | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState("");
-  const [relationship, setRelationship] = useState<DependantRelationship>("Son");
+  // "Other" only for older profiles being edited; it can't be picked.
+  const [relationship, setRelationship] = useState<DependantRelationship | "Other">("Son");
   const [isGuardian, setIsGuardian] = useState(false);
+
+  const resetForm = () => {
+    setEditing(null);
+    setFirstName("");
+    setLastName("");
+    setDob("");
+    setRelationship("Son");
+    setIsGuardian(false);
+  };
+
+  const openAdd = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  const openEdit = (dep: DependantItem) => {
+    setEditing(dep);
+    setFirstName(dep.firstName);
+    setLastName(dep.lastName);
+    setDob(String(dep.dob).slice(0, 10));
+    setRelationship(dep.relationship);
+    setModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    if (!firstName.trim() || !lastName.trim() || !dob.trim()) {
+      Alert.alert("Missing Fields", "Please complete all required fields for your child/dependant.");
+      return;
+    }
+    const updates = changedDependantFields(editing, { firstName, lastName, dob, relationship });
+
+    if (Object.keys(updates).length === 0) {
+      setModalVisible(false);
+      resetForm();
+      return;
+    }
+
+    try {
+      await updateDependant.mutateAsync({ id: editing.id, updates });
+      setModalVisible(false);
+      resetForm();
+      Alert.alert("Profile Updated", `${firstName.trim()}'s details have been saved.`);
+    } catch (err: unknown) {
+      // The server explains age refusals in plain words.
+      Alert.alert(
+        "Could not save changes",
+        err instanceof Error && err.message ? err.message : "Could not update the dependant profile."
+      );
+    }
+  };
 
   const handleAdd = async () => {
     if (!firstName || !lastName || !dob) {
@@ -32,6 +89,10 @@ export default function DependantsScreen() {
     }
     if (!isGuardian) {
       Alert.alert("Confirm parental responsibility", "Confirm you are this child's parent or legal guardian.");
+      return;
+    }
+    if (relationship === "Other") {
+      Alert.alert("Missing Fields", "Please choose the child's relationship to you.");
       return;
     }
 
@@ -51,10 +112,7 @@ export default function DependantsScreen() {
       }
 
       setModalVisible(false);
-      setFirstName("");
-      setLastName("");
-      setDob("");
-      setIsGuardian(false);
+      resetForm();
       Alert.alert("Child Profile Linked", `${firstName}'s profile has been linked to your account.`);
     } catch (err: any) {
       // The server explains age and guardian refusals in plain words.
@@ -128,11 +186,22 @@ export default function DependantsScreen() {
                   </ThemedText>
                 </View>
 
-                <TouchableOpacity onPress={() => handleRemove(dep.id, dep.firstName)}>
-                  <ThemedText variant="caption" style={styles.unlinkText}>
-                    Unlink
-                  </ThemedText>
-                </TouchableOpacity>
+                <View style={styles.depActions}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${dep.firstName}'s details`}
+                    onPress={() => openEdit(dep)}
+                  >
+                    <ThemedText variant="caption" style={styles.editText}>
+                      Edit
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleRemove(dep.id, dep.firstName)}>
+                    <ThemedText variant="caption" style={styles.unlinkText}>
+                      Unlink
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
               </View>
             </Card>
           );
@@ -142,7 +211,7 @@ export default function DependantsScreen() {
       <Button
         title="+ Add Child / Dependant Profile"
         variant="secondary"
-        onPress={() => setModalVisible(true)}
+        onPress={openAdd}
       />
 
       {/* Modal */}
@@ -154,7 +223,7 @@ export default function DependantsScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <ThemedText variant="headline">Add Child Profile</ThemedText>
+            <ThemedText variant="headline">{editing ? "Edit Child Profile" : "Add Child Profile"}</ThemedText>
             <Button
               title="Close"
               variant="ghost"
@@ -207,6 +276,7 @@ export default function DependantsScreen() {
               </View>
             </View>
 
+            {editing ? null : (
             <TouchableOpacity
               accessibilityRole="checkbox"
               accessibilityState={{ checked: isGuardian }}
@@ -221,13 +291,23 @@ export default function DependantsScreen() {
                 can create their own account.
               </ThemedText>
             </TouchableOpacity>
+            )}
 
-            <Button
-              title={addDependant.isPending ? "Linking..." : "Link Profile"}
-              onPress={handleAdd}
-              disabled={addDependant.isPending || !firstName || !lastName || !isGuardian}
-              loading={addDependant.isPending}
-            />
+            {editing ? (
+              <Button
+                title={updateDependant.isPending ? "Saving..." : "Save Changes"}
+                onPress={handleSaveEdit}
+                disabled={updateDependant.isPending || !firstName || !lastName || !dob}
+                loading={updateDependant.isPending}
+              />
+            ) : (
+              <Button
+                title={addDependant.isPending ? "Linking..." : "Link Profile"}
+                onPress={handleAdd}
+                disabled={addDependant.isPending || !firstName || !lastName || !isGuardian}
+                loading={addDependant.isPending}
+              />
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -248,6 +328,15 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   consentBadge: {},
+  depActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  editText: {
+    color: colors.ink,
+    fontWeight: "600",
+  },
   consentText: {
     fontWeight: "600",
   },
