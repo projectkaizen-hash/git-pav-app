@@ -19,10 +19,10 @@ function runWriter(index: number): Promise<void> {
       await prisma.$disconnect();
     })().catch((err) => { console.error(err); process.exit(1); });
   `;
-  const dbUrl = process.env.DATABASE_URL
-    ? (process.env.DATABASE_URL.includes("connection_limit")
-        ? process.env.DATABASE_URL
-        : `${process.env.DATABASE_URL}${process.env.DATABASE_URL.includes("?") ? "&" : "?"}connection_limit=2&pool_timeout=30`)
+  const rawUrl = process.env.DATABASE_URL || "";
+  const cleanUrl = rawUrl.replace(/([?&])connection_limit=\d+(&|$)/, "$1").replace(/[?&]$/, "");
+  const dbUrl = cleanUrl
+    ? `${cleanUrl}${cleanUrl.includes("?") ? "&" : "?"}connection_limit=1&pool_timeout=30`
     : undefined;
   return new Promise((resolve, reject) => {
     const child = spawn("npx", ["tsx", "-e", script], {
