@@ -218,7 +218,13 @@ router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), vali
           { idempotencyKey: `admin-cancel-refund:${existing.id}:${existing.depositPaidPence}` }
         );
       } catch (refundErr) {
-        console.error("[Admin Status] Refund failed during admin cancellation:", refundErr);
+        // Don't cancel without the refund (decisions log #22): the booking
+        // stays as it was and staff can try again.
+        console.error(
+          "[Admin Status] Refund failed during admin cancellation:",
+          refundErr instanceof Error ? refundErr.name : "unknown error"
+        );
+        return res.status(502).json({ error: "The deposit couldn't be refunded, so the appointment wasn't cancelled. Try again." });
       }
     }
   }

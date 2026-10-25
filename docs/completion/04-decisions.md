@@ -31,3 +31,4 @@ The owner's answers to the Phase 3 questions (23 Oct 2026), and the defaults cho
 | 19 | Hosting | AWS (eu-west-2 London proposed for UK data residency) | Decided | CS-45 |
 | 20 | Store ids and `EXPO_TOKEN` | Yes, not yet supplied (to be added as environment secrets, never in chat or code) | Open | CS-47 |
 | 21 | Upcoming paid bookings when a patient asks to be erased | The patient cancels them first, under the normal refund rules: closing the account in the app is refused while any are upcoming, and the DPO can't complete an erasure until they're gone. Payment rules unchanged. | Decided | CS-23 |
+| 22 | Deposit when the practice cancels a paid booking | Full refund of the deposit kept, whatever the notice; if the refund fails the booking is not cancelled. The audit log records who cancelled. Patient cancellations keep the notice-based policy. Owner chose this on 2026-10-25. | Decided | CS-49 |
