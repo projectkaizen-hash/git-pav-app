@@ -38,42 +38,42 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-03 | Partial | Dev-defaults opt-in; require Daily, email/SMS, S3, `APP_URL` when deployed; JWT `iss`/`aud` |
 | CS-04 | Done | |
 | CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
-| CS-06 | Partial | Veneers callout (`welcome.tsx`); van visit summary still says the exam and charting were done and a VAT invoice was emailed (`van/complete.tsx`); `van/confirm.tsx` falls back to `srv_checkup`; check-in column and window |
-| CS-07 | Done | Remove dead `daily-video-view.tsx` |
+| CS-06 | Partial | Check-in column and window (van summary, Veneers callout and `srv_checkup` fallback fixed in #64) |
+| CS-07 | Done | |
 | CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
-| CS-09 | Partial | Paginate `GET /api/messages` |
+| CS-09 | Done | Message list paged in #64 |
 | CS-10 | Done | 🛑 Clinical sign-off of wording |
-| CS-11 | Partial | Raw error logs; audit metadata part done by CS-50 |
+| CS-11 | Done | Raw error logs fixed in #64, with a test that stops new ones |
 | CS-12 | Partial | Split reference and demo data (seed guard done in #49) |
 | CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key |
 | CS-14 | Done | Remainders closed by CS-54 (not re-audited); `TRUST_PROXY` in deploy docs |
 | CS-15, CS-17, CS-18 | Done | Remainders closed by CS-49 and #59 |
 | CS-16 | Done | |
 | CS-19 | Done | Remainders closed by CS-54 (not re-audited) |
-| CS-20 | Partial | Old-hash fallback undoes the HMAC; monitor checks oldest rows; 401 alert flood; weakened tamper test; AU-5 |
+| CS-20 | Partial | AU-5 throughput; the `audit_logs` index in `20261024070000` isn't `CONCURRENTLY` (already applied). Legacy hash, monitor window, 401 alerts and the tamper test fixed in #64 |
 | CS-21 | Partial | `fetch` lint rule; web refresh token |
 | CS-22 | Done | |
 | CS-23 | Done | 🛑 Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
-| CS-24 | Partial | SAR copy fixed by CS-51. Care-team clinicians can still download a patient's SAR bundle through `GET /api/patients/:id/documents/:docId/download` |
+| CS-24 | Done | SAR bundles hidden from clinicians in #64 |
 | CS-25 | Done | App side closed by CS-51 (not re-audited) |
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
 | CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
 | CS-28 | Partial | Notes closed by CS-50; `scope=today` in app; time windows |
 | CS-29 | Partial | Staff inbox for practice threads; per-side read state; thread delete audit |
 | CS-30, CS-32, CS-33 | Done | |
-| CS-31 | Partial | Dashboard screens for onboarding clinicians, operators, vans, services; invite email; 🛑 drop the dashboard `patients` table |
-| CS-34 | Partial | Edit screen for dependants |
+| CS-31 | Partial | Team & Services screen and staff invite email in batch 2; clinic screen; 🛑 drop the dashboard `patients` table |
+| CS-34 | Done | Edit screen in batch 2; 🛑 whether a changed date of birth asks for consent again |
 | CS-35 | Done | 🛑 Which roles may prescribe |
 | CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |
-| CS-37 | Partial | Use `QueryState` on the screens; real tests |
+| CS-37 | Partial | Booking pickers, prescriptions, plan detail and messages fixed in batch 2; the operator, clinician inbox, financing, insights, payment methods and notifications screens still treat a failed load as empty |
 | CS-38 | Partial | Remaining labels; screen-reader checklist; real tests |
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
 | CS-44 | Done | Merged as #62 (not re-audited) |
 | CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
-| CS-46 | Not started | Lint, mobile tests that assert constants, lint step in CI |
+| CS-46 | Partial | Mobile lint errors fixed and lint in CI with a warning ratchet (233, mostly `any`), unused job queue removed, in batch 2; backend lint; mobile tests that assert constants |
 | CS-47 | Not started | 🛑 Legal sign-offs |
 | CS-48 to CS-50 | Done | #47 to #49, #50, #51 |
-| CS-51 | Partial | Merged as #53; the van visit summary (see CS-06) wasn't changed |
+| CS-51 | Done | Van visit summary fixed in #64 |
 | CS-52 | Partial | Forms and dashboard merged as #54; 🛑 team page, reviews and counters (real content or remove) |
 | CS-53, CS-54 | Done | #52, #55 (not re-audited) |
 
