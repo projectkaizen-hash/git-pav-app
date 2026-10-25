@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, ErrorState, Skeleton } from "@/components";
 import { colors, spacing } from "@/theme";
 import { fetchCurrentShift, updatePhase, optimizeRoute, reorderQueue } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
@@ -14,7 +14,7 @@ export default function OperatorRouteScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["operator-shift"],
     queryFn: fetchCurrentShift,
     refetchInterval: 10000,
@@ -117,6 +117,28 @@ export default function OperatorRouteScreen() {
         return <Badge label="QUEUED" variant="default" />;
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Skeleton height={120} />
+          <Skeleton height={76} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && data === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your route. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

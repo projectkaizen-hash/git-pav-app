@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Switch, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThemedText, Card, Badge, Button } from "@/components";
+import { ThemedText, Card, Badge, Button, ErrorState, Skeleton } from "@/components";
 import { colors, spacing } from "@/theme";
 import {
   fetchCurrentShift,
@@ -18,7 +18,7 @@ export default function OperatorShiftScreen() {
   const queryClient = useQueryClient();
   const [gpsActive, setGpsActive] = useState(false);
 
-  const { data } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["operator-shift"],
     queryFn: fetchCurrentShift,
     refetchInterval: 10000,
@@ -106,6 +106,28 @@ export default function OperatorShiftScreen() {
     if (isPaused) return <Badge label="❚❚ PAUSED · NOT ACCEPTING" variant="warning" />;
     return <Badge label="○ OFFLINE" variant="default" />;
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Skeleton height={120} />
+          <Skeleton height={76} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && data === undefined) {
+    return (
+      <View style={styles.container}>
+        <ErrorState
+          message="We couldn't load your shift. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
