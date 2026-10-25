@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import http, { Server } from "http";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -41,8 +42,8 @@ import { buildRateLimiters, parseTrustProxy } from "./middleware/rate-limits";
 import { prisma } from "./lib/prisma";
 import { redis } from "./lib/redis";
 import { env } from "./config/env";
-import { startAuditMonitoring } from "./lib/audit-monitoring";
-import { startBackgroundJobs } from "./lib/background-jobs";
+import { startAuditMonitoring, stopAuditMonitoring } from "./lib/audit-monitoring";
+import { startBackgroundJobs, stopBackgroundJobs } from "./lib/background-jobs";
 import { flushErrorTracking, initErrorTracking, reportError } from "./lib/error-tracking";
 import { safeError } from "./lib/log-safety";
 import { getCoverageBackend } from "./lib/van-coverage";
@@ -75,7 +76,12 @@ app.use(cors({
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 app.use(express.json({ limit: "2mb" }));
 app.use((req, res, next) => {
-  const reqId = (req.headers["x-request-id"] as string) || crypto.randomUUID();
+  const rawId = req.headers["x-request-id"];
+  const reqId =
+    typeof rawId === "string" && rawId.trim().length > 0
+      ? rawId.trim()
+      : crypto.randomUUID();
+  req.id = reqId;
   res.setHeader("x-request-id", reqId);
   next();
 });
@@ -96,8 +102,9 @@ app.set("authLimiter", authLimiter);
 app.use(globalLimiter);
 app.use(standardResponse);
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
-const healthCheckHandler = async (_req: Request, res: Response) => {
+// ─── Health Checks (SV-4) ─────────────────────────────────────────────────────
+// Keep /livez and /readyz, drop fabricated dsptMode claim
+const readinessCheckHandler = async (_req: Request, res: Response) => {
   let dbOk = false;
   let redisOk = false;
 
@@ -117,17 +124,22 @@ const healthCheckHandler = async (_req: Request, res: Response) => {
     service: "pavdental-backend-api",
     timestamp: new Date().toISOString(),
     checks: { database: dbOk ? "ok" : "error", redis: redisOk ? "ok" : "error" },
-    dsptMode: "active",
   });
 };
 
-app.get("/", healthCheckHandler);
-app.get("/health", healthCheckHandler);
-app.get("/healthz", healthCheckHandler);
-app.get("/readyz", healthCheckHandler);
-app.get("/livez", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", service: "pavdental-backend-api", timestamp: new Date().toISOString() });
-});
+const livenessCheckHandler = (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    service: "pavdental-backend-api",
+    timestamp: new Date().toISOString(),
+  });
+};
+
+app.get("/", livenessCheckHandler);
+app.get("/health", livenessCheckHandler);
+app.get("/livez", livenessCheckHandler);
+app.get("/healthz", readinessCheckHandler);
+app.get("/readyz", readinessCheckHandler);
 
 // ─── Signed Document Stream Endpoint ──────────────────────────────────────────
 app.get("/api/patients/documents/stream/*", async (req: Request, res: Response) => {
@@ -228,10 +240,88 @@ process.on('uncaughtException', (error) => {
   flushErrorTracking().finally(() => process.exit(1));
 });
 
+// ─── Graceful Shutdown (SV-2) ─────────────────────────────────────────────────
+let isShuttingDown = false;
+
+export async function gracefulShutdown(
+  server?: Server | null,
+  signal: string = "SIGTERM",
+  timeoutMs: number = 10000
+): Promise<void> {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`[SHUTDOWN] Received ${signal}. Draining in-flight requests and stopping services...`);
+
+  // 1. Stop background jobs and monitoring timers
+  try {
+    stopBackgroundJobs();
+    stopAuditMonitoring();
+  } catch (err) {
+    console.warn("[SHUTDOWN] Error stopping background jobs:", safeError(err));
+  }
+
+  // 2. Stop accepting new HTTP connections and drain in-flight requests
+  if (server) {
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        console.warn("[SHUTDOWN] Drain timeout reached. Forcing socket closure.");
+        resolve();
+      }, timeoutMs);
+
+      server.close((err) => {
+        clearTimeout(timer);
+        if (err) {
+          console.warn("[SHUTDOWN] Error while closing HTTP server:", safeError(err));
+        } else {
+          console.log("[SHUTDOWN] HTTP server closed cleanly.");
+        }
+        resolve();
+      });
+    });
+  }
+
+  // 3. Disconnect Redis and Prisma
+  try {
+    await redis.quit();
+    console.log("[SHUTDOWN] Redis connection closed.");
+  } catch (err) {
+    console.warn("[SHUTDOWN] Error closing Redis:", safeError(err));
+  }
+
+  try {
+    await prisma.$disconnect();
+    console.log("[SHUTDOWN] Prisma client disconnected.");
+  } catch (err) {
+    console.warn("[SHUTDOWN] Error disconnecting Prisma:", safeError(err));
+  }
+
+  // 4. Flush Sentry error tracking
+  try {
+    await flushErrorTracking();
+  } catch {}
+
+  console.log("[SHUTDOWN] Graceful shutdown completed.");
+}
+
+let activeHttpServer: Server | null = null;
+
+const onShutdownSignal = (signal: string) => async () => {
+  try {
+    await gracefulShutdown(activeHttpServer, signal);
+    process.exit(0);
+  } catch (err) {
+    console.error(`[SHUTDOWN] Fatal error during ${signal}:`, safeError(err));
+    process.exit(1);
+  }
+};
+
+process.on("SIGTERM", onShutdownSignal("SIGTERM"));
+process.on("SIGINT", onShutdownSignal("SIGINT"));
+
 // ─── Startup ──────────────────────────────────────────────────────────────────
 if (require.main === module) {
   initErrorTracking();
-  app.listen(PORT, async () => {
+  activeHttpServer = app.listen(PORT, async () => {
     console.log(`🏥 Pav Dental API running on port ${PORT}`);
     try {
       await redis.connect();
