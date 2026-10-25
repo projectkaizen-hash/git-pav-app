@@ -130,10 +130,13 @@ export async function requireActiveAppointmentContext(
     return null;
   }
 
-  // Require an active appointment (in_progress, or confirmed within today's window)
+  // Require an active appointment (in_progress, or confirmed on the appointment day)
   const now = new Date();
-  const windowBeforeStart = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours before
-  const windowAfterEnd = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4 hours after
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  // Bounds cover today's UK/UTC calendar day, rejecting past or multi-day future appointments
+  const windowStart = new Date(startOfDay.getTime() - 12 * 60 * 60 * 1000);
+  const windowEnd = new Date(startOfDay.getTime() + 36 * 60 * 60 * 1000);
 
   const activeAppointment = await prisma.appointment.findFirst({
     where: {
@@ -143,8 +146,7 @@ export async function requireActiveAppointmentContext(
         { status: "in_progress" },
         {
           status: "confirmed",
-          startTimeUtc: { lte: windowBeforeStart },
-          endTimeUtc: { gte: windowAfterEnd },
+          startTimeUtc: { gte: windowStart, lte: windowEnd },
         },
       ],
     },
