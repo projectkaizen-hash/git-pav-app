@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed:reference": "SEED_SCOPE=reference tsx prisma/seed.ts",
     "db:check-orphans": "tsx scripts/check-orphans.ts",
     "hours:defaults": "tsx scripts/apply-default-opening-hours.ts",
     "dev:login-code": "tsx scripts/dev-login-code.ts",

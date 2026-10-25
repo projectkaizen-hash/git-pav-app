@@ -19,8 +19,11 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 async function main() {
-  console.log("🌱 Seeding Pav Dental Full Production Baseline Data...");
-  const defaultPasswordHash = await hashPassword(seedPlan.demoPassword);
+  console.log(
+    seedPlan.scope === "reference"
+      ? "🌱 Seeding Pav Dental reference data (clinics, services, van)..."
+      : "🌱 Seeding Pav Dental reference and demo data..."
+  );
 
   // ─── 1. Clinics ────────────────────────────────────────────────────────────
   const clinicHarley = await prisma.clinic.upsert({
@@ -250,7 +253,15 @@ async function main() {
     });
   }
 
+  if (seedPlan.scope === "reference") {
+    // Default hours for each clinic; clinicians get a rota when they're added.
+    await applyDefaultHours(prisma);
+    console.log("✅ Reference data seeded. No accounts, clinical records or bookings were created.");
+    return;
+  }
+
   // ─── 4. Known User Accounts (demo password, see seed-guard) ──────────────────
+  const defaultPasswordHash = await hashPassword(seedPlan.demoPassword);
 
   // A. Patient Account: Alexander Wright
   let patientUser = await prisma.user.findUnique({ where: { email: "patient@pavdental.com" } });
