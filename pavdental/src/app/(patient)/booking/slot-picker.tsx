@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Card, Button, ProgressPills, ChipPill, Toast } from "@/components";
 import { colors, spacing } from "@/theme";
@@ -11,8 +11,15 @@ import { ukDayLabel, ukHour, upcomingUkDates } from "@/features/booking/uk-time"
 
 export default function SlotPickerScreen() {
   const router = useRouter();
+  const { rescheduleOf } = useLocalSearchParams<{ rescheduleOf?: string }>();
   const insets = useSafeAreaInsets();
   const { setSlot, setHoldExpiry, clinician, clinic, service, channel } = useBookingStore();
+
+  useEffect(() => {
+    if (!service && !rescheduleOf) {
+      router.replace("/(patient)/booking/service-catalog" as any);
+    }
+  }, [service, rescheduleOf]);
 
   // Days and times are the clinic's, in UK time.
   const upcomingDays = useMemo(
@@ -83,6 +90,10 @@ export default function SlotPickerScreen() {
       setHoldError(err?.message || "Could not reserve this slot. Please try another time.");
     }
   };
+
+  if (!service && !rescheduleOf) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

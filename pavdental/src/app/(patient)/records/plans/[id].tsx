@@ -10,6 +10,7 @@ import {
   useTreatmentPlans,
   useSignTreatmentPlanMutation,
   useDeclineTreatmentPlanMutation,
+  useServices,
 } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { formatGbp } from "@/features/booking/booking-api";
@@ -28,6 +29,7 @@ export default function TreatmentPlanDetailScreen() {
   const { setService } = useBookingStore();
   const userId = user?.id || "";
   const { data: apiPlans, isLoading } = useTreatmentPlans(userId);
+  const { data: services = [] } = useServices();
   const signPlanMutation = useSignTreatmentPlanMutation(userId);
   const declinePlanMutation = useDeclineTreatmentPlanMutation(userId);
 
@@ -194,19 +196,30 @@ export default function TreatmentPlanDetailScreen() {
 
   const handleBookFirstAppointment = () => {
     const firstItem = items[0] || { description: plan.title, costPence: totalCostPence };
-    setService({
-      id: "srv_plan_item",
-      name: firstItem.description,
-      category: "restorative",
-      pricePence: firstItem.costPence || 12000,
-      depositPence: 2500,
-      durationMinutes: 45,
-      supportedChannels: ["clinic", "van"],
-      description: `Appointment for ${plan.title}.`,
-      isActive: true,
-      requiresOdontogram: true,
-    } as any);
-    router.push("/(patient)/booking/clinic-picker" as never);
+    const itemDescLower = (firstItem.description || "").toLowerCase();
+    const planTitleLower = (plan.title || "").toLowerCase();
+
+    // Match a real active service from the catalogue instead of fabricating "srv_plan_item" (MB-3)
+    const matchedService =
+      services.find((s) => {
+        const sNameLower = (s.name || "").toLowerCase();
+        return (
+          (firstItem as any).serviceId === s.id ||
+          itemDescLower.includes(sNameLower) ||
+          sNameLower.includes(itemDescLower) ||
+          planTitleLower.includes(sNameLower) ||
+          sNameLower.includes(planTitleLower)
+        );
+      }) ||
+      services.find((s) => s.category === "restorative") ||
+      services[0];
+
+    if (matchedService) {
+      setService(matchedService);
+      router.push("/(patient)/booking/clinic-picker" as never);
+    } else {
+      router.push("/(patient)/booking/service-catalog" as never);
+    }
   };
 
   return (

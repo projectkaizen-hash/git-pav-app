@@ -15,7 +15,10 @@ export default function BookingSummaryScreen() {
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { service, clinic, clinician, slot, holdExpiresAt, resetDraft, channel } = useBookingStore();
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(() => {
+    if (!holdExpiresAt) return 0;
+    return Math.max(0, Math.floor((holdExpiresAt - Date.now()) / 1000));
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   // A rewards voucher off this deposit (decisions log #14). The server checks
   // it and sets the amount; this only previews it.
@@ -25,12 +28,38 @@ export default function BookingSummaryScreen() {
   // A parent or guardian can book for their child (decisions log #17).
   const { data: dependants = [] } = useDependants();
   const [dependantId, setDependantId] = useState<string | null>(null);
-  const depositPence = service?.depositPence || 2000;
+
+  useEffect(() => {
+    if (!service || !slot) {
+      router.replace("/(patient)/booking/service-catalog" as any);
+    }
+  }, [service, slot]);
+
+  const depositPence = service?.depositPence ?? 0;
   const voucherFits = !!voucher && voucher.discountPence < depositPence;
   const depositDuePence = useVoucher && voucherFits ? depositPence - voucher!.discountPence : depositPence;
 
   useEffect(() => {
-    if (!holdExpiresAt) return;
+    if (!holdExpiresAt || holdExpiresAt <= Date.now()) {
+      setSecondsRemaining(0);
+      Alert.alert(
+        "Slot Reservation Expired",
+        "Your slot reservation has expired or is invalid. Please select a time slot.",
+        [
+          {
+            text: "Select Slot",
+            onPress: () => {
+              resetDraft();
+              router.replace("/(patient)/booking/slot-picker" as any);
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    setSecondsRemaining(Math.max(0, Math.floor((holdExpiresAt - Date.now()) / 1000)));
+
     const interval = setInterval(() => {
       const remaining = Math.max(0, Math.floor((holdExpiresAt - Date.now()) / 1000));
       setSecondsRemaining(remaining);
@@ -41,10 +70,13 @@ export default function BookingSummaryScreen() {
           "Slot Reservation Expired",
           "Your slot reservation has expired. Please select a new time slot.",
           [
-            { text: "OK", onPress: () => {
-              resetDraft();
-              router.replace("/(patient)/booking/slot-picker" as any);
-            }}
+            {
+              text: "OK",
+              onPress: () => {
+                resetDraft();
+                router.replace("/(patient)/booking/slot-picker" as any);
+              },
+            },
           ]
         );
       }
@@ -62,21 +94,33 @@ export default function BookingSummaryScreen() {
   const attemptKey = useRef(newBookingAttemptKey());
 
   const handlePayDeposit = async () => {
+    if (!service || !slot) {
+      Alert.alert("Incomplete Booking", "Please select a service and time slot before continuing.");
+      router.replace("/(patient)/booking/service-catalog" as any);
+      return;
+    }
+
+    if (!slot.startTimeUtc || !slot.endTimeUtc) {
+      Alert.alert("Invalid Slot", "Selected slot is missing timing details. Please choose another slot.");
+      router.replace("/(patient)/booking/slot-picker" as any);
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const startTime = slot?.startTimeUtc || new Date().toISOString();
-      const endTime = slot?.endTimeUtc || new Date(Date.now() + 1800000).toISOString();
+      const startTime = slot.startTimeUtc;
+      const endTime = slot.endTimeUtc;
 
       // 1. Create draft appointment
       const appt = await createAppointment({
-        serviceId: service?.id || "srv_checkup",
+        serviceId: service.id,
         // This flow books clinic visits; video and van have their own flows.
         channel: channel ?? "clinic",
-        clinicianId: clinician?.id,
-        clinicId: clinic?.id,
+        clinicianId: clinician?.id ?? slot.clinicianId,
+        clinicId: clinic?.id ?? slot.clinicId,
         startTimeUtc: startTime,
         endTimeUtc: endTime,
-        slotId: slot?.id,
+        slotId: slot.id,
         dependantId: dependantId ?? undefined,
       }, attemptKey.current);
 
@@ -97,8 +141,8 @@ export default function BookingSummaryScreen() {
           ? { customerId: intent.customerId, customerEphemeralKeySecret: intent.customerEphemeralKeySecret }
           : {}),
         returnURL: "pavdental://stripe-return",
-        // Allow customers to pay within your app
-        allowsDelayedPaymentMethods: true,
+        // Do not allow delayed payment methods (SEPA, BACS, etc.) as slot hold expires in 10 minutes (WH-1/MB-2)
+        allowsDelayedPaymentMethods: false,
         // Appearance tweaks to match app theme
         appearance: {
           colors: {
@@ -111,7 +155,11 @@ export default function BookingSummaryScreen() {
         },
         // Surface Apple Pay / Google Pay inside the native sheet
         applePay: { merchantCountryCode: "GB" },
-        googlePay: { merchantCountryCode: "GB", currencyCode: "GBP", testEnv: true },
+        googlePay: {
+          merchantCountryCode: "GB",
+          currencyCode: "GBP",
+          testEnv: process.env.EXPO_PUBLIC_APP_ENV !== "production",
+        },
       });
 
       if (initError) {
@@ -140,6 +188,10 @@ export default function BookingSummaryScreen() {
       setIsProcessing(false);
     }
   };
+
+  if (!service || !slot) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -193,7 +245,7 @@ export default function BookingSummaryScreen() {
               Treatment:
             </ThemedText>
             <ThemedText variant="headline" style={styles.value}>
-              {service?.name || "Dental Checkup"}
+              {service.name}
             </ThemedText>
           </View>
 
@@ -202,7 +254,7 @@ export default function BookingSummaryScreen() {
               Practice:
             </ThemedText>
             <ThemedText variant="body" style={styles.value}>
-              {clinic?.name || "Pav Dental Central Practice"}
+              {clinic?.name || "Pav Dental Clinic"}
             </ThemedText>
           </View>
 
@@ -211,7 +263,7 @@ export default function BookingSummaryScreen() {
               Dentist:
             </ThemedText>
             <ThemedText variant="body" style={styles.value}>
-              {clinician?.fullName || "First Available Practitioner"}
+              {clinician?.fullName || "Assigned Practitioner"}
             </ThemedText>
           </View>
 
@@ -220,7 +272,7 @@ export default function BookingSummaryScreen() {
               Date & Time:
             </ThemedText>
             <ThemedText variant="headline" style={styles.dateHighlight}>
-              {slot ? `${slot.dateFormatted} at ${slot.displayTime}` : "Selected Slot"}
+              {slot.dateFormatted ? `${slot.dateFormatted} at ${slot.displayTime}` : slot.displayTime}
             </ThemedText>
           </View>
         </Card>
@@ -252,7 +304,7 @@ export default function BookingSummaryScreen() {
               Total Treatment Fee:
             </ThemedText>
             <ThemedText variant="mono">
-              {formatGbp(service?.pricePence || 6500)}
+              {formatGbp(service.pricePence)}
             </ThemedText>
           </View>
 
@@ -280,7 +332,7 @@ export default function BookingSummaryScreen() {
           </View>
 
           <ThemedText variant="caption" style={styles.balanceNote}>
-            The remaining balance of {formatGbp((service?.pricePence || 6500) - (service?.depositPence || 2000))} is payable after your visit.
+            The remaining balance of {formatGbp(service.pricePence - service.depositPence)} is payable after your visit.
           </ThemedText>
         </Card>
 
