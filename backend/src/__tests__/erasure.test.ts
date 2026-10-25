@@ -155,10 +155,15 @@ describe("erasure", () => {
         data: { userId: user.id, stripePaymentMethodId: `pm_mock_${tag}`, brand: "visa", last4: "4242", expMonth: 1, expYear: 2030 },
       });
       await prisma.notificationHistory.create({ data: { userId: user.id, type: "reminder", title: "Synthetic", body: "Synthetic" } });
+      await prisma.patientProfile.update({ where: { id: profile.id }, data: { stripeCustomerId: `cus_mock_${tag}` } });
 
       const requested = await call("POST", "/api/consents/data-deletion-request", token, { reason: "Synthetic" });
       expect(requested.status).toBe(202);
       expect(requested.body.dueBy).toBeTruthy();
+
+      // CS-23: Push token is deactivated immediately during the DPO review wait
+      const pendingPushToken = await prisma.pushToken.findFirstOrThrow({ where: { userId: user.id } });
+      expect(pendingPushToken.active).toBe(false);
 
       const done = await call("POST", `/api/admin/erasure-requests/${requested.body.erasureRequestId}/complete`, adminToken);
       expect(done.status).toBe(200);
@@ -170,7 +175,7 @@ describe("erasure", () => {
       expect(erasedUser.erasedAt).toBeTruthy();
 
       const erasedProfile = await prisma.patientProfile.findUniqueOrThrow({ where: { id: profile.id } });
-      expect(erasedProfile).toMatchObject({ addressLine1: null, postcode: null, emergencyContactName: null, emergencyContactPhone: null });
+      expect(erasedProfile).toMatchObject({ addressLine1: null, postcode: null, emergencyContactName: null, emergencyContactPhone: null, stripeCustomerId: null });
       expect(erasedProfile.retainUntil?.toISOString().slice(0, 10)).toBe("2036-06-02");
 
       expect(await prisma.pushToken.count({ where: { userId: user.id } })).toBe(0);

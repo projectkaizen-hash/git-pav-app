@@ -44,6 +44,7 @@ jobs:
       DATABASE_URL: postgresql://pavdental:pavdental_ci@localhost:5432/pavdental_db?schema=public&connection_limit=5
       REDIS_URL: redis://localhost:6379
       NODE_ENV: development
+      ALLOW_DEV_DEFAULTS: "1"
       PORT: "3000"
     defaults:
       run:

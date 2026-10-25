@@ -4,6 +4,7 @@ import { env } from "../config/env";
 import { prisma } from "./prisma";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { denySessions } from "./session-revocation";
+import { safeError } from "./log-safety";
 
 // Erasure (UK GDPR Art. 17, CS-23). The clinical record is kept for the
 // statutory period (decisions log #9, draft pending legal review): 11 years
@@ -111,7 +112,7 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
       id: true,
       role: true,
       erasedAt: true,
-      patientProfile: { select: { id: true, dob: true, guardianDependants: { select: { dob: true } } } },
+      patientProfile: { select: { id: true, dob: true, stripeCustomerId: true, guardianDependants: { select: { dob: true } } } },
       savedPaymentMethods: { select: { id: true, stripePaymentMethodId: true } },
     },
   });
@@ -132,6 +133,17 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
       } catch (error) {
         // Already detached is fine; anything else stops the run before data changes.
         if ((error as { code?: string }).code !== "resource_missing") throw error;
+      }
+    }
+  }
+
+  // CS-23: Delete customer in Stripe (removes stored name and email from Stripe).
+  if (profile.stripeCustomerId && !env.isMockStripe && !profile.stripeCustomerId.startsWith("cus_mock_")) {
+    try {
+      await stripe.customers.del(profile.stripeCustomerId);
+    } catch (error) {
+      if ((error as { code?: string }).code !== "resource_missing") {
+        console.error("[Erasure] Failed to delete Stripe customer:", safeError(error));
       }
     }
   }
@@ -222,6 +234,13 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
 
 /** Opens an erasure request, or returns the one already open for this account. */
 export async function openErasureRequest(userId: string, source: "account_deletion" | "patient_request", reason?: string | null) {
+  // CS-23: Deactivate push tokens immediately during the 30-day DPO review window
+  // so logged-out devices stop receiving notifications while deletion is pending.
+  await prisma.pushToken.updateMany({
+    where: { userId },
+    data: { active: false },
+  }).catch(() => {});
+
   const existing = await prisma.erasureRequest.findFirst({ where: { userId, status: "pending" }, orderBy: { requestedAt: "asc" } });
   if (existing) return existing;
   const requestedAt = new Date();
