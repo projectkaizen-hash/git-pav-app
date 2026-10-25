@@ -1,5 +1,7 @@
 # 03: Completion plan (Phase 3)
 
+> **Superseded for status by `06-completion-plan.md` (re-audit of 25 Oct 2026).** Rows below marked "not re-audited" or "signed off" were not verified; see decisions log, launch questions V-01.
+
 **Status (25 Oct 2026):** approved and mostly built. CS-01 to CS-45 and CS-48 to CS-54 have merged. The 24 Oct code audit (`05-audit-2026-10-24.md`) found many earlier change sets only partly done; the table below is the current state. The original change set text further down is kept as written.
 
 Linear: project [Pav Dental: completion](https://linear.app/pavdental/project/pav-dental-completion-dd6261f921c6) in team ZIS. CS-NN maps to issue ZIS-(NN+4), for example CS-01 is ZIS-5 and CS-47 is ZIS-51.
@@ -42,7 +44,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-07 | Done | |
 | CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-09 | Done | Message list paged in #64 |
-| CS-10 | Done (signed off) | Clinical wording and private prescription PDF flow confirmed and signed off by owner on 2026-10-25 |
+| CS-10 | Done (clinical review pending) | Private prescription PDF flow built; wording still needs Dr Bhojani's review (decisions log V-01) |
 | CS-11 | Done | Raw error logs fixed in #64, with a test that stops new ones |
 | CS-12 | Done | Reference-only seed added in #64 (seed guard in #49) |
 | CS-13 | Done | Local versioned master key with fixed salt, key ID per record, and deriveSubKey (Render hosting target confirmed; no AWS KMS needed) |
@@ -64,7 +66,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-31 | Done | Team, Services & Clinics onboard screen and staff invite email built; redundant dashboard patients table dropped and live patient API proxied |
 | CS-34 | Done | Edit screen in batch 2 |
 | CS-35 | Done (confirmed) | Prescribing restricted to registered dentists and dental surgeons on server; non-prescribing titles barred |
-| CS-36 | Done (signed off) | Clinical sign-off by registered clinician confirmed on 2026-10-25 |
+| CS-36 | Done in code, not signed off 🛑 | Clinical review still needed (decisions log V-01) |
 | CS-37 | Done | Every data screen shows loading and error states (batches 2 and 3 in #64); financing keeps its fallback link by design |
 | CS-38 | Partial | Run the screen-reader checklist on devices (`docs/completion/screen-reader-checklist.md`). Labels done and checked by a real test in #64 |
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |

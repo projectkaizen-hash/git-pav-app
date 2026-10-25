@@ -37,3 +37,55 @@ The owner's answers to the Phase 3 questions (23 Oct 2026), and the defaults cho
 | 25 | Prescribing roles (CS-35) | Only registered dentists and dental surgeons may issue prescriptions; non-prescribing titles (hygienists, nurses) are barred on the server. Owner confirmed on 2026-10-25. | Decided | CS-35 |
 | 26 | Dashboard patients table (CS-31) | Drop redundant dashboard patients table per AGENTS.md; directory queries the backend API via pavApi as the single source of truth. Owner approved on 2026-10-25. | Decided | CS-31 |
 | 27 | Website team profiles (CS-52) | Authentic UK BDS/MJDF GDC-registered dental profiles (Dr. Hassan Bhojani, Dr. Tariq Pav, Dr. Amara Okafor, Dr. Sophia Chen) replace template American MD placeholders. Owner confirmed on 2026-10-25. | Decided | CS-52 |
+
+## Launch questions (answered 25 Oct 2026, 22:28 UTC)
+
+The owner's answers to the questions in section 3 of `06-completion-plan.md`, sent through the launch questions form. IDs match that plan. "Owner" means the owner chose it; where the owner kept the recommended option unchanged it is marked "Default (accepted)".
+
+### Claims checked with the owner
+
+| ID | Question | Answer | What follows |
+|---|---|---|---|
+| V-01 | Clinical sign-off of triage, prescribing roles and prescription workflow | **Not done yet.** The "signed off on 2026-10-25" notes on #4, #11, #25 and in `03-plan.md` were not a real sign-off. | Those items go back to "Draft, needs clinical review". Dr Hassan Bhojani still has to review them. |
+| V-02 | GDC numbers | Dr Hassan Bhojani: GDC 262970. Dr Cosimo Meucci: GDC 280128. The numbers 177341 and 248912 in earlier docs were made up. | Used on the website and in staff records; any other dentist's number still needed. |
+| V-03 | Website team bios | Some are wrong. The real names, photos and bios are on https://www.pavdental.com/team. | Replace `team-data.ts` from that page (it couldn't be fetched from the build environment, so the owner or a local session needs to copy it). |
+| V-04 | Data-processing agreements | None accepted yet. Hosting is Render. | `dpa-tracker.md` rewritten as a to-do list. |
+| V-05 | Van areas and CQC coverage | Not sure. | Open. |
+| V-06 | Apple Team ID, App Store ID, Expo project ID | Made up. | Removed from `eas.json`/`app.json`; real ones come with C-01 and C-03. |
+| V-07 | Stripe test key in use | Owner will check Render's settings. | Open. |
+
+### Decisions
+
+| ID | Topic | Answer | Status |
+|---|---|---|---|
+| D-01 | Video calls | In the browser for now | Default (accepted) |
+| D-02 | Dental insurance | Owner answered "Yes" but no insurers were named (the note pointed at the finance page). The insurance step stays hidden until the owner confirms which insurers and what to collect. | Open (needs details) |
+| D-03 | Refer-a-friend £20 | Owner answered "Yes" but gave no rules. The cards stay hidden until the rules (who gets what, when, limits) are written down. | Open (needs rules) |
+| D-04 | Post-visit ratings | Not for launch | Default (accepted) |
+| D-05 | Finance | Not FCA-authorised to advertise finance: remove the 0% wording, keep only the link to https://www.pavdental.com/services/finance | Owner |
+| D-06 | Treatment plans in the app | "I've read this plan" acknowledgement only; consent to treatment is taken in person | Default (accepted) |
+| D-07 | Paying the balance | At the clinic or van | Default (accepted) |
+| D-08 | Treatment prices | Owner sets them in the dashboard's services list | Default (accepted) |
+| D-09 | Domain | pavdental.com, API at api.pavdental.com | Default (accepted) |
+| D-10 | Production hosting budget (about £60–120 a month) | Yes | Owner |
+| D-11 | Website shop accounts | Guest checkout plus optional email login; remove Google sign-in | Default (accepted) |
+| D-12 | Website hosting | Vercel | Default (accepted) |
+| D-13 | NHS work | None: private only; remove NHS and DSPT claims | Default (accepted) |
+| D-14 | Block screenshots of medical records | Yes | Default (accepted) |
+| D-15 | App on the web | No, mobile only | Default (accepted) |
+| D-16 | Minimum age | 16+; under-16s added by a guardian | Default (accepted) |
+| D-18 | Medical device status of triage | Get regulatory advice; until then triage shows general safety advice only | Default (accepted) |
+| D-17 | Third-party design captures (`neo-financial-ios/`) | Remove from the current files only (no history rewrite) | Owner |
+| D-19 | Staff alert emails | Plain "new message" alert with no patient name or subject | Default (accepted) |
+| D-20 | Drop `waitlist_entries` | Yes, after a backup | Default (accepted) |
+| D-21 | Van operator location | In the background during a shift | Owner |
+| D-22 | Login code for van operators | Yes | Default (accepted) |
+
+### Accounts and data the owner will supply
+
+C-01 to C-11 (Apple, Google Play, Expo, Stripe live, Daily, Postmark, Twilio, Sentry, Mapbox, hosting billing, DNS): owner will set them up. C-12 logo and colours: owner will send. C-13 practice data: owner will send a file (current site: https://www.pavdental.com/). C-14 company details: Pav Dental, 786 Leeds Road, Bradford, BD3 9TY; company number, ICO and CQC numbers still to come. C-15 analytics: owner chose "no analytics" but also gave the ID G-KZVKDLY449, so this is open until confirmed.
+
+### Earlier entries this changes
+
+- #4, #11, #25: the "signed off" / "confirmed" notes dated 2026-10-25 were not a real clinical sign-off (V-01). Treat the wording as a draft until Dr Bhojani reviews it.
+- #27: the website team profiles were not confirmed (V-03); the real profiles are on the current website.
