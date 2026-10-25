@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import argon2 from "argon2";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma";
+import { findReferrer } from "../lib/referrals";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
@@ -45,11 +46,17 @@ router.post("/check-email", validateBody(checkEmailSchema), async (req: Request,
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 router.post("/register", authLimiterMiddleware, validateBody(registerSchema), async (req: Request, res: Response) => {
-  const { email, password, firstName, lastName, phone } = req.body;
+  const { email, password, firstName, lastName, phone, referralCode } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return res.status(409).json({ error: "Email already registered" });
+  }
+
+  // A mistyped code is refused rather than dropped, so the patient can fix it.
+  const referrerUserId = referralCode ? await findReferrer(referralCode) : null;
+  if (referralCode && !referrerUserId) {
+    return res.status(400).json({ error: "That referral code isn't valid. Check it, or leave it blank." });
   }
 
   const passwordHash = await argon2.hash(password, {
@@ -71,6 +78,7 @@ router.post("/register", authLimiterMiddleware, validateBody(registerSchema), as
           lastName,
         },
       },
+      ...(referrerUserId ? { referredBy: { create: { referrerUserId } } } : {}),
     },
     include: { patientProfile: true, clinicianProfile: true },
   });

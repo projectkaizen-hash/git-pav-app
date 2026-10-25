@@ -166,6 +166,13 @@ export async function erasePatient(userId: string, opts: { handledById: string; 
       waitlist: (await tx.waitlistEntry.deleteMany({ where: { userId } })).count,
       unusedVouchers: (await tx.rewardRedemption.deleteMany({ where: { userId, appointmentId: null } })).count,
       pointsAwards: (await tx.rewardPointsAward.deleteMany({ where: { userId } })).count,
+      // Their code stops working; vouchers they earned but never used lapse.
+      // A row where they joined with someone's code stays, because it backs
+      // that other patient's voucher.
+      referralCode: (await tx.referralCode.deleteMany({ where: { userId } })).count,
+      unusedReferralVouchers: (
+        await tx.referral.deleteMany({ where: { referrerUserId: userId, voucherUsedAt: null } })
+      ).count,
       heldSlots: (
         await tx.appointment.updateMany({ where: { patientId: profile.id, status: "draft_hold" }, data: { status: "cancelled" } })
       ).count,

@@ -34,6 +34,7 @@ import triageRoutes from "./routes/triage";
 import messageRoutes from "./routes/messages";
 import financingRoutes from "./routes/financing";
 import rewardRoutes from "./routes/rewards";
+import { adminReferralRoutes, patientReferralRoutes } from "./routes/referrals";
 import { objectStorage } from "./lib/object-storage";
 import { auditMiddleware } from "./middleware/audit";
 import { attachOptionalAuth, requireAuth, requireRole, AuthRequest } from "./middleware/auth";
@@ -213,12 +214,13 @@ app.use("/api/waitlist", requireAuth, auditMiddleware, waitlistRoutes);
 app.use("/api/dspt", requireAuth, auditMiddleware, dsptAuditRoutes);
 // The dashboard's staff inbox (CS-29): the same message routes, as an admin, who sees every thread.
 app.use("/api/admin/messages", requireAuth, requireRole("admin"), auditMiddleware, messageRoutes);
-app.use("/api/admin", requireAuth, auditMiddleware, adminRoutes, adminScheduleRoutes, adminErasureRoutes);
+app.use("/api/admin", requireAuth, auditMiddleware, adminRoutes, adminScheduleRoutes, adminReferralRoutes, adminErasureRoutes);
 app.use("/api/consents", requireAuth, auditMiddleware, consentRoutes);
 app.use("/api/triage", requireAuth, auditMiddleware, triageRoutes);
 app.use("/api/messages", requireAuth, auditMiddleware, messageRoutes);
 app.use("/api/financing", requireAuth, auditMiddleware, financingRoutes);
 app.use("/api/rewards", requireAuth, auditMiddleware, rewardRoutes);
+app.use("/api/referrals", requireAuth, auditMiddleware, patientReferralRoutes);
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

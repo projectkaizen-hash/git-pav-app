@@ -261,6 +261,27 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
     });
   },
 
+  ReferralCode: async (prisma, { userId }) => {
+    return prisma.referralCode.findMany({ where: { userId }, select: { code: true, createdAt: true } });
+  },
+
+  // The patient's own side of each referral only: vouchers they earned, and
+  // when they joined with a code. Never the other person's identity.
+  Referral: async (prisma, { userId }) => {
+    const [asReferrer, asReferred] = await Promise.all([
+      prisma.referral.findMany({
+        where: { referrerUserId: userId },
+        select: { createdAt: true, voucherCode: true, voucherPence: true, voucherIssuedAt: true, voucherUsedAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.referral.findMany({ where: { referredUserId: userId }, select: { createdAt: true } }),
+    ]);
+    return [
+      ...asReferrer.map((r) => ({ role: "referrer", ...r })),
+      ...asReferred.map((r) => ({ role: "joined_with_code", ...r })),
+    ];
+  },
+
   WaitlistEntry: async (prisma, { userId }) => {
     return prisma.waitlistEntry.findMany({
       where: { userId },
@@ -420,6 +441,8 @@ export interface SarBundle {
   financingApplications: unknown[];
   rewardPointsAwards: unknown[];
   rewardRedemptions: unknown[];
+  referralCodes: unknown[];
+  referrals: unknown[];
   waitlistEntries: unknown[];
   oralHealthMetrics: unknown[];
   erasureRequests: unknown[];
@@ -454,6 +477,8 @@ export async function buildSubjectAccessRequestBundle(
   const financingApplications: any = await PATIENT_DATA_EXTRACTORS.FinancingApplication(prisma, ctx);
   const rewardPointsAwards: any = await PATIENT_DATA_EXTRACTORS.RewardPointsAward(prisma, ctx);
   const rewardRedemptions: any = await PATIENT_DATA_EXTRACTORS.RewardRedemption(prisma, ctx);
+  const referralCodes = (await PATIENT_DATA_EXTRACTORS.ReferralCode(prisma, ctx)) as unknown[];
+  const referrals = (await PATIENT_DATA_EXTRACTORS.Referral(prisma, ctx)) as unknown[];
   const waitlistEntries: any = await PATIENT_DATA_EXTRACTORS.WaitlistEntry(prisma, ctx);
   const oralHealthMetrics: any = await PATIENT_DATA_EXTRACTORS.OralHealthMetric(prisma, ctx);
   const erasureRequests: any = await PATIENT_DATA_EXTRACTORS.ErasureRequest(prisma, ctx);
@@ -485,6 +510,8 @@ export async function buildSubjectAccessRequestBundle(
     financingApplications: financingApplications ?? [],
     rewardPointsAwards: rewardPointsAwards ?? [],
     rewardRedemptions: rewardRedemptions ?? [],
+    referralCodes: referralCodes ?? [],
+    referrals: referrals ?? [],
     waitlistEntries: waitlistEntries ?? [],
     oralHealthMetrics: oralHealthMetrics ?? [],
     erasureRequests: erasureRequests ?? [],
@@ -506,6 +533,8 @@ export async function buildSubjectAccessRequestBundle(
       financingApplications: financingApplications?.length ?? 0,
       rewardPointsAwards: rewardPointsAwards?.length ?? 0,
       rewardRedemptions: rewardRedemptions?.length ?? 0,
+      referralCodes: referralCodes?.length ?? 0,
+      referrals: referrals?.length ?? 0,
       waitlistEntries: waitlistEntries?.length ?? 0,
       oralHealthMetrics: oralHealthMetrics?.length ?? 0,
       erasureRequests: erasureRequests?.length ?? 0,

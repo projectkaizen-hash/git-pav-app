@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { pseudonymiseIp } from "./audit-security";
+import { issueReferralVoucher } from "./referrals";
+import { safeError } from "./log-safety";
 
 // Rewards rules (decisions log #14, a default pending owner review): points
 // come only from completed visits, worked out here on the server, and 100
@@ -50,6 +52,11 @@ export async function awardVisitPoints(appointmentId: string): Promise<VisitPoin
     select: { status: true, patient: { select: { userId: true } } },
   });
   if (!appointment || appointment.status !== "completed") return "not_completed";
+  // The same completed visit may earn the patient's referrer a voucher (D-03).
+  // It never blocks the patient's own points.
+  await issueReferralVoucher(appointmentId).catch((err) => {
+    console.error("[Rewards] Referral voucher check failed:", safeError(err));
+  });
   const userId = appointment.patient.userId;
   const points = POINTS_PER_COMPLETED_VISIT;
 
