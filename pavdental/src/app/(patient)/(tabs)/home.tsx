@@ -13,8 +13,13 @@ import {
   ServiceHeroCard,
   EmergencyTriageModal,
   ErrorState,
+  IconButton,
+  IconTile,
+  ListRow,
+  SectionHeader,
   type AppIconName,
 } from "@/components";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { fetchActiveVanRequest } from "@/features/van/van-api";
@@ -22,6 +27,7 @@ import { useBookingStore } from "@/features/booking/booking-store";
 import { useServices, useRewards, useMyAppointments } from "@/features/hooks/use-dental-api";
 import { DentalService } from "@/features/booking/booking-types";
 import { formatGbp } from "@/features/booking/booking-api";
+import { toLabel } from "@/lib/text";
 
 type CategoryKey = "all" | "checkup" | "hygiene" | "emergency" | "restorative" | "cosmetic";
 
@@ -50,6 +56,7 @@ function getHeroImage(category?: string, name?: string) {
 
 export default function PatientHomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useCurrentUser();
   const { setService } = useBookingStore();
   const params = useLocalSearchParams<{ triageModal?: string }>();
@@ -82,9 +89,9 @@ export default function PatientHomeScreen() {
   const userName = user?.firstName || "Patient";
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   }, []);
 
   const displayedServices = useMemo(() => {
@@ -109,178 +116,150 @@ export default function PatientHomeScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.xs }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header Row: Avatar + Greeting + Notification Bell */}
+      {/* Top bar: points pill on the left, square icon buttons on the right */}
       <View style={styles.topBar}>
-        <View style={styles.userRow}>
-          <Image
-            source={require("../../../../assets/images/avatar.jpg")}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-          <View style={styles.userTextGroup}>
-            <ThemedText variant="caption" style={styles.greetingCaption}>
-              {greeting}
-            </ThemedText>
-            <ThemedText variant="headline" style={styles.userName}>
-              {userName}
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.topRightActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Rewards & Perks"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              router.push("/(patient)/perks" as never);
-            }}
-            style={({ pressed }) => [styles.pointsPill, pressed && { opacity: 0.8 }]}
-          >
-            <AppIcon name="sparkles" size={13} color="#F59E0B" />
-            <ThemedText variant="caption" style={styles.pointsText}>
-              {typeof pointsBalance === "number" ? `${pointsBalance.toLocaleString("en-GB")} pts` : "Perks"}
-            </ThemedText>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              router.push("/(patient)/(tabs)/messages" as never);
-            }}
-            style={({ pressed }) => [styles.bellBtn, pressed && { opacity: 0.7 }]}
-          >
-            <AppIcon name="bell" size={18} color={colors.ink} />
-            <View style={styles.bellDot} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Screen Title & Neo Financial Balance/Status Eye Toggle */}
-      <View style={styles.titleSection}>
-        <View style={styles.titleWithToggle}>
-          <ThemedText variant="largeTitle" style={styles.mainTitle}>
-            {showBalance ? `Welcome back,\n${userName}` : "Welcome back,\n••••••••"}
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={showBalance ? "Hide oral health summary" : "Show oral health summary"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setShowBalance((prev) => !prev);
-            }}
-            style={({ pressed }) => [styles.eyeToggleBtn, pressed && { opacity: 0.7 }]}
-          >
-            <AppIcon
-              name={showBalance ? "eye" : "eyeOff"}
-              size={20}
-              color={colors.secondaryLabel}
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Primary Active Appointment / Care Card (Screen_017_Wallet & Balance_Home.png) */}
-      <Card style={styles.activeCareCard}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={
-            nextAppointment
-              ? `Upcoming appointment for ${nextAppointment.service?.name || "Dental Care"}`
-              : "Active oral care status"
-          }
+          accessibilityLabel="Rewards & Perks"
           onPress={() => {
-            if (nextAppointment) {
-              router.push({
-                pathname: "/(patient)/appointments/[id]" as never,
-                params: { id: nextAppointment.id },
-              });
-            } else {
-              router.push("/(patient)/(tabs)/appointments" as never);
-            }
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            router.push("/(patient)/perks" as never);
           }}
-          style={({ pressed }) => [styles.careCardPressable, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.pointsPill, pressed && styles.pressed]}
         >
-          <View style={styles.careCardHeader}>
-            <View style={styles.careIconSquare}>
-              <AppIcon name="calendar" size={20} color={colors.ink} />
-            </View>
-            <View style={styles.careCardMain}>
-              <View style={styles.careStatusRow}>
-                <ThemedText variant="caption" style={styles.careOverline}>
-                  {nextAppointment ? "UPCOMING APPOINTMENT" : "ORAL HEALTH STATUS"}
-                </ThemedText>
-                <Badge
-                  label={nextAppointment ? "CONFIRMED" : "ON TRACK"}
-                  variant={nextAppointment ? "success" : "info"}
-                />
-              </View>
-              <ThemedText variant="headline" style={styles.careTitle} numberOfLines={1}>
-                {nextAppointment
-                  ? nextAppointment.service?.name || "Dental Examination & Polish"
-                  : "Routine Checkup Active"}
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.careSub}>
-                {nextAppointment
-                  ? `${new Date(nextAppointment.startTimeUtc).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${nextAppointment.clinic?.name || nextAppointment.van?.name || "Central Practice"}`
-                  : "Next routine dental recall due in 3 months"}
-              </ThemedText>
-            </View>
-            <AppIcon name="chevronRight" size={18} color={colors.tertiaryLabel} />
+          <View style={styles.pointsIcon}>
+            <AppIcon name="sparkles" size={14} color={colors.onInk} />
           </View>
+          <ThemedText variant="headline" style={styles.pointsText}>
+            {typeof pointsBalance === "number" ? `${pointsBalance.toLocaleString("en-GB")} pts` : "Perks"}
+          </ThemedText>
         </Pressable>
 
-        {/* Soft grey full-width action button */}
-        <Button
-          title="+ Book an appointment"
-          variant="secondary"
-          size="md"
-          onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
-          style={styles.quickBookBtn}
+        <View style={styles.topRightActions}>
+          <View>
+            <IconButton
+              icon="bell"
+              label="Notifications"
+              variant="soft"
+              onPress={() => router.push("/(patient)/(tabs)/messages" as never)}
+            />
+            <View style={styles.bellDot} pointerEvents="none" />
+          </View>
+          <IconButton
+            icon="profile"
+            label="Profile & settings"
+            variant="soft"
+            onPress={() => router.push("/(patient)/(tabs)/profile" as never)}
+          />
+        </View>
+      </View>
+
+      {/* Greeting with the hide-details toggle */}
+      <View style={styles.titleSection}>
+        <ThemedText variant="largeTitle" numberOfLines={1} style={styles.mainTitle}>
+          {showBalance ? `${greeting}, ${userName}` : `${greeting}, ••••`}
+        </ThemedText>
+        <IconButton
+          icon={showBalance ? "eyeOff" : "eye"}
+          label={showBalance ? "Hide oral health summary" : "Show oral health summary"}
+          variant="soft"
+          shape="circle"
+          size={18}
+          color={colors.secondaryLabel}
+          onPress={() => setShowBalance((prev) => !prev)}
+          style={styles.eyeToggleBtn}
+        />
+      </View>
+
+      {/* Next visit — grouped white card with one row */}
+      <View style={styles.section}>
+        <SectionHeader title={nextAppointment ? "Your next visit" : "Your care"} />
+        <Card padding="none">
+          <ListRow
+            title={
+              nextAppointment
+                ? nextAppointment.service?.name || "Dental Examination & Polish"
+                : "Routine checkup"
+            }
+            subtitle={
+              nextAppointment
+                ? `${new Date(nextAppointment.startTimeUtc).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${nextAppointment.clinic?.name || nextAppointment.van?.name || "Central Practice"}`
+                : showBalance
+                ? "Next routine dental recall due in 3 months"
+                : "••••"
+            }
+            left={<IconTile icon="calendar" />}
+            right={
+              <Badge
+                label={nextAppointment ? "Confirmed" : "On track"}
+                variant={nextAppointment ? "success" : "default"}
+              />
+            }
+            chevron
+            onPress={() => {
+              if (nextAppointment) {
+                router.push({
+                  pathname: "/(patient)/appointments/[id]" as never,
+                  params: { id: nextAppointment.id },
+                });
+              } else {
+                router.push("/(patient)/(tabs)/appointments" as never);
+              }
+            }}
+            accessibilityLabel={
+              nextAppointment
+                ? `Upcoming appointment for ${nextAppointment.service?.name || "Dental Care"}`
+                : "Active oral care status"
+            }
+          />
+        </Card>
+      </View>
+
+      {/* Full-width grey action, like the reference "Add products" button */}
+      <Button
+        title="Book an appointment"
+        variant="secondary"
+        icon={<AppIcon name="plus" size={18} color={colors.ink} />}
+        onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
+        style={styles.quickBookBtn}
+      />
+
+      {/* Refer and earn — text on the left, image bleeding off the right edge */}
+      <Card padding="none" style={styles.referralCard}>
+        <View style={styles.referralContent}>
+          <ThemedText variant="headline">Refer and earn £20</ThemedText>
+          <ThemedText variant="footnote" style={styles.referralSub}>
+            Give £20 to friends, earn £20 dental credit for every appointment they complete.
+          </ThemedText>
+          <Button
+            title="Refer friends"
+            size="sm"
+            onPress={() => router.push("/(patient)/perks" as never)}
+            style={styles.referralBtn}
+          />
+        </View>
+        <Image
+          source={require("../../../../assets/images/smile-restoration.jpg")}
+          style={styles.referralImage}
+          contentFit="cover"
+          accessibilityElementsHidden
         />
       </Card>
 
-      {/* Two-Column Refer & Earn Promo Card (Screen_017_Wallet & Balance_Home.png) */}
-      <Card style={styles.referralCard}>
-        <View style={styles.referralRow}>
-          <View style={styles.referralContent}>
-            <ThemedText variant="headline" style={styles.referralTitle}>
-              Refer and earn £20
-            </ThemedText>
-            <ThemedText variant="caption" style={styles.referralSub}>
-              Give £20 to friends, earn £20 dental credit for every appointment they complete.
-            </ThemedText>
-            <Button
-              title="Share link"
-              size="sm"
-              arrow
-              onPress={() => router.push("/(patient)/perks" as never)}
-              style={styles.referralBtn}
-            />
-          </View>
-          <View style={styles.referralBadgeSquare}>
-            <AppIcon name="sparkles" size={28} color="#D97706" />
-          </View>
-        </View>
-      </Card>
-
       {/* Services Section Header */}
-      <View style={styles.sectionTitleRow}>
-        <ThemedText variant="headline" style={styles.sectionHeaderTitle}>
-          Dental Services & Treatments
-        </ThemedText>
+      <View style={styles.section}>
+        <SectionHeader title="Treatments" />
       </View>
 
       {/* Horizontal Category Filter Pills (Reference 1 & 2) */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryScroll}
+        style={styles.hScroll}
+          contentContainerStyle={styles.categoryScroll}
       >
         {CATEGORIES.map((cat) => {
           const isActive = selectedCategory === cat.key;
@@ -321,7 +300,7 @@ export default function PatientHomeScreen() {
 
       {/* Active Van Dispatch banner (if running) */}
       {activeVanRequest && (
-        <Card elevation="raised" style={styles.dispatchCard}>
+        <Card style={styles.dispatchCard}>
           <View style={styles.dispatchHeader}>
             <View style={styles.dispatchTitleRow}>
               <View style={styles.liveDot} />
@@ -362,7 +341,7 @@ export default function PatientHomeScreen() {
           <ServiceHeroCard
             key={srv.id}
             title={srv.name}
-            badge={`${(srv.category || "CLINICAL").toUpperCase()} · ${formatGbp(srv.pricePence || 0)}`}
+            badge={`${toLabel(srv.category || "clinical")} · ${formatGbp(srv.pricePence || 0)}`}
             image={getHeroImage(srv.category, srv.name)}
             actionLabel="Book Appointment"
             onPressAction={() => handleBookService(srv)}
@@ -384,7 +363,7 @@ export default function PatientHomeScreen() {
             <AppIcon name="video" size={20} color={colors.ink} />
           </View>
           <ThemedText variant="headline" style={styles.quickTitle}>
-            Video Consult
+            Video consult
           </ThemedText>
           <ThemedText variant="caption" style={styles.quickSub}>
             Speak to a dentist by video
@@ -401,7 +380,7 @@ export default function PatientHomeScreen() {
             <AppIcon name="activity" size={20} color={colors.ink} />
           </View>
           <ThemedText variant="headline" style={styles.quickTitle}>
-            Clean Progress
+            Clean progress
           </ThemedText>
           <ThemedText variant="caption" style={styles.quickSub}>
             3D Dental arch & gauges
@@ -446,11 +425,26 @@ export default function PatientHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  avatar: {
-    backgroundColor: colors.inkSubtle,
+  // Horizontal chip rows must not stretch to fill the column (web)
+  hScroll: {
+    flexGrow: 0,
+  },
+  pressed: {
+    opacity: 0.8,
+  },
+  pointsIcon: {
+    alignItems: "center",
+    backgroundColor: colors.inkSoft,
     borderRadius: radius.full,
-    height: 44,
-    width: 44,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  referralImage: {
+    width: "34%",
+  },
+  section: {
+    paddingHorizontal: spacing.gutter,
   },
   topRightActions: {
     alignItems: "center",
@@ -459,41 +453,28 @@ const styles = StyleSheet.create({
   },
   pointsPill: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
+    alignSelf: "flex-start",
+    backgroundColor: colors.ink,
     borderRadius: radius.full,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: spacing.xs,
+    height: 40,
+    paddingLeft: 6,
+    paddingRight: spacing.md,
   },
   pointsText: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  bellBtn: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: "center",
-    position: "relative",
-    width: 42,
+    color: colors.onInk,
   },
   bellDot: {
-    backgroundColor: colors.danger,
-    borderColor: colors.systemBackground,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    height: 8,
+    backgroundColor: colors.info,
+    borderColor: colors.background,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    height: 12,
     position: "absolute",
-    right: 10,
-    top: 10,
-    width: 8,
+    right: -2,
+    top: -2,
+    width: 12,
   },
   categoryPill: {
     alignItems: "center",
@@ -507,13 +488,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   categoryPillInactive: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
   },
   categoryScroll: {
+    alignItems: "center",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   categoryText: {
     fontSize: 14,
@@ -526,7 +506,7 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -536,7 +516,7 @@ const styles = StyleSheet.create({
   dispatchCard: {
     backgroundColor: colors.ink,
     gap: spacing.xs,
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.gutter,
     padding: spacing.md,
   },
   dispatchCta: {
@@ -566,10 +546,10 @@ const styles = StyleSheet.create({
   emergencyCard: {
     alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.gutter,
     padding: spacing.md,
   },
   emergencyHeaderRow: {
@@ -579,7 +559,7 @@ const styles = StyleSheet.create({
   },
   emergencyIconWrap: {
     alignItems: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerSubtle,
     borderRadius: radius.full,
     height: 36,
     justifyContent: "center",
@@ -597,30 +577,23 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 14,
   },
-  greetingCaption: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-  },
   liveDot: {
     backgroundColor: colors.success,
-    borderRadius: 4,
+    borderRadius: radius.full,
     height: 8,
     width: 8,
   },
   mainTitle: {
-    color: colors.label,
-    fontSize: 28,
-    fontWeight: "700",
-    lineHeight: 34,
+    flexShrink: 1,
   },
   quickGrid: {
     flexDirection: "row",
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   quickIconWrap: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.md,
     height: 38,
     justifyContent: "center",
@@ -628,13 +601,11 @@ const styles = StyleSheet.create({
   },
   quickSub: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
   },
   quickTile: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flex: 1,
     gap: 4,
     padding: spacing.md,
@@ -645,145 +616,42 @@ const styles = StyleSheet.create({
   },
   serviceStack: {
     gap: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   titleSection: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  titleWithToggle: {
+    alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
   },
   eyeToggleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondaryBackground,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
-  },
-  activeCareCard: {
-    marginHorizontal: spacing.md,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-  },
-  careCardPressable: {
-    gap: spacing.xs,
-  },
-  careCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  careIconSquare: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.inkSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  careCardMain: {
-    flex: 1,
-    gap: 3,
-  },
-  careStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  careOverline: {
-    color: colors.secondaryLabel,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  careTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.label,
-  },
-  careSub: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
+    height: 32,
+    width: 32,
   },
   quickBookBtn: {
-    backgroundColor: colors.inkSubtle,
-    borderRadius: radius.full,
+    marginHorizontal: spacing.gutter,
   },
   referralCard: {
-    marginHorizontal: spacing.md,
-    padding: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-  },
-  referralRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    marginHorizontal: spacing.gutter,
+    minHeight: 128,
   },
   referralContent: {
     flex: 1,
-    gap: 4,
-    paddingRight: spacing.sm,
-  },
-  referralTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.label,
+    gap: spacing.xxs,
+    padding: spacing.md,
   },
   referralSub: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    lineHeight: 16,
     marginBottom: spacing.xs,
   },
   referralBtn: {
     alignSelf: "flex-start",
-    paddingHorizontal: spacing.md,
-  },
-  referralBadgeSquare: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: "#FEF3C7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitleRow: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  sectionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.label,
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-  },
-  userName: {
-    color: colors.label,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  userRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  userTextGroup: {
-    gap: 1,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
 });

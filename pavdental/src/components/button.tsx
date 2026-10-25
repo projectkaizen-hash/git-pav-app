@@ -6,11 +6,12 @@ import {
   View,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, radius } from "@/theme";
+import { colors, spacing, radius, sizes } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
 
 // ─── Variant map ──────────────────────────────────────────────────────────────
+// Reference: solid black primary, grey-fill secondary, white on dark canvases.
 const variants = {
   primary: {
     backgroundColor: colors.ink,
@@ -19,6 +20,10 @@ const variants = {
   secondary: {
     backgroundColor: colors.inkSubtle,
     color: colors.ink,
+  },
+  inverse: {
+    backgroundColor: colors.alwaysWhite,
+    color: colors.alwaysBlack,
   },
   ghost: {
     backgroundColor: "transparent",
@@ -30,22 +35,32 @@ const variants = {
   },
 } as const;
 
+// Disabled buttons in the reference turn grey rather than fading out.
+const disabledColors = {
+  backgroundColor: colors.inkSubtle,
+  color: colors.tertiaryLabel,
+} as const;
+
 // ─── Size map ─────────────────────────────────────────────────────────────────
-const sizes = {
+// sm = inline "Refer friends" button; md/lg = full 52pt button.
+const sizes_ = {
   sm: {
     paddingVertical: spacing.xxs,
     paddingHorizontal: spacing.sm,
-    minHeight: 36,
+    minHeight: sizes.buttonSmall,
+    borderRadius: radius.sm,
   },
   md: {
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    minHeight: 48, // Neo Financial standard touch target
+    paddingHorizontal: spacing.gutter,
+    minHeight: sizes.button,
+    borderRadius: radius.lg,
   },
   lg: {
-    paddingVertical: 14,
-    paddingHorizontal: spacing.xl,
-    minHeight: 54, // Neo Financial prominent pill button
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    minHeight: sizes.button,
+    borderRadius: radius.lg,
   },
 } as const;
 
@@ -54,7 +69,7 @@ interface ButtonProps {
   title: string;
   onPress?: () => void;
   variant?: keyof typeof variants;
-  size?: keyof typeof sizes;
+  size?: keyof typeof sizes_;
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -72,7 +87,7 @@ interface ButtonProps {
 
 /**
  * Button — the primary interactive primitive for this app.
- * Refactored to support Neo Financial continuous squircle pill buttons with trailing arrows.
+ * 52pt, 12pt continuous corners, semibold 17 label, optional trailing arrow.
  */
 export function Button({
   title,
@@ -88,9 +103,9 @@ export function Button({
   arrow = false,
   haptic = true,
 }: ButtonProps) {
-  const v = variants[variant];
-  const s = sizes[size];
   const isDisabled = disabled || loading;
+  const v = disabled && variant !== "ghost" ? disabledColors : variants[variant];
+  const s = sizes_[size];
 
   const handlePress = () => {
     if (isDisabled) return;
@@ -103,7 +118,7 @@ export function Button({
   const trailingIcon = icon && iconPosition === "right" ? (
     <View>{icon}</View>
   ) : arrow ? (
-    <AppIcon name="arrowRight" size={16} color={v.color as string} />
+    <AppIcon name="arrowRight" size={size === "sm" ? 14 : 18} color={v.color as string} />
   ) : null;
 
   return (
@@ -116,14 +131,13 @@ export function Button({
       style={({ pressed }) => [
         {
           backgroundColor: v.backgroundColor,
-          borderRadius: radius.full,
           // @ts-ignore — borderCurve is an iOS-specific style; silently ignored on Android
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
           gap: spacing.xs,
-          opacity: isDisabled ? 0.45 : pressed ? 0.8 : 1,
+          opacity: loading ? 0.8 : pressed && !isDisabled ? 0.8 : 1,
           transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
           ...s,
         },
@@ -136,7 +150,7 @@ export function Button({
         <>
           {icon && iconPosition === "left" ? <View>{icon}</View> : null}
           <ThemedText
-            variant="headline"
+            variant={size === "sm" ? "subhead" : "headline"}
             style={{ color: v.color, fontWeight: "600" }}
             accessibilityElementsHidden
             importantForAccessibility="no"

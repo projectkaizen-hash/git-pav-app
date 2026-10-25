@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Button, AppIcon, Card } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useAuthStore } from "@/features/auth/auth-store";
 
 export default function OnboardingCompleteScreen() {
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   celebrationCircle: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 36,
+    borderRadius: radius.full,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.xs,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {
@@ -121,10 +121,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   summaryCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm + 2,
     marginTop: spacing.sm,
     padding: spacing.md + 2,
@@ -143,7 +141,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.label,
     fontSize: 30,
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
   },
 });

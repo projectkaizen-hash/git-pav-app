@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Button, Badge, EmptyState, ErrorState, Skeleton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useTreatmentPlans } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { formatGbp } from "@/features/booking/booking-api";
@@ -59,7 +59,7 @@ export default function TreatmentPlansScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Treatment Plans
+            Treatment plans
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             {plans.length} plan{plans.length !== 1 ? "s" : ""} prescribed by your clinician.
@@ -90,7 +90,7 @@ export default function TreatmentPlansScreen() {
                 onPress={() => router.push({ pathname: "/(patient)/records/plans/[id]" as never, params: { id: plan.id } })}
                 style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
               >
-              <Card elevation="raised" style={styles.card}>
+              <Card style={styles.card}>
                 <View style={styles.rowBetween}>
                   <ThemedText variant="headline" style={styles.planTitle}>
                     {plan.title}
@@ -111,7 +111,7 @@ export default function TreatmentPlansScreen() {
 
               {/* Itemised Procedures List */}
               <View style={styles.section}>
-                <ThemedText variant="headline">Procedures Included</ThemedText>
+                <ThemedText variant="headline">Procedures included</ThemedText>
                 {(plan.items || []).map((item: any) => (
                   <Card key={item.id} style={styles.itemCard}>
                     <View style={styles.itemRow}>
@@ -133,9 +133,9 @@ export default function TreatmentPlansScreen() {
               </View>
 
               {/* Total & Finance */}
-              <Card elevation="raised" style={styles.totalCard}>
+              <Card style={styles.totalCard}>
                 <View style={styles.rowBetween}>
-                  <ThemedText variant="headline">Total Treatment Cost:</ThemedText>
+                  <ThemedText variant="headline">Total treatment cost:</ThemedText>
                   <ThemedText variant="title" style={styles.totalPrice}>
                     {formatGbp(totalCostPence)}
                   </ThemedText>
@@ -192,12 +192,13 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   financeBody: {
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   },
   financeBox: {
     backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -219,16 +220,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
   },
   itemCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   itemCode: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   signatureBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xxs,
     justifyContent: "center",

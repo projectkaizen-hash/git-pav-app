@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "re
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function ForgotPasswordScreen() {
@@ -35,10 +35,10 @@ export default function ForgotPasswordScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
         </View>
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.actions}>
             {!submitted ? (
               <Button
-                title="Send Reset Instructions"
+                title="Send reset instructions"
                 size="lg"
                 arrow={true}
                 loading={loading}
@@ -99,7 +99,7 @@ export default function ForgotPasswordScreen() {
             ) : null}
 
             <Button
-              title="Return to Sign In"
+              title="Return to sign in"
               variant={submitted ? "primary" : "ghost"}
               size="lg"
               arrow={submitted}
@@ -114,8 +114,8 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
     paddingTop: spacing.sm,
   },
   flex: {
@@ -130,14 +130,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {
@@ -151,10 +151,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   successCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md + 2,
@@ -163,7 +161,7 @@ const styles = StyleSheet.create({
   successIconBox: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.full,
     backgroundColor: colors.successSubtle,
     alignItems: "center",
     justifyContent: "center",
@@ -183,7 +181,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   topNav: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

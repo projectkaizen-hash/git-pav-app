@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import {
   fetchPatientProfile,
   fetchOdontogram,
@@ -11,6 +11,7 @@ import {
   completeAppointment,
   markAppointmentNoShow,
 } from "@/features/records/records-api";
+import { toLabel } from "@/lib/text";
 
 export default function ClinicianPatientRecordScreen() {
   const router = useRouter();
@@ -97,14 +98,14 @@ export default function ClinicianPatientRecordScreen() {
         {/* Navigation & Header */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Daily Schedule"
+            title="‹ Daily schedule"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
           />
           {params.channel ? (
             <Badge
-              label={params.channel.toUpperCase()}
+              label={toLabel(params.channel)}
               variant={params.channel === "video" ? "info" : "default"}
             />
           ) : null}
@@ -139,7 +140,7 @@ export default function ClinicianPatientRecordScreen() {
         ) : error ? (
           <Card elevation="flat" style={styles.errorCard}>
             <ThemedText variant="headline" style={styles.errorTitle}>
-              Record Load Error
+              Record load error
             </ThemedText>
             <ThemedText variant="caption" style={styles.errorBody}>
               {error}
@@ -149,13 +150,14 @@ export default function ClinicianPatientRecordScreen() {
         ) : (
           <>
             {/* Quick Actions */}
-            <Card elevation="raised" style={styles.actionCard}>
+            <Card style={styles.actionCard}>
               <ThemedText variant="headline" style={styles.sectionHeading}>
-                Consultation Actions
+                Consultation actions
               </ThemedText>
               <View style={styles.actionGrid}>
                 <Button
-                  title="Edit Odontogram ›"
+                  title="Edit odontogram"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -166,7 +168,8 @@ export default function ClinicianPatientRecordScreen() {
                   }
                 />
                 <Button
-                  title="Build Treatment Plan ›"
+                  title="Build treatment plan"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -177,7 +180,8 @@ export default function ClinicianPatientRecordScreen() {
                   }
                 />
                 <Button
-                  title="Examination Notes ›"
+                  title="Examination notes"
+              arrow
                   size="sm"
                   variant="secondary"
                   onPress={() =>
@@ -191,14 +195,14 @@ export default function ClinicianPatientRecordScreen() {
               {appointmentId ? (
                 <View style={styles.statusActionRow}>
                   <Button
-                    title="Mark Completed"
+                    title="Mark completed"
                     size="sm"
                     variant="primary"
                     disabled={actionInProgress}
                     onPress={handleComplete}
                   />
                   <Button
-                    title="Mark No-Show"
+                    title="Mark no-show"
                     size="sm"
                     variant="destructive"
                     disabled={actionInProgress}
@@ -209,13 +213,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Examination Notes Summary */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
-                  Clinical Examination Notes
+                  Clinical examination notes
                 </ThemedText>
                 <Button
-                  title="Edit Notes"
+                  title="Edit notes"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -262,13 +266,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Odontogram Overview */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
-                  Dental Chart (Odontogram)
+                  Dental chart (odontogram)
                 </ThemedText>
                 <Button
-                  title="Update Chart"
+                  title="Update chart"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -291,7 +295,7 @@ export default function ClinicianPatientRecordScreen() {
                         #{t.toothNumber}
                       </ThemedText>
                       <Badge
-                        label={t.condition.toUpperCase()}
+                        label={toLabel(t.condition)}
                         variant={
                           t.condition === "decay"
                             ? "danger"
@@ -309,13 +313,13 @@ export default function ClinicianPatientRecordScreen() {
             </Card>
 
             {/* Treatment Plans */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
                   Treatment Plans ({plans.length})
                 </ThemedText>
                 <Button
-                  title="New Plan"
+                  title="New plan"
                   size="sm"
                   variant="ghost"
                   onPress={() =>
@@ -339,7 +343,7 @@ export default function ClinicianPatientRecordScreen() {
                           {p.title}
                         </ThemedText>
                         <Badge
-                          label={p.status.replaceAll("_", " ").toUpperCase()}
+                          label={toLabel(p.status)}
                           variant={p.status === "accepted" ? "success" : "default"}
                         />
                       </View>
@@ -380,12 +384,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   diagRow: {
@@ -404,7 +409,7 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -413,7 +418,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -432,8 +437,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   notesBlock: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: spacing.xs,
     padding: spacing.sm,
   },
@@ -449,8 +454,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   planItem: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -495,8 +500,8 @@ const styles = StyleSheet.create({
   },
   toothChip: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 6,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: 4,
     paddingHorizontal: 8,
@@ -504,6 +509,6 @@ const styles = StyleSheet.create({
   },
   toothNum: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: 13,
   },
 });

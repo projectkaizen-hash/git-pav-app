@@ -35,7 +35,7 @@ export function Skeleton({ width = "100%", height = 20, borderRadius = radius.sm
           width,
           height,
           borderRadius,
-          backgroundColor: colors.secondaryBackground,
+          backgroundColor: colors.inkSubtle,
           opacity,
         },
         style,
@@ -60,7 +60,7 @@ export function CardSkeleton() {
 export function RowSkeleton() {
   return (
     <View style={styles.row}>
-      <Skeleton width={44} height={44} borderRadius={radius.full} />
+      <Skeleton width={40} height={40} borderRadius={radius.md} />
       <View style={styles.rowContent}>
         <Skeleton height={16} width="55%" />
         <Skeleton height={12} width="35%" />
@@ -71,14 +71,17 @@ export function RowSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
-    padding: spacing.md,
+    padding: spacing.gutter,
   },
   row: {
     alignItems: "center",
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   rowContent: {

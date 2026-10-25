@@ -2,8 +2,9 @@ import React, { useMemo, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, EmptyState, ErrorState, Skeleton, ChipPill, ConfirmSheet, Toast, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useMyAppointments, useCancelAppointmentMutation } from "@/features/hooks/use-dental-api";
+import { toLabel } from "@/lib/text";
 
 // ─── Bookings — upcoming/past grouping with clear status per card ─────────────
 
@@ -53,7 +54,7 @@ function BookingCard({
         {/* Date block */}
         <View style={styles.dateBlock}>
           <ThemedText variant="caption" style={styles.dateWeekday}>
-            {weekday.toUpperCase()}
+            {weekday}
           </ThemedText>
           <ThemedText variant="title" style={styles.dateDay}>
             {day}
@@ -69,11 +70,11 @@ function BookingCard({
               {booking.service?.name || "Dental Treatment"}
             </ThemedText>
             {!past && !cancelled ? (
-              <Badge label={booking.status.toUpperCase()} variant={booking.status === "confirmed" ? "success" : "default"} />
+              <Badge label={toLabel(booking.status)} variant={booking.status === "confirmed" ? "success" : "default"} />
             ) : null}
           </View>
 
-          <ChipPill label={`${time} · ${booking.channel.toUpperCase()}`} tone={past || cancelled ? "neutral" : "info"} />
+          <ChipPill label={`${time} · ${toLabel(booking.channel)}`} tone={past || cancelled ? "neutral" : "info"} />
 
           {booking.dependant ? (
             <ThemedText variant="caption" style={styles.metaText} numberOfLines={1}>
@@ -94,7 +95,7 @@ function BookingCard({
             </ThemedText>
           </View>
 
-          {cancelled ? <Badge label="CANCELLED" variant="danger" /> : null}
+          {cancelled ? <Badge label="Cancelled" variant="danger" /> : null}
         </View>
       </View>
       </Pressable>
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: spacing.md,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     borderColor: colors.separator,
   },
   cardBody: {
@@ -242,13 +243,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   dateBlock: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     gap: 1,
     minWidth: 56,
     paddingVertical: spacing.xs,
@@ -270,7 +271,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   metaRow: {

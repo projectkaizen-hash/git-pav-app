@@ -3,12 +3,13 @@ import { View, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemedText, Card, Badge, Button, ErrorState, Skeleton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchCurrentShift, updatePhase, optimizeRoute, reorderQueue } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
 import { openDrivingDirections } from "@/features/van/nav-links";
 import { useOperatorLocation } from "@/features/van/use-operator-location";
 import { useAuthStore } from "@/features/auth/auth-store";
+import { toLabel } from "@/lib/text";
 
 export default function OperatorRouteScreen() {
   const router = useRouter();
@@ -114,7 +115,7 @@ export default function OperatorRouteScreen() {
       case "in_treatment":
         return <Badge label="🦷 IN TREATMENT" variant="success" />;
       default:
-        return <Badge label="QUEUED" variant="default" />;
+        return <Badge label="Queued" variant="default" />;
     }
   };
 
@@ -147,11 +148,11 @@ export default function OperatorRouteScreen() {
           <View style={styles.vanBadgeRow}>
             <Badge label={van?.name ?? "Live Dispatch"} variant="info" />
             <ThemedText variant="caption" style={styles.shiftText}>
-              Status: {shift?.status?.toUpperCase() ?? "OFFLINE"}
+              Status: {shift?.status ? toLabel(shift.status) : "Offline"}
             </ThemedText>
             {isOnShift ? (
               <Badge
-                label={gpsActive ? "GPS LIVE" : "GPS WAIT"}
+                label={gpsActive ? "GPS live" : "Waiting for GPS"}
                 variant={gpsActive ? "success" : "default"}
               />
             ) : null}
@@ -187,13 +188,13 @@ export default function OperatorRouteScreen() {
         {queue.length === 0 ? (
           <Card style={styles.emptyCard}>
             <ThemedText variant="headline" style={styles.emptyTitle}>
-              No Stops in Queue
+              No stops in queue
             </ThemedText>
             <ThemedText variant="caption" style={styles.emptyBody}>
               Accepted requests will appear here in delivery order.
             </ThemedText>
             <Button
-              title="Go to Shift Console"
+              title="Go to shift console"
               variant="secondary"
               onPress={() => router.push("/(operator)/shift" as any)}
             />
@@ -209,7 +210,7 @@ export default function OperatorRouteScreen() {
               return (
                 <Card
                   key={s.id}
-                  elevation="raised"
+                 
                   style={[styles.card, isCurrent && styles.cardNext]}
                 >
                   <View style={styles.stopTop}>
@@ -277,7 +278,8 @@ export default function OperatorRouteScreen() {
 
                   {/* Turn-by-turn: hands off to the native maps app */}
                   <Button
-                    title="Navigate with Maps ›"
+                    title="Navigate with maps"
+              arrow
                     size="sm"
                     variant="secondary"
                     onPress={() => handleNavigate(s, patientName)}
@@ -288,7 +290,8 @@ export default function OperatorRouteScreen() {
                     <View style={styles.actionRow}>
                       {s.phase === "queued" && (
                         <Button
-                          title="Start Driving (En Route) ›"
+                          title="Start driving (en route)"
+              arrow
                           size="md"
                           loading={phaseMutation.isPending}
                           onPress={() =>
@@ -298,7 +301,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "en_route" && (
                         <Button
-                          title="Arrived On Site ›"
+                          title="Arrived on site"
+              arrow
                           size="md"
                           loading={phaseMutation.isPending}
                           onPress={() =>
@@ -308,7 +312,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "on_site" && (
                         <Button
-                          title="Start Treatment ›"
+                          title="Start treatment"
+              arrow
                           size="md"
                           variant="primary"
                           loading={phaseMutation.isPending}
@@ -319,7 +324,8 @@ export default function OperatorRouteScreen() {
                       )}
                       {s.phase === "in_treatment" && (
                         <Button
-                          title="Complete Visit & Add Notes ›"
+                          title="Complete visit & add notes"
+              arrow
                           size="md"
                           onPress={() =>
                             router.push({
@@ -334,7 +340,7 @@ export default function OperatorRouteScreen() {
                         />
                       )}
                       <Button
-                        title="Mark No-Show"
+                        title="Mark no-show"
                         size="sm"
                         variant="ghost"
                         onPress={() => {
@@ -363,13 +369,13 @@ export default function OperatorRouteScreen() {
 
         {/* Portal Role Switcher for Simulator Verification (development opt-in only) */}
         {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (
-          <Card elevation="raised" style={styles.roleCard}>
+          <Card style={styles.roleCard}>
             <ThemedText variant="caption" style={styles.roleHint}>
               🔄 Switch Mobile Portal (Demo Verification)
             </ThemedText>
             <View style={styles.roleBtnRow}>
               <Button
-                title="‹ Patient Portal"
+                title="‹ Patient portal"
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -383,7 +389,8 @@ export default function OperatorRouteScreen() {
                 }}
               />
               <Button
-                title="Clinician Portal ›"
+                title="Clinician portal"
+              arrow
                 variant="secondary"
                 size="sm"
                 onPress={() => {
@@ -425,7 +432,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   hintText: {
@@ -456,7 +463,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   emptyBody: {
@@ -465,7 +473,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.sm,
     padding: spacing.xl,
   },
@@ -474,7 +482,7 @@ const styles = StyleSheet.create({
   },
   gpsWarning: {
     backgroundColor: colors.warningSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   gpsWarningText: {
@@ -502,8 +510,8 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   stopBadge: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 6,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
@@ -528,11 +536,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   roleCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderCurve: "continuous",
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginTop: spacing.md,
     padding: spacing.md,

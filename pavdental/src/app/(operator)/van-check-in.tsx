@@ -80,7 +80,7 @@ export default function OperatorCheckInScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Arrival & Patient Boarding
+            Arrival & patient boarding
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             {address} · {patientName} · {procedure}
@@ -88,9 +88,9 @@ export default function OperatorCheckInScreen() {
         </View>
 
         {/* Access Checklist */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="headline" style={styles.cardTitle}>
-            On-Site Operational Checklist
+            On-site operational checklist
           </ThemedText>
 
           <View style={styles.checkItem}>
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
     padding: spacing.md,
@@ -170,19 +170,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,

@@ -129,7 +129,7 @@ export default function MessagesScreen() {
             {unreadCount > 0 ? <Badge label={`${unreadCount} NEW`} variant="info" /> : null}
           </View>
           <Button
-            title="+ New Message"
+            title="+ New message"
             variant="secondary"
             size="sm"
             onPress={() => setIsComposing(true)}
@@ -206,7 +206,7 @@ export default function MessagesScreen() {
                   onPress={() => openMessage(msg)}
                   style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Card elevation="raised" style={[styles.threadCard, unread && styles.threadCardUnread]}>
+                  <Card style={[styles.threadCard, unread && styles.threadCardUnread]}>
                     <View style={styles.avatarTile}>
                       <AppIcon name="message" size={18} color={unread ? colors.onInk : colors.ink} />
                     </View>
@@ -288,7 +288,7 @@ export default function MessagesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText variant="headline">New Message</ThemedText>
+              <ThemedText variant="headline">New message</ThemedText>
               <Button title="Cancel" variant="ghost" size="sm" onPress={() => setIsComposing(false)} />
             </View>
 
@@ -353,7 +353,7 @@ export default function MessagesScreen() {
 
             <View style={styles.modalActions}>
               <Button
-                title={createMutation.isPending ? "Sending…" : "Send Message"}
+                title={createMutation.isPending ? "Sending…" : "Send message"}
                 variant="primary"
                 size="md"
                 disabled={!newSubject.trim() || !newBody.trim() || createMutation.isPending}
@@ -394,11 +394,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   recipientOption: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   recipientOptionActive: {
@@ -418,7 +416,7 @@ const styles = StyleSheet.create({
   },
   slaNoticeCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.xs,
@@ -439,17 +437,15 @@ const styles = StyleSheet.create({
   },
   triageBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
   },
   triageIconBadge: {
     alignItems: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerSubtle,
     borderRadius: radius.full,
     height: 36,
     justifyContent: "center",
@@ -485,8 +481,8 @@ const styles = StyleSheet.create({
   },
   avatarTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -507,12 +503,13 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   headerRow: {
@@ -523,7 +520,7 @@ const styles = StyleSheet.create({
   sendBtn: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -541,7 +538,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   threadCardUnread: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
   },
   threadFrom: {
     color: colors.label,
@@ -573,7 +570,7 @@ const styles = StyleSheet.create({
   },
   unreadDot: {
     backgroundColor: colors.ink,
-    borderRadius: 4,
+    borderRadius: radius.full,
     height: 8,
     width: 8,
   },

@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { colors, spacing, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 
-type ChipTone = "neutral" | "ink" | "success" | "info" | "warning";
+type ChipTone = "neutral" | "fill" | "ink" | "success" | "info" | "warning";
 
 interface ChipPillProps {
   label: string;
@@ -15,7 +15,10 @@ interface ChipPillProps {
 }
 
 const toneMap: Record<ChipTone, { bg: string; text: string }> = {
-  neutral: { bg: colors.inkSubtle, text: colors.label },
+  // White chip on the grey canvas (reference filter chips)
+  neutral: { bg: colors.systemBackground, text: colors.label },
+  // Grey chip for use inside white cards
+  fill: { bg: colors.inkSubtle, text: colors.label },
   ink: { bg: colors.ink, text: colors.onInk },
   success: { bg: colors.successSubtle, text: colors.success },
   info: { bg: colors.infoSubtle, text: colors.info },
@@ -33,7 +36,7 @@ export function ChipPill({ label, tone = "neutral", selected, onPress, style }: 
 
   const content = (
     <View style={[styles.base, { backgroundColor: t.bg }, style]}>
-      <ThemedText variant="caption" style={[styles.label, { color: t.text }]} numberOfLines={1}>
+      <ThemedText variant="footnote" style={[styles.label, { color: t.text }]} numberOfLines={1}>
         {label}
       </ThemedText>
     </View>
@@ -62,8 +65,10 @@ const styles = StyleSheet.create({
   base: {
     alignSelf: "flex-start",
     borderRadius: radius.full,
+    justifyContent: "center",
+    minHeight: 34,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
+    paddingVertical: 6,
   },
   label: {
     fontWeight: "600",

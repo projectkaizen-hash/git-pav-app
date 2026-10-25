@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 interface PhotoSlot {
   id: string;
@@ -94,7 +94,7 @@ export default function IntraoralPhotosScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="headline" style={styles.title}>
-            Guided Dental Photos
+            Guided dental photos
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Clear photos help your dentist diagnose issues and prescribe antibiotics or pain relief before surgery.
@@ -144,12 +144,13 @@ export default function IntraoralPhotosScreen() {
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title="Review Photos ›"
+          title="Review photos"
+              arrow
           size="lg"
           onPress={handleContinue}
         />
         <Button
-          title="Skip Photo Step"
+          title="Skip photo step"
           variant="ghost"
           size="sm"
           onPress={handleContinue}
@@ -161,20 +162,20 @@ export default function IntraoralPhotosScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
@@ -182,9 +183,7 @@ const styles = StyleSheet.create({
   slotCard: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md,
@@ -222,8 +221,8 @@ const styles = StyleSheet.create({
   },
   thumbnailBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 10,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.md,
     height: 48,
     justifyContent: "center",
     width: 48,
@@ -234,7 +233,7 @@ const styles = StyleSheet.create({
   },
   tipBox: {
     backgroundColor: colors.infoSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   tipText: {

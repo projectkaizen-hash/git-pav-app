@@ -4,10 +4,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemedText, Card, Button, Badge, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchVanRequest, fetchActiveVanRequest, cancelVanRequest, retryDepositAuthorization, presentVanDepositSheet, DepositCanceledError } from "@/features/van/van-api";
 import { VanServiceRequest, VanStopPhase } from "@/features/van/van-types";
 import { useStripe } from "@stripe/stripe-react-native";
+import { toLabel } from "@/lib/text";
 
 export default function VanLiveTrackScreen() {
   const router = useRouter();
@@ -129,17 +130,17 @@ export default function VanLiveTrackScreen() {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <AppIcon name="truck" size={32} color={colors.secondaryLabel} />
-        <ThemedText variant="headline">No Active Van Request</ThemedText>
+        <ThemedText variant="headline">No active van request</ThemedText>
         <ThemedText variant="caption" style={styles.loadingText}>
           You don't have a mobile surgery visit in progress right now.
         </ThemedText>
         <Button
-          title="Request Mobile Dental Van"
+          title="Request mobile dental van"
           variant="primary"
           onPress={() => router.replace("/(patient)/van/service-area" as any)}
         />
         <Button
-          title="Return Home"
+          title="Return home"
           variant="ghost"
           size="sm"
           onPress={() => router.replace("/(patient)/(tabs)/home")}
@@ -196,7 +197,7 @@ export default function VanLiveTrackScreen() {
                   ? "Operator review"
                   : status === "accepted"
                   ? "In live queue"
-                  : status.replace("_", " ").toUpperCase()
+                  : toLabel(status)
               }
               variant={
                 status === "accepted"
@@ -236,7 +237,7 @@ export default function VanLiveTrackScreen() {
         </View>
 
         {/* Bottom Dispatch Control Sheet */}
-        <Card elevation="raised" style={styles.bottomCard}>
+        <Card style={styles.bottomCard}>
           {/* Status Headline */}
           <View style={styles.statusHeader}>
             <View style={styles.statusDotRow}>
@@ -391,7 +392,8 @@ export default function VanLiveTrackScreen() {
           {/* Action Buttons */}
           {status === "completed" && (
             <Button
-              title="View Treatment Summary & Records ›"
+              title="View treatment summary & records"
+              arrow
               variant="primary"
               onPress={() =>
                 router.push({
@@ -404,7 +406,7 @@ export default function VanLiveTrackScreen() {
 
           {isTerminal && status !== "completed" && (
             <Button
-              title="Return to Home Screen"
+              title="Return to home screen"
               variant="primary"
               onPress={() => router.replace("/(patient)/(tabs)/home")}
             />
@@ -448,7 +450,7 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
@@ -458,8 +460,8 @@ const styles = StyleSheet.create({
   },
   driverAvatar: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -473,8 +475,8 @@ const styles = StyleSheet.create({
   },
   driverRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 10,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.sm,
@@ -500,19 +502,17 @@ const styles = StyleSheet.create({
   markerBubble: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 24,
+    borderRadius: radius.full,
     height: 48,
     justifyContent: "center",
     width: 48,
   },
   markerBubbleHome: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderWidth: 1.5,
   },
   infoBox: {
     backgroundColor: colors.inkSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   infoText: {
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   mapArea: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     flex: 1,
   },
   mapBackground: {
@@ -532,12 +532,12 @@ const styles = StyleSheet.create({
   },
   pendingAlertBox: {
     backgroundColor: colors.warningSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   depositBanner: {
     backgroundColor: colors.warningSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: spacing.sm,
     padding: spacing.sm,
   },
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   },
   pulseRing: {
     borderColor: colors.ink,
-    borderRadius: 20,
+    borderRadius: radius.full,
     borderWidth: 2,
     height: 40,
     opacity: 0.5,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     width: 2,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   statusDotRow: {
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   statusPulse: {
-    borderRadius: 5,
+    borderRadius: radius.full,
     height: 10,
     width: 10,
   },
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   stepDot: {
     alignItems: "center",
     backgroundColor: colors.separator,
-    borderRadius: 10,
+    borderRadius: radius.full,
     height: 20,
     justifyContent: "center",
     width: 20,
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     color: colors.tertiaryLabel,
-    fontSize: 10,
+    fontSize: 11,
   },
   stepLabelCurrent: {
     color: colors.ink,
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   },
   stepNum: {
     color: colors.onInk,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   stepNumPassed: {

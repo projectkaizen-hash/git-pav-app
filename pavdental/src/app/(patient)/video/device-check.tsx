@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import NetInfo from "@react-native-community/netinfo";
 import { ThemedText, Button, Card, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export default function DeviceCheckScreen() {
   const router = useRouter();
@@ -61,7 +61,7 @@ export default function DeviceCheckScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="headline" style={styles.title}>
-            Hardware & Network Check
+            Hardware & network check
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Ensuring your audio, video, and connection are crisp before connecting to your dentist.
@@ -77,7 +77,7 @@ export default function DeviceCheckScreen() {
         </View>
 
         {/* Diagnostic Checklist */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.checkItem}>
             <View style={styles.checkLeft}>
               <AppIcon name="camera" size={18} color={colors.ink} />
@@ -127,12 +127,12 @@ export default function DeviceCheckScreen() {
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title="Enter Waiting Room"
+          title="Enter waiting room"
           size="lg"
           onPress={handleJoinWaitingRoom}
         />
         <Button
-          title="Call Me by Phone Instead"
+          title="Call me by phone instead"
           variant="secondary"
           size="md"
           onPress={handleJoinWaitingRoom}
@@ -159,17 +159,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   fallbackBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: 4,
     padding: spacing.md,
   },
@@ -182,11 +183,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
@@ -210,10 +210,8 @@ const styles = StyleSheet.create({
   },
   videoPreview: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     height: 180,
     justifyContent: "center",

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ThemedText, Card, Button, Input, AppIcon } from "@/components";
 import { useDeleteAccountMutation } from "@/features/account/account-hooks";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -75,7 +75,7 @@ export default function DeleteAccountScreen() {
         <AppIcon name="alert" size={24} color={colors.danger} />
         <View style={styles.warningTextWrap}>
           <ThemedText variant="headline" style={styles.warningTitle}>
-            Irreversible Account Closure
+            Irreversible account closure
           </ThemedText>
           <ThemedText variant="caption" style={styles.warningSub}>
             You'll be signed out on every device straight away. Please cancel any upcoming appointments first. We then erase your personal details within one month.
@@ -114,7 +114,7 @@ export default function DeleteAccountScreen() {
       {/* Confirmation Input */}
       <View style={styles.section}>
         <ThemedText variant="subhead" style={styles.sectionTitle}>
-          TYPE "DELETE" TO CONFIRM
+          Type "DELETE" to confirm
         </ThemedText>
         <Input
           placeholder="DELETE"
@@ -124,7 +124,7 @@ export default function DeleteAccountScreen() {
         />
 
         <Input
-          label="Account Password"
+          label="Account password"
           placeholder="Verify account password"
           secureTextEntry
           value={password}
@@ -135,14 +135,14 @@ export default function DeleteAccountScreen() {
       {/* Action Button */}
       <View style={styles.actions}>
         <Button
-          title={deleteAccount.isPending ? "Closing account..." : "Permanently Delete Account"}
+          title={deleteAccount.isPending ? "Closing account..." : "Permanently delete account"}
           variant="destructive"
           onPress={handleDelete}
           disabled={confirmText !== "DELETE" || deleteAccount.isPending}
           loading={deleteAccount.isPending}
         />
         <Button
-          title="Keep My Account"
+          title="Keep my account"
           variant="secondary"
           onPress={() => router.back()}
           disabled={deleteAccount.isPending}
@@ -158,17 +158,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   retentionCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   warningCard: {
     backgroundColor: colors.dangerSubtle,
     borderColor: colors.danger,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,

@@ -10,7 +10,7 @@ import {
 } from "@/features/account/account-hooks";
 import type { DependantItem, DependantRelationship } from "@/features/account/account-api";
 import { changedDependantFields } from "@/features/account/dependant-edits";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 // Only a parent or guardian adds a child under 16 (decisions log #17).
 const RELATIONSHIPS: DependantRelationship[] = ["Son", "Daughter", "Ward"];
@@ -209,7 +209,7 @@ export default function DependantsScreen() {
       </View>
 
       <Button
-        title="+ Add Child / Dependant Profile"
+        title="+ Add child / dependant profile"
         variant="secondary"
         onPress={openAdd}
       />
@@ -234,21 +234,21 @@ export default function DependantsScreen() {
 
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <Input
-              label="Child's First Name *"
+              label="Child's first name *"
               placeholder="e.g. Leo"
               value={firstName}
               onChangeText={setFirstName}
             />
 
             <Input
-              label="Child's Last Name *"
+              label="Child's last name *"
               placeholder="e.g. Jenkins"
               value={lastName}
               onChangeText={setLastName}
             />
 
             <Input
-              label="Date of Birth (YYYY-MM-DD) *"
+              label="Date of birth (YYYY-MM-DD) *"
               placeholder="e.g. 2018-06-15"
               value={dob}
               onChangeText={setDob}
@@ -295,14 +295,14 @@ export default function DependantsScreen() {
 
             {editing ? (
               <Button
-                title={updateDependant.isPending ? "Saving..." : "Save Changes"}
+                title={updateDependant.isPending ? "Saving..." : "Save changes"}
                 onPress={handleSaveEdit}
                 disabled={updateDependant.isPending || !firstName || !lastName || !dob}
                 loading={updateDependant.isPending}
               />
             ) : (
               <Button
-                title={addDependant.isPending ? "Linking..." : "Link Profile"}
+                title={addDependant.isPending ? "Linking..." : "Link profile"}
                 onPress={handleAdd}
                 disabled={addDependant.isPending || !firstName || !lastName || !isGuardian}
                 loading={addDependant.isPending}
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   avatarCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -341,12 +341,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   depBottom: {
@@ -358,8 +359,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   depCard: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   modalContainer: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   modalContent: {
@@ -415,10 +416,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   relPill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -440,7 +439,7 @@ const styles = StyleSheet.create({
   checkbox: {
     alignItems: "center",
     borderColor: colors.separator,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     borderWidth: 1,
     height: 22,
     justifyContent: "center",

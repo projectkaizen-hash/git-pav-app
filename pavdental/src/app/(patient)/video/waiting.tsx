@@ -47,7 +47,7 @@ export default function WaitingRoomScreen() {
           </View>
 
           <ThemedText variant="largeTitle" style={styles.title}>
-            Telehealth Waiting Room
+            Telehealth waiting room
           </ThemedText>
 
           <ThemedText variant="subhead" style={styles.subtitle}>
@@ -55,10 +55,10 @@ export default function WaitingRoomScreen() {
           </ThemedText>
 
           {/* Consultation Pre-flight Checklist */}
-          <Card elevation="raised" style={styles.queueCard}>
+          <Card style={styles.queueCard}>
             <View style={styles.queueHeaderRow}>
               <ThemedText variant="headline" style={styles.queueCardTitle}>
-                Consultation Ready
+                Consultation ready
               </ThemedText>
               <Badge label={statusLabel} />
             </View>
@@ -90,7 +90,7 @@ export default function WaitingRoomScreen() {
 
         <View style={styles.actions}>
           <Button
-            title="Cancel & Leave Waiting Room"
+            title="Cancel & leave waiting room"
             variant="ghost"
             size="md"
             onPress={() => router.replace("/(patient)/(tabs)/home")}
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   checkIconPending: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
+    borderRadius: radius.full,
     height: 24,
     justifyContent: "center",
     width: 24,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     justifyContent: "center",
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   reassuranceText: {
     color: colors.secondaryLabel,
@@ -178,13 +178,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   spinnerCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 40,
+    borderRadius: radius.xl,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 20,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   title: {

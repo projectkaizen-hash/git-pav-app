@@ -109,7 +109,7 @@ export default function NotificationsScreen() {
         </ThemedText>
 
         <ToggleSwitch
-          label="Push Notifications"
+          label="Push notifications"
           description={!isPushAvailable ? "Not available in Expo Go - requires development build" : "Instant alerts for booking changes and arrival updates"}
           value={pushEnabled}
           onValueChange={isPushAvailable ? handleTogglePush : handleTogglePushStub}
@@ -118,7 +118,7 @@ export default function NotificationsScreen() {
         />
 
         <ToggleSwitch
-          label="Email Notifications"
+          label="Email notifications"
           description="Treatment plans, prescriptions, receipts and invoices"
           value={emailEnabled}
           onValueChange={(val) => {
@@ -129,7 +129,7 @@ export default function NotificationsScreen() {
         />
 
         <ToggleSwitch
-          label="SMS Text Messages"
+          label="SMS text messages"
           description="Emergency reminders and two-factor security codes"
           value={smsEnabled}
           onValueChange={(val) => {
@@ -147,7 +147,7 @@ export default function NotificationsScreen() {
         </ThemedText>
 
         <ToggleSwitch
-          label="Appointment Reminders"
+          label="Appointment reminders"
           description="Receive notifications 24 hours and 2 hours before your slot"
           value={appointmentReminders}
           onValueChange={(val) => {
@@ -158,7 +158,7 @@ export default function NotificationsScreen() {
         />
 
         <ToggleSwitch
-          label="Appointment Confirmations"
+          label="Appointment confirmations"
           description="Immediate confirmations when new bookings or deposits succeed"
           value={appointmentConfirmations}
           onValueChange={(val) => {
@@ -176,7 +176,7 @@ export default function NotificationsScreen() {
         </ThemedText>
 
         <ToggleSwitch
-          label="Oral Health Tips & Promotions"
+          label="Oral health tips & promotions"
           description="Occasional updates on dental hygiene products & whitening"
           value={marketingUpdates}
           onValueChange={(val) => {
@@ -192,12 +192,13 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   section: {

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Button, AppIcon, Toast, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useMyAppointments } from "@/features/hooks/use-dental-api";
 import { completeAppointmentCheckIn } from "@/features/records/records-api";
 import type { AppIconName } from "@/components";
@@ -188,19 +188,19 @@ export default function CheckInScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: 2,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     backgroundColor: colors.ink,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     height: "100%",
   },
   progressLabel: {
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     backgroundColor: colors.inkSubtle,
-    borderRadius: 3,
+    borderRadius: radius.full,
     flex: 1,
     height: 6,
     overflow: "hidden",
@@ -237,15 +237,13 @@ const styles = StyleSheet.create({
   taskCard: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
   },
   taskCardDone: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
   },
   taskDesc: {
@@ -254,8 +252,8 @@ const styles = StyleSheet.create({
   },
   taskIconTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
     width: 40,

@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function OtpScreen() {
@@ -64,10 +64,10 @@ export default function OtpScreen() {
           {/* Top Bar with circular back button */}
           <View style={styles.topNav}>
             <IconButton
-              icon="chevronLeft"
+              icon="arrowLeft"
               label="Go back"
               variant="soft"
-              size={18}
+              size={22}
               onPress={() => {
                 if (step === "code") {
                   setStep("phone");
@@ -100,7 +100,7 @@ export default function OtpScreen() {
           <View style={styles.form}>
             {step === "phone" ? (
               <Input
-                label="UK Mobile Phone"
+                label="UK mobile phone"
                 placeholder="+44 7123 456789"
                 keyboardType="phone-pad"
                 autoComplete="tel"
@@ -188,7 +188,7 @@ export default function OtpScreen() {
 
           <View style={styles.actions}>
             <Button
-              title={step === "phone" ? "Send Code" : "Verify & Continue"}
+              title={step === "phone" ? "Send code" : "Verify & continue"}
               size="lg"
               arrow
               loading={loading}
@@ -196,7 +196,7 @@ export default function OtpScreen() {
             />
 
             <Button
-              title="Back to Email Sign In"
+              title="Back to email sign in"
               variant="ghost"
               size="md"
               onPress={() => router.push("/(auth)/sign-in")}
@@ -210,8 +210,8 @@ export default function OtpScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
   },
   topNav: {
     marginBottom: spacing.md,
@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 48,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: colors.secondaryBackground,
+    borderRadius: radius.lg,
+    backgroundColor: colors.inkSubtle,
     borderWidth: 1.5,
     borderColor: "transparent",
     alignItems: "center",
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.systemBackground,
   },
   otpBoxFilled: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderColor: colors.separator,
   },
   otpDigit: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
@@ -294,15 +294,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,

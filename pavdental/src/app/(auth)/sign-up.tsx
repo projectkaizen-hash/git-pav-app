@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function SignUpScreen() {
@@ -93,17 +93,17 @@ export default function SignUpScreen() {
           {/* Top Bar with circular back button */}
           <View style={styles.topNav}>
             <IconButton
-              icon="chevronLeft"
+              icon="arrowLeft"
               label="Go back"
               variant="soft"
-              size={18}
+              size={22}
               onPress={() => router.back()}
             />
           </View>
 
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Create Account
+              Create account
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Complete registration details for{" "}
@@ -162,7 +162,7 @@ export default function SignUpScreen() {
             />
 
             <Input
-              label="UK Mobile number (Optional)"
+              label="UK mobile number (optional)"
               placeholder="+44 7123 456789"
               keyboardType="phone-pad"
               value={phone}
@@ -229,7 +229,7 @@ export default function SignUpScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Create Account"
+              title="Create account"
               size="lg"
               arrow
               loading={loading}
@@ -255,8 +255,8 @@ export default function SignUpScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
   },
   emailHighlight: {
     color: colors.label,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   strengthBar: {
     flex: 1,
     height: 4,
-    borderRadius: 2,
+    borderRadius: radius.full,
   },
   strengthLabel: {
     fontWeight: "600",
@@ -324,15 +324,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     color: colors.secondaryLabel,

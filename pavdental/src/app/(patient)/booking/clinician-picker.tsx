@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, AppIcon, ProgressPills, QueryState, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { Clinician } from "@/features/booking/booking-types";
 import { useClinicians } from "@/features/hooks/use-dental-api";
@@ -28,10 +28,10 @@ export default function ClinicianPickerScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -41,7 +41,7 @@ export default function ClinicianPickerScreen() {
 
       <View style={styles.header}>
         <ThemedText variant="largeTitle" style={styles.title}>
-          Select a Practitioner
+          Select a practitioner
         </ThemedText>
         <ThemedText variant="subhead" style={styles.sub}>
           Or choose 'First Available' for the earliest appointment slot.
@@ -61,7 +61,7 @@ export default function ClinicianPickerScreen() {
           </View>
           <View style={styles.anyInfo}>
             <ThemedText variant="headline" style={styles.anyTitle}>
-              Any Practitioner (First Available)
+              Any practitioner (first available)
             </ThemedText>
             <ThemedText variant="caption" style={styles.anySub}>
               Recommended for urgent care or fastest booking dates.
@@ -149,8 +149,8 @@ export default function ClinicianPickerScreen() {
 const styles = StyleSheet.create({
   anyCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     borderColor: colors.separator,
     flexDirection: "row",
     gap: spacing.md,
@@ -158,8 +158,8 @@ const styles = StyleSheet.create({
   },
   anyIcon: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: 14,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.lg,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.systemBackground,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     borderColor: colors.separator,
     gap: spacing.sm,
     padding: spacing.md,
@@ -204,12 +204,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   docInfo: {

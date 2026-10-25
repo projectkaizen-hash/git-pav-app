@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useMyAppointments } from "@/features/hooks/use-dental-api";
 
 // ─── Cancelled confirmation (Mobbin Zocdoc "Cancelled Details") ───────────────
@@ -38,7 +38,7 @@ export default function CancelledAppointmentScreen() {
         </View>
 
         {refundPence > 0 ? (
-          <Card elevation="raised" style={styles.refundCard}>
+          <Card style={styles.refundCard}>
             <View style={styles.refundRow}>
               <AppIcon name="creditCard" size={16} color={colors.ink} />
               <ThemedText variant="subhead" style={styles.refundTitle}>
@@ -51,7 +51,7 @@ export default function CancelledAppointmentScreen() {
             </ThemedText>
           </Card>
         ) : policyNotice ? (
-          <Card elevation="raised" style={styles.refundCard}>
+          <Card style={styles.refundCard}>
             <ThemedText variant="caption" style={styles.muted}>
               {policyNotice}
             </ThemedText>
@@ -85,12 +85,13 @@ export default function CancelledAppointmentScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   hero: {
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
   markTile: {
     alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 28,
+    borderRadius: radius.xl,
     height: 64,
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   refundCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xxs,
     padding: spacing.md,
   },

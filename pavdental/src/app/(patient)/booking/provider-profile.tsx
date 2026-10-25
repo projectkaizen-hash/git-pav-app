@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Card, Button, AppIcon, ChipPill } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useClinicians } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { Clinician } from "@/features/booking/booking-types";
@@ -66,7 +66,7 @@ export default function ProviderProfileScreen() {
           headerShown: true,
           title: clinician.fullName,
           headerTitleStyle: { color: colors.label, fontWeight: "700" },
-          headerStyle: { backgroundColor: colors.systemBackground },
+          headerStyle: { backgroundColor: colors.background },
           headerShadowVisible: false,
         }}
       />
@@ -93,7 +93,7 @@ export default function ProviderProfileScreen() {
         </View>
 
         {/* Bio */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="overline">About</ThemedText>
           <ThemedText variant="body" style={styles.bioText}>
             {clinician.bio}
@@ -183,8 +183,8 @@ export default function ProviderProfileScreen() {
 const styles = StyleSheet.create({
   avatar: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 32,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 64,
     justifyContent: "center",
     width: 64,
@@ -213,19 +213,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   galleryRow: {
     flexDirection: "row",
@@ -233,8 +233,8 @@ const styles = StyleSheet.create({
   },
   galleryTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flex: 1,
     height: 84,
     justifyContent: "center",
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   reviewCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xxs,
     padding: spacing.md,
   },

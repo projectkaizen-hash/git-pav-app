@@ -26,7 +26,7 @@ export default function PaymentPlansScreen() {
           </ThemedText>
         </View>
 
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.row}>
             <AppIcon name="creditCard" size={18} color={colors.ink} />
             <ThemedText variant="headline">See payment plan options</ThemedText>
@@ -52,12 +52,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
   },
   header: {
     gap: spacing.xs,

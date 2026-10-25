@@ -7,7 +7,7 @@ import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
 import { ToggleSwitch } from "../settings/ToggleSwitch";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   medicalHistorySchema,
@@ -151,7 +151,7 @@ export function MedicalHistoryForm({
             </View>
 
             <Input
-              label="Specific Allergy Details / Symptoms"
+              label="Specific allergy details / symptoms"
               placeholder="e.g. Anaphylaxis to penicillin, rash with latex"
               value={watch("allergyDetails")}
               onChangeText={(txt) => setValue("allergyDetails", txt, { shouldDirty: true })}
@@ -229,7 +229,7 @@ export function MedicalHistoryForm({
         </ThemedText>
 
         <Input
-          label="GP Surgery / Practice Name *"
+          label="GP surgery / practice name *"
           placeholder="e.g. St. Mary's Medical Practice"
           error={errors.gpSurgery?.message}
           value={watch("gpSurgery")}
@@ -238,7 +238,7 @@ export function MedicalHistoryForm({
         />
 
         <Input
-          label="Named Doctor / GP (Optional)"
+          label="Named doctor / GP (optional)"
           placeholder="e.g. Dr. Jane Smith"
           value={watch("gpDoctorName")}
           onChangeText={(txt) => setValue("gpDoctorName", txt, { shouldDirty: true })}
@@ -246,7 +246,7 @@ export function MedicalHistoryForm({
         />
 
         <Input
-          label="GP Surgery Telephone"
+          label="GP surgery telephone"
           placeholder="e.g. 020 7946 0123"
           keyboardType="phone-pad"
           value={watch("gpPhone")}
@@ -274,7 +274,7 @@ export function MedicalHistoryForm({
       {/* Actions */}
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Saving clinical records..." : "Save Medical History"}
+          title={isLoading ? "Saving clinical records..." : "Save medical history"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || (!isDirty && !hasAllergies && !isTakingMeds)}
           loading={isLoading}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
   conditionRowActive: {
@@ -321,12 +321,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   conditionsList: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     overflow: "hidden",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subContainer: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.sm,
     padding: spacing.md,
   },
@@ -353,9 +353,7 @@ const styles = StyleSheet.create({
   },
   tag: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

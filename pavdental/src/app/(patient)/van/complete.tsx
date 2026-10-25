@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ThemedText, Card, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchVanRequest, fetchActiveVanRequest } from "@/features/van/van-api";
 import { formatGbp } from "@/features/booking/booking-api";
 
@@ -35,7 +35,7 @@ export default function VanCompleteScreen() {
               <AppIcon name="checkCircle" size={36} color={colors.success} />
             </View>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Van Visit Complete!
+              Van visit complete!
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Thank you for choosing Pav Dental. Your van visit has finished.
@@ -43,9 +43,9 @@ export default function VanCompleteScreen() {
           </View>
 
           {/* What the visit was booked for. What was actually done is in the clinician's notes. */}
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Your Visit
+              Your visit
             </ThemedText>
             <View style={styles.treatmentRow}>
               <AppIcon name="check" size={15} color={colors.success} />
@@ -60,9 +60,9 @@ export default function VanCompleteScreen() {
             </View>
           </Card>
 
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.cardTitle}>
-              Post-Care & Records
+              Post-care & records
             </ThemedText>
             <ThemedText variant="caption" style={styles.sub}>
               Your clinician's notes from today will appear in your Records tab once they've been written up.
@@ -73,12 +73,12 @@ export default function VanCompleteScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Button
-            title="View Updated Dental Records"
+            title="View updated dental records"
             size="lg"
             onPress={() => router.replace("/(patient)/(tabs)/records")}
           />
           <Button
-            title="Back to Home"
+            title="Back to home"
             variant="ghost"
             size="md"
             onPress={() => router.replace("/(patient)/(tabs)/home")}
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   checkCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 40,
+    borderRadius: radius.full,
     height: 80,
     justifyContent: "center",
     marginBottom: spacing.xs,
@@ -119,22 +119,22 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
     gap: spacing.xs,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   okTag: {
     color: colors.success,
     fontWeight: "700",
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   sub: {
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 20,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   title: {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TextInput, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import {
   fetchAppointmentNotes,
   saveAppointmentNotes,
@@ -111,7 +111,7 @@ export default function AppointmentNotesScreen() {
         {/* Navigation */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Patient File"
+            title="‹ Patient file"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
@@ -120,7 +120,7 @@ export default function AppointmentNotesScreen() {
 
         <View style={styles.headerBlock}>
           <ThemedText variant="title" style={styles.title}>
-            Clinical Examination Notes
+            Clinical examination notes
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Patient: {params.patientName || "Verified Patient"}
@@ -151,7 +151,7 @@ export default function AppointmentNotesScreen() {
             </ThemedText>
           </Card>
         ) : (
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="caption" style={styles.label}>
               CLINICAL EXAMINATION FINDINGS & NOTES *
             </ThemedText>
@@ -189,7 +189,7 @@ export default function AppointmentNotesScreen() {
 
             <View style={styles.buttonStack}>
               <Button
-                title={saving ? "Saving…" : "Save Notes"}
+                title={saving ? "Saving…" : "Save notes"}
                 size="md"
                 variant="primary"
                 disabled={saving || !notes.trim()}
@@ -197,14 +197,14 @@ export default function AppointmentNotesScreen() {
               />
               <View style={styles.actionRow}>
                 <Button
-                  title="Complete Visit"
+                  title="Complete visit"
                   size="md"
                   variant="secondary"
                   disabled={saving}
                   onPress={handleComplete}
                 />
                 <Button
-                  title="Mark No-Show"
+                  title="Mark no-show"
                   size="md"
                   variant="destructive"
                   disabled={saving}
@@ -235,12 +235,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   errorBanner: {
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -285,10 +286,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     padding: spacing.sm,
     textAlignVertical: "top",

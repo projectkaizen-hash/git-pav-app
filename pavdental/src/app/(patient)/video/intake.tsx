@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, Card } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 export default function VideoIntakeScreen() {
   const router = useRouter();
@@ -110,7 +110,7 @@ export default function VideoIntakeScreen() {
         {/* Swelling Switch */}
         <View style={styles.switchCard}>
           <View style={styles.switchInfo}>
-            <ThemedText variant="headline">Facial Swelling or Gum Boil</ThemedText>
+            <ThemedText variant="headline">Facial swelling or gum boil</ThemedText>
             <ThemedText variant="caption" style={styles.sub}>
               Is there any visible swelling on your cheek, jaw or gums?
             </ThemedText>
@@ -118,7 +118,7 @@ export default function VideoIntakeScreen() {
           <Switch
             value={hasSwelling}
             onValueChange={setHasSwelling}
-            trackColor={{ true: colors.ink, false: colors.separator }}
+            trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
             accessibilityRole="switch"
             accessibilityLabel="Facial Swelling or Gum Boil"
           />
@@ -126,7 +126,7 @@ export default function VideoIntakeScreen() {
 
         {/* Duration */}
         <View style={styles.section}>
-          <ThemedText variant="headline">Duration of Problem</ThemedText>
+          <ThemedText variant="headline">Duration of problem</ThemedText>
           <View style={styles.durationList}>
             {durations.map((d) => {
               const active = duration === d;
@@ -155,7 +155,7 @@ export default function VideoIntakeScreen() {
         <Card style={styles.consentCard}>
           <View style={styles.consentRow}>
             <View style={styles.consentInfo}>
-              <ThemedText variant="headline">Clinical Video Record Consent</ThemedText>
+              <ThemedText variant="headline">Clinical video record consent</ThemedText>
               <ThemedText variant="caption" style={styles.sub}>
                 I consent to this remote video examination under UK General Dental Council guidelines.
               </ThemedText>
@@ -166,7 +166,7 @@ export default function VideoIntakeScreen() {
                 setDualRecordingConsent(val);
                 if (error) setError(null);
               }}
-              trackColor={{ true: colors.ink, false: colors.separator }}
+              trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
               accessibilityRole="switch"
               accessibilityLabel="Clinical Video Record Consent"
             />
@@ -177,7 +177,8 @@ export default function VideoIntakeScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Button
-          title="Take Intraoral Photos ›"
+          title="Take intraoral photos"
+              arrow
           size="lg"
           onPress={handleContinue}
         />
@@ -188,7 +189,7 @@ export default function VideoIntakeScreen() {
 
 const styles = StyleSheet.create({
   consentCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   consentInfo: {
@@ -202,20 +203,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   durationItem: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    borderRadius: radius.md,
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: spacing.xs,
@@ -239,25 +239,24 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   errorText: {
     color: colors.danger,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
   },
   painPill: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.sm,
     height: 36,
     justifyContent: "center",
     width: 30,
@@ -289,8 +288,8 @@ const styles = StyleSheet.create({
   },
   switchCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.md,

@@ -43,10 +43,10 @@ export default function OnboardingAddressScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
@@ -62,7 +62,7 @@ export default function OnboardingAddressScreen() {
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Home Address
+              Home address
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Used to check mobile dental van coverage and for clinic records.
@@ -71,7 +71,7 @@ export default function OnboardingAddressScreen() {
 
           <View style={styles.form}>
             <Input
-              label="UK Postcode"
+              label="UK postcode"
               placeholder="e.g. SW1A 1AA"
               autoCapitalize="characters"
               value={postcode}
@@ -83,7 +83,7 @@ export default function OnboardingAddressScreen() {
             />
 
             <Input
-              label="Address Line 1"
+              label="Address line 1"
               placeholder="House number & street name"
               value={addressLine1}
               error={errors.addressLine1}
@@ -94,14 +94,14 @@ export default function OnboardingAddressScreen() {
             />
 
             <Input
-              label="Address Line 2 (Optional)"
+              label="Address line 2 (optional)"
               placeholder="Flat, suite or apartment number"
               value={addressLine2}
               onChangeText={setAddressLine2}
             />
 
             <Input
-              label="Town / City"
+              label="Town / city"
               placeholder="e.g. London"
               value={city}
               error={errors.city}
@@ -114,7 +114,7 @@ export default function OnboardingAddressScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Continue to Insurance"
+              title="Continue to insurance"
               size="lg"
               arrow={true}
               onPress={handleNext}
@@ -128,7 +128,7 @@ export default function OnboardingAddressScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    marginTop: spacing.xl,
+    marginTop: "auto",
     paddingTop: spacing.sm,
   },
   flex: {
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

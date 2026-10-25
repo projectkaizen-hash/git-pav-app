@@ -108,10 +108,10 @@ export default function SlotPickerScreen() {
       {/* Top Navigation */}
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -124,6 +124,7 @@ export default function SlotPickerScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.hScroll}
           contentContainerStyle={styles.dateScroll}
         >
           {dates.map((d) => {
@@ -250,13 +251,18 @@ export default function SlotPickerScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Horizontal chip rows must not stretch to fill the column (web)
+  hScroll: {
+    flexGrow: 0,
+  },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxxl,
   },
   dateBar: {
@@ -265,17 +271,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   datePill: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: 10,
   },
   datePillActive: {
     backgroundColor: colors.ink,
   },
   dateScroll: {
+    alignItems: "center",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
   dateText: {
@@ -286,10 +293,9 @@ const styles = StyleSheet.create({
     color: colors.onInk,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   progressWrap: {
     flex: 1,
@@ -311,10 +317,8 @@ const styles = StyleSheet.create({
   },
   slotItem: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 14,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     justifyContent: "center",
     paddingVertical: spacing.md,
     width: "31%",
@@ -334,7 +338,7 @@ const styles = StyleSheet.create({
   topNav: {
     alignItems: "center",
     flexDirection: "row",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

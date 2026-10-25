@@ -6,7 +6,7 @@ import { ThemedText } from "../themed-text";
 import { AppIcon } from "../app-icon";
 import { Input } from "../input";
 import { Button } from "../button";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, type, radius } from "@/theme";
 
 import {
   emergencyContactSchema,
@@ -77,7 +77,7 @@ export function EmergencyContactForm({
         </ThemedText>
 
         <Input
-          label="Full Name *"
+          label="Full name *"
           placeholder="e.g. Eleanor Jenkins"
           error={errors.name?.message}
           value={watch("name")}
@@ -111,7 +111,7 @@ export function EmergencyContactForm({
         </View>
 
         <Input
-          label="Primary Phone Number *"
+          label="Primary phone number *"
           placeholder="+44 7XXX XXXXXX"
           keyboardType="phone-pad"
           error={errors.phone?.message}
@@ -121,7 +121,7 @@ export function EmergencyContactForm({
         />
 
         <Input
-          label="Alternative Phone (Optional)"
+          label="Alternative phone (optional)"
           placeholder="e.g. Work or landline"
           keyboardType="phone-pad"
           error={errors.alternativePhone?.message}
@@ -133,7 +133,7 @@ export function EmergencyContactForm({
 
       <View style={styles.actions}>
         <Button
-          title={isLoading ? "Saving contact..." : "Save Emergency Contact"}
+          title={isLoading ? "Saving contact..." : "Save emergency contact"}
           onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading || !isDirty}
           loading={isLoading}
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
   },
   infoBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
@@ -182,10 +182,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   pill: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

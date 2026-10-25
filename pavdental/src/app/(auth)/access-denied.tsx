@@ -28,11 +28,12 @@ export default function AccessDeniedScreen() {
 const styles = StyleSheet.create({
   body: { color: colors.secondaryLabel, lineHeight: 22, textAlign: "center" },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.lg,
   },
   title: { color: colors.label, textAlign: "center" },
 });

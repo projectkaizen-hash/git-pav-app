@@ -6,8 +6,9 @@ import {
   ViewStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, sizes } from "@/theme";
 import { ThemedText } from "./themed-text";
+import { AppIcon } from "./app-icon";
 
 interface ListRowProps {
   /** Primary label */
@@ -18,6 +19,8 @@ interface ListRowProps {
   left?: React.ReactNode;
   /** Slot rendered on the right (badge, value, chevron, toggle) */
   right?: React.ReactNode;
+  /** Trailing grey chevron, as on every tappable reference row */
+  chevron?: boolean;
   /** Show separator line below the row */
   separator?: boolean;
   onPress?: () => void;
@@ -27,7 +30,8 @@ interface ListRowProps {
 }
 
 /**
- * ListRow — the standard list item primitive.
+ * ListRow — the standard list item primitive: 64pt row, 20pt side padding,
+ * 17pt title, 14pt grey subtitle, divider inset to the text column.
  * Pass left/right slots for icons, badges, or interactive controls.
  * Do not add more content props — compose with slots instead.
  */
@@ -36,6 +40,7 @@ export function ListRow({
   subtitle,
   left,
   right,
+  chevron = false,
   separator = false,
   onPress,
   style,
@@ -49,11 +54,14 @@ export function ListRow({
       <View style={styles.content}>
         <ThemedText variant="body" style={styles.titleText}>{title}</ThemedText>
         {subtitle ? (
-          <ThemedText variant="subhead" style={styles.subtitleText}>{subtitle}</ThemedText>
+          <ThemedText variant="footnote" style={styles.subtitleText}>{subtitle}</ThemedText>
         ) : null}
       </View>
 
       {right ? <View style={styles.rightSlot}>{right}</View> : null}
+      {chevron ? (
+        <AppIcon name="chevronRight" size={20} color={colors.secondaryLabel} style={styles.chevron} />
+      ) : null}
 
       {separator ? <View style={styles.separator} /> : null}
     </View>
@@ -83,21 +91,23 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   leftSlot: {
-    marginRight: spacing.sm,
+    marginRight: spacing.md,
+  },
+  chevron: {
+    marginLeft: spacing.xs,
   },
   rightSlot: {
     marginLeft: spacing.sm,
   },
   row: {
-    minHeight: 52, // Neo Financial generous tap target
+    minHeight: sizes.row,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
     backgroundColor: colors.systemBackground,
   },
   titleText: {
-    fontWeight: "500",
     color: colors.label,
   },
   subtitleText: {
@@ -107,7 +117,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.separator,
     bottom: 0,
     height: StyleSheet.hairlineWidth,
-    left: spacing.md,
+    left: spacing.gutter,
     position: "absolute",
     right: 0,
   },

@@ -9,10 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
-import { ThemedText, Input, Button, AppIcon, SwipeToStart } from "@/components";
+import { ThemedText, Input, Button, AppIcon, IconButton } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -76,79 +73,38 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Full-bleed photography */}
-      <Image
-        source={require("../../../assets/images/welcome-hero.jpg")}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        priority="high"
-      />
-
-      {/* Dark gradient for text readability and cinematic depth */}
-      <LinearGradient
-        colors={[
-          "rgba(0,0,0,0.55)",
-          "transparent",
-          "rgba(0,0,0,0.3)",
-          "rgba(0,0,0,0.92)",
-        ]}
-        locations={[0, 0.25, 0.6, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-
       <SafeAreaView style={styles.safe}>
-        {/* Top Header: Logo + Menu pill */}
+        {/* Close control only while the email sheet is open */}
         <View style={styles.topHeader}>
-          <View style={styles.brandGroup}>
-            <View style={styles.brandIconBox}>
-              <AppIcon name="plus" size={16} color={colors.alwaysWhite} />
-            </View>
-            <ThemedText variant="headline" style={styles.brandName}>
-              Pav Dental
-            </ThemedText>
-          </View>
+          {showEmailSheet ? (
+            <IconButton
+              icon="close"
+              label="Close email sign in"
+              color={colors.alwaysWhite}
+              onPress={() => setShowEmailSheet(false)}
+            />
+          ) : null}
+        </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Sign in with email"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setShowEmailSheet((prev) => !prev);
-            }}
-            style={styles.pillBtn}
-          >
-            <ThemedText variant="caption" style={styles.pillBtnText}>
-              {showEmailSheet ? "Back" : "Sign In"}
-            </ThemedText>
-          </Pressable>
+        {/* Centred wordmark, as on the reference splash */}
+        <View style={styles.brandGroup} accessibilityRole="header" accessibilityLabel="Pav Dental">
+          <View style={styles.brandIconBox}>
+            <AppIcon name="tooth" size={28} color={colors.alwaysBlack} />
+          </View>
+          <ThemedText variant="largeTitle" style={styles.brandName}>
+            Pav Dental
+          </ThemedText>
         </View>
 
         {/* Bottom Container: Either the Hero Swipe to Start, or the Email Sheet */}
         {!showEmailSheet ? (
           <View style={[styles.bottomContent, { paddingBottom: Math.max(spacing.lg, insets.bottom) }]}>
-            <ThemedText variant="largeTitle" style={styles.heroTitle}>
-              Oral Wellness{"\n"}& Aesthetic Dentistry
-            </ThemedText>
-
-            <ThemedText variant="body" style={styles.heroSub}>
-              Track daily brushing habits and improve overall oral care.
-            </ThemedText>
-
-            {/* Slider pill */}
-            <View style={styles.sliderWrap}>
-              <SwipeToStart label="Swipe To Start" onComplete={handleStart} />
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Sign in with email address"
-              onPress={() => setShowEmailSheet(true)}
-              style={styles.emailOption}
-            >
-              <ThemedText variant="caption" style={styles.emailOptionText}>
-                Or sign in with email address ›
-              </ThemedText>
-            </Pressable>
+            <Button title="Log in" variant="inverse" onPress={handleStart} />
+            <Button
+              title="Create an account"
+              onPress={() => router.push("/(auth)/sign-up" as never)}
+              style={styles.createBtn}
+            />
           </View>
         ) : (
           <KeyboardAvoidingView
@@ -159,7 +115,7 @@ export default function WelcomeScreen() {
               contentContainerStyle={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
             >
-              <ThemedText variant="largeTitle" style={styles.sheetTitle}>
+              <ThemedText variant="largeTitle">
                 Welcome back
               </ThemedText>
               <ThemedText variant="subhead" style={styles.sheetSub}>
@@ -230,44 +186,46 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   bottomContent: {
-    gap: spacing.md,
-    marginTop: "auto",
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
   },
   brandGroup: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
+    flex: 1,
+    gap: spacing.sm,
+    justifyContent: "center",
   },
   brandIconBox: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    borderRadius: radius.md,
-    height: 32,
+    backgroundColor: colors.alwaysWhite,
+    borderRadius: radius.lg,
+    height: 56,
     justifyContent: "center",
-    width: 32,
+    width: 56,
   },
   brandName: {
     color: colors.alwaysWhite,
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: -0.5,
+    fontSize: 40,
+    lineHeight: 46,
   },
   container: {
     backgroundColor: colors.alwaysBlack,
     flex: 1,
   },
+  createBtn: {
+    backgroundColor: colors.inkSoft,
+  },
   continueBtn: {
     marginTop: spacing.md,
   },
   demoPill: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 8,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
   demoPillText: {
-    color: colors.alwaysWhite,
+    color: colors.label,
     fontWeight: "600",
   },
   demoPills: {
@@ -275,76 +233,34 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.xs,
   },
-  emailOption: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-  emailOptionText: {
-    color: "rgba(255, 255, 255, 0.75)",
-    fontSize: 13,
-  },
   errorBox: {
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   errorText: {
     color: colors.danger,
   },
-  heroSub: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroTitle: {
-    color: colors.alwaysWhite,
-    fontSize: 32,
-    fontWeight: "700",
-    lineHeight: 38,
-  },
-  pillBtn: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-  },
-  pillBtnText: {
-    color: colors.alwaysWhite,
-    fontWeight: "600",
-  },
   safe: {
     flex: 1,
-    justifyContent: "space-between",
   },
   sheetContainer: {
-    backgroundColor: "rgba(20, 20, 24, 0.94)",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: "auto",
-    padding: spacing.lg,
+    backgroundColor: colors.systemBackground,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.gutter,
   },
   sheetScroll: {
     gap: spacing.sm,
   },
   sheetSub: {
-    color: "rgba(255, 255, 255, 0.7)",
     marginBottom: spacing.xs,
-  },
-  sheetTitle: {
-    color: colors.alwaysWhite,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  sliderWrap: {
-    marginTop: spacing.xs,
   },
   topHeader: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
+    minHeight: 48,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
 });

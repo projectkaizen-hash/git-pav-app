@@ -146,7 +146,7 @@ export default function ClinicianRxDispenseScreen() {
           ) : null}
         </View>
 
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="headline">Patient</ThemedText>
           <ThemedText variant="body">
             {patient.firstName} {patient.lastName}
@@ -161,7 +161,7 @@ export default function ClinicianRxDispenseScreen() {
           </ThemedText>
         </Card>
 
-        <Card elevation="raised" style={[styles.card, hasAllergyWarning && styles.warningCard]}>
+        <Card style={[styles.card, hasAllergyWarning && styles.warningCard]}>
           <ThemedText variant="headline">Allergies</ThemedText>
           <ThemedText
             variant="body"
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
     padding: spacing.md,
@@ -231,19 +231,19 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   form: {
     gap: spacing.md,

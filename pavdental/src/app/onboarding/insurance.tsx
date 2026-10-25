@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText, Input, Button, ProgressPills, AppIcon, ChipPill, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 const INSURERS = ["Denplan", "Bupa Dental", "AXA Health", "Simplyhealth", "Other"];
@@ -63,10 +63,10 @@ export default function OnboardingInsuranceScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.topNav}>
         <IconButton
-          icon="chevronLeft"
+          icon="arrowLeft"
           label="Go back"
           variant="soft"
-          size={18}
+          size={22}
           onPress={() => router.back()}
         />
         <View style={styles.progressWrap}>
@@ -82,7 +82,7 @@ export default function OnboardingInsuranceScreen() {
       >
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Dental Insurance
+            Dental insurance
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Optional — add a policy to speed up claims and check what's covered before you book.
@@ -105,7 +105,7 @@ export default function OnboardingInsuranceScreen() {
 
         {hasInsurance === true ? (
           <View style={styles.section}>
-            <ThemedText variant="overline" style={styles.sectionOverline}>PROVIDER</ThemedText>
+            <ThemedText variant="overline" style={styles.sectionOverline}>Provider</ThemedText>
             <View style={styles.choiceRow}>
               {INSURERS.map((name) => (
                 <ChipPill
@@ -121,7 +121,7 @@ export default function OnboardingInsuranceScreen() {
               <>
                 {insurer === "Other" ? (
                   <Input
-                    label="Insurance Provider Name"
+                    label="Insurance provider name"
                     placeholder="e.g. Vitality Health"
                     value={customProvider}
                     onChangeText={setCustomProvider}
@@ -129,7 +129,7 @@ export default function OnboardingInsuranceScreen() {
                 ) : null}
 
                 {/* Card scan zone */}
-                <ThemedText variant="overline" style={styles.sectionOverline}>POLICY CARD</ThemedText>
+                <ThemedText variant="overline" style={styles.sectionOverline}>Policy card</ThemedText>
                 {scanState === "captured" ? (
                   <View style={styles.previewCard}>
                     <View style={styles.previewTop}>
@@ -195,7 +195,7 @@ export default function OnboardingInsuranceScreen() {
 
         <View style={styles.actions}>
           <Button
-            title={hasInsurance === true ? "Save & Continue" : "Continue to Medical History"}
+            title={hasInsurance === true ? "Save & continue" : "Continue to medical history"}
             size="lg"
             arrow={true}
             disabled={hasInsurance === null}
@@ -234,10 +234,8 @@ const styles = StyleSheet.create({
   },
   noteBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.md,
@@ -250,7 +248,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: colors.ink,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.md + 2,
   },
@@ -265,7 +263,7 @@ const styles = StyleSheet.create({
   previewPolicy: {
     color: colors.alwaysWhite,
     letterSpacing: 2,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "600",
   },
   previewRow: {
@@ -284,23 +282,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scanBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.xl,
   },
   scanIconCircle: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.systemBackground,
+    borderRadius: radius.full,
+    backgroundColor: colors.inkSubtle,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -308,7 +304,7 @@ const styles = StyleSheet.create({
   scanSub: {
     color: colors.secondaryLabel,
     textAlign: "center",
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 17,
     maxWidth: 260,
   },
@@ -345,7 +341,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

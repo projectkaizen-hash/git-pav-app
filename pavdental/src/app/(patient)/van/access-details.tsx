@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, ActivityIndicat
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Input, Button, Card, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useVanStore } from "@/features/van/van-store";
 import { fetchServices } from "@/features/van/van-api";
 import { Service } from "@/features/van/van-types";
@@ -91,7 +91,7 @@ export default function VanAccessDetailsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Van Parking & Property Access
+            Van parking & property access
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Our clinical surgical suite is a Mercedes Sprinter (7.4m length). Please provide arrival and parking details.
@@ -99,13 +99,13 @@ export default function VanAccessDetailsScreen() {
         </View>
 
         {/* Destination Address */}
-        <Card elevation="raised" style={styles.sectionCard}>
+        <Card style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
             <AppIcon name="mapPin" size={18} color={colors.ink} />
-            <ThemedText variant="headline">Destination Address</ThemedText>
+            <ThemedText variant="headline">Destination address</ThemedText>
           </View>
           <Input
-            label="Street Address"
+            label="Street address"
             placeholder="e.g. 14 Harley Street"
             value={addressLine1}
             onChangeText={setAddressLine1}
@@ -136,7 +136,7 @@ export default function VanAccessDetailsScreen() {
 
         {/* Treatment Selection */}
         <View style={styles.section}>
-          <ThemedText variant="headline">Select Clinical Treatment</ThemedText>
+          <ThemedText variant="headline">Select clinical treatment</ThemedText>
           {loadingServices ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.ink} />
@@ -280,7 +280,7 @@ export default function VanAccessDetailsScreen() {
         {/* Security / Gate Code */}
         <View style={styles.switchRow}>
           <View style={styles.switchInfo}>
-            <ThemedText variant="headline">Gated Entrance / Intercom Code</ThemedText>
+            <ThemedText variant="headline">Gated entrance / intercom code</ThemedText>
             <ThemedText variant="caption" style={styles.sub}>
               Does our team require a buzzer, door code or security gate pass?
             </ThemedText>
@@ -288,7 +288,7 @@ export default function VanAccessDetailsScreen() {
           <Switch
             value={hasGatedAccess}
             onValueChange={setHasGatedAccess}
-            trackColor={{ true: colors.ink, false: colors.separator }}
+            trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
             accessibilityRole="switch"
             accessibilityLabel="Gated Entrance or Intercom Code"
           />
@@ -296,7 +296,7 @@ export default function VanAccessDetailsScreen() {
 
         {hasGatedAccess && (
           <Input
-            label="Gate / Buzzer Instructions"
+            label="Gate / buzzer instructions"
             placeholder="e.g. #1402 or 'Ring Flat 4 on arrival'"
             value={gateCode}
             onChangeText={setGateCode}
@@ -305,7 +305,7 @@ export default function VanAccessDetailsScreen() {
 
         {/* Driver Instructions */}
         <Input
-          label="Additional Driver Instructions"
+          label="Additional driver instructions"
           placeholder="e.g. One-way road, low hanging branches, narrow turning circle"
           multiline
           numberOfLines={2}
@@ -317,7 +317,8 @@ export default function VanAccessDetailsScreen() {
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
-          title="Review & Dispatch Van ›"
+          title="Review & dispatch van"
+              arrow
           size="lg"
           onPress={handleContinue}
         />
@@ -328,16 +329,17 @@ export default function VanAccessDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   errorCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     padding: spacing.md,
   },
   errorText: {
@@ -348,10 +350,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
@@ -366,9 +367,7 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     gap: 2,
   },
   optionCardActive: {
@@ -411,9 +410,7 @@ const styles = StyleSheet.create({
   },
   serviceCard: {
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: radius.lg,
     gap: 4,
   },
   serviceCardActive: {
@@ -449,8 +446,8 @@ const styles = StyleSheet.create({
   },
   switchRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.md,

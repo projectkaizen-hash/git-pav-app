@@ -163,7 +163,8 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.symptomPillsRow}
+              style={styles.hScroll}
+          contentContainerStyle={styles.symptomPillsRow}
             >
               {SYMPTOMS.map((item) => {
                 const isActive = item.id === selectedId;
@@ -245,7 +246,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
             </Card>
 
             {/* Selected Assessment & Clinical Advice Card */}
-            <Card elevation="raised" style={styles.assessmentCard}>
+            <Card style={styles.assessmentCard}>
               <View style={styles.assessmentTopRow}>
                 <ThemedText variant="headline" style={styles.assessmentTitle}>
                   {selected.title}
@@ -308,7 +309,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
               onPress={handleBookEmergency}
             />
             <Button
-              title="Start 15-Min Video Triage Now"
+              title="Start 15-min video triage now"
               variant="secondary"
               size="md"
               onPress={handleStartVideo}
@@ -321,6 +322,10 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
 }
 
 const styles = StyleSheet.create({
+  // Horizontal chip rows must not stretch to fill the column (web)
+  hScroll: {
+    flexGrow: 0,
+  },
   modalOverlay: {
     backgroundColor: "rgba(0, 0, 0, 0.45)",
     flex: 1,
@@ -336,13 +341,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxHeight: "90%",
     paddingBottom: 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   sheetGrabber: {
     alignSelf: "center",
     backgroundColor: colors.separator,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     height: 4,
     marginBottom: spacing.xs,
     width: 36,
@@ -369,28 +374,29 @@ const styles = StyleSheet.create({
   },
   emergencyBadgeText: {
     color: colors.danger,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
   sheetTitle: {
     color: colors.label,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   closeBtn: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: radius.full,
-    height: 32,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.lg,
+    height: 40,
     justifyContent: "center",
-    width: 32,
+    width: 40,
   },
   scrollContent: {
     gap: spacing.sm,
     paddingVertical: spacing.xs,
   },
   symptomPillsRow: {
+    alignItems: "center",
     gap: spacing.xs,
     paddingVertical: 4,
   },
@@ -406,20 +412,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   symptomPillInactive: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
   },
   symptomPillText: {
     color: colors.label,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
   symptomPillTextActive: {
     color: colors.alwaysWhite,
   },
   painScoreCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.sm,
   },
@@ -430,7 +434,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -447,16 +451,14 @@ const styles = StyleSheet.create({
   painDot: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: radius.sm,
     height: 28,
     justifyContent: "center",
     width: 28,
   },
   painDotFilled: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FCA5A5",
+    backgroundColor: colors.dangerSubtle,
+    borderColor: colors.danger,
   },
   painDotSelected: {
     backgroundColor: colors.danger,
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
   },
   assessmentTitle: {
     color: colors.label,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
   adviceList: {
@@ -495,7 +497,7 @@ const styles = StyleSheet.create({
   },
   adviceBullet: {
     backgroundColor: colors.ink,
-    borderRadius: 2,
+    borderRadius: radius.full,
     height: 4,
     marginTop: 6,
     width: 4,
@@ -503,13 +505,13 @@ const styles = StyleSheet.create({
   adviceLine: {
     color: colors.label,
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 17,
   },
   redFlagBox: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FEE2E2",
-    borderRadius: 10,
+    backgroundColor: colors.dangerSubtle,
+    borderColor: colors.dangerSubtle,
+    borderRadius: radius.md,
     borderWidth: 1,
     padding: spacing.xs,
   },
@@ -522,7 +524,7 @@ const styles = StyleSheet.create({
   hotlineBanner: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.sm,
@@ -532,11 +534,11 @@ const styles = StyleSheet.create({
   },
   hotlineLabel: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
   },
   hotlineNumber: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   sheetFooter: {

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Pressable, Linking } from "react-native";
 import { ThemedText, Card, EmptyState, ErrorState, Skeleton, AppIcon, type AppIconName } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useDocumentVault } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 
@@ -38,7 +38,7 @@ export default function DocumentVaultScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="largeTitle" style={styles.title}>
-            Document Vault
+            Document vault
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
             Digital health documents, X-rays, and invoices encrypted at rest.
@@ -86,7 +86,7 @@ export default function DocumentVaultScreen() {
                 : "";
 
               return (
-                <Card key={doc.id} elevation="raised" style={styles.docCard}>
+                <Card key={doc.id} style={styles.docCard}>
                   <View style={styles.docRow}>
                     <View style={styles.iconCircle}>
                       <AppIcon name={getDocIcon(doc.docType || doc.type || "")} size={18} color={colors.ink} />
@@ -122,12 +122,13 @@ export default function DocumentVaultScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   docCard: {
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
   downloadBtn: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 22,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
@@ -168,16 +169,16 @@ const styles = StyleSheet.create({
   },
   iconCircle: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 22,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,
   },
   securityBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.sm,

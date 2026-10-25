@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
+import { stackScreenOptions } from "@/components";
 
 export default function PatientLayout() {
   const user = useCurrentUser();
@@ -17,7 +18,7 @@ export default function PatientLayout() {
       <Stack.Screen name="records" />
       <Stack.Screen name="van" />
       <Stack.Screen name="video" />
-      <Stack.Screen name="check-in" options={{ headerShown: true, title: "Pre-Visit Check-In", headerBackTitle: "Back" }} />
+      <Stack.Screen name="check-in" options={{ ...stackScreenOptions, title: "Pre-visit check-in", headerTitle: "" }} />
       <Stack.Screen name="perks" />
     </Stack>
   );

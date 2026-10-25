@@ -14,7 +14,7 @@ import {
   ConfirmSheet,
   type AppIconName,
 } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
 
@@ -33,22 +33,22 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Account",
     rows: [
       {
-        title: "Personal Information",
+        title: "Personal information",
         icon: "profile",
         route: "/(patient)/(tabs)/profile/personal-info",
       },
       {
-        title: "Medical History",
+        title: "Medical history",
         icon: "clipboard",
         route: "/(patient)/(tabs)/profile/medical-history",
       },
       {
-        title: "Emergency Contact",
+        title: "Emergency contact",
         icon: "heart",
         route: "/(patient)/(tabs)/profile/emergency-contact",
       },
       {
-        title: "Dependants & Family",
+        title: "Dependants & family",
         icon: "users",
         route: "/(patient)/(tabs)/profile/dependants",
       },
@@ -58,12 +58,12 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Preferences",
     rows: [
       {
-        title: "Notification Preferences",
+        title: "Notification preferences",
         icon: "bell",
         route: "/(patient)/(tabs)/profile/notifications",
       },
       {
-        title: "Payment Methods",
+        title: "Payment methods",
         icon: "creditCard",
         route: "/(patient)/(tabs)/profile/payment-methods",
       },
@@ -73,12 +73,12 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     heading: "Security & Privacy",
     rows: [
       {
-        title: "Security & Privacy",
+        title: "Security & privacy",
         icon: "lock",
         route: "/(patient)/(tabs)/profile/security",
       },
       {
-        title: "Active Sessions",
+        title: "Active sessions",
         icon: "smartphone",
         route: "/(patient)/(tabs)/profile/sessions",
       },
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
               />
             </View>
             <View style={styles.promoBadgeSquare}>
-              <AppIcon name="sparkles" size={26} color="#D97706" />
+              <AppIcon name="sparkles" size={26} color={colors.warningFill} />
             </View>
           </View>
         </Card>
@@ -197,7 +197,7 @@ export default function ProfileScreen() {
             </ThemedText>
             <Card padding="none">
               <ListRow
-                title="Clinician Portal (Dentist)"
+                title="Clinician portal (dentist)"
                 subtitle="Schedule, tooth chart and prescriptions"
                 left={
                   <View style={styles.rowIcon}>
@@ -217,7 +217,7 @@ export default function ProfileScreen() {
                 separator
               />
               <ListRow
-                title="Mobile Van Operator Portal"
+                title="Mobile van operator portal"
                 subtitle="Unit 01 Dispatch · Real-time Stops, En Route & On-Site Triage"
                 left={
                   <View style={styles.rowIcon}>
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
           </ThemedText>
           <Card padding="none">
             <ListRow
-              title="Sign Out"
+              title="Sign out"
               left={
                 <View style={styles.rowIcon}>
                   <AppIcon name="logOut" size={18} color={colors.label} />
@@ -256,7 +256,7 @@ export default function ProfileScreen() {
               separator
             />
             <ListRow
-              title="Delete Account"
+              title="Delete account"
               subtitle="Permanently remove your account and data"
               left={
                 <View style={[styles.rowIcon, styles.rowIconDanger]}>
@@ -289,13 +289,13 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.md,
   },
   headerRow: {
@@ -310,15 +310,15 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   identityCard: {
-    borderRadius: 20,
-    backgroundColor: colors.secondaryBackground,
+    borderRadius: radius.lg,
+    backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
   },
   identityRow: {
     paddingVertical: spacing.sm,
   },
   promoCard: {
-    borderRadius: 20,
+    borderRadius: radius.lg,
     backgroundColor: colors.systemBackground,
     borderColor: colors.separator,
     padding: spacing.md,
@@ -334,25 +334,25 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   promoTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     color: colors.label,
   },
   promoSub: {
     color: colors.secondaryLabel,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
     marginBottom: spacing.xs,
   },
   promoBtn: {
     alignSelf: "flex-start",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
   },
   promoBadgeSquare: {
     width: 54,
     height: 54,
-    borderRadius: 16,
-    backgroundColor: "#FEF3C7",
+    borderRadius: radius.lg,
+    backgroundColor: colors.warningSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     height: 40,
     justifyContent: "center",
     width: 40,

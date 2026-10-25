@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Linking, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button, AppIcon, EmptyState, ErrorState, Skeleton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { apiUrl, authFetch } from "@/features/auth/auth-api";
@@ -84,7 +84,7 @@ export default function PrescriptionDetailScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
-        <Card elevation="raised" style={styles.headerCard}>
+        <Card style={styles.headerCard}>
           <View style={styles.headerTop}>
             <View style={styles.headerIcon}>
               <AppIcon name="droplet" size={22} color={colors.onInk} />
@@ -98,14 +98,14 @@ export default function PrescriptionDetailScreen() {
               </ThemedText>
             </View>
             <Badge
-              label={rx.status === "active" ? "ACTIVE" : "COMPLETED"}
+              label={rx.status === "active" ? "Active" : "Completed"}
               variant={rx.status === "active" ? "success" : "default"}
             />
           </View>
         </Card>
 
         {/* Dosage card */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <ThemedText variant="overline">How to take it</ThemedText>
           <View style={styles.detailRow}>
             <ThemedText variant="subhead" style={styles.detailLabel}>
@@ -143,7 +143,7 @@ export default function PrescriptionDetailScreen() {
         </Card>
 
         {/* Pharmacy + prescriber */}
-        <Card elevation="raised" style={styles.card}>
+        <Card style={styles.card}>
           <View style={styles.pharmRow}>
             <AppIcon name="mapPin" size={15} color={colors.secondaryLabel} />
             <View style={styles.pharmInfo}>
@@ -207,12 +207,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   detailLabel: {
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
   headerIcon: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 24,
+    borderRadius: radius.full,
     height: 48,
     justifyContent: "center",
     width: 48,
@@ -253,8 +254,8 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
   },
   notesBox: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   notesText: {
@@ -276,14 +277,14 @@ const styles = StyleSheet.create({
   refillBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     flexDirection: "row",
     gap: spacing.xxs,
     padding: spacing.sm,
   },
   refillBoxDone: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
   refillText: {

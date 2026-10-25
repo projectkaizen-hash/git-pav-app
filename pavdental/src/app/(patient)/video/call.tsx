@@ -94,7 +94,7 @@ export default function VideoCallScreen() {
           )}
 
           {!loading && !error && (
-            <Card elevation="raised" style={styles.infoCard}>
+            <Card style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <AppIcon name="lock" size={14} color={colors.secondaryLabel} />
                 <ThemedText variant="caption" style={styles.muted}>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   iconCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 40,
+    borderRadius: radius.xl,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -170,13 +170,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {
     color: colors.secondaryLabel,
     lineHeight: 20,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     textAlign: "center",
   },
   title: {

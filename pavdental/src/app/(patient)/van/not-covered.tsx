@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Card, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 // ─── Van coverage not available ────────────────────────────────────────────────
 // Clear, non-apologetic explanation with the three alternative channels as
@@ -60,7 +60,7 @@ export default function VanNotCoveredScreen() {
               onPress={() => router.push(opt.route as never)}
               style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
             >
-              <Card elevation="raised" style={styles.optionCard}>
+              <Card style={styles.optionCard}>
                 <View style={styles.optionIcon}>
                   <AppIcon name={opt.icon} size={20} color={colors.ink} />
                 </View>
@@ -95,19 +95,19 @@ export default function VanNotCoveredScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   footerBar: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   hero: {
     alignItems: "center",
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   },
   markTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 28,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.xl,
     height: 64,
     justifyContent: "center",
     marginBottom: spacing.xxs,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md,
@@ -135,8 +135,8 @@ const styles = StyleSheet.create({
   },
   optionIcon: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: 22,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.full,
     height: 44,
     justifyContent: "center",
     width: 44,

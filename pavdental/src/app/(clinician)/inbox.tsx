@@ -211,7 +211,7 @@ export default function ClinicianInboxScreen() {
                   style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Card
-                    elevation="raised"
+                   
                     style={[
                       styles.threadCard,
                       unread && styles.threadCardUnread,
@@ -328,15 +328,13 @@ export default function ClinicianInboxScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   slaBanner: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
     borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     margin: spacing.md,
@@ -361,12 +359,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.separator,
     borderBottomWidth: 1,
     flexDirection: "row",
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.gutter,
   },
   tab: {
     borderBottomColor: "transparent",
     borderBottomWidth: 2,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
   tabActive: {
@@ -380,11 +378,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   searchContainer: {
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.gutter,
     marginTop: spacing.sm,
   },
   scrollContent: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   stack: {
@@ -401,11 +400,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   threadCardSelected: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
   },
   avatarTile: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     borderRadius: radius.full,
     height: 40,
     justifyContent: "center",
@@ -442,7 +441,7 @@ const styles = StyleSheet.create({
   },
   unreadDot: {
     backgroundColor: colors.danger,
-    borderRadius: 4,
+    borderRadius: radius.full,
     height: 8,
     width: 8,
   },
@@ -481,7 +480,7 @@ const styles = StyleSheet.create({
   },
   bubblePatient: {
     alignSelf: "flex-start",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
   },
   bubbleClinician: {
     alignSelf: "flex-end",
@@ -489,7 +488,7 @@ const styles = StyleSheet.create({
   },
   bubbleSender: {
     color: colors.secondaryLabel,
-    fontSize: 10,
+    fontSize: 11,
     marginBottom: 2,
   },
   bubbleTextPatient: {
@@ -501,7 +500,7 @@ const styles = StyleSheet.create({
   bubbleTime: {
     alignSelf: "flex-end",
     color: colors.tertiaryLabel,
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 2,
   },
   replyComposer: {

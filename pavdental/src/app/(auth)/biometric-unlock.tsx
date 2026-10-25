@@ -66,7 +66,7 @@ export default function BiometricUnlockScreen() {
               <AppIcon name="lock" size={32} color={colors.ink} />
             </View>
             <ThemedText variant="title" style={styles.title}>
-              App Locked
+              App locked
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Authenticate with Face ID or biometrics to protect your confidential dental charts and health history.
@@ -85,21 +85,21 @@ export default function BiometricUnlockScreen() {
         <View style={styles.actions}>
           {hasHardware ? (
             <Button
-              title="Unlock with Biometrics"
+              title="Unlock with biometrics"
               size="lg"
               icon={<AppIcon name="shieldCheck" size={20} color={colors.onInk} />}
               onPress={authenticate}
             />
           ) : (
             <Button
-              title="Unlock Account"
+              title="Unlock account"
               size="lg"
               onPress={authenticate}
             />
           )}
 
           <Button
-            title="Sign Out"
+            title="Sign out"
             variant="ghost"
             size="md"
             onPress={handleSignOut}
@@ -119,8 +119,6 @@ const styles = StyleSheet.create({
   cardWrapper: {
     alignItems: "center",
     backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    borderWidth: 1,
     borderRadius: radius.xl,
     padding: spacing.xl,
     width: "100%",
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSubtle,
     borderRadius: radius.md,
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
   },
   errorText: {
@@ -148,14 +146,14 @@ const styles = StyleSheet.create({
   iconCircle: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 36,
+    borderRadius: radius.full,
     height: 72,
     justifyContent: "center",
     marginBottom: spacing.md,
     width: 72,
   },
   safe: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {

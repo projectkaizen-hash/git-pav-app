@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Button, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 
 // ─── Guest limit reached — the Zocdoc "soft wall" ─────────────────────────────
 // Guests can browse and start a booking, but confirming requires an account.
@@ -73,14 +73,14 @@ const styles = StyleSheet.create({
   },
   benefits: {
     alignSelf: "stretch",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 14,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     marginTop: spacing.xs,
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   footer: {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   markTile: {
     alignItems: "center",
     backgroundColor: colors.ink,
-    borderRadius: 28,
+    borderRadius: radius.xl,
     height: 64,
     justifyContent: "center",
     marginBottom: spacing.xs,

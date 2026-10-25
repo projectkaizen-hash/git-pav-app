@@ -7,13 +7,13 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
-import { colors, spacing, type } from "@/theme";
+import { colors, spacing, radius, sizes, type } from "@/theme";
 import { ThemedText } from "./themed-text";
 
 export type InputState = "default" | "focused" | "error" | "disabled";
 
 interface InputProps extends Omit<TextInputProps, "style"> {
-  /** Field label rendered above the input */
+  /** Field label — floats inside the field, as in the reference */
   label?: string;
   /** Inline error message — renders the input in error state */
   error?: string;
@@ -27,8 +27,10 @@ interface InputProps extends Omit<TextInputProps, "style"> {
 }
 
 /**
- * Input — styled text input with label, hint, and error state.
- * Refactored to Neo Financial soft-filled continuous squircle inputs.
+ * Input — reference text field: grey fill, square-ish top corners, 2pt
+ * underline that turns black on focus and red on error. The label sits
+ * inside the field at body size and shrinks to a 13pt caption once the
+ * field is focused or filled.
  */
 export function Input({
   label,
@@ -39,53 +41,76 @@ export function Input({
   rightSlot,
   onFocus,
   onBlur,
+  placeholder,
+  value,
+  defaultValue,
+  multiline,
   ...props
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const hasError = !!error;
+  const hasValue = !!(value ?? defaultValue);
+  const floated = !label || isFocused || hasValue;
 
-  const borderColor = hasError
+  const underline = hasError
     ? colors.danger
     : isFocused
     ? colors.ink
-    : "transparent";
+    : colors.inputUnderline;
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label ? (
-        <ThemedText variant="subhead" style={styles.label}>
-          {label}
-        </ThemedText>
-      ) : null}
-
       <View
         style={[
-          styles.inputWrapper,
-          {
-            borderColor,
-            borderWidth: isFocused || hasError ? 1.5 : 1,
-            backgroundColor: isFocused ? colors.systemBackground : colors.secondaryBackground,
-            opacity: disabled ? 0.5 : 1,
-          },
+          styles.field,
+          multiline && styles.fieldMultiline,
+          { borderBottomColor: underline, opacity: disabled ? 0.5 : 1 },
         ]}
       >
-        <TextInput
-          {...props}
-          editable={!disabled}
-          placeholderTextColor={colors.tertiaryLabel}
-          accessibilityLabel={label}
-          accessibilityHint={hint}
-          accessibilityState={{ disabled }}
-          onFocus={(e) => {
-            setIsFocused(true);
-            onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setIsFocused(false);
-            onBlur?.(e);
-          }}
-          style={[styles.input, rightSlot ? { paddingRight: 40 } : null]}
-        />
+        <View style={styles.inner}>
+          {label ? (
+            <View
+              pointerEvents="none"
+              style={!floated && styles.labelResting}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <ThemedText
+                variant={floated ? "caption" : "body"}
+                style={styles.label}
+                numberOfLines={1}
+              >
+                {label}
+              </ThemedText>
+            </View>
+          ) : null}
+          <TextInput
+            {...props}
+            value={value}
+            defaultValue={defaultValue}
+            multiline={multiline}
+            editable={!disabled}
+            placeholder={floated ? placeholder : undefined}
+            placeholderTextColor={colors.tertiaryLabel}
+            accessibilityLabel={label}
+            accessibilityHint={hint}
+            accessibilityState={{ disabled }}
+            onFocus={(e) => {
+              setIsFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setIsFocused(false);
+              onBlur?.(e);
+            }}
+            style={[
+              styles.input,
+              label ? styles.inputWithLabel : null,
+              !floated && styles.inputHidden,
+              multiline && styles.inputMultiline,
+            ]}
+          />
+        </View>
         {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
       </View>
 
@@ -109,38 +134,57 @@ export function Input({
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.xxs,
+    gap: spacing.xs,
   },
   error: {
     color: colors.danger,
-    marginTop: 2,
   },
   hint: {
-    color: colors.tertiaryLabel,
-    marginTop: 2,
+    color: colors.secondaryLabel,
   },
-  inputWrapper: {
-    minHeight: 52, // Neo Financial comfortable touch target
-    borderRadius: 14,
-    // @ts-ignore
-    borderCurve: "continuous",
-    borderColor: colors.separator,
+  field: {
+    minHeight: sizes.input,
+    backgroundColor: colors.tertiaryBackground,
+    borderTopLeftRadius: radius.sm,
+    borderTopRightRadius: radius.sm,
+    borderBottomWidth: 2,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.md,
-    overflow: "hidden",
+    paddingHorizontal: spacing.gutter,
+  },
+  fieldMultiline: {
+    alignItems: "flex-start",
+    minHeight: 112,
+  },
+  inner: {
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: spacing.xs,
+  },
+  label: {
+    color: colors.secondaryLabel,
+  },
+  labelResting: {
+    position: "absolute",
+    left: 0,
+    right: 0,
   },
   input: {
     ...type.body,
-    flex: 1,
-    minHeight: 52,
     color: colors.label,
-    paddingVertical: spacing.sm,
+    minHeight: 24,
+    padding: 0,
   },
-  label: {
-    color: colors.label,
-    fontWeight: "500",
-    marginBottom: 2,
+  inputWithLabel: {
+    marginTop: 2,
+  },
+  inputHidden: {
+    // Keeps the native input focusable while the resting label is shown
+    color: "transparent",
+  },
+  inputMultiline: {
+    minHeight: 72,
+    textAlignVertical: "top",
   },
   rightSlot: {
     alignItems: "center",
@@ -148,4 +192,3 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 });
-

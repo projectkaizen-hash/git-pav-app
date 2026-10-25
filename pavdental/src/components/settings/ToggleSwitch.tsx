@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Switch, Pressable } from "react-native";
 import { ThemedText } from "../themed-text";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius, sizes } from "@/theme";
 
 export interface ToggleSwitchProps {
   label: string;
@@ -40,7 +40,7 @@ export function ToggleSwitch({
       <View style={styles.leftContainer}>
         {icon ? <View style={styles.iconContainer}>{icon}</View> : null}
         <View style={styles.textContainer}>
-          <ThemedText variant="headline" style={styles.label}>
+          <ThemedText variant="body" style={styles.label}>
             {label}
           </ThemedText>
           {description ? (
@@ -55,8 +55,9 @@ export function ToggleSwitch({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: colors.separator, true: colors.ink }}
+        trackColor={{ false: colors.inkSubtle, true: colors.successFill }}
         thumbColor={colors.systemBackground}
+        ios_backgroundColor={colors.inkSubtle}
         importantForAccessibility="no"
         accessibilityElementsHidden={true}
       />
@@ -67,11 +68,13 @@ export function ToggleSwitch({
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 12,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.sm,
+    minHeight: sizes.row,
+    paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
   description: {
@@ -82,11 +85,11 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: 8,
-    height: 32,
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.md,
+    height: sizes.iconTile,
     justifyContent: "center",
-    width: 32,
+    width: sizes.iconTile,
   },
   label: {
     color: colors.label,

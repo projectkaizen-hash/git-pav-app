@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "re
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 
 export default function VerifyEmailScreen() {
@@ -95,10 +95,10 @@ export default function VerifyEmailScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
         </View>
@@ -141,7 +141,7 @@ export default function VerifyEmailScreen() {
 
           <View style={styles.form}>
             <Input
-              label="Verification Code / Link Token"
+              label="Verification code / link token"
               placeholder="Enter code"
               autoCapitalize="none"
               value={code}
@@ -154,7 +154,7 @@ export default function VerifyEmailScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Verify & Continue"
+              title="Verify & continue"
               size="lg"
               arrow={true}
               loading={loading}
@@ -177,8 +177,8 @@ export default function VerifyEmailScreen() {
 
 const styles = StyleSheet.create({
   actions: {
+    marginTop: "auto",
     gap: spacing.sm,
-    marginTop: spacing.xl,
     paddingTop: spacing.sm,
   },
   emailHighlight: {
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   errorBox: {
     alignItems: "center",
     backgroundColor: colors.dangerSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     marginBottom: spacing.md,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   infoBox: {
     alignItems: "center",
     backgroundColor: colors.inkSubtle,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.xs,
     marginBottom: spacing.md,
@@ -225,14 +225,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   topNav: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

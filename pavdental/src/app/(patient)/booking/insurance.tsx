@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Button, AppIcon, ChipPill, ProgressPills, Input } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { updatePatientProfile } from "@/features/records/records-api";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
@@ -75,14 +75,14 @@ export default function BookingInsuranceScreen() {
             </View>
 
             <Input
-              label="Insurance Provider"
+              label="Insurance provider"
               placeholder="e.g. Denplan"
               value={provider}
               onChangeText={setProvider}
             />
 
             <Input
-              label="Membership / Policy Number"
+              label="Membership / policy number"
               placeholder="e.g. DP-4471-8820"
               value={policyNumber}
               onChangeText={setPolicyNumber}
@@ -100,7 +100,7 @@ export default function BookingInsuranceScreen() {
                 }}
                 style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
               >
-                <Card elevation="raised" style={styles.savedCard}>
+                <Card style={styles.savedCard}>
                   <View style={styles.savedTop}>
                     <AppIcon name="creditCard" size={18} color={colors.ink} />
                     <ThemedText variant="headline" style={styles.savedInsurer}>
@@ -116,7 +116,7 @@ export default function BookingInsuranceScreen() {
             ) : null}
 
             <Button
-              title="Review Coverage"
+              title="Review coverage"
               size="lg"
               disabled={!provider.trim() || !policyNumber.trim()}
               onPress={() => setStep("preview")}
@@ -161,7 +161,7 @@ export default function BookingInsuranceScreen() {
             </Card>
 
             <View style={styles.choiceRow}>
-              <ChipPill label="Number looks wrong? Retake" onPress={() => setStep("scan")} />
+              <ChipPill label="Number looks wrong? retake" onPress={() => setStep("scan")} />
             </View>
 
             <Button title="Confirm & continue" size="lg" onPress={confirm} />
@@ -186,7 +186,7 @@ export default function BookingInsuranceScreen() {
 
 const styles = StyleSheet.create({
   checkCard: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   confirmedBox: {
     alignItems: "center",
     backgroundColor: colors.successSubtle,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     gap: spacing.xxs,
     padding: spacing.xl,
   },
@@ -213,12 +213,13 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   header: {
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: colors.ink,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -264,10 +265,10 @@ const styles = StyleSheet.create({
   },
   scanBox: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     borderColor: colors.ink,
     borderStyle: "dashed",
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     gap: spacing.xxs,
     padding: spacing.xxl,

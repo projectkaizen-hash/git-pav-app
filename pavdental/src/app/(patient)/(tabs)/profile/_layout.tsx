@@ -1,22 +1,11 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 import { colors } from "@/theme";
 
 export default function ProfileSubLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: colors.systemBackground,
-        },
-        headerTitleStyle: {
-          color: colors.label,
-          fontWeight: "600",
-        },
-        headerTintColor: colors.ink,
-        headerShadowVisible: false,
-        headerBackTitle: "Account",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen
         name="index"
@@ -27,31 +16,31 @@ export default function ProfileSubLayout() {
       <Stack.Screen
         name="personal-info"
         options={{
-          title: "Personal Information",
+          title: "Personal information",
         }}
       />
       <Stack.Screen
         name="medical-history"
         options={{
-          title: "Medical History",
+          title: "Medical history",
         }}
       />
       <Stack.Screen
         name="emergency-contact"
         options={{
-          title: "Emergency Contact",
+          title: "Emergency contact",
         }}
       />
       <Stack.Screen
         name="security"
         options={{
-          title: "Security & Privacy",
+          title: "Security & privacy",
         }}
       />
       <Stack.Screen
         name="sessions"
         options={{
-          title: "Active Sessions",
+          title: "Active sessions",
         }}
       />
       <Stack.Screen
@@ -63,25 +52,25 @@ export default function ProfileSubLayout() {
       <Stack.Screen
         name="notifications"
         options={{
-          title: "Notification Preferences",
+          title: "Notification preferences",
         }}
       />
       <Stack.Screen
         name="payment-methods"
         options={{
-          title: "Payment Methods",
+          title: "Payment methods",
         }}
       />
       <Stack.Screen
         name="dependants"
         options={{
-          title: "Dependants & Family",
+          title: "Dependants & family",
         }}
       />
       <Stack.Screen
         name="delete-account"
         options={{
-          title: "Delete Account",
+          title: "Delete account",
           headerTintColor: colors.danger,
         }}
       />

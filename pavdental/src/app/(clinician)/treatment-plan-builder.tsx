@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, TextInput } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button, EmptyState } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { createTreatmentPlan } from "@/features/records/records-api";
 
 interface PlanItem {
@@ -107,7 +107,7 @@ export default function TreatmentPlanBuilderScreen() {
         {/* Navigation */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Patient File"
+            title="‹ Patient file"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
@@ -116,7 +116,7 @@ export default function TreatmentPlanBuilderScreen() {
 
         <View style={styles.headerBlock}>
           <ThemedText variant="title" style={styles.title}>
-            Treatment Plan Builder
+            Treatment plan builder
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Patient: {params.patientName || "Verified Patient"}
@@ -124,16 +124,16 @@ export default function TreatmentPlanBuilderScreen() {
         </View>
 
         {success ? (
-          <Card elevation="raised" style={styles.successCard}>
+          <Card style={styles.successCard}>
             <ThemedText variant="headline" style={styles.successTitle}>
-              ✓ Treatment Plan Created
+              ✓ Treatment plan created
             </ThemedText>
             <ThemedText variant="body" style={styles.successBody}>
               Plan "{title}" has been saved with {items.length} items totaling £
               {(totalPence / 100).toFixed(2)}. The patient can review and sign it via the app.
             </ThemedText>
             <Button
-              title="Return to Patient File"
+              title="Return to patient file"
               size="md"
               variant="primary"
               onPress={() => router.back()}
@@ -150,7 +150,7 @@ export default function TreatmentPlanBuilderScreen() {
             ) : null}
 
             {/* Plan Title */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <ThemedText variant="caption" style={styles.label}>
                 PLAN TITLE:
               </ThemedText>
@@ -164,9 +164,9 @@ export default function TreatmentPlanBuilderScreen() {
             </Card>
 
             {/* Quick Add Procedures */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <ThemedText variant="headline" style={styles.sectionHeading}>
-                Add Standard Procedures
+                Add standard procedures
               </ThemedText>
               <View style={styles.toothInputRow}>
                 <ThemedText variant="caption" style={styles.toothLabel}>
@@ -196,9 +196,9 @@ export default function TreatmentPlanBuilderScreen() {
             </Card>
 
             {/* Custom Item Form */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <ThemedText variant="headline" style={styles.sectionHeading}>
-                Add Custom Procedure
+                Add custom procedure
               </ThemedText>
               <TextInput
                 style={styles.textInput}
@@ -228,7 +228,7 @@ export default function TreatmentPlanBuilderScreen() {
             </Card>
 
             {/* Plan Items & Total */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <ThemedText variant="headline" style={styles.sectionHeading}>
                 Plan Items ({items.length})
               </ThemedText>
@@ -262,7 +262,7 @@ export default function TreatmentPlanBuilderScreen() {
 
                   <View style={styles.totalRow}>
                     <ThemedText variant="headline" style={styles.totalLabel}>
-                      Total Estimated Cost:
+                      Total estimated cost:
                     </ThemedText>
                     <ThemedText variant="title" style={styles.totalVal}>
                       £{(totalPence / 100).toFixed(2)}
@@ -270,7 +270,7 @@ export default function TreatmentPlanBuilderScreen() {
                   </View>
 
                   <Button
-                    title={saving ? "Saving Plan…" : "Create & Send Plan"}
+                    title={saving ? "Saving plan…" : "Create & send plan"}
                     size="md"
                     variant="primary"
                     disabled={saving}
@@ -293,12 +293,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   customRow: {
@@ -330,8 +331,8 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     padding: spacing.sm,
@@ -366,10 +367,8 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   textInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     padding: spacing.sm,
   },
@@ -377,10 +376,8 @@ const styles = StyleSheet.create({
     color: colors.label,
   },
   toothInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 6,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     paddingHorizontal: 8,
     paddingVertical: 4,

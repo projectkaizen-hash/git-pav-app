@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
+import { stackScreenOptions } from "@/components";
 
 export default function OperatorLayout() {
   const user = useCurrentUser();
@@ -11,18 +12,13 @@ export default function OperatorLayout() {
 
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
-      <Stack.Screen name="shift" options={{ title: "Van Dispatch Console" }} />
-      <Stack.Screen name="incoming" options={{ title: "Incoming Requests" }} />
-      <Stack.Screen name="route" options={{ title: "Live Van Queue" }} />
-      <Stack.Screen name="van-check-in" options={{ title: "Patient Arrival Check-In" }} />
-      <Stack.Screen name="offline-capture" options={{ title: "Clinical Note & Complete Stop" }} />
+      <Stack.Screen name="shift" options={{ title: "Van dispatch console", headerTitle: "" }} />
+      <Stack.Screen name="incoming" options={{ title: "Incoming requests", headerTitle: "" }} />
+      <Stack.Screen name="route" options={{ title: "Live van queue", headerTitle: "" }} />
+      <Stack.Screen name="van-check-in" options={{ title: "Patient arrival check-in", headerTitle: "" }} />
+      <Stack.Screen name="offline-capture" options={{ title: "Clinical note & complete stop", headerTitle: "" }} />
     </Stack>
   );
 }

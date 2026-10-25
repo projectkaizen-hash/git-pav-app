@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Switch } 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedText, Input, Button, ProgressPills, IconButton } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { useOnboardingStore } from "@/features/onboarding/onboarding-store";
 
 export default function OnboardingMedicalHistoryScreen() {
@@ -36,10 +36,10 @@ export default function OnboardingMedicalHistoryScreen() {
       >
         <View style={styles.topNav}>
           <IconButton
-            icon="chevronLeft"
+            icon="arrowLeft"
             label="Go back"
             variant="soft"
-            size={18}
+            size={22}
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
@@ -55,7 +55,7 @@ export default function OnboardingMedicalHistoryScreen() {
         >
           <View style={styles.header}>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Medical History
+              Medical history
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Essential clinical questions to keep you safe during dental treatments and anaesthetics.
@@ -67,7 +67,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Known Allergies</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Known allergies</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     e.g. Latex, Penicillin, Anaesthetics
                   </ThemedText>
@@ -75,7 +75,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={hasAllergies}
                   onValueChange={setHasAllergies}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Known Allergies"
                 />
@@ -97,7 +97,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Regular Medications</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Regular medications</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     Prescription or regular over-the-counter
                   </ThemedText>
@@ -105,7 +105,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={isTakingMeds}
                   onValueChange={setIsTakingMeds}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Regular Medications"
                 />
@@ -127,7 +127,7 @@ export default function OnboardingMedicalHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelBox}>
-                  <ThemedText variant="headline" style={styles.cardTitle}>Blood Thinners / Bleeding</ThemedText>
+                  <ThemedText variant="headline" style={styles.cardTitle}>Blood thinners / bleeding</ThemedText>
                   <ThemedText variant="caption" style={styles.switchSub}>
                     e.g. Warfarin, Apixaban, Clopidogrel
                   </ThemedText>
@@ -135,7 +135,7 @@ export default function OnboardingMedicalHistoryScreen() {
                 <Switch
                   value={isBleedingRisk}
                   onValueChange={setIsBleedingRisk}
-                  trackColor={{ true: colors.ink, false: colors.separator }}
+                  trackColor={{ true: colors.successFill, false: colors.inkSubtle }}
                   accessibilityRole="switch"
                   accessibilityLabel="Blood Thinners or Bleeding Disorders"
                 />
@@ -144,7 +144,7 @@ export default function OnboardingMedicalHistoryScreen() {
 
             {/* GP Surgery */}
             <Input
-              label="GP Surgery / Practice Name"
+              label="GP surgery / practice name"
               placeholder="e.g. High Street Medical Centre"
               value={gpSurgery}
               onChangeText={setGpSurgery}
@@ -153,7 +153,7 @@ export default function OnboardingMedicalHistoryScreen() {
 
           <View style={styles.actions}>
             <Button
-              title="Continue to Consents"
+              title="Continue to consents"
               size="lg"
               arrow={true}
               onPress={handleNext}
@@ -167,14 +167,12 @@ export default function OnboardingMedicalHistoryScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    marginTop: spacing.xl,
+    marginTop: "auto",
     paddingTop: spacing.sm,
   },
   card: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.lg,
     padding: spacing.md,
   },
   cardTitle: {
@@ -205,14 +203,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    justifyContent: "flex-start",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
   },
   subtitle: {
@@ -244,7 +242,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.gutter,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Card, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { authFetch } from "@/features/auth/auth-api";
 
 export default function VideoSummaryScreen() {
@@ -45,7 +45,7 @@ export default function VideoSummaryScreen() {
               <ThemedText variant="headline">✓ Completed</ThemedText>
             </View>
             <ThemedText variant="largeTitle" style={styles.title}>
-              Consultation Summary
+              Consultation summary
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
               Your video consultation has ended.
@@ -53,9 +53,9 @@ export default function VideoSummaryScreen() {
           </View>
 
           {/* Clinician recorded summary (MC-3) */}
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.cardHeader}>
-              Clinical Summary
+              Clinical summary
             </ThemedText>
             {loading ? (
               <ActivityIndicator color={colors.ink} />
@@ -105,7 +105,7 @@ export default function VideoSummaryScreen() {
             />
           </Card>
 
-          <Card elevation="raised" style={styles.actionCard}>
+          <Card style={styles.actionCard}>
             <ThemedText variant="headline" style={styles.actionTitle}>
               Need a follow-up visit?
             </ThemedText>
@@ -114,12 +114,12 @@ export default function VideoSummaryScreen() {
             </ThemedText>
             <View style={styles.ctaRow}>
               <Button
-                title="Book Van to My Home"
+                title="Book van to my home"
                 size="md"
                 onPress={() => router.replace("/(patient)/van/service-area" as any)}
               />
               <Button
-                title="Book Clinic Visit"
+                title="Book clinic visit"
                 variant="secondary"
                 size="md"
                 onPress={() => router.replace("/(patient)/booking/service-catalog" as any)}
@@ -131,7 +131,7 @@ export default function VideoSummaryScreen() {
         {/* Bottom Bar */}
         <View style={styles.footer}>
           <Button
-            title="Return to Home Dashboard"
+            title="Return to home dashboard"
             variant="ghost"
             size="lg"
             onPress={() => router.replace("/(patient)/(tabs)/home")}
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   checkBadge: {
     alignSelf: "flex-start",
     backgroundColor: colors.successSubtle,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     marginBottom: spacing.xxs,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -179,7 +179,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   ctaRow: {
@@ -196,8 +197,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
   summaryBlock: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -206,17 +207,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   footer: {
-    backgroundColor: colors.systemBackground,
-    borderTopColor: colors.separator,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
   },
   header: {
     gap: spacing.xxs,
     marginTop: spacing.sm,
   },
   safe: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   subtitle: {

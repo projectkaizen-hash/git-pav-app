@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Badge, Button } from "@/components";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius } from "@/theme";
 import { fetchOdontogram, updateOdontogram, fetchOdontogramHistory } from "@/features/records/records-api";
+import { toLabel } from "@/lib/text";
 
 const TOOTH_CONDITIONS = [
   "healthy",
@@ -145,13 +146,13 @@ export default function OdontogramEditorScreen() {
         {/* Navigation */}
         <View style={styles.navRow}>
           <Button
-            title="‹ Patient File"
+            title="‹ Patient file"
             variant="secondary"
             size="sm"
             onPress={() => router.back()}
           />
           <Button
-            title={showHistory ? "View Chart" : "View History"}
+            title={showHistory ? "View chart" : "View history"}
             variant="ghost"
             size="sm"
             onPress={() => setShowHistory(!showHistory)}
@@ -160,7 +161,7 @@ export default function OdontogramEditorScreen() {
 
         <View style={styles.headerBlock}>
           <ThemedText variant="title" style={styles.title}>
-            Odontogram Editor
+            Odontogram editor
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
             Patient: {params.patientName || "Verified Patient"}
@@ -192,7 +193,7 @@ export default function OdontogramEditorScreen() {
           </Card>
         ) : showHistory ? (
           /* History View (PT-3 audit) */
-          <Card elevation="raised" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedText variant="headline" style={styles.sectionHeading}>
               Append-Only Tooth History ({history.length} Entries)
             </ThemedText>
@@ -209,7 +210,7 @@ export default function OdontogramEditorScreen() {
                         Tooth #{h.toothNumber} ({h.arch} - {h.quadrant})
                       </ThemedText>
                       <Badge
-                        label={h.condition.toUpperCase()}
+                        label={toLabel(h.condition)}
                         variant={
                           h.condition === "decay"
                             ? "danger"
@@ -235,7 +236,7 @@ export default function OdontogramEditorScreen() {
         ) : (
           <>
             {/* Tooth Grid */}
-            <Card elevation="raised" style={styles.chartCard}>
+            <Card style={styles.chartCard}>
               <ThemedText variant="caption" style={styles.archLabel}>
                 MAXILLARY ARCH (UPPER JAW: 1 - 16)
               </ThemedText>
@@ -292,13 +293,13 @@ export default function OdontogramEditorScreen() {
             </Card>
 
             {/* Tooth Inspector & Editor */}
-            <Card elevation="raised" style={styles.card}>
+            <Card style={styles.card}>
               <View style={styles.inspectorHeader}>
                 <ThemedText variant="headline" style={styles.sectionHeading}>
                   Tooth #{selectedTooth} Details
                 </ThemedText>
                 <Badge
-                  label={(teethState[selectedTooth]?.condition || "healthy").toUpperCase()}
+                  label={toLabel(teethState[selectedTooth]?.condition || "healthy")}
                   variant={
                     teethState[selectedTooth]?.condition === "decay"
                       ? "danger"
@@ -347,7 +348,7 @@ export default function OdontogramEditorScreen() {
 
               <View style={styles.saveChartRow}>
                 <Button
-                  title={saving ? "Saving Chart…" : "Save Dental Chart"}
+                  title={saving ? "Saving chart…" : "Save dental chart"}
                   size="md"
                   variant="primary"
                   disabled={saving}
@@ -379,10 +380,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   condChip: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -403,12 +402,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   container: {
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
     paddingBottom: spacing.xxl,
   },
   emptyNote: {
@@ -431,8 +431,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   historyItem: {
-    backgroundColor: colors.secondaryBackground,
-    borderRadius: 8,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     gap: 4,
     padding: spacing.sm,
   },
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.systemBackground,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -499,10 +499,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   textInput: {
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     color: colors.label,
     minHeight: 64,
     padding: spacing.sm,
@@ -513,10 +511,8 @@ const styles = StyleSheet.create({
   },
   toothButton: {
     alignItems: "center",
-    backgroundColor: colors.secondaryBackground,
-    borderColor: colors.separator,
-    borderRadius: 6,
-    borderWidth: 1,
+    backgroundColor: colors.systemBackground,
+    borderRadius: radius.sm,
     height: 36,
     justifyContent: "center",
     width: 36,
@@ -530,7 +526,7 @@ const styles = StyleSheet.create({
     borderColor: colors.info,
   },
   toothMissing: {
-    backgroundColor: colors.secondaryBackground,
+    backgroundColor: colors.inkSubtle,
     opacity: 0.4,
   },
   toothNumText: {

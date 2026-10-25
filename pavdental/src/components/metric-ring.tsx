@@ -60,8 +60,8 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: 16,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
     flex: 1,
     gap: spacing.xs,
     paddingVertical: spacing.md,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   },
   percentText: {
     color: colors.label,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
   ringFill: {
