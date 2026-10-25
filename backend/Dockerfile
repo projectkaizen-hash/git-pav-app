@@ -1,4 +1,5 @@
 # backend/Dockerfile — Pav Dental API
+# Release command: npx prisma migrate deploy (DK-1)
 FROM node:20-alpine AS build
 WORKDIR /app
 
@@ -10,6 +11,7 @@ RUN npx prisma generate
 
 COPY . .
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:20-alpine
 WORKDIR /app
@@ -24,4 +26,8 @@ RUN mkdir -p /app/uploads && chown -R node:node /app
 USER node
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:' + (process.env.PORT || 3000) + '/livez').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
 CMD ["node", "dist/src/server.js"]
