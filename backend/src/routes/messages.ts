@@ -258,17 +258,16 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     include: { messages: true },
   });
 
-  const safeSender = escapeHtml(senderDisplayName);
-  const safeSubject = escapeHtml(subject);
-
-  // MS-3: Notify recipient staff (care team clinician or practice inbox)
+  // MS-3: Notify recipient staff (care team clinician or practice inbox). The
+  // email names no patient and no subject: it goes through a third-party mail
+  // service (decisions log D-19).
   if (resolvedAssignedClinicianId && clinicianUserEmail) {
     communicationService
       .sendEmail({
         to: clinicianUserEmail,
-        subject: `[Pav Dental] New message from ${safeSender}: ${safeSubject}`,
-        text: `You have received a new patient message from ${senderDisplayName} regarding: "${subject}".\n\nPlease log into the Clinician Portal to review and reply.`,
-        html: `<p>You have received a new patient message from <strong>${safeSender}</strong> regarding: <em>${safeSubject}</em>.</p><p>Please log into the Clinician Portal to review and reply.</p>`,
+        subject: "[Pav Dental] New patient message",
+        text: "You have a new patient message.\n\nOpen the clinician portal to read and reply.",
+        html: "<p>You have a new patient message.</p><p>Open the clinician portal to read and reply.</p>",
       })
       .catch((err) => console.error("[Messages] Failed to dispatch clinician notification:", safeError(err)));
   } else {
@@ -277,9 +276,9 @@ router.post("/", requireAuth, validateBody(createThreadSchema), async (req: Auth
     communicationService
       .sendEmail({
         to: practiceEmail,
-        subject: `[Practice Inbox] New message from ${safeSender}: ${safeSubject}`,
-        text: `A new patient message was submitted to the practice inbox by ${senderDisplayName} regarding: "${subject}".\n\nPlease review in the Admin Dashboard.`,
-        html: `<p>A new patient message was submitted to the practice inbox by <strong>${safeSender}</strong> regarding: <em>${safeSubject}</em>.</p>`,
+        subject: "[Practice Inbox] New patient message",
+        text: "There is a new patient message in the practice inbox.\n\nOpen the staff dashboard to read and reply.",
+        html: "<p>There is a new patient message in the practice inbox.</p><p>Open the staff dashboard to read and reply.</p>",
       })
       .catch((err) => console.error("[Messages] Failed to dispatch practice notification:", safeError(err)));
   }
@@ -400,9 +399,9 @@ router.post(
           communicationService
             .sendEmail({
               to: clinician.user.email,
-              subject: `[Pav Dental] Patient reply from ${safeSender}: ${safeSubject}`,
-              text: `${senderDisplayName} has replied to thread: "${decryptedSubject}".\n\nPlease log into the Clinician Portal to review.`,
-              html: `<p><strong>${safeSender}</strong> has replied to: <em>${safeSubject}</em>.</p><p>Please log into the Clinician Portal to review.</p>`,
+              subject: "[Pav Dental] New patient reply",
+              text: "A patient has replied to a message.\n\nOpen the clinician portal to read it.",
+              html: "<p>A patient has replied to a message.</p><p>Open the clinician portal to read it.</p>",
             })
             .catch(() => {});
         }
@@ -411,9 +410,9 @@ router.post(
         communicationService
           .sendEmail({
             to: practiceEmail,
-            subject: `[Practice Inbox] Patient reply from ${safeSender}: ${safeSubject}`,
-            text: `${senderDisplayName} replied to "${decryptedSubject}".\n\nPlease review in the Admin Dashboard.`,
-            html: `<p><strong>${safeSender}</strong> replied to <em>${safeSubject}</em>.</p><p>Please review in the Admin Dashboard.</p>`,
+            subject: "[Practice Inbox] New patient reply",
+            text: "A patient has replied in the practice inbox.\n\nOpen the staff dashboard to read it.",
+            html: "<p>A patient has replied in the practice inbox.</p><p>Open the staff dashboard to read it.</p>",
           })
           .catch(() => {});
       }

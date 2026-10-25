@@ -111,9 +111,12 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect(sendEmailSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         to: clinician.user.email,
-        subject: expect.stringContaining("James Miller"),
+        subject: "[Pav Dental] New patient message",
       })
     );
+    // The alert must not name the patient (D-19).
+    expect(JSON.stringify(sendEmailSpy.mock.calls)).not.toContain("James");
+    expect(JSON.stringify(sendEmailSpy.mock.calls)).not.toContain("Miller");
   });
 
   it("routes patient message to practice inbox when no clinician is assigned and notifies practice team", async () => {
@@ -145,6 +148,11 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
         subject: expect.stringContaining("[Practice Inbox]"),
       })
     );
+    // The alert names neither the patient nor the subject (D-19).
+    const sent = JSON.stringify(sendEmailSpy.mock.calls);
+    expect(sent).not.toContain("Emily");
+    expect(sent).not.toContain("Clark");
+    expect(sent).not.toContain("parking");
   });
 
   it("allows clinician to reply with their real staff name (never 'You') and notifies the patient", async () => {
