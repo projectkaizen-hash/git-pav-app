@@ -40,5 +40,16 @@ module.exports = {
     'react-native/no-raw-text': 'off',
     'react-native/sort-styles': 'off',
     'react/no-unescaped-entities': 'off',
+    // CS-21: requests go through authFetch or publicFetch in auth-api.ts.
+    'no-restricted-globals': [
+      'error',
+      { name: 'fetch', message: 'Use authFetch or publicFetch from @/features/auth/auth-api.' },
+    ],
   },
+  overrides: [
+    {
+      files: ['src/features/auth/auth-api.ts'],
+      rules: { 'no-restricted-globals': 'off' },
+    },
+  ],
 };

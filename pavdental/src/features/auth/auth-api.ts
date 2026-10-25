@@ -25,6 +25,13 @@ export async function clearSessionState() {
   useOnboardingStore.getState().reset();
 }
 
+// ─── Unauthenticated fetch for public endpoints ──────────────────────────────
+// The only other place the app calls `fetch` directly (lint enforces this), so
+// every request goes to API_URL and none skips the client by accident.
+export function publicFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(`${API_URL}${path}`, options);
+}
+
 // ─── Core authenticated fetch with transparent refresh ───────────────────────
 export async function authFetch(
   path: string,
