@@ -33,7 +33,7 @@ export default function AccountCreatedScreen() {
           title="Set up my profile"
           size="lg"
           accessibilityLabel="Continue to profile setup"
-          onPress={() => router.replace("/(onboarding)/profile" as never)}
+          onPress={() => router.replace("/onboarding/profile" as never)}
         />
         <Button
           title="I'll do this later"
