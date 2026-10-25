@@ -199,7 +199,7 @@ export default function TreatmentPlanDetailScreen() {
     const itemDescLower = (firstItem.description || "").toLowerCase();
     const planTitleLower = (plan.title || "").toLowerCase();
 
-    // Match a real active service from the catalogue instead of fabricating "srv_plan_item" (MB-3)
+    // Match a real active service from the catalogue instead of a made-up plan service id (MB-3)
     const matchedService =
       services.find((s) => {
         const sNameLower = (s.name || "").toLowerCase();

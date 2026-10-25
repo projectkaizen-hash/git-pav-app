@@ -59,6 +59,10 @@ export default function VanAccessDetailsScreen() {
     }
 
     const chosenService = services.find((s) => s.id === selectedServiceId) || services[0];
+    if (!chosenService) {
+      Alert.alert("No Service Selected", "We couldn't load the van services. Please try again.");
+      return;
+    }
 
     store.setService({
       serviceId: chosenService.id,

@@ -18,6 +18,11 @@ const RULES = [
   },
   { name: "tooth-specific finding", re: /\b(LR|LL|UR|UL)[1-8]\b|Tooth #\d+(?!\})/ },
   { name: "AI clinical claim", re: /24\/7 AI/i },
+  { name: "made-up service id", re: /["']srv_[a-z_]+["']/ },
+  {
+    name: "claim that care was given",
+    re: /Veneers Installation|clinical notes & charting|Dental examination & gum check|invoice has been sent/i,
+  },
 ];
 
 function* walk(dir) {
