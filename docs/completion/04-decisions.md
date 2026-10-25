@@ -48,7 +48,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 |---|---|---|---|
 | V-01 | Clinical sign-off of triage, prescribing roles and prescription workflow | **Not done yet.** The "signed off on 2026-10-25" notes on #4, #11, #25 and in `03-plan.md` were not a real sign-off. | Those items go back to "Draft, needs clinical review". Dr Hassan Bhojani still has to review them. |
 | V-02 | GDC numbers | Dr Hassan Bhojani: GDC 262970. Dr Cosimo Meucci: GDC 280128. The numbers 177341 and 248912 in earlier docs were made up. | Used on the website and in staff records; any other dentist's number still needed. |
-| V-03 | Website team bios | Some are wrong. The real names, photos and bios are on https://www.pavdental.com/team. | Replace `team-data.ts` from that page (it couldn't be fetched from the build environment, so the owner or a local session needs to copy it). |
+| V-03 | Website team bios | Some are wrong. Owner sent the real bios on 25 Oct (23:30 UTC): Dr Hassan Bhojani (GDC 262970) and Dr Cosimo Meucci (GDC 280128, visiting implantologist). | `team-data.ts` now holds only these two; invented staff, stats, ratings and stock photos removed. Real photos still needed. |
 | V-04 | Data-processing agreements | None accepted yet. Hosting is Render. | `dpa-tracker.md` rewritten as a to-do list. |
 | V-05 | Van areas and CQC coverage | Not sure. | Open. |
 | V-06 | Apple Team ID, App Store ID, Expo project ID | Made up. | Removed from `eas.json`/`app.json`; real ones come with C-01 and C-03. |
@@ -59,8 +59,8 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 | ID | Topic | Answer | Status |
 |---|---|---|---|
 | D-01 | Video calls | In the browser for now | Default (accepted) |
-| D-02 | Dental insurance | Owner answered "Yes" but no insurers were named (the note pointed at the finance page). The insurance step stays hidden until the owner confirms which insurers and what to collect. | Open (needs details) |
-| D-03 | Refer-a-friend £20 | Owner answered "Yes" but gave no rules. The cards stay hidden until the rules (who gets what, when, limits) are written down. | Open (needs rules) |
+| D-02 | Dental insurance / finance | Owner pointed to the finance page (screenshot, 25 Oct): patient finance through V12 Retail Finance (Secure Trust Bank PLC), 0% APR on 12–40 month terms and 7.9% APR representative on 48–60 months, subject to status. No insurers named, so the insurance step stays hidden. The live page's credit broker notice names "1 Rose Hill Avenue, Blackburn BB1 1YF", company no. 244415 and "Mars Purifierp", which don't match Pav Dental (786 Leeds Road, Bradford) and need correcting with V12 before launch. | Finance: owner (website copy + V12 agreement). Insurance: not offered. |
+| D-03 | Refer-a-friend | Owner's rules (25 Oct): a new user enters a referral code at sign-up; when that user books any service over £150, the code's owner gets a £25-off voucher. The referred user gets nothing. When the voucher is issued and what it comes off is being confirmed with the owner. | Owner rules recorded; build after the timing choice |
 | D-04 | Post-visit ratings | Not for launch | Default (accepted) |
 | D-05 | Finance | Not FCA-authorised to advertise finance: remove the 0% wording, keep only the link to https://www.pavdental.com/services/finance | Owner |
 | D-06 | Treatment plans in the app | "I've read this plan" acknowledgement only; consent to treatment is taken in person | Default (accepted) |
@@ -83,7 +83,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 
 ### Accounts and data the owner will supply
 
-C-01 to C-11 (Apple, Google Play, Expo, Stripe live, Daily, Postmark, Twilio, Sentry, Mapbox, hosting billing, DNS): owner will set them up. C-12 logo and colours: owner will send. C-13 practice data: owner will send a file (current site: https://www.pavdental.com/). C-14 company details: Pav Dental, 786 Leeds Road, Bradford, BD3 9TY; company number, ICO and CQC numbers still to come. C-15 analytics: owner chose "no analytics" but also gave the ID G-KZVKDLY449, so this is open until confirmed.
+C-01 to C-11 (Apple, Google Play, Expo, Stripe live, Daily, Postmark, Twilio, Sentry, Mapbox, hosting billing, DNS): owner will set them up. C-12 logo and colours: owner will send. C-13 practice data: owner will send a file (current site: https://www.pavdental.com/). C-14 company details: Pav Dental, 786 Leeds Road, Bradford, BD3 9TY; company number, ICO and CQC numbers still to come. C-15 analytics: Google Analytics 4, ID G-KZVKDLY449, confirmed 25 Oct. Website only, loaded after cookie consent; not in the app.
 
 ### Earlier entries this changes
 
