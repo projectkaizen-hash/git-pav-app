@@ -215,7 +215,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | DB-01 | P0 | Patients directory is broken: it calls `pavApi.get(...)`, but `pavApi` is a function with no `.get`, so every request throws and returns 500. Added in #69. | `admin-dashboard/src/app/api/v1/admin/patients/route.ts:28` | C | S |
 | DB-02 | P0 | `typescript.ignoreBuildErrors: true` hides type errors (5 today, including DB-01). Fix them, remove the flag, add `tsc --noEmit` to CI. | `next.config.mjs` | C | S |
 | DB-03 | P1 | Biome lint: 152 errors; add lint to CI. | | C | M |
-| DB-04 | P1 | Template demo pages are still reachable by URL and `/dashboard` redirects to the template "default" page with made-up metrics: academy, analytics, calendar, chat, coming-soon, crm, default, ecommerce, file-manager, finance, infrastructure, invoice, kanban, (legacy), logistics, mail, patient-monitoring, productivity, profile, roles, tasks, plus v1/v2 auth pages. Delete them; build a real home (today's appointments, unread inbox, erasure requests due, failed payments). | `src/app/(main)/dashboard/*`, `next.config.mjs` redirect | C | M |
+| DB-04 | P1 | Template demo pages are still reachable by URL and `/dashboard` redirects to the template "default" page with made-up metrics: academy, analytics, calendar, chat, coming-soon, crm, default, ecommerce, file-manager, finance, infrastructure, invoice, kanban, (legacy), logistics, mail, patient-monitoring, productivity, profile, roles, tasks, plus v1/v2 auth pages. Delete them before launch (the owner keeps them as a reference for new screens until then, D-17); build a real home (today's appointments, unread inbox, erasure requests due, failed payments). | `src/app/(main)/dashboard/*`, `next.config.mjs` redirect | C | M |
 | DB-05 | P1 | Missing staff screens for app data whose endpoints already exist: app appointments (list, status override, cancel with refund), audit-log viewer, vans and live shifts, edit services/clinicians/operators (needs BE-10), prescriptions register, consent and SAR records. | `routes/admin.ts`; proxy allow-list in `api/v1/admin/app/[...path]/route.ts` | C | L |
 | DB-06 | P1 | Global CORS header joins several origins with commas (browsers reject that) while `credentials: true`; per-route CORS differs. One origin check in middleware. | `next.config.mjs` headers | C | S |
 | DB-07 | P1 | Replace seeded `@pavdental.com` staff accounts with real staff (codes currently go nowhere). | memory: test environment | P then C | S |
@@ -279,7 +279,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | LG-08 | P0 | Patient terms: booking, deposit and cancellation rules (decisions #6, #22), consumer cancellation rights for services booked at a distance, complaints. | Legal+C | M |
 | LG-09 | P0 | Remove the finance promotion (TC-04) unless FCA permissions exist. | C | S |
 | LG-10 | P0 | Verify team credentials and GDC numbers (V-02, V-03). | P | S |
-| LG-11 | P1 | Third-party design captures in the repo and a UI that closely copies another company's app (D-17). | P | S |
+| LG-11 | P1 | Third-party design captures in the repo and a UI that closely copies another company's app (D-17). Owner keeps the captures as a reference until just before launch, then deletes them. | P | S |
 | LG-12 | P2 | Accessibility statement for the website. | C | S |
 | LG-13 | P1 | Age rules (D-16) reflected in sign-up validation and store questionnaires. | C | S |
 | LG-14 | P1 | DSPT: only needed for NHS work (D-13). Remove claims or complete the toolkit. | P | — |

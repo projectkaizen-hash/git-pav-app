@@ -75,7 +75,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 | D-15 | App on the web | No, mobile only | Default (accepted) |
 | D-16 | Minimum age | 16+; under-16s added by a guardian | Default (accepted) |
 | D-18 | Medical device status of triage | Get regulatory advice; until then triage shows general safety advice only | Default (accepted) |
-| D-17 | Third-party design captures (`neo-financial-ios/`) | Remove from the current files only (no history rewrite) | Owner |
+| D-17 | Third-party design captures (`neo-financial-ios/`) and the dashboard template pages | Remove from the current files only (no history rewrite), but keep both for now as a reference for new screens; delete before going live (25 Oct, 23:01 UTC) | Owner |
 | D-19 | Staff alert emails | Plain "new message" alert with no patient name or subject | Default (accepted) |
 | D-20 | Drop `waitlist_entries` | Yes, after a backup | Default (accepted) |
 | D-21 | Van operator location | In the background during a shift | Owner |
