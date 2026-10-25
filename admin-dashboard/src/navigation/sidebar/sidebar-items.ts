@@ -5,6 +5,7 @@ import {
   FileText,
   Folder,
   Forklift,
+  Gift,
   Inbox,
   type LucideIcon,
   Mail,
@@ -108,6 +109,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Patients",
         url: "/dashboard/patients",
         icon: Users,
+      },
+      {
+        id: "pav-referral-vouchers",
+        title: "Referral Vouchers",
+        url: "/dashboard/referral-vouchers",
+        icon: Gift,
       },
       {
         id: "pav-erasure",

@@ -69,6 +69,16 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
     ],
   },
   {
+    heading: "Rewards",
+    rows: [
+      {
+        title: "Refer a friend",
+        icon: "users",
+        route: "/(patient)/(tabs)/profile/refer",
+      },
+    ],
+  },
+  {
     heading: "Security & Privacy",
     rows: [
       {
@@ -162,7 +172,10 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        {groups.map((g) => renderGroup(g.heading, g.rows))}
+        {groups
+          // Referral codes are for patients only.
+          .filter((g) => g.heading !== "Rewards" || user?.role === "patient")
+          .map((g) => renderGroup(g.heading, g.rows))}
 
         {/* Portal Role Switcher (development opt-in only) */}
         {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_ROLE_SWITCHER === "true" ? (

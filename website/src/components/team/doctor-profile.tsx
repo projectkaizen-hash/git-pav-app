@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
@@ -7,13 +8,13 @@ import {
   MapPin,
   CheckCircle2,
   Phone,
-  Clock,
   Sparkles,
   Award,
 } from "lucide-react";
 import { Doctor } from "./team-data";
 import { SunburstBadge } from "./sunburst-badge";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 interface DoctorProfileProps {
   doctor: Doctor;
@@ -23,6 +24,32 @@ interface DoctorProfileProps {
 export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+
+  // Sent to the practice inbox like the contact form; nothing is booked
+  // until reception calls back.
+  const handleSubmitRequest = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBookingError(null);
+    setSending(true);
+    const form = new FormData(e.currentTarget);
+    const field = (key: string) => String(form.get(key) || "").trim();
+    try {
+      await api.forms.submitContact({
+        name: `${field("firstName")} ${field("lastName")}`.trim(),
+        email: field("email"),
+        phone: field("phone") || undefined,
+        subject: `Appointment request: ${doctor.name}`,
+        message: field("details") || `Please contact me to book with ${doctor.name}.`,
+      });
+      setBookingSuccess(true);
+    } catch (err: any) {
+      setBookingError(err?.message || "Could not send your request. Please try again or call the practice.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleOpenBooking = () => {
     setShowBookingModal(true);
@@ -85,13 +112,14 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                 {doctor.firstName}
               </span>{" "}
               <span>
-                {doctor.lastName}, {doctor.credential}
+                {doctor.lastName}
+                {doctor.credential ? `, ${doctor.credential}` : ""}
               </span>
             </h1>
           </motion.div>
 
           <p className="mx-auto mt-4 max-w-xl text-center text-sm sm:text-base text-muted">
-            Consultant in {doctor.tags[0].toLowerCase()} and restorative patient care at PavDental
+            {doctor.role} at Pav Dental · GDC {doctor.gdcNumber}
           </p>
         </div>
       </section>
@@ -127,11 +155,11 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                 <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between rounded-2xl border border-white/30 bg-black/40 p-4 text-white backdrop-blur-md">
                   <div>
                     <p className="font-display text-base font-bold">{doctor.name}</p>
-                    <p className="text-xs text-white/80">Clinical Consultation Desk · Bradford</p>
+                    <p className="text-xs text-white/80">{doctor.role} · Bradford</p>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-xs">
                     <Sparkles className="size-3 text-gold" />
-                    <span>Active Faculty</span>
+                    <span>GDC {doctor.gdcNumber}</span>
                   </div>
                 </div>
               </motion.div>
@@ -175,7 +203,9 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                   </p>
 
                   {/* Structured metadata list: Born, Languages, Key Affiliations */}
+                  {(doctor.born || doctor.languages?.length) && (
                   <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[#f8f5ef]/15 pt-6 text-xs text-[#f8f5ef]/80">
+                    {doctor.born && (
                     <div className="flex items-start gap-2.5">
                       <MapPin className="size-4 shrink-0 text-gold mt-0.5" />
                       <div>
@@ -185,7 +215,9 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                         <span className="font-medium text-[#f8f5ef]">{doctor.born}</span>
                       </div>
                     </div>
+                    )}
 
+                    {doctor.languages?.length ? (
                     <div className="flex items-start gap-2.5">
                       <Globe className="size-4 shrink-0 text-gold mt-0.5" />
                       <div>
@@ -197,9 +229,12 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                         </span>
                       </div>
                     </div>
+                    ) : null}
                   </div>
+                  )}
 
                   {/* Key Clinical Affiliations */}
+                  {doctor.affiliations?.length ? (
                   <div className="mt-6 border-t border-[#f8f5ef]/15 pt-5">
                     <span className="block font-semibold uppercase tracking-wider text-[10px] text-[#f8f5ef]/60 mb-2">
                       Fellowships & Affiliations
@@ -215,44 +250,27 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                       ))}
                     </div>
                   </div>
+                  ) : null}
                 </div>
 
                 {/* ── BOTTOM STAT CALLOUTS + Direct Booking Button ── */}
                 <div className="relative z-10 mt-10 border-t border-[#f8f5ef]/20 pt-8">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
-                    {/* Stat 1: Large serif number + label */}
-                    <div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-display text-4xl sm:text-5xl font-bold tracking-tight text-white">
-                          {doctor.yearsInPractice}
-                        </span>
-                        <span className="text-xl text-gold font-light">—</span>
-                      </div>
-                      <p className="mt-1 text-xs sm:text-sm font-medium uppercase tracking-wider text-[#f8f5ef]/80">
-                        Years in practice
-                      </p>
-                    </div>
-
-                    {/* Stat 2: Large serif number + rating source as underlined link */}
-                    <div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-display text-4xl sm:text-5xl font-bold tracking-tight text-white">
-                          {doctor.rating}
-                        </span>
-                        <span className="text-xl text-gold font-light">—</span>
-                      </div>
-                      <p className="mt-1 text-xs sm:text-sm font-medium uppercase tracking-wider text-[#f8f5ef]/80">
-                        Average rating on{" "}
-                        <a
-                          href={doctor.ratingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline underline-offset-4 decoration-[#f8f5ef]/50 hover:decoration-white hover:text-white transition-colors"
-                        >
-                          {doctor.ratingSource}
-                        </a>
-                      </p>
-                    </div>
+                  {/* Registration, checkable on the GDC register. No years-in-practice
+                      or rating stats until the practice confirms real ones. */}
+                  <div>
+                    <span className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                      GDC {doctor.gdcNumber}
+                    </span>
+                    <p className="mt-1 text-xs sm:text-sm font-medium uppercase tracking-wider text-[#f8f5ef]/80">
+                      <a
+                        href="https://olr.gdc-uk.org/SearchRegister"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-4 decoration-[#f8f5ef]/50 hover:decoration-white hover:text-white transition-colors"
+                      >
+                        Check the GDC register
+                      </a>
+                    </p>
                   </div>
 
                   {/* Primary CTA button */}
@@ -310,11 +328,11 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                     <CheckCircle2 className="size-7" />
                   </div>
                   <h3 className="mt-4 font-display text-2xl font-bold text-fg">
-                    Appointment Requested
+                    Request sent
                   </h3>
                   <p className="mt-2 text-sm text-muted">
-                    We have reserved your inquiry for <strong>{doctor.name}</strong>. Our clinical
-                    reception will contact you within 30 minutes to confirm your preferred slot.
+                    Your request to see <strong>{doctor.name}</strong> has been sent to the practice.
+                    We'll contact you to arrange a time. Nothing is booked until we confirm.
                   </p>
                   <Button
                     onClick={() => {
@@ -328,10 +346,7 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                 </div>
               ) : (
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setBookingSuccess(true);
-                  }}
+                  onSubmit={handleSubmitRequest}
                   className="space-y-4"
                 >
                   <div className="border-b border-border/50 pb-4">
@@ -352,6 +367,7 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                         First Name
                       </label>
                       <input
+                        name="firstName"
                         required
                         placeholder="Sarah"
                         className="w-full rounded-xl border border-border/80 bg-[#faf8f5] px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none"
@@ -362,6 +378,7 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                         Last Name
                       </label>
                       <input
+                        name="lastName"
                         required
                         placeholder="Jenkins"
                         className="w-full rounded-xl border border-border/80 bg-[#faf8f5] px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none"
@@ -374,6 +391,7 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                       Email Address
                     </label>
                     <input
+                      name="email"
                       type="email"
                       required
                       placeholder="sarah@example.com"
@@ -386,6 +404,7 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                       Phone Number
                     </label>
                     <input
+                      name="phone"
                       type="tel"
                       required
                       placeholder="+44 7311 871 456"
@@ -398,15 +417,17 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                       Preferred Date / Reason
                     </label>
                     <input
+                      name="details"
                       placeholder="e.g. Next Tuesday morning - Consultation"
                       className="w-full rounded-xl border border-border/80 bg-[#faf8f5] px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
-                    <Clock className="size-3.5 text-primary" />
-                    <span className="text-xs text-muted">Typical clinic response time: &lt; 30 mins</span>
-                  </div>
+                  {bookingError && (
+                    <p role="alert" className="text-xs text-red-600">
+                      {bookingError}
+                    </p>
+                  )}
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
                     <Button
@@ -416,8 +437,8 @@ export function DoctorProfile({ doctor, onBack }: DoctorProfileProps) {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit">
-                      Confirm Request
+                    <Button type="submit" disabled={sending}>
+                      {sending ? "Sending..." : "Send request"}
                     </Button>
                   </div>
                 </form>

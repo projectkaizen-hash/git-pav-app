@@ -136,12 +136,13 @@ export const authApi = {
     password: string,
     firstName: string,
     lastName: string,
-    phone?: string
+    phone?: string,
+    referralCode?: string
   ) => {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, firstName, lastName, phone }),
+      body: JSON.stringify({ email, password, firstName, lastName, phone, ...(referralCode ? { referralCode } : {}) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

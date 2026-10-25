@@ -61,7 +61,7 @@ export function BlogDetail({ slug }: BlogDetailProps) {
         author: {
           name: apiPost.author || staticMatch?.author?.name || "Dr. Hassan Bhojani",
           role: staticMatch?.author?.role || "Principal Dentist & Clinical Director",
-          avatar: staticMatch?.author?.avatar || "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=85",
+          avatar: staticMatch?.author?.avatar || "/media/team-photo-pending.svg",
         },
         date: apiPost.published_at
           ? new Date(apiPost.published_at).toLocaleDateString("en-GB", {
@@ -110,7 +110,7 @@ export function BlogDetail({ slug }: BlogDetailProps) {
             author: {
               name: b.author || "Dr. Hassan Bhojani",
               role: "Dental Care Team",
-              avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=85",
+              avatar: "/media/team-photo-pending.svg",
             },
             date: b.published_at ? new Date(b.published_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Recent",
             readingTime: matched?.readingTime || "4 min read",

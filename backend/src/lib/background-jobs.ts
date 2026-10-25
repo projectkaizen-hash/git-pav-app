@@ -5,6 +5,7 @@ import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { releaseVanDeposit } from "./van-payments";
 import { sendPatientNotification } from "./patient-push";
 import { awardMissedVisitPoints } from "./rewards";
+import { issueMissedReferralVouchers } from "./referrals";
 import { runRetentionSweep } from "./retention";
 import { safeError } from "./log-safety";
 
@@ -588,6 +589,9 @@ export function startBackgroundJobs(): void {
     processExpiredSlotHolds().catch(() => {});
     awardMissedVisitPoints().catch((err) => {
       console.error("[BACKGROUND JOBS] Visit points catch-up failed:", err instanceof Error ? err.name : "unknown error");
+    });
+    issueMissedReferralVouchers().catch((err) => {
+      console.error("[BACKGROUND JOBS] Referral voucher catch-up failed:", err instanceof Error ? err.name : "unknown error");
     });
   }, SLOT_EXPIRY_INTERVAL_MS);
 

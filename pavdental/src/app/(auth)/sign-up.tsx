@@ -13,6 +13,7 @@ export default function SignUpScreen() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(params.email || "");
   const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,8 @@ export default function SignUpScreen() {
         password,
         firstName.trim(),
         lastName.trim(),
-        phone.trim() || undefined
+        phone.trim() || undefined,
+        referralCode.trim() || undefined
       );
 
       // Navigate to email verification screen
@@ -168,6 +170,18 @@ export default function SignUpScreen() {
               value={phone}
               onChangeText={(val) => {
                 setPhone(val);
+                if (error) setError(null);
+              }}
+            />
+
+            <Input
+              label="Referral code (optional)"
+              placeholder="From a friend who uses Pav Dental"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              value={referralCode}
+              onChangeText={(val) => {
+                setReferralCode(val);
                 if (error) setError(null);
               }}
             />

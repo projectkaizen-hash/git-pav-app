@@ -15,56 +15,11 @@ export interface TeamMember {
   };
 }
 
-const DEFAULT_MEMBERS: TeamMember[] = [
-  {
-    id: '1',
-    name: 'Dr. Hassan Bhojani',
-    role: 'Founder & Principal Dentist',
-    image: '/media/hero-clinic.jpg',
-    social: { linkedin: '#', twitter: '#' },
-  },
-  {
-    id: '2',
-    name: 'Dr. Sarah Ahmed',
-    role: 'Dental Surgeon',
-    image: '/media/hero-smile.jpg',
-    social: { linkedin: '#', instagram: '#' },
-  },
-  {
-    id: '3',
-    name: 'Emma Thompson',
-    role: 'Practice Manager',
-    image: '/media/hero-clinic.jpg',
-    social: { linkedin: '#', twitter: '#' },
-  },
-  {
-    id: '4',
-    name: 'James Wilson',
-    role: 'Dental Hygienist',
-    image: '/media/hero-smile.jpg',
-    social: { linkedin: '#' },
-  },
-  {
-    id: '5',
-    name: 'Priya Patel',
-    role: 'Receptionist',
-    image: '/media/hero-clinic.jpg',
-    social: { linkedin: '#', instagram: '#' },
-  },
-  {
-    id: '6',
-    name: 'Michael Brown',
-    role: 'Dental Nurse',
-    image: '/media/hero-smile.jpg',
-    social: { instagram: '#' },
-  },
-];
-
 interface TeamShowcaseProps {
-  members?: TeamMember[];
+  members: TeamMember[];
 }
 
-export function TeamShowcase({ members = DEFAULT_MEMBERS }: TeamShowcaseProps) {
+export function TeamShowcase({ members }: TeamShowcaseProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const col1 = members.filter((_, i) => i % 3 === 0);

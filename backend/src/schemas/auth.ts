@@ -37,6 +37,8 @@ export const registerSchema = z.object({
   firstName: name,
   lastName: name,
   phone: phone.optional(),
+  /** Another patient's refer-a-friend code (D-03). */
+  referralCode: z.string().trim().min(4).max(20).optional(),
 }).strict();
 
 export const checkEmailSchema = z.object({ email }).strict();

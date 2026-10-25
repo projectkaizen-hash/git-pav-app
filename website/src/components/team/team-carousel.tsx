@@ -100,17 +100,16 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
             {/* Top eyebrow badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/80 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-primary shadow-xs backdrop-blur-xs">
               <Stethoscope className="size-3.5" />
-              <span>Our Medical Specialists</span>
+              <span>Our dentists</span>
             </div>
 
             <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-fg sm:text-5xl lg:text-[3.25rem] lg:leading-[1.12]">
-              Care Led by World-Class <span className="accent-text italic">Clinicians</span>
+              Meet the <span className="accent-text italic">dentists</span>
             </h1>
 
             <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-              Each member of our medical faculty brings distinguished academic training, hospital
-              appointments, and decades of collective experience in restorative, cosmetic, and
-              preventive dentistry.
+              The dentists who treat you at Pav Dental, with their General Dental Council
+              registration numbers so you can check them yourself.
             </p>
 
             {/* Credential highlights */}
@@ -120,8 +119,8 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                   <Award className="size-4" />
                 </div>
                 <div>
-                  <p className="font-display text-lg font-bold text-fg">15+ Yrs</p>
-                  <p className="text-xs text-muted">Average Practice</p>
+                  <p className="font-display text-lg font-bold text-fg">GDC registered</p>
+                  <p className="text-xs text-muted">Every dentist</p>
                 </div>
               </div>
 
@@ -131,7 +130,7 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                 </div>
                 <div>
                   <p className="font-display text-lg font-bold text-fg">CQC Regulated</p>
-                  <p className="text-xs text-muted">Excellence Standards</p>
+                  <p className="text-xs text-muted">Care Quality Commission</p>
                 </div>
               </div>
             </div>
@@ -191,6 +190,7 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                       className="absolute inset-0 pointer-events-none"
                     >
                       {/* Card 3 (Furthest, most faded) */}
+                      {doctors.length > 3 && (
                       <div
                         onClick={() => {
                           setDirection(1);
@@ -205,8 +205,10 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                           className="h-full w-full object-cover object-center grayscale-[30%]"
                         />
                       </div>
+                      )}
 
                       {/* Card 2 (Middle depth) */}
+                      {doctors.length > 2 && (
                       <div
                         onClick={() => {
                           setDirection(1);
@@ -221,8 +223,10 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                           className="h-full w-full object-cover object-center grayscale-[15%]"
                         />
                       </div>
+                      )}
 
                       {/* Card 1 (Directly behind hero) */}
+                      {doctors.length > 1 && (
                       <div
                         onClick={() => {
                           setDirection(1);
@@ -237,6 +241,7 @@ export function TeamCarousel({ doctors, onSelect }: TeamCarouselProps) {
                           className="h-full w-full object-cover object-center"
                         />
                       </div>
+                      )}
                     </motion.div>
                   </AnimatePresence>
                 </div>
