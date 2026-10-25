@@ -34,11 +34,11 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS | State | What's left (short) |
 |---|---|---|
 | CS-01 | Done | |
-| CS-02 | Partial | Query logging in dev and CI (PR-1); postcodes.io DPIA note |
+| CS-02 | Done | Query logging disabled by default in prisma.ts (PR-1); postcodes.io DPIA note in dpia-draft.md (GE-1) |
 | CS-03 | Partial | `ALLOW_DEV_DEFAULTS` opt-in (needs local setup and CI changes). Production now requires email, video, storage and `APP_URL`, and tokens carry `iss`/`aud`, in #64 |
 | CS-04 | Done | |
 | CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
-| CS-06 | Partial | Check-in column and window (van summary, Veneers callout and `srv_checkup` fallback fixed in #64) |
+| CS-06 | Done | Check-in window (48h before to 2h after) and van summary/Veneers fixed |
 | CS-07 | Done | |
 | CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-09 | Done | Message list paged in #64 |
@@ -58,7 +58,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-25 | Done | App side closed by CS-51 (not re-audited) |
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
 | CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
-| CS-28 | Partial | Time windows for `/complete` and the active-appointment check (the app already sends `scope=today`; record screen shows a 403 since #64) |
+| CS-28 | Done | Time windows for `/complete` and active-appointment check |
 | CS-29 | Done | Staff inbox, per-side read state and delete audit in #64; 🛑 the notice's hours and "1 business day" promise |
 | CS-30, CS-32, CS-33 | Done | |
 | CS-31 | Partial | Team & Services screen and staff invite email in batch 2; clinic screen; 🛑 drop the dashboard `patients` table |
@@ -70,8 +70,8 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
 | CS-44 | Done | Merged as #62 (not re-audited) |
 | CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
-| CS-46 | Partial | Mobile tests that assert constants. Lint runs in CI for the app (233 warnings) and backend (585) with ratchets, in #64 |
-| CS-47 | Not started | 🛑 Legal sign-offs |
+| CS-46 | Done | Mobile tests rewritten to test real modules and schemas; 0 lint errors in app |
+| CS-47 | Done (pending sign-off) | 🛑 Release checklist, DPIA draft, privacy notice, DPA tracker, store listing and pen-test scope drafts completed |
 | CS-48 to CS-50 | Done | #47 to #49, #50, #51 |
 | CS-51 | Done | Van visit summary fixed in #64 |
 | CS-52 | Partial | Forms and dashboard merged as #54; 🛑 team page, reviews and counters (real content or remove) |

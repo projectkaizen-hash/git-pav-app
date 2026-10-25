@@ -56,8 +56,11 @@ describe("POST /api/booking/appointments/:id/check-in", () => {
   // Each fixture gets its own half hour: one clinician can't have two live
   // appointments at once (CS-16).
   let fixtureSlot = 0;
-  async function makeAppointment(status: "confirmed" | "cancelled" = "confirmed") {
-    const start = new Date(Date.now() + 86400000 + fixtureSlot++ * 1800000);
+  async function makeAppointment(
+    status: "confirmed" | "cancelled" = "confirmed",
+    offsetMs: number = 86400000
+  ) {
+    const start = new Date(Date.now() + offsetMs + fixtureSlot++ * 1800000);
     const appt = await prisma.appointment.create({
       data: {
         patientId: ids.patientProfile,
@@ -109,5 +112,23 @@ describe("POST /api/booking/appointments/:id/check-in", () => {
   it("refuses to check in a cancelled appointment", async () => {
     const id = await makeAppointment("cancelled");
     expect((await checkIn(id, { completedTasks: ["form"] })).status).toBe(409);
+  });
+
+  it("refuses check-in when appointment is more than 48 hours in the future (BK-7)", async () => {
+    const farFutureOffset = 5 * 24 * 60 * 60 * 1000; // 5 days ahead
+    const id = await makeAppointment("confirmed", farFutureOffset);
+    const res = await checkIn(id, { completedTasks: ["form"] });
+    expect(res.status).toBe(400);
+    const body: any = await res.json();
+    expect(body.error).toContain("not yet open");
+  });
+
+  it("refuses check-in when appointment ended more than 2 hours ago (BK-7)", async () => {
+    const pastOffset = -24 * 60 * 60 * 1000; // 24 hours ago
+    const id = await makeAppointment("confirmed", pastOffset);
+    const res = await checkIn(id, { completedTasks: ["form"] });
+    expect(res.status).toBe(400);
+    const body: any = await res.json();
+    expect(body.error).toContain("closed");
   });
 });

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validate";
 import { vanCoverageCheckSchema } from "../schemas/van";
 import { Point, postcodeToCoordinates } from "../lib/geo";

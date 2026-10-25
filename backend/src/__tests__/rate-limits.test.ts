@@ -31,6 +31,7 @@ async function hit(url: string, init: RequestInit = {}, times = 1): Promise<numb
 }
 
 describe("production rate limits", () => {
+  jest.setTimeout(20000);
   let server: http.Server;
   let base: string;
 

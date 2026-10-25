@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const uuid = z.string().uuid();
 const name = z.string().trim().min(1).max(100);
-const email = z.string().trim().toLowerCase().email().max(254);
 const phone = z.string().trim().min(7).max(32);
 const postcode = z.string().trim().regex(/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/);
 
