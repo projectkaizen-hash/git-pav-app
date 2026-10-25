@@ -90,11 +90,11 @@ async function lastClinicalActivity(patientProfileId: string): Promise<Date | nu
     prisma.documentVault.findFirst({ where: { patientId: patientProfileId }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
     prisma.prescription.findFirst({
       where: { appointment: { patientId: patientProfileId } },
-      orderBy: { dispatchedAt: "desc" },
-      select: { dispatchedAt: true },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
     }),
   ]);
-  const dates = [appointment?.startTimeUtc, plan?.createdAt, document?.createdAt, prescription?.dispatchedAt].filter(
+  const dates = [appointment?.startTimeUtc, plan?.createdAt, document?.createdAt, prescription?.createdAt].filter(
     (d): d is Date => !!d
   );
   return dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : null;

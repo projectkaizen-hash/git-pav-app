@@ -28,7 +28,7 @@ const text = (...values: unknown[]): string | undefined =>
   values.find((v): v is string => typeof v === "string" && v.trim() !== "")?.trim();
 
 export function normalizePrescription(raw: any): NormalizedPrescription {
-  const issuedIso = text(raw.issuedIso, raw.dispatchedAt, raw.issuedAt) ?? null;
+  const issuedIso = text(raw.issuedIso, raw.createdAt, raw.dispatchedAt, raw.issuedAt) ?? null;
   const durationDays = Number(raw.durationDays);
   const hasDuration = Number.isFinite(durationDays) && durationDays > 0;
   // Only call a course finished when both the issue date and its length are known.

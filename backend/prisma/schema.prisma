@@ -463,7 +463,8 @@ model Prescription {
   dispensingPharmacy String           @map("dispensing_pharmacy")
   /// Legacy: invented "NHS-EPS" references from before signed PDFs. No longer written.
   epsTransactionRef  String?          @map("eps_transaction_ref")
-  dispatchedAt       DateTime         @default(now()) @map("dispatched_at")
+  dispatchedAt       DateTime?        @map("dispatched_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
   /// Practice reference printed on the signed PDF (decisions log #4).
   reference          String?          @unique @db.VarChar(32)
   /// What was prescribed, for whom and by whom, frozen and signed at issue.
@@ -477,6 +478,7 @@ model Prescription {
   @@index([appointmentId])
   @@index([clinicianId])
   @@index([dispatchedAt])
+  @@index([createdAt])
   @@index([epsTransactionRef])
   @@map("prescriptions")
 }
@@ -818,8 +820,8 @@ model FinancingApplication {
   treatmentCostPence Int      @map("treatment_cost_pence")
   durationMonths     Int      @map("duration_months")
   monthlyPence       Int      @map("monthly_pence")
-  approvedLimitPence Int      @default(400000) @map("approved_limit_pence")
-  status             String   @default("pre_approved") @db.VarChar(40)
+  approvedLimitPence Int      @default(0) @map("approved_limit_pence")
+  status             String   @default("pending") @db.VarChar(40)
   agreementRef       String   @unique @map("agreement_ref") @db.VarChar(60)
   createdAt          DateTime @default(now()) @map("created_at")
   user               User     @relation(fields: [userId], references: [id], onDelete: Restrict)

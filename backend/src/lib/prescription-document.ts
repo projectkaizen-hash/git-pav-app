@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
 import { env } from "../config/env";
+import { deriveSubKey } from "./encryption";
 
 // Private prescriptions issued as signed PDFs (decisions log #4). The server
 // freezes what was prescribed, for whom and by whom at issue time, signs that
@@ -219,7 +220,8 @@ const LINK_TTL_MS = 5 * 60 * 1000;
 
 export function prescriptionDownloadToken(prescriptionId: string, now = Date.now()): string {
   const expires = now + LINK_TTL_MS;
-  const mac = crypto.createHmac("sha256", env.jwtAccessSecret).update(`rx-pdf:${prescriptionId}:${expires}`).digest("base64url");
+  const key = deriveSubKey("prescription-download-token:v1");
+  const mac = crypto.createHmac("sha256", key).update(`rx-pdf:${prescriptionId}:${expires}`).digest("base64url");
   return `${expires}.${mac}`;
 }
 
@@ -227,7 +229,8 @@ export function checkPrescriptionDownloadToken(prescriptionId: string, token: st
   const [expiresRaw, mac] = token.split(".");
   const expires = Number(expiresRaw);
   if (!Number.isFinite(expires) || expires < now || !mac) return false;
-  const expected = crypto.createHmac("sha256", env.jwtAccessSecret).update(`rx-pdf:${prescriptionId}:${expires}`).digest();
+  const key = deriveSubKey("prescription-download-token:v1");
+  const expected = crypto.createHmac("sha256", key).update(`rx-pdf:${prescriptionId}:${expires}`).digest();
   const given = Buffer.from(mac, "base64url");
   return given.length === expected.length && crypto.timingSafeEqual(given, expected);
 }

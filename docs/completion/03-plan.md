@@ -37,7 +37,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-02 | Done | Query logging disabled by default in prisma.ts (PR-1); postcodes.io DPIA note in dpia-draft.md (GE-1) |
 | CS-03 | Partial | `ALLOW_DEV_DEFAULTS` opt-in (needs local setup and CI changes). Production now requires email, video, storage and `APP_URL`, and tokens carry `iss`/`aud`, in #64 |
 | CS-04 | Done | |
-| CS-05 | Partial | Financing and `dispatchedAt` schema defaults |
+| CS-05 | Done | Financing (£0/pending) and `dispatchedAt` (nullable/no default) schema defaults resolved in `20261025140000_cs05_schema_defaults` |
 | CS-06 | Done | Check-in window (48h before to 2h after) and van summary/Veneers fixed |
 | CS-07 | Done | |
 | CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
@@ -45,7 +45,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-10 | Done | 🛑 Clinical sign-off of wording |
 | CS-11 | Done | Raw error logs fixed in #64, with a test that stops new ones |
 | CS-12 | Done | Reference-only seed added in #64 (seed guard in #49) |
-| CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key |
+| CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key separated to dedicated `deriveSubKey` |
 | CS-14 | Done | Remainders closed by CS-54 (not re-audited); `TRUST_PROXY` in deploy docs |
 | CS-15, CS-17, CS-18 | Done | Remainders closed by CS-49 and #59 |
 | CS-16 | Done | |

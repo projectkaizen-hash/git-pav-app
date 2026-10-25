@@ -117,7 +117,7 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
       content: content as unknown as Prisma.InputJsonValue,
       signature: signed.signature,
       signingKeyId: signed.keyId,
-      dispatchedAt: new Date(content.issuedAt),
+      dispatchedAt: null,
     },
   });
 
@@ -218,7 +218,7 @@ router.get("/patient/:userId", requireAuth, validateParams(userIdParamsSchema), 
     include: {
       clinician: { select: { fullName: true, gdcNumber: true } },
     },
-    orderBy: { dispatchedAt: "desc" },
+    orderBy: { createdAt: "desc" },
   });
 
   // The signature and frozen content stay server-side; the app gets the PDF.
