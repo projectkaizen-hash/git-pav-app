@@ -8,6 +8,15 @@ import { API_URL, apiUrl } from "@/config/api";
 
 export { API_URL, apiUrl };
 
+// ─── Push token of this device ───────────────────────────────────────────────
+// Sent on sign-out so the server stops pushing to a device nobody is signed
+// in on (MF-03). Set each launch when the token is registered.
+let registeredPushToken: string | null = null;
+
+export function rememberPushToken(token: string) {
+  registeredPushToken = token;
+}
+
 // ─── In-flight refresh de-duplication ────────────────────────────────────────
 let refreshPromise: Promise<string> | null = null;
 
@@ -163,7 +172,7 @@ export const authApi = {
     return data;
   },
 
-  signOut: async (pushToken?: string) => {
+  signOut: async (pushToken: string | null = registeredPushToken) => {
     try {
       await authFetch("/api/auth/logout", {
         method: "POST",
@@ -173,6 +182,7 @@ export const authApi = {
     } catch {
       // Network failure on logout shouldn't prevent clearing local state
     } finally {
+      registeredPushToken = null;
       await clearSessionState();
     }
   },

@@ -25,8 +25,9 @@ const authLimiterMiddleware = (req: Request, res: Response, next: any) => {
 /** How long a just-rotated refresh token still gets the new one (AT-5). */
 const REFRESH_GRACE_SECONDS = 30;
 
-// Roles that always sign in with a one-time code as well as a password (CS-08).
-export const MFA_REQUIRED_ROLES: string[] = ["clinician", "admin"];
+// Roles that always sign in with a one-time code as well as a password (CS-08;
+// van operators added by D-22).
+export const MFA_REQUIRED_ROLES: string[] = ["clinician", "admin", "operator"];
 
 // ─── POST /api/auth/check-email ────────────────────────────────────────────────
 router.post("/check-email", validateBody(checkEmailSchema), async (req: Request, res: Response) => {

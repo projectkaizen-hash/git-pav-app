@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import {
   ThemedText,
@@ -227,27 +226,6 @@ export default function PatientHomeScreen() {
         style={styles.quickBookBtn}
       />
 
-      {/* Refer and earn — text on the left, image bleeding off the right edge */}
-      <Card padding="none" style={styles.referralCard}>
-        <View style={styles.referralContent}>
-          <ThemedText variant="headline">Refer and earn £20</ThemedText>
-          <ThemedText variant="footnote" style={styles.referralSub}>
-            Give £20 to friends, earn £20 dental credit for every appointment they complete.
-          </ThemedText>
-          <Button
-            title="Refer friends"
-            size="sm"
-            onPress={() => router.push("/(patient)/perks" as never)}
-            style={styles.referralBtn}
-          />
-        </View>
-        <Image
-          source={require("../../../../assets/images/smile-restoration.jpg")}
-          style={styles.referralImage}
-          contentFit="cover"
-          accessibilityElementsHidden
-        />
-      </Card>
 
       {/* Services Section Header */}
       <View style={styles.section}>
@@ -440,9 +418,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 28,
   },
-  referralImage: {
-    width: "34%",
-  },
   section: {
     paddingHorizontal: spacing.gutter,
   },
@@ -630,22 +605,6 @@ const styles = StyleSheet.create({
   },
   quickBookBtn: {
     marginHorizontal: spacing.gutter,
-  },
-  referralCard: {
-    flexDirection: "row",
-    marginHorizontal: spacing.gutter,
-    minHeight: 128,
-  },
-  referralContent: {
-    flex: 1,
-    gap: spacing.xxs,
-    padding: spacing.md,
-  },
-  referralSub: {
-    marginBottom: spacing.xs,
-  },
-  referralBtn: {
-    alignSelf: "flex-start",
   },
   topBar: {
     alignItems: "center",

@@ -52,7 +52,7 @@ export default function OnboardingProfileScreen() {
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
-            <ProgressPills total={5} current={1} />
+            <ProgressPills total={4} current={1} />
           </View>
           <View style={styles.navSpacer} />
         </View>
@@ -67,7 +67,7 @@ export default function OnboardingProfileScreen() {
               Personal details
             </ThemedText>
             <ThemedText variant="subhead" style={styles.subtitle}>
-              Required for your legal NHS/private dental patient record.
+              Needed for your dental record.
             </ThemedText>
           </View>
 

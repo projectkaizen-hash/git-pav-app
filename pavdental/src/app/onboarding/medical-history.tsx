@@ -43,7 +43,7 @@ export default function OnboardingMedicalHistoryScreen() {
             onPress={() => router.back()}
           />
           <View style={styles.progressWrap}>
-            <ProgressPills total={5} current={4} />
+            <ProgressPills total={4} current={3} />
           </View>
           <View style={styles.navSpacer} />
         </View>

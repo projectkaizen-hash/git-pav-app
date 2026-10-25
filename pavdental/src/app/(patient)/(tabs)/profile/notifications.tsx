@@ -119,7 +119,7 @@ export default function NotificationsScreen() {
 
         <ToggleSwitch
           label="Email notifications"
-          description="Treatment plans, prescriptions, receipts and invoices"
+          description="Treatment plans and prescriptions"
           value={emailEnabled}
           onValueChange={(val) => {
             setEmailEnabled(val);

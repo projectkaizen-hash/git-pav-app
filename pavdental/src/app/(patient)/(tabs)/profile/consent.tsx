@@ -108,7 +108,7 @@ export default function ConsentScreen() {
       <View style={styles.banner}>
         <AppIcon name="clipboard" size={24} color={colors.ink} />
         <View style={styles.bannerTextWrap}>
-          <ThemedText variant="headline">UK GDPR & NHS DSPT standards</ThemedText>
+          <ThemedText variant="headline">Your data rights (UK GDPR)</ThemedText>
           <ThemedText variant="caption" style={styles.bannerSub}>
             You have legal control over your clinical consents and data processing choices.
           </ThemedText>
@@ -193,12 +193,12 @@ export default function ConsentScreen() {
       {/* Retention Policy */}
       <View style={styles.section}>
         <ThemedText variant="subhead" style={styles.sectionTitle}>
-          STATUTORY DATA RETENTION
+          HOW LONG WE KEEP RECORDS
         </ThemedText>
         <Card style={styles.card}>
           <ThemedText variant="headline">How long records are stored</ThemedText>
           <ThemedText variant="caption" style={styles.cardDesc}>
-            Under UK NHS and Private Dental regulations, dental records, radiographs, and clinical consultation notes must be preserved for a minimum of 11 years after completion of treatment (or until age 25 for children, whichever is longer).
+            We must keep dental records for a period after your last treatment. Our privacy notice sets out how long; the draft periods are being reviewed by our legal adviser.
           </ThemedText>
         </Card>
       </View>

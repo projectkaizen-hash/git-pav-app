@@ -7,6 +7,9 @@ PORT="${PORT:-8098}"
 
 mkdir -p "$OUT_DIR"
 
+# Patient screens need the screenshot-only demo login, so the web export
+# must be built with: EXPO_PUBLIC_DEMO_LOGIN=true npx expo export -p web
+
 export PORT=8098
 node "$(pwd)/pavdental/scripts/spa-server.mjs" &
 SERVER_PID=$!

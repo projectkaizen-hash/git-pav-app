@@ -9,7 +9,6 @@ import {
   Avatar,
   AppIcon,
   Badge,
-  Button,
   IconButton,
   ConfirmSheet,
   type AppIconName,
@@ -163,30 +162,6 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        {/* Neo Financial Two-Column Refer & Earn Promo Banner (Screen_455_Settings & Preferences.png) */}
-        <Card style={styles.promoCard}>
-          <View style={styles.promoRow}>
-            <View style={styles.promoContent}>
-              <ThemedText variant="headline" style={styles.promoTitle}>
-                Refer friends, earn £20
-              </ThemedText>
-              <ThemedText variant="caption" style={styles.promoSub}>
-                Share your invite link with family and receive £20 towards treatments.
-              </ThemedText>
-              <Button
-                title="Share link"
-                size="sm"
-                arrow
-                onPress={() => router.push("/(patient)/perks" as never)}
-                style={styles.promoBtn}
-              />
-            </View>
-            <View style={styles.promoBadgeSquare}>
-              <AppIcon name="sparkles" size={26} color={colors.warningFill} />
-            </View>
-          </View>
-        </Card>
-
         {groups.map((g) => renderGroup(g.heading, g.rows))}
 
         {/* Portal Role Switcher (development opt-in only) */}
@@ -316,45 +291,6 @@ const styles = StyleSheet.create({
   },
   identityRow: {
     paddingVertical: spacing.sm,
-  },
-  promoCard: {
-    borderRadius: radius.lg,
-    backgroundColor: colors.systemBackground,
-    borderColor: colors.separator,
-    padding: spacing.md,
-  },
-  promoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  promoContent: {
-    flex: 1,
-    gap: 4,
-    paddingRight: spacing.sm,
-  },
-  promoTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: colors.label,
-  },
-  promoSub: {
-    color: colors.secondaryLabel,
-    fontSize: 13,
-    lineHeight: 16,
-    marginBottom: spacing.xs,
-  },
-  promoBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: spacing.gutter,
-  },
-  promoBadgeSquare: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.lg,
-    backgroundColor: colors.warningSubtle,
-    alignItems: "center",
-    justifyContent: "center",
   },
   group: {
     gap: spacing.xxs,

@@ -42,3 +42,7 @@ Thumbs.db
 *.tsbuildinfo
 .pgdata*
 .grok/
+
+# Store credentials: never commit
+google-service-account*.json
+*.p8

@@ -42,7 +42,7 @@ const disabledColors = {
 } as const;
 
 // ─── Size map ─────────────────────────────────────────────────────────────────
-// sm = inline "Refer friends" button; md/lg = full 52pt button.
+// sm = inline button; md/lg = full 52pt button.
 const sizes_ = {
   sm: {
     paddingVertical: spacing.xxs,

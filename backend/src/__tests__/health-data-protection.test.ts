@@ -119,11 +119,13 @@ describe("CS-50: Health data protection at rest and in transit", () => {
     expect(found.subject).toBe(sensitiveSubject);
     expect(found.preview).toContain(sensitiveBody.slice(0, 50));
 
-    // 4. Verify notification email escaped HTML and did not leave unescaped health data
+    // 4. The staff alert carries no subject or body at all, escaped or not (D-19)
     expect(sendEmailSpy).toHaveBeenCalled();
     const lastEmail = sendEmailSpy.mock.calls[sendEmailSpy.mock.calls.length - 1][0];
-    expect(lastEmail.html).toContain("&lt;script&gt;");
     expect(lastEmail.html).not.toContain("<script>");
+    expect(lastEmail.html).not.toContain("script");
+    expect(lastEmail.subject).not.toContain("script");
+    expect(JSON.stringify(lastEmail)).not.toContain("throbbing");
     expect(lastEmail.text).toBeDefined();
   });
 

@@ -84,6 +84,10 @@ export function validateDeployedConfig(envName: NodeEnv, values: {
   postmarkServerToken?: string;
   dailyApiKey?: string;
   s3BucketName?: string;
+  prescriptionSigningKey?: string;
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioFromPhone?: string;
   allowDevDefaults?: boolean;
 }) {
   if (values.allowDevDefaults && (envName === "production" || envName === "staging")) {
@@ -184,6 +188,10 @@ export function deployedServiceGaps(values: {
   postmarkServerToken?: string;
   dailyApiKey?: string;
   s3BucketName?: string;
+  prescriptionSigningKey?: string;
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioFromPhone?: string;
 }): string[] {
   const placeholder = (value?: string) => !value || /^(mock|stub)|replace_?with|replace_me/i.test(value);
   const gaps: string[] = [];
@@ -197,6 +205,12 @@ export function deployedServiceGaps(values: {
   if (placeholder(values.postmarkServerToken)) gaps.push("POSTMARK_SERVER_TOKEN");
   if (placeholder(values.dailyApiKey)) gaps.push("DAILY_API_KEY");
   if (!values.s3BucketName) gaps.push("S3_BUCKET_NAME");
+  // Without a signing key, prescriptions can't be issued; without Twilio,
+  // SMS sign-in codes are never sent.
+  if (placeholder(values.prescriptionSigningKey)) gaps.push("PRESCRIPTION_SIGNING_KEY");
+  if (placeholder(values.twilioAccountSid)) gaps.push("TWILIO_ACCOUNT_SID");
+  if (placeholder(values.twilioAuthToken)) gaps.push("TWILIO_AUTH_TOKEN");
+  if (placeholder(values.twilioFromPhone)) gaps.push("TWILIO_FROM_PHONE");
   return gaps;
 }
 
@@ -214,6 +228,10 @@ function printConfigurationSummary(values: {
   postmarkServerToken?: string;
   dailyApiKey?: string;
   s3BucketName?: string;
+  prescriptionSigningKey?: string;
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioFromPhone?: string;
 }) {
   console.log("╔═══════════════════════════════════════════════════════════════╗");
   console.log("║          Pav Dental API - Configuration Summary                ║");
@@ -267,6 +285,10 @@ const values = {
   postmarkServerToken: readOptional("POSTMARK_SERVER_TOKEN"),
   dailyApiKey: readOptional("DAILY_API_KEY"),
   s3BucketName: readOptional("S3_BUCKET_NAME"),
+  prescriptionSigningKey: readOptional("PRESCRIPTION_SIGNING_KEY"),
+  twilioAccountSid: readOptional("TWILIO_ACCOUNT_SID"),
+  twilioAuthToken: readOptional("TWILIO_AUTH_TOKEN"),
+  twilioFromPhone: readOptional("TWILIO_FROM_PHONE"),
   allowDevDefaults,
 };
 

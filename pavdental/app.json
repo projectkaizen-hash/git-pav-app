@@ -112,16 +112,10 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/c8c3bb48-932f-4c57-89b5-c05333a4bf45"
-    },
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "eas": {
-        "projectId": "c8c3bb48-932f-4c57-89b5-c05333a4bf45"
-      },
       "stage": "production",
       "status": "Production release"
     }

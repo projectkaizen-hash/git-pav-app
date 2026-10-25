@@ -23,7 +23,7 @@ import { checkRedFlags, clientTriage, validateTriageData } from "../lib/triage-e
 import { cancelAppointmentReminders, scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
-import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
+import { AvailabilityError, bookableClinician, londonDate, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
 import { encryptField, decryptField, decryptString, encryptAccessDetails, encryptClientAccessDetails, decryptAccessDetails } from "../lib/encryption";
 import { safeError } from "../lib/log-safety";
 
@@ -987,12 +987,9 @@ router.post(
       return res.status(409).json({ error: "Only confirmed or in-progress appointments can be completed" });
     }
 
-    // CS-28: Time window check. Cannot complete an appointment scheduled for a future day.
-    const now = new Date();
-    const endOfDayToday = new Date(now);
-    endOfDayToday.setUTCHours(23, 59, 59, 999);
-    const futureDayThreshold = new Date(endOfDayToday.getTime() + 14 * 60 * 60 * 1000);
-    if (appointment.startTimeUtc.getTime() > futureDayThreshold.getTime()) {
+    // CS-28: an appointment can be completed on its UK calendar day or later,
+    // never ahead of that day (decisions log #24).
+    if (londonDate(appointment.startTimeUtc) > londonDate(new Date())) {
       return res.status(400).json({ error: "Cannot complete an appointment scheduled for a future date" });
     }
 

@@ -86,11 +86,11 @@ export default function DeleteAccountScreen() {
       {/* Statutory Retention Notice */}
       <View style={styles.section}>
         <ThemedText variant="subhead" style={styles.sectionTitle}>
-          STATUTORY HEALTH RECORDS RETENTION
+          HOW LONG WE KEEP DENTAL RECORDS
         </ThemedText>
         <Card style={styles.retentionCard}>
           <ThemedText variant="caption" style={styles.retentionText}>
-            Under General Dental Council (GDC) standards and NHS/Private Dental legislation, clinical records (including radiographs, odontograms, prescription notes, and diagnostic images) must be securely retained for 11 years (or until age 25 for pediatric patients) from the date of last treatment.
+            We must keep dental records for a period after your last treatment. Our privacy notice sets out how long; the draft periods are being reviewed by our legal adviser.
           </ThemedText>
           <ThemedText variant="caption" style={styles.retentionText}>
             Your login, contact details, saved cards, notifications and rewards are erased. Your dental records are kept, securely, until the retention period ends.

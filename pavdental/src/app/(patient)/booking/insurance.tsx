@@ -146,19 +146,6 @@ export default function BookingInsuranceScreen() {
               </ThemedText>
             </View>
 
-            <Card elevation="flat" style={styles.checkCard}>
-              <ThemedText variant="overline">Coverage check</ThemedText>
-              {["Checkup & X-rays — covered", "Hygiene visit — covered", "Whitening — 15% member discount"].map(
-                (line) => (
-                  <View key={line} style={styles.checkRow}>
-                    <AppIcon name="checkCircle" size={15} color={colors.success} />
-                    <ThemedText variant="body" style={styles.checkText}>
-                      {line}
-                    </ThemedText>
-                  </View>
-                )
-              )}
-            </Card>
 
             <View style={styles.choiceRow}>
               <ChipPill label="Number looks wrong? retake" onPress={() => setStep("scan")} />
@@ -185,20 +172,6 @@ export default function BookingInsuranceScreen() {
 }
 
 const styles = StyleSheet.create({
-  checkCard: {
-    backgroundColor: colors.systemBackground,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  checkRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  checkText: {
-    color: colors.label,
-    flex: 1,
-  },
   choiceRow: {
     flexDirection: "row",
   },

@@ -9,8 +9,8 @@ import { completeAppointmentCheckIn } from "@/features/records/records-api";
 import type { AppIconName } from "@/components";
 
 // ─── Digital check-in / pre-visit tasks (Mobbin Zocdoc checklist pattern) ─────
-// Forms, consent, insurance and balance — done before arrival so the visit
-// itself starts on time.
+// Things to check before arrival so the visit starts on time. Consent to
+// treatment is taken in person (decisions log D-06).
 
 const PRE_ARRIVAL_TASKS: Array<{
   id: string;
@@ -23,18 +23,6 @@ const PRE_ARRIVAL_TASKS: Array<{
     title: "Confirm medical history",
     description: "Verify any changes to your medications or allergies.",
     kind: "form",
-  },
-  {
-    id: "task_consent",
-    title: "Sign clinical consent",
-    description: "Authorise dental examination and diagnostic radiographs.",
-    kind: "consent",
-  },
-  {
-    id: "task_insurance",
-    title: "Verify insurance or self-pay",
-    description: "Confirm your dental plan details or payment preference.",
-    kind: "insurance",
   },
   {
     id: "task_covid",

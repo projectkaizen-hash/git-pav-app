@@ -151,7 +151,7 @@ export default function SecurityScreen() {
         </View>
       </View>
 
-      {/* DSPT & GDPR Compliance */}
+      {/* Privacy */}
       <View style={styles.section}>
         <ThemedText variant="subhead" style={styles.sectionTitle}>
           DATA PRIVACY & LEGAL
@@ -163,12 +163,6 @@ export default function SecurityScreen() {
             left={<ThemedText>📄</ThemedText>}
             right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
             onPress={() => router.push("/(patient)/(tabs)/profile/consent" as any)}
-            separator
-          />
-          <ListRow
-            title="Encryption standards"
-            subtitle="Development prototype - independent security review required for production"
-            left={<ThemedText>🛡️</ThemedText>}
           />
         </Card>
       </View>

@@ -126,7 +126,7 @@ export default function ProviderProfileScreen() {
           <View style={styles.insuranceRow}>
             <AppIcon name="shield" size={16} color={colors.ink} />
             <ThemedText variant="body" style={styles.insuranceText}>
-              Accepts Denplan, Bupa Dental & AXA Health
+              Ask the practice about payment options
             </ThemedText>
           </View>
           <ThemedText variant="caption" style={styles.muted}>
