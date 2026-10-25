@@ -70,6 +70,35 @@ export function computeAuditIntegrityHash(previousHash: string, dataString: stri
     .digest("hex");
 }
 
+export function scrubAuditMetadata(meta: unknown, seen = new WeakSet()): unknown {
+  if (!meta || typeof meta !== "object") return meta;
+  if (meta instanceof Date) return meta;
+  if (seen.has(meta)) return "[CIRCULAR]";
+  seen.add(meta);
+  if (Array.isArray(meta)) return meta.map((item) => scrubAuditMetadata(item, seen));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(meta as Record<string, unknown>)) {
+    const lk = k.toLowerCase();
+    if (
+      lk === "email" ||
+      lk.endsWith("email") ||
+      lk === "password" ||
+      lk.endsWith("password") ||
+      lk === "vouchercode" ||
+      lk === "voucher_code"
+    ) {
+      out[k] = "[REDACTED]";
+    } else if (lk === "path" || lk === "url" || lk === "originalurl") {
+      out[k] = typeof v === "string" ? v.split("?")[0] : v;
+    } else if (typeof v === "object" && v !== null) {
+      out[k] = scrubAuditMetadata(v, seen);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 // Audit log integrity using hash chains
 // Each log entry contains a hash of the previous entry to detect tampering
 export async function createAuditLogWithIntegrity(data: {
@@ -116,6 +145,8 @@ export async function createAuditLogWithIntegrity(data: {
     }
     const nowIso = now.toISOString();
 
+    const sanitizedMetadata = scrubAuditMetadata(data.metadata) ?? {};
+
     // Create HMAC hash chain covering all audit fields (AU-3)
     const dataString = buildAuditDataString({
       action: data.action,
@@ -123,7 +154,7 @@ export async function createAuditLogWithIntegrity(data: {
       resourceId: data.resourceId ?? null,
       sessionId: data.sessionId ?? null,
       ipHash: data.ipHash ?? null,
-      metadata: data.metadata ?? {},
+      metadata: sanitizedMetadata,
       timestamp: nowIso,
     });
 
@@ -136,7 +167,7 @@ export async function createAuditLogWithIntegrity(data: {
         resourceId: data.resourceId ?? null,
         sessionId: data.sessionId ?? null,
         ipHash: data.ipHash ?? null,
-        metadata: data.metadata ?? {},
+        metadata: sanitizedMetadata as any,
         integrityHash,
         timestampUtc: now,
         archived: false,

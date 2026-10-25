@@ -300,11 +300,6 @@ describe("CS-49: Payment and refund integrity", () => {
       await prisma.appointment.deleteMany({ where: { id: { in: createdApptIds } } });
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    try {
-      const { redis } = require("../lib/redis");
-      await redis.quit();
-    } catch {}
-    await prisma.$disconnect();
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;

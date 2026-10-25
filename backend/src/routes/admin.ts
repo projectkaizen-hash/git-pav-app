@@ -424,7 +424,7 @@ router.post("/clinicians", requireAuth, requireRole("admin"), validateBody(creat
     resourceId: result.profile.id,
     sessionId: req.user!.sessionId,
     ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: { clinicianId: result.profile.id, gdcNumber, email },
+    metadata: { clinicianId: result.profile.id, gdcNumber },
   });
 
   return res.status(201).json({
@@ -480,7 +480,7 @@ router.post("/operators", requireAuth, requireRole("admin"), validateBody(create
     resourceId: result.profile.id,
     sessionId: req.user!.sessionId,
     ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: { operatorId: result.profile.id, email },
+    metadata: { operatorId: result.profile.id },
   });
 
   return res.status(201).json({
@@ -515,7 +515,7 @@ router.post("/clinics", requireAuth, requireRole("admin"), validateBody(createCl
     resourceId: clinic.id,
     sessionId: req.user!.sessionId,
     ipHash: pseudonymiseIp(req.ip || ""),
-    metadata: { clinicId: clinic.id, name, postcode },
+    metadata: { clinicId: clinic.id, name },
   });
 
   return res.status(201).json(clinic);

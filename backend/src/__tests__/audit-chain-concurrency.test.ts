@@ -13,16 +13,21 @@ function runWriter(index: number): Promise<void> {
     const { createAuditLogWithIntegrity } = require("./src/lib/audit-integrity");
     const { prisma } = require("./src/lib/prisma");
     (async () => {
-      await Promise.all(Array.from({ length: ${WRITES_PER_PROCESS} }, (_, i) =>
-        createAuditLogWithIntegrity({ action: "test.audit_chain_concurrency", resourceId: "writer-${index}-" + i })
-      ));
+      for (let i = 0; i < ${WRITES_PER_PROCESS}; i++) {
+        await createAuditLogWithIntegrity({ action: "test.audit_chain_concurrency", resourceId: "writer-${index}-" + i });
+      }
       await prisma.$disconnect();
     })().catch((err) => { console.error(err); process.exit(1); });
   `;
+  const rawUrl = process.env.DATABASE_URL || "";
+  const cleanUrl = rawUrl.replace(/([?&])connection_limit=\d+(&|$)/, "$1").replace(/[?&]$/, "");
+  const dbUrl = cleanUrl
+    ? `${cleanUrl}${cleanUrl.includes("?") ? "&" : "?"}connection_limit=1&pool_timeout=30`
+    : undefined;
   return new Promise((resolve, reject) => {
     const child = spawn("npx", ["tsx", "-e", script], {
       cwd: path.resolve(__dirname, "../.."),
-      env: { ...process.env, NODE_ENV: "test" },
+      env: { ...process.env, NODE_ENV: "test", ...(dbUrl ? { DATABASE_URL: dbUrl } : {}) },
       stdio: ["ignore", "ignore", "pipe"],
     });
     let stderr = "";

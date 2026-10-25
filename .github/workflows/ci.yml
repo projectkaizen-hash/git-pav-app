@@ -41,7 +41,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://pavdental:pavdental_ci@localhost:5432/pavdental_db?schema=public
+      DATABASE_URL: postgresql://pavdental:pavdental_ci@localhost:5432/pavdental_db?schema=public&connection_limit=5
       REDIS_URL: redis://localhost:6379
       NODE_ENV: development
       PORT: "3000"

@@ -130,13 +130,25 @@ export async function requireActiveAppointmentContext(
     return null;
   }
 
-  // Require an active appointment (confirmed or in_progress)
-  // Note: checked_in status would be added in a future migration
+  // Require an active appointment (in_progress, or confirmed on the appointment day)
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  // Bounds cover today's UK/UTC calendar day, rejecting past or multi-day future appointments
+  const windowStart = new Date(startOfDay.getTime() - 12 * 60 * 60 * 1000);
+  const windowEnd = new Date(startOfDay.getTime() + 36 * 60 * 60 * 1000);
+
   const activeAppointment = await prisma.appointment.findFirst({
     where: {
       patientId: profile.id,
       clinicianId: clinician.id,
-      status: { in: ['confirmed', 'in_progress'] },
+      OR: [
+        { status: "in_progress" },
+        {
+          status: "confirmed",
+          startTimeUtc: { gte: windowStart, lte: windowEnd },
+        },
+      ],
     },
     select: { id: true },
   });

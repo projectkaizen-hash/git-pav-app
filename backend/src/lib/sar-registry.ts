@@ -89,10 +89,16 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
   },
 
   ToothRecord: async (prisma, { profileId }) => {
-    return prisma.toothRecord.findMany({
+    const teeth = await prisma.toothRecord.findMany({
       where: { patientId: profileId },
       orderBy: { toothNumber: "asc" },
     });
+    return Promise.all(
+      teeth.map(async (t) => ({
+        ...t,
+        notes: t.notes ? await decryptString(t.notes) : null,
+      }))
+    );
   },
 
   TreatmentPlan: async (prisma, { profileId }) => {
@@ -282,15 +288,29 @@ export const PATIENT_DATA_EXTRACTORS: Record<string, ModelExtractor> = {
       where: { patientId: profileId },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map((r) => ({ ...r, id: r.id.toString() }));
+    return Promise.all(
+      rows.map(async (r) => ({
+        ...r,
+        id: r.id.toString(),
+        notes: r.notes ? await decryptString(r.notes) : null,
+      }))
+    );
   },
 
   AppointmentNote: async (prisma, { profileId }) => {
     if (!profileId) return [];
-    return prisma.appointmentNote.findMany({
+    const notes = await prisma.appointmentNote.findMany({
       where: { patientId: profileId },
       orderBy: { createdAt: "desc" },
     });
+    return Promise.all(
+      notes.map(async (n) => ({
+        ...n,
+        notes: await decryptString(n.notes),
+        diagnosis: n.diagnosis ? await decryptString(n.diagnosis) : null,
+        treatmentPlan: n.treatmentPlan ? await decryptString(n.treatmentPlan) : null,
+      }))
+    );
   },
 
   AuditLog: async (prisma, { userId, profileId }) => {

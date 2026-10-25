@@ -37,37 +37,40 @@ const CLINICAL_DATA_FIELDS = [
   "postcode",
 ];
 
-function redactMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+function redactMetadata(metadata: Record<string, unknown>, seen = new WeakSet()): Record<string, unknown> {
+  if (typeof metadata !== "object" || metadata === null) return metadata;
+  if (metadata instanceof Date) return metadata;
+  if (seen.has(metadata)) return "[CIRCULAR]" as any;
+  seen.add(metadata);
+
   const redacted: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(metadata)) {
-    // Skip redaction for non-object values
-    if (typeof value !== "object" || value === null) {
-      redacted[key] = value;
+    // Redact fields that might contain clinical or personal data
+    const isSensitive = CLINICAL_DATA_FIELDS.some(field =>
+      key.toLowerCase() === field.toLowerCase() || key.toLowerCase().includes(field.toLowerCase())
+    );
+
+    if (isSensitive) {
+      redacted[key] = "[REDACTED]";
       continue;
     }
 
-    // Recursively redact nested objects
-    if (Array.isArray(value)) {
-      redacted[key] = value.map(item => 
-        typeof item === "object" && item !== null ? redactMetadata(item as Record<string, unknown>) : "[REDACTED_ARRAY]"
-      );
-    } else {
-      const obj = value as Record<string, unknown>;
-      const redactedObj: Record<string, unknown> = {};
-
-      for (const [objKey, objValue] of Object.entries(obj)) {
-        // Redact fields that might contain clinical data
-        if (CLINICAL_DATA_FIELDS.some(field => objKey.toLowerCase().includes(field.toLowerCase()))) {
-          redactedObj[objKey] = "[REDACTED]";
-        } else if (typeof objValue === "object" && objValue !== null) {
-          redactedObj[objKey] = redactMetadata(objValue as Record<string, unknown>);
-        } else {
-          redactedObj[objKey] = objValue;
-        }
+    // Recursively redact nested objects and arrays
+    if (typeof value === "object" && value !== null) {
+      if (value instanceof Date) {
+        redacted[key] = value;
+      } else if (Array.isArray(value)) {
+        redacted[key] = value.map(item =>
+          typeof item === "object" && item !== null
+            ? (item instanceof Date ? item : redactMetadata(item as Record<string, unknown>, seen))
+            : item
+        );
+      } else {
+        redacted[key] = redactMetadata(value as Record<string, unknown>, seen);
       }
-
-      redacted[key] = redactedObj;
+    } else {
+      redacted[key] = value;
     }
   }
 
@@ -99,12 +102,12 @@ export async function auditMiddleware(
         (req as any).resourceId ??
         null;
 
-      // Build metadata with request details (body/params will be redacted)
+      // Build metadata with request details (body/params will be redacted, path has query string stripped)
       const metadata: Record<string, unknown> = {
         statusCode: res.statusCode,
         requestId: res.getHeader("x-request-id") ?? null,
         method: req.method,
-        path: req.originalUrl || `${req.baseUrl}${req.path}`,
+        path: (req.originalUrl || `${req.baseUrl}${req.path}`).split("?")[0],
         outcome:
           res.statusCode < 400
             ? "success"

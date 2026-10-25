@@ -5,5 +5,9 @@
 afterAll(async () => {
   const queue = (globalThis as { __pavAuditWriteQueue?: Promise<unknown> }).__pavAuditWriteQueue;
   if (queue) await queue;
-});
+  try {
+    const { prisma } = require("../src/lib/prisma");
+    await prisma.$disconnect();
+  } catch {}
+}, 30_000);
 export {};
