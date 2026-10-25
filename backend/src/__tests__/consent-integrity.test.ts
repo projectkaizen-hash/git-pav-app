@@ -146,8 +146,12 @@ describe("CS-25: One source of truth for consent (PT-4, CO-1, DB-3, DP-1)", () =
       });
       expect(record.ipAddress).not.toBe(spoofedClientIp);
       expect(record.ipAddress).toMatch(/^[a-f0-9]{64}$/);
-      // Server-observed loopback address (::1) hashed
-      expect(record.ipAddress).toBe(pseudonymiseIp("::1"));
+      // Server-observed loopback address (::1 or 127.0.0.1) hashed
+      expect([
+        pseudonymiseIp("::1"),
+        pseudonymiseIp("127.0.0.1"),
+        pseudonymiseIp("::ffff:127.0.0.1"),
+      ]).toContain(record.ipAddress);
 
       // Verify an audit log entry was created with integrity
       const audit = await prisma.auditLog.findFirst({
@@ -284,8 +288,12 @@ describe("CS-25: One source of truth for consent (PT-4, CO-1, DB-3, DP-1)", () =
       expect(consent.isGranted).toBe(true);
       expect((consent.metadata as any)?.childName).toBe("Timmy Rigby");
       expect(consent.ipAddress).toMatch(/^[a-f0-9]{64}$/);
-      // Server-observed loopback address (::1) hashed
-      expect(consent.ipAddress).toBe(pseudonymiseIp("::1"));
+      // Server-observed loopback address (::1 or 127.0.0.1) hashed
+      expect([
+        pseudonymiseIp("::1"),
+        pseudonymiseIp("127.0.0.1"),
+        pseudonymiseIp("::ffff:127.0.0.1"),
+      ]).toContain(consent.ipAddress);
 
       // Verify audit entry
       const audit = await prisma.auditLog.findFirst({
