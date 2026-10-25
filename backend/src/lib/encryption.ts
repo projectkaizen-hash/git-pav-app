@@ -379,6 +379,27 @@ export async function encryptAccessDetails(accessDetails: any): Promise<any> {
   return encrypted;
 }
 
+/** Keys of accessDetails that only the server writes (video room, van check-in). */
+const SERVER_ACCESS_KEYS = ["roomName", "roomUrl", "checkedIn", "checkedInAt", "completedTasks"];
+
+/**
+ * Encrypt access details a client sent. Unlike encryptAccessDetails, nothing
+ * the client sends is trusted as already encrypted: a ready-made envelope, or
+ * a gateCode or accessNotes that isn't plain text, is refused (null), and
+ * server-owned keys are dropped.
+ */
+export async function encryptClientAccessDetails(input: unknown): Promise<Record<string, unknown> | null> {
+  if (!input || typeof input !== "object" || Array.isArray(input) || isEncryptedEnvelope(input)) return null;
+  const details: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+  for (const key of SERVER_ACCESS_KEYS) delete details[key];
+  for (const key of ["gateCode", "accessNotes"]) {
+    if (details[key] === undefined || details[key] === null || details[key] === "") continue;
+    if (typeof details[key] !== "string") return null;
+    details[key] = await encryptField(details[key]);
+  }
+  return details;
+}
+
 /**
  * Decrypt sensitive fields (gateCode, accessNotes) within accessDetails object.
  */

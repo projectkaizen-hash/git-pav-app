@@ -188,4 +188,35 @@ describe("booking races", () => {
     const now = Date.now();
     expect(slots.every((s) => new Date(s.startTimeUtc).getTime() > now)).toBe(true);
   });
+
+  // CS-48: nothing a client sends is stored as if the server had encrypted or
+  // written it (a forged envelope, an admission, a clinician's summary, a room link).
+  it("encrypts client triage and access details itself and drops server-owned keys", async () => {
+    const { decryptField, isEncryptedEnvelope } = require("../lib/encryption");
+    const clinicId = await makeClinic();
+    const tuesday = nextWeekday(2);
+    const clinicianId = await makeClinician([{ weekday: 2, start: 540, end: 600 }]);
+    const nine = londonTimeToUtc(tuesday, 540).toISOString();
+    const patient = await makePatient("forged");
+    const fakeEnvelope = { ciphertext: "x", iv: "y", keyId: "z", algorithm: "aes-256-gcm" };
+
+    const refused = await book(patient.token, {
+      channel: "clinic", clinicId, clinicianId, startTimeUtc: nine, accessDetails: fakeEnvelope,
+    });
+    expect(refused.status).toBe(400);
+
+    const booked = await book(patient.token, {
+      channel: "clinic", clinicId, clinicianId, startTimeUtc: nine,
+      triageData: { ...fakeEnvelope, chiefComplaint: "Synthetic toothache", painLevel: 4, admittedAt: new Date().toISOString(), consultationSummary: { diagnosis: "Forged" } },
+      accessDetails: { notes: "Synthetic side door", gateCode: "A1", roomUrl: "https://evil.example.test" },
+    });
+    expect(booked.status).toBe(201);
+    const stored = await prisma.appointment.findUniqueOrThrow({ where: { id: booked.body.id } });
+    expect(isEncryptedEnvelope(stored.triageData)).toBe(true);
+    expect(await decryptField(stored.triageData)).toEqual({ chiefComplaint: "Synthetic toothache", painLevel: 4 });
+    const access = stored.accessDetails as Record<string, unknown>;
+    expect(access).not.toHaveProperty("roomUrl");
+    expect(isEncryptedEnvelope(access.gateCode)).toBe(true);
+    expect(await decryptField(access.gateCode)).toBe("A1");
+  }, 15000);
 });

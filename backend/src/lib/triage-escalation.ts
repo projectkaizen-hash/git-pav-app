@@ -22,6 +22,33 @@ export interface TriageData {
   traumaHistory?: string;
 }
 
+const CLIENT_TRIAGE_KEYS: (keyof TriageData)[] = [
+  "chiefComplaint",
+  "painLevel",
+  "symptoms",
+  "duration",
+  "location",
+  "swelling",
+  "bleeding",
+  "fever",
+  "difficultyBreathing",
+  "difficultySwallowing",
+  "traumaHistory",
+];
+
+/**
+ * The triage answers a patient may set. Everything else in a stored triage
+ * record (admission, the clinician's summary, red flags, photos) is written
+ * by the server, so a client can't supply it, nor a ready-made envelope.
+ */
+export function clientTriage(input: Record<string, unknown>): TriageData {
+  const picked: Record<string, unknown> = {};
+  for (const key of CLIENT_TRIAGE_KEYS) {
+    if (input[key] !== undefined) picked[key] = input[key];
+  }
+  return picked as TriageData;
+}
+
 export interface RedFlagResult {
   isRedFlag: boolean;
   flagType?: string;

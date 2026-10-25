@@ -19,12 +19,12 @@ import {
   slotsQuerySchema,
 } from "../schemas/booking";
 import { idempotencyKeyFrom, withIdempotency } from "../lib/idempotency";
-import { checkRedFlags, validateTriageData } from "../lib/triage-escalation";
+import { checkRedFlags, clientTriage, validateTriageData } from "../lib/triage-escalation";
 import { cancelAppointmentReminders, scheduleAppointmentReminderLadder } from "../lib/background-jobs";
 import { depositDuePence } from "../lib/rewards";
 import { ageInYears, DEPENDANT_MAX_AGE, parseIsoDate } from "../lib/age";
 import { AvailabilityError, bookableClinician, slotsForDay, SlotChannel, startOfLondonDay } from "../lib/availability";
-import { encryptField, decryptField, isEncryptedEnvelope, encryptAccessDetails, decryptAccessDetails } from "../lib/encryption";
+import { encryptField, decryptField, encryptAccessDetails, encryptClientAccessDetails, decryptAccessDetails } from "../lib/encryption";
 
 const router = Router();
 
@@ -269,13 +269,13 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
       assignedClinicianId = bookable;
     }
 
-    // DB-3: Encrypt triageData and accessDetails at rest
-    const storedTriageData = triageData
-      ? (isEncryptedEnvelope(triageData) ? triageData : await encryptField(triageData))
-      : null;
-    const storedAccessDetails = accessDetails
-      ? await encryptAccessDetails(accessDetails)
-      : null;
+    // DB-3: Encrypt triageData and accessDetails at rest. Only the answers a
+    // patient may give are kept, and nothing arrives already "encrypted".
+    const storedTriageData = triageData ? await encryptField(clientTriage(triageData)) : null;
+    const storedAccessDetails = accessDetails ? await encryptClientAccessDetails(accessDetails) : null;
+    if (accessDetails && !storedAccessDetails) {
+      return { error: "Invalid access details", status: 400 };
+    }
 
     // The constraint on appointments is what stops a double booking (BK-2);
     // this transaction clears expired holds in the way first, as the hold

@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { prisma } from "../lib/prisma";
+import { hasCareRelationship } from "../middleware/patient-access";
 import multer from "multer";
 import { withIdempotency, idempotencyKeyFrom } from "../lib/idempotency";
 import { validateBody } from "../middleware/validate";
@@ -95,8 +96,9 @@ router.post("/rooms", requireAuth, validateBody(createVideoRoomSchema), async (r
   if (Date.now() > appointment.endTimeUtc.getTime() + ROOM_LATE_LIMIT_MS) {
     return res.status(409).json({ error: "This consultation has ended" });
   }
-  const triage = (appointment.triageData as Record<string, unknown>) || {};
-  const admitted = appointment.status === "in_progress" || Boolean(triage.admittedAt);
+  // Admitting the patient moves the appointment to in_progress; that status is
+  // the server's record of admission, not anything stored in the triage blob.
+  const admitted = appointment.status === "in_progress";
   if (isPatient && !admitted) {
     return res.status(409).json({ error: "Your clinician hasn't let you in yet. Please wait in the waiting room." });
   }
@@ -256,7 +258,8 @@ router.post("/submit-triage", requireAuth, validateBody(submitTriageSchema), asy
   if (clientKey === "invalid") {
     return res.status(400).json({ error: "Idempotency-Key must be 8 to 128 letters, digits, '-', '_' or ':'" });
   }
-  const idempotencyKey = clientKey ? `submit-triage:${clientKey}` : null;
+  // Scoped to the caller, so another user presenting the same key gets nothing replayed.
+  const idempotencyKey = clientKey ? `submit-triage:${userId}:${clientKey}` : null;
 
   return withIdempotency(idempotencyKey, async () => {
     const appointment = await prisma.appointment.findUnique({
@@ -339,10 +342,9 @@ router.get("/status/:appointmentId", requireAuth, async (req: AuthRequest, res: 
     return res.status(404).json({ error: "Consultation appointment not found" });
   }
 
+  // Admins get no clinical-record access by default, and this carries the summary.
   const isAuthorized =
-    req.user!.sub === appointment.patient.userId ||
-    req.user!.sub === appointment.clinician?.userId ||
-    req.user!.role === "admin";
+    req.user!.sub === appointment.patient.userId || req.user!.sub === appointment.clinician?.userId;
 
   if (!isAuthorized) {
     return res.status(403).json({ error: "Forbidden" });
@@ -350,13 +352,13 @@ router.get("/status/:appointmentId", requireAuth, async (req: AuthRequest, res: 
 
   const triageData = (await decryptField<Record<string, unknown>>(appointment.triageData)) || {};
   const accessDetails = (appointment.accessDetails as Record<string, unknown>) || {};
-  const isAdmitted = appointment.status === "in_progress" || Boolean(triageData.admittedAt);
+  const isAdmitted = appointment.status === "in_progress";
 
   return res.json({
     appointmentId: appointment.id,
     status: appointment.status,
     admitted: isAdmitted,
-    admittedAt: triageData.admittedAt || null,
+    admittedAt: isAdmitted ? triageData.admittedAt || null : null,
     clinicianName: appointment.clinician?.fullName || "On-Call Dental Clinician",
     roomUrl: accessDetails.roomUrl || null,
     roomName: accessDetails.roomName || null,
@@ -420,7 +422,8 @@ router.post("/admit-patient", requireAuth, validateBody(admitPatientSchema), asy
   if (clientKey === "invalid") {
     return res.status(400).json({ error: "Idempotency-Key must be 8 to 128 letters, digits, '-', '_' or ':'" });
   }
-  const idempotencyKey = clientKey ? `admit-patient:${clientKey}` : null;
+  // Scoped to the caller, so another user presenting the same key gets nothing replayed.
+  const idempotencyKey = clientKey ? `admit-patient:${clinicianId}:${clientKey}` : null;
 
   return withIdempotency(idempotencyKey, async () => {
     const clinician = await prisma.clinicianProfile.findUnique({
@@ -569,10 +572,18 @@ router.get("/summary/:appointmentId", requireAuth, async (req: AuthRequest, res:
     return res.status(404).json({ error: "Appointment not found" });
   }
 
-  const isAuthorized =
-    req.user!.sub === appointment.patient.userId ||
-    req.user!.role === "clinician" ||
-    req.user!.role === "admin";
+  // The patient, the appointment's clinician, or a clinician with the patient
+  // in their care. Admins get no clinical-record access by default.
+  let isAuthorized = req.user!.sub === appointment.patient.userId;
+  if (!isAuthorized && req.user!.role === "clinician") {
+    const clinician = await prisma.clinicianProfile.findUnique({
+      where: { userId: req.user!.sub },
+      select: { id: true },
+    });
+    isAuthorized =
+      !!clinician &&
+      (clinician.id === appointment.clinicianId || (await hasCareRelationship(clinician.id, appointment.patientId)));
+  }
 
   if (!isAuthorized) {
     return res.status(403).json({ error: "Forbidden" });
