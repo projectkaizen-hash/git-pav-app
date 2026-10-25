@@ -203,11 +203,14 @@ export const logger = new StructuredLogger();
  */
 export function correlationIdMiddleware(req: any, res: any, next: any) {
   const correlationId = req.headers['x-correlation-id'] as string || generateCorrelationId();
+  const requestId = req.id || (req.headers['x-request-id'] as string) || correlationId;
   req.correlationId = correlationId;
+  req.id = requestId;
   res.setHeader('X-Correlation-ID', correlationId);
+  res.setHeader('x-request-id', requestId);
   
   // Set logger context for this request
-  const requestLogger = logger.child({ correlationId, requestId: req.id });
+  const requestLogger = logger.child({ correlationId, requestId });
   req.logger = requestLogger;
   
   next();

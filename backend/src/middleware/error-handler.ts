@@ -18,13 +18,31 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * EH-3 / SV-3: Retrieve existing request ID from req.id or res header,
+ * ensuring the identical ID is echoed in the response, logs, and error reports.
+ */
+function getOrSetRequestId(req: Request, res?: Response): string {
+  if (req.id) return req.id;
+  const fromHeader = req.headers["x-request-id"];
+  const id =
+    typeof fromHeader === "string" && fromHeader.trim().length > 0
+      ? fromHeader.trim()
+      : (res?.getHeader("x-request-id") as string | undefined) ?? crypto.randomUUID();
+  req.id = id;
+  if (res && !res.getHeader("x-request-id")) {
+    res.setHeader("x-request-id", id);
+  }
+  return id;
+}
+
 export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
   next: NextFunction
 ) {
-  const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+  const requestId = getOrSetRequestId(req, res);
   const timestamp = new Date().toISOString();
 
   // Determine HTTP status and client message.
@@ -85,7 +103,7 @@ export function errorHandler(
 }
 
 export function notFoundHandler(req: Request, res: Response) {
-  const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+  const requestId = getOrSetRequestId(req, res);
   const timestamp = new Date().toISOString();
 
   res.status(404).json({
@@ -100,7 +118,7 @@ export function standardResponse(req: Request, res: Response, next: NextFunction
   const originalJson = res.json.bind(res);
   
   res.json = function(data: any) {
-    const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+    const requestId = getOrSetRequestId(req, res);
     const timestamp = new Date().toISOString();
     
     // Add request ID and timestamp to successful responses if data is a plain object

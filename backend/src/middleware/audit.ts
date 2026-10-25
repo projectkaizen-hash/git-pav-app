@@ -105,7 +105,7 @@ export async function auditMiddleware(
       // Build metadata with request details (body/params will be redacted, path has query string stripped)
       const metadata: Record<string, unknown> = {
         statusCode: res.statusCode,
-        requestId: res.getHeader("x-request-id") ?? null,
+        requestId: req.id ?? (res.getHeader("x-request-id") as string | undefined) ?? null,
         method: req.method,
         path: (req.originalUrl || `${req.baseUrl}${req.path}`).split("?")[0],
         outcome:
