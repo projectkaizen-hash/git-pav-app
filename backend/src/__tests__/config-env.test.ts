@@ -54,12 +54,30 @@ describe("validateDeployedConfig", () => {
     expect(() => validateDeployedConfig("production", deployed())).not.toThrow();
   });
 
-  it("skips checks in development and test", () => {
-    expect(() => validateDeployedConfig("development", { allowedOrigins: [] })).not.toThrow();
-    expect(() => validateDeployedConfig("test", { allowedOrigins: [] })).not.toThrow();
+  it("allows dev defaults in development and test when allowDevDefaults is true", () => {
+    expect(() => validateDeployedConfig("development", { allowedOrigins: [], allowDevDefaults: true })).not.toThrow();
+    expect(() => validateDeployedConfig("test", { allowedOrigins: [], allowDevDefaults: true })).not.toThrow();
   });
 
-  it("rejects missing secrets", () => {
+  it("rejects missing secrets in development and test when allowDevDefaults is false", () => {
+    expect(() => validateDeployedConfig("development", { allowedOrigins: [], allowDevDefaults: false })).toThrow(
+      /ALLOW_DEV_DEFAULTS=1/
+    );
+    expect(() => validateDeployedConfig("test", { allowedOrigins: [], allowDevDefaults: false })).toThrow(
+      /ALLOW_DEV_DEFAULTS=1/
+    );
+  });
+
+  it("rejects allowDevDefaults in production and staging", () => {
+    expect(() => validateDeployedConfig("production", deployed({ allowDevDefaults: true }))).toThrow(
+      /ALLOW_DEV_DEFAULTS must not be set/
+    );
+    expect(() => validateDeployedConfig("staging", deployed({ allowDevDefaults: true }))).toThrow(
+      /ALLOW_DEV_DEFAULTS must not be set/
+    );
+  });
+
+  it("rejects missing secrets in production", () => {
     expect(() => validateDeployedConfig("production", deployed({ jwtAccessSecret: undefined }))).toThrow(
       /JWT_ACCESS_SECRET/
     );

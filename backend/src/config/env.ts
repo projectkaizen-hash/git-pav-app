@@ -84,8 +84,27 @@ export function validateDeployedConfig(envName: NodeEnv, values: {
   postmarkServerToken?: string;
   dailyApiKey?: string;
   s3BucketName?: string;
+  allowDevDefaults?: boolean;
 }) {
-  if (envName !== "production" && envName !== "staging") return;
+  if (values.allowDevDefaults && (envName === "production" || envName === "staging")) {
+    throw new Error("ALLOW_DEV_DEFAULTS must not be set in staging or production");
+  }
+
+  if (envName !== "production" && envName !== "staging") {
+    const missingDevDefaults = [
+      ["JWT_ACCESS_SECRET", values.jwtAccessSecret],
+      ["JWT_REFRESH_SECRET", values.jwtRefreshSecret],
+      ["AUDIT_IP_HMAC_SECRET", values.auditIpHmacSecret],
+      ["ENCRYPTION_KEY", values.encryptionKey],
+    ].filter(([, value]) => !value).map(([name]) => name);
+
+    if (missingDevDefaults.length > 0 && !values.allowDevDefaults) {
+      throw new Error(
+        `Missing required configuration: ${missingDevDefaults.join(", ")}. In ${envName}, set ALLOW_DEV_DEFAULTS=1 or provide explicit secrets.`
+      );
+    }
+    return;
+  }
   const isProduction = envName === "production";
 
   const missing = [
@@ -230,6 +249,7 @@ function printConfigurationSummary(values: {
   console.log("");
 }
 
+const allowDevDefaults = readOptional("ALLOW_DEV_DEFAULTS") === "1" || readOptional("ALLOW_DEV_DEFAULTS") === "true";
 const allowedOrigins = parseOrigins(readOptional("ALLOWED_ORIGINS"));
 const values = {
   databaseUrl: readOptional("DATABASE_URL"),
@@ -247,6 +267,7 @@ const values = {
   postmarkServerToken: readOptional("POSTMARK_SERVER_TOKEN"),
   dailyApiKey: readOptional("DAILY_API_KEY"),
   s3BucketName: readOptional("S3_BUCKET_NAME"),
+  allowDevDefaults,
 };
 
 // Print configuration summary before validation
@@ -263,6 +284,7 @@ export const env = Object.freeze({
   isStaging,
   isDevelopment,
   isTest,
+  allowDevDefaults,
   port: parsePort(readOptional("PORT")),
   databaseUrl: values.databaseUrl,
   redisUrl: values.redisUrl,

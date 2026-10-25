@@ -1,3 +1,5 @@
+process.env.ALLOW_DEV_DEFAULTS = process.env.ALLOW_DEV_DEFAULTS || "1";
+
 // Audit entries are written after the response is sent, so a test file can
 // finish with an append still running. If jest tears the file down mid-append,
 // that transaction keeps the audit chain lock until it times out and stalls

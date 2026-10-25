@@ -52,6 +52,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: development
+      ALLOW_DEV_DEFAULTS: "1"
       PORT: "3000"
       DATABASE_URL: postgresql://pavdental:pavdental_secure_dev_password@postgres:5432/pavdental_db?schema=public
       REDIS_URL: redis://redis:6379

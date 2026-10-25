@@ -35,7 +35,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 |---|---|---|
 | CS-01 | Done | |
 | CS-02 | Done | Query logging disabled by default in prisma.ts (PR-1); postcodes.io DPIA note in dpia-draft.md (GE-1) |
-| CS-03 | Partial | `ALLOW_DEV_DEFAULTS` opt-in (needs local setup and CI changes). Production now requires email, video, storage and `APP_URL`, and tokens carry `iss`/`aud`, in #64 |
+| CS-03 | Done | `ALLOW_DEV_DEFAULTS` opt-in implemented and guarded across dev, test, compose, and CI; production rejects it |
 | CS-04 | Done | |
 | CS-05 | Done | Financing (£0/pending) and `dispatchedAt` (nullable/no default) schema defaults resolved in `20261025140000_cs05_schema_defaults` |
 | CS-06 | Done | Check-in window (48h before to 2h after) and van summary/Veneers fixed |
@@ -53,7 +53,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-20 | Partial | AU-5 throughput; the `audit_logs` index in `20261024070000` isn't `CONCURRENTLY` (already applied). Legacy hash, monitor window, 401 alerts and the tamper test fixed in #64 |
 | CS-21 | Done | Web refresh token uses `sessionStorage` with automatic `localStorage` cleanup (preventing disk persistence across sessions); lint rule enforces client fetch |
 | CS-22 | Done | |
-| CS-23 | Done | 🛑 Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
+| CS-23 | Done (legal review pending) | 🛑 Legal review of retention; Stripe Customer deletion and immediate push token deactivation during DPO wait resolved |
 | CS-24 | Done | SAR bundles hidden from clinicians in #64 |
 | CS-25 | Done | App side closed by CS-51 (not re-audited) |
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
