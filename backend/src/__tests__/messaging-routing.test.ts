@@ -262,4 +262,30 @@ describe("CS-29: Messaging that reaches people (MS-3)", () => {
     expect((await fetch(`${baseUrl}/api/messages?limit=101`, { headers })).status).toBe(400);
     expect((await fetch(`${baseUrl}/api/messages?offset=-1`, { headers })).status).toBe(400);
   });
+
+  it("records an audit entry when a patient deletes a thread (CS-29)", async () => {
+    const patient = await makePatient("delete-pt", "Delete", "Patient");
+    const res = await fetch(`${baseUrl}/api/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${patient.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: "Synthetic question", body: "Synthetic body." }),
+    });
+    expect(res.status).toBe(201);
+    const thread = (await res.json()) as { id: string };
+    threadIds.push(thread.id);
+
+    const del = await fetch(`${baseUrl}/api/messages/${thread.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${patient.token}` },
+    });
+    expect(del.status).toBe(200);
+    expect(await prisma.messageThread.findUnique({ where: { id: thread.id } })).toBeNull();
+
+    const entry = await prisma.auditLog.findFirst({
+      where: { action: "message.thread_deleted", resourceId: thread.id },
+    });
+    expect(entry).not.toBeNull();
+    expect(entry!.actorId).toBe(patient.user.id);
+    expect(entry!.metadata).toMatchObject({ recipientType: "practice", messageCount: 1 });
+  });
 });

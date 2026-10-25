@@ -473,8 +473,24 @@ router.delete("/:id", requireAuth, validateParams(threadIdParamsSchema), async (
     return res.status(404).json({ error: "Message thread not found" });
   }
 
+  const messageCount = await prisma.message.count({ where: { threadId } });
+
   await prisma.messageThread.delete({
     where: { id: threadId },
+  });
+
+  // CS-29: the thread is gone for good, so record who removed it and its shape.
+  await createAuditLogWithIntegrity({
+    action: "message.thread_deleted",
+    actorId: userId,
+    resourceId: threadId,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: {
+      recipientType: existing.recipientType,
+      assignedClinicianId: existing.assignedClinicianId,
+      messageCount,
+    },
   });
 
   return res.json({ success: true, id: threadId });
