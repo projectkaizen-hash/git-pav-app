@@ -10,6 +10,7 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
   let baseUrl: string;
   const tag = crypto.randomUUID().slice(0, 8);
   const ids = {
+    appointmentTomorrowId: "",
     patientUserId: "",
     clinicianUserId: "",
     otherClinicianUserId: "",
@@ -138,12 +139,29 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
       },
     });
     ids.appointmentFutureId = apptFuture.id;
+
+    // 3. Tomorrow at 09:00 UK time, which a UTC-based check let through.
+    const startTimeTomorrow = londonTimeToUtc(londonDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), 9 * 60);
+    const apptTomorrow = await prisma.appointment.create({
+      data: {
+        patientId: patientProfile.id,
+        clinicianId: clinicianProfile.id,
+        serviceId: service.id,
+        channel: "clinic",
+        startTimeUtc: startTimeTomorrow,
+        endTimeUtc: new Date(startTimeTomorrow.getTime() + 30 * 60 * 1000),
+        status: "confirmed",
+        totalPricePence: service.pricePence,
+        depositPaidPence: 2000,
+      },
+    });
+    ids.appointmentTomorrowId = apptTomorrow.id;
   });
 
   afterAll(async () => {
-    if (ids.appointmentTodayId || ids.appointmentFutureId) {
+    if (ids.appointmentTodayId || ids.appointmentFutureId || ids.appointmentTomorrowId) {
       await prisma.appointment.deleteMany({
-        where: { id: { in: [ids.appointmentTodayId, ids.appointmentFutureId] } },
+        where: { id: { in: [ids.appointmentTodayId, ids.appointmentFutureId, ids.appointmentTomorrowId].filter(Boolean) } },
       });
     }
     if (ids.patientProfileId) {
@@ -344,6 +362,12 @@ describe("CS-28: Clinician Portal (PT-3, MB-4)", () => {
     expect(futureCompleteRes.status).toBe(400);
     const futureCompleteBody: any = await futureCompleteRes.json();
     expect(futureCompleteBody.error).toContain("future date");
+
+    const tomorrowCompleteRes = await fetch(`${baseUrl}/api/booking/appointments/${ids.appointmentTomorrowId}/complete`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${clinicianToken}` },
+    });
+    expect(tomorrowCompleteRes.status).toBe(400);
 
     // Complete today's appointment
     const completeRes = await fetch(`${baseUrl}/api/booking/appointments/${ids.appointmentTodayId}/complete`, {
