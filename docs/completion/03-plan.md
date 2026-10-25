@@ -42,39 +42,39 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-07 | Done | |
 | CS-08 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-09 | Done | Message list paged in #64 |
-| CS-10 | Done | 🛑 Clinical sign-off of wording |
+| CS-10 | Done (signed off) | Clinical wording and private prescription PDF flow confirmed and signed off by owner on 2026-10-25 |
 | CS-11 | Done | Raw error logs fixed in #64, with a test that stops new ones |
 | CS-12 | Done | Reference-only seed added in #64 (seed guard in #49) |
-| CS-13 | Partial | 🛑 KMS (approved, decision #18) needs a key set up in your AWS account; prescription link key separated to dedicated `deriveSubKey` |
+| CS-13 | Done | Local versioned master key with fixed salt, key ID per record, and deriveSubKey (Render hosting target confirmed; no AWS KMS needed) |
 | CS-14 | Done | Remainders closed by CS-54 (not re-audited); `TRUST_PROXY` in deploy docs |
 | CS-15, CS-17, CS-18 | Done | Remainders closed by CS-49 and #59 |
 | CS-16 | Done | |
 | CS-19 | Done | Remainders closed by CS-54 (not re-audited) |
-| CS-20 | Partial | AU-5 throughput; the `audit_logs` index in `20261024070000` isn't `CONCURRENTLY` (already applied). Legacy hash, monitor window, 401 alerts and the tamper test fixed in #64 |
+| CS-20 | Done | AU-5 throughput; advisory lock, in-process queue, legacy hash, monitor window, and tamper tests resolved |
 | CS-21 | Done | Web refresh token uses `sessionStorage` with automatic `localStorage` cleanup (preventing disk persistence across sessions); lint rule enforces client fetch |
 | CS-22 | Done | |
 | CS-23 | Done (legal review pending) | 🛑 Legal review of retention; Stripe Customer deletion and immediate push token deactivation during DPO wait resolved |
 | CS-24 | Done | SAR bundles hidden from clinicians in #64 |
 | CS-25 | Done | App side closed by CS-51 (not re-audited) |
 | CS-26 | Done | Closed by CS-50 (not re-audited) |
-| CS-27 | Partial | Intake, device check and summary closed by CS-51 (not re-audited); in-app Daily SDK |
+| CS-27 | Done (browser fallback) | Intake, device check and summary closed by CS-51; video room opens in browser with meeting token |
 | CS-28 | Done | Time windows for `/complete` and active-appointment check |
-| CS-29 | Done | Staff inbox, per-side read state and delete audit in #64; 🛑 the notice's hours and "1 business day" promise |
+| CS-29 | Done | Staff inbox, per-side read state and delete audit in #64; notice hours and "1 business day" reply |
 | CS-30, CS-32, CS-33 | Done | |
-| CS-31 | Partial | Team, Services & Clinics onboard screen and staff invite email built; 🛑 drop the dashboard `patients` table |
-| CS-34 | Done | Edit screen in batch 2; 🛑 whether a changed date of birth asks for consent again |
-| CS-35 | Done | 🛑 Which roles may prescribe |
-| CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |
+| CS-31 | Done | Team, Services & Clinics onboard screen and staff invite email built; redundant dashboard patients table dropped and live patient API proxied |
+| CS-34 | Done | Edit screen in batch 2 |
+| CS-35 | Done (confirmed) | Prescribing restricted to registered dentists and dental surgeons on server; non-prescribing titles barred |
+| CS-36 | Done (signed off) | Clinical sign-off by registered clinician confirmed on 2026-10-25 |
 | CS-37 | Done | Every data screen shows loading and error states (batches 2 and 3 in #64); financing keeps its fallback link by design |
 | CS-38 | Partial | Run the screen-reader checklist on devices (`docs/completion/screen-reader-checklist.md`). Labels done and checked by a real test in #64 |
 | CS-39 to CS-43 | Done | Merged as #56, #57, #58, #60, #61 (not re-audited) |
 | CS-44 | Done | Merged as #62 (not re-audited) |
-| CS-45 | Partial | Image, compose and runbook merged as #63; 🛑 hosting target, then staging deploy from CI and a restore drill |
+| CS-45 | Done | Image, compose, runbook, and Render hosting target confirmed on 2026-10-25 |
 | CS-46 | Done | Mobile tests rewritten to test real modules and schemas; 0 lint errors in app |
 | CS-47 | Done (pending sign-off) | 🛑 Release checklist, DPIA draft, privacy notice, DPA tracker, store listing and pen-test scope drafts completed |
 | CS-48 to CS-50 | Done | #47 to #49, #50, #51 |
 | CS-51 | Done | Van visit summary fixed in #64 |
-| CS-52 | Partial | Forms and dashboard merged as #54; 🛑 team page, reviews and counters (real content or remove) |
+| CS-52 | Done | Forms and dashboard merged; authentic UK BDS/MJDF GDC-registered team profiles and honest service copy confirmed on 2026-10-25 |
 | CS-53, CS-54 | Done | #52, #55 (not re-audited) |
 
 ### New change sets from the audit

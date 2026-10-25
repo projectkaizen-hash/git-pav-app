@@ -98,7 +98,7 @@ export function HeroSlider() {
           <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
             <li>GDC registered</li>
             <li>Same-day appointments</li>
-            <li>500+ patients</li>
+            <li>West Yorkshire & Mobile Clinic</li>
           </ul>
         </div>
 

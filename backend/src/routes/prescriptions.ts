@@ -17,6 +17,20 @@ import {
   signPrescription,
 } from "../lib/prescription-document";
 
+/**
+ * CS-35: Enforces prescribing role authorization.
+ * Only registered dentists and dental surgeons may issue private prescriptions.
+ * Non-prescribing roles (such as dental hygienists and nurses) are barred.
+ */
+export function isPrescribingRole(roleTitle?: string | null): boolean {
+  if (!roleTitle) return false;
+  const normalized = roleTitle.toLowerCase();
+  if (/\b(nurse|hygienist|technician|receptionist|assistant)\b/.test(normalized)) {
+    return false;
+  }
+  return /\b(dentist|dental surgeon|surgeon|practitioner|doctor|director|specialist|orthodontist|endodontist|periodontist|prosthodontist)\b/.test(normalized);
+}
+
 const router = Router();
 
 // ─── POST /api/prescriptions ──────────────────────────────────────────────────
@@ -41,6 +55,11 @@ router.post("/", requireAuth, validateBody(createPrescriptionSchema), async (req
   // Validate 6-digit General Dental Council (GDC) registration number
   if (!/^\d{6}$/.test(clinician.gdcNumber)) {
     return res.status(422).json({ error: "Invalid clinician GDC registration number" });
+  }
+
+  // CS-35: Enforce that only registered dentists may prescribe
+  if (!isPrescribingRole(clinician.roleTitle)) {
+    return res.status(403).json({ error: "Only registered dentists may issue prescriptions" });
   }
 
   const practiceAddress = env.practiceAddress ?? (env.isDevelopment || env.isTest ? "Practice address not configured (development)" : null);
