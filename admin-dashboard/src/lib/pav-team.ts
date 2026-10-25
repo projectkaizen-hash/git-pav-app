@@ -35,6 +35,17 @@ export interface TeamVan {
   assignments: { operator: { fullName: string } | null }[];
 }
 
+export interface TeamClinic {
+  id: string;
+  name: string;
+  address: string;
+  postcode: string;
+  city: string;
+  phone: string;
+  operatingHours?: string;
+  isActive: boolean;
+}
+
 export interface StaffCreated {
   id: string;
   email: string;
@@ -133,4 +144,24 @@ export function vanPayload(form: {
   if (registrationPlate.length < 2) return { ok: false, error: "Enter the registration plate" };
   if (vehicleModel.length < 2) return { ok: false, error: "Enter the vehicle model" };
   return { ok: true, payload: { name, registrationPlate, vehicleModel } };
+}
+
+export function clinicPayload(form: {
+  name: string;
+  address: string;
+  postcode: string;
+  city: string;
+  phone: string;
+}): Result<{ name: string; address: string; postcode: string; city: string; phone: string }> {
+  const name = form.name.trim();
+  const address = form.address.trim();
+  const postcode = form.postcode.trim().toUpperCase();
+  const city = form.city.trim();
+  const phone = form.phone.trim();
+  if (name.length < 2) return { ok: false, error: "Enter a clinic name" };
+  if (address.length < 2) return { ok: false, error: "Enter the clinic address" };
+  if (postcode.length < 2) return { ok: false, error: "Enter the clinic postcode" };
+  if (city.length < 2) return { ok: false, error: "Enter the city" };
+  if (phone.length < 5) return { ok: false, error: "Enter a phone number" };
+  return { ok: true, payload: { name, address, postcode, city, phone } };
 }
