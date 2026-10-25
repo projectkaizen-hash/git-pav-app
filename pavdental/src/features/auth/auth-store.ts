@@ -39,8 +39,13 @@ interface AuthState {
   updateUser: (patch: Partial<AuthUser>) => void;
 }
 
+// The fake signed-in patient exists only for screenshot builds made with
+// EXPO_PUBLIC_DEMO_LOGIN=true (see scripts/capture.sh). Any other build ignores
+// ?demo=patient and the pav_demo_patient flag.
+const demoLoginEnabled = process.env.EXPO_PUBLIC_DEMO_LOGIN === "true";
+
 const getInitialUser = (): { token: string | null; user: AuthUser | null; isHydrating: boolean } => {
-  if (typeof window !== "undefined") {
+  if (demoLoginEnabled && typeof window !== "undefined") {
     try {
       if (window.location?.search?.includes("demo=patient") || window.localStorage?.getItem("pav_demo_patient") === "true") {
         return {
