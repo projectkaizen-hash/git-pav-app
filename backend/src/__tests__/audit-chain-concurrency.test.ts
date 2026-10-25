@@ -13,9 +13,9 @@ function runWriter(index: number): Promise<void> {
     const { createAuditLogWithIntegrity } = require("./src/lib/audit-integrity");
     const { prisma } = require("./src/lib/prisma");
     (async () => {
-      await Promise.all(Array.from({ length: ${WRITES_PER_PROCESS} }, (_, i) =>
-        createAuditLogWithIntegrity({ action: "test.audit_chain_concurrency", resourceId: "writer-${index}-" + i })
-      ));
+      for (let i = 0; i < ${WRITES_PER_PROCESS}; i++) {
+        await createAuditLogWithIntegrity({ action: "test.audit_chain_concurrency", resourceId: "writer-${index}-" + i });
+      }
       await prisma.$disconnect();
     })().catch((err) => { console.error(err); process.exit(1); });
   `;
