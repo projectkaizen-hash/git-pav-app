@@ -651,8 +651,8 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
 
       if (appt) {
         // Stripe charge.amount_refunded is cumulative. Deposit is captured amount minus cumulative refunded amount (CS-49)
-        const capturedPence = charge.amount_captured || (appt.depositPaidPence || 0) + (charge.amount_refunded || 0);
-        const newDeposit = Math.max(0, capturedPence - (charge.amount_refunded || 0));
+        const totalCaptured = charge.amount_captured ?? charge.amount ?? (appt.depositPaidPence || 0);
+        const newDeposit = Math.max(0, totalCaptured - (charge.amount_refunded || 0));
         await prisma.appointment.update({
           where: { id: appt.id },
           data: { depositPaidPence: newDeposit },

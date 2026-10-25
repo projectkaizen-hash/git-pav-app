@@ -62,8 +62,16 @@ describe("CS-49: Payment and refund integrity", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { patientProfile: true } });
     patientId = user.patientProfile!.id;
 
+    const adminUser = await prisma.user.create({
+      data: {
+        email: `admin-${Date.now()}@example.test`,
+        passwordHash: "x",
+        role: "admin",
+      },
+    });
+
     adminToken = signAccessToken({
-      sub: crypto.randomUUID(),
+      sub: adminUser.id,
       role: "admin",
       sessionId: crypto.randomUUID(),
     });
@@ -135,8 +143,8 @@ describe("CS-49: Payment and refund integrity", () => {
       metadata: { appointmentId: appt.id },
     });
 
-    // 2. Patient cancels the appointment via POST /api/cancellations/:id
-    const cancelRes = await fetch(`${baseUrl}/api/cancellations/${appt.id}`, {
+    // 2. Patient cancels the appointment via POST /api/booking/appointments/:id/cancel
+    const cancelRes = await fetch(`${baseUrl}/api/booking/appointments/${appt.id}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${patientToken}` },
       body: JSON.stringify({ reason: "Cannot make it" }),
@@ -285,5 +293,21 @@ describe("CS-49: Payment and refund integrity", () => {
     const meta = audit?.metadata as any;
     expect(meta?.fromStatus).toBe("draft_hold");
     expect(meta?.toStatus).toBe("cancelled");
+  });
+
+  afterAll(async () => {
+    if (createdApptIds.length > 0) {
+      await prisma.appointment.deleteMany({ where: { id: { in: createdApptIds } } });
+    }
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    try {
+      const { redis } = require("../lib/redis");
+      await redis.quit();
+    } catch {}
+    await prisma.$disconnect();
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   });
 });
