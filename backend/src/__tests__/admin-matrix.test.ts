@@ -2,6 +2,7 @@ import http from "http";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma";
 import { signAccessToken } from "../lib/jwt";
+import { communicationService } from "../lib/communication-service";
 
 describe("CS-31: Back office onboarding and admin-only authorization matrix (AD-1)", () => {
   let server: http.Server;
@@ -392,6 +393,59 @@ describe("CS-31: Back office onboarding and admin-only authorization matrix (AD-
         },
       });
       expect(pendingReminders).toBe(0);
+    });
+  });
+  describe("Staff invites", () => {
+    it("emails a set-password link to staff added without a password, and the link works", async () => {
+      const sent: Array<{ to: string; subject: string; text?: string }> = [];
+      const spy = jest.spyOn(communicationService, "sendEmail").mockImplementation(async (payload: any) => {
+        sent.push(payload);
+        return { success: true, messageId: "mock" };
+      });
+      try {
+        const email = `invite-operator-${tag}@example.test`;
+        const res = await fetch(`${baseUrl}/api/admin/operators`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ email, fullName: "Synthetic Operator" }),
+        });
+        expect(res.status).toBe(201);
+        expect(((await res.json()) as any).inviteSent).toBe(true);
+
+        const invite = sent.find((m) => m.to === email);
+        expect(invite?.subject).toBe("Set up your Pav Dental account");
+        const token = /token=([^\s&]+)/.exec(invite?.text ?? "")?.[1];
+        expect(token).toBeTruthy();
+
+        const confirm = await fetch(`${baseUrl}/api/auth/password-reset/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: decodeURIComponent(token!), newPassword: "Synthetic1Pass" }),
+        });
+        expect(confirm.status).toBe(200);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("sends no invite when the admin sets a password", async () => {
+      const spy = jest.spyOn(communicationService, "sendEmail").mockResolvedValue({ success: true } as any);
+      try {
+        const res = await fetch(`${baseUrl}/api/admin/operators`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: `invite-none-${tag}@example.test`,
+            fullName: "Synthetic Operator Two",
+            password: "Synthetic1Pass",
+          }),
+        });
+        expect(res.status).toBe(201);
+        expect(((await res.json()) as any).inviteSent).toBe(false);
+        expect(spy).not.toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 });

@@ -7,6 +7,9 @@ import { prisma } from "../lib/prisma";
 import { awardVisitPoints } from "../lib/rewards";
 import { cancelAppointmentReminders } from "../lib/background-jobs";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { passwordResetService } from "../lib/otp-service";
+import { communicationService } from "../lib/communication-service";
+import { safeError } from "../lib/log-safety";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
 import { validateParams, validateQuery, validateBody } from "../middleware/validate";
@@ -433,7 +436,10 @@ router.post("/clinicians", requireAuth, requireRole("admin"), validateBody(creat
     metadata: { clinicianId: result.profile.id, gdcNumber },
   });
 
+  const inviteSent = password ? false : await sendStaffInvite(result.user.id, result.user.email, "clinician");
+
   return res.status(201).json({
+    inviteSent,
     id: result.profile.id,
     userId: result.user.id,
     email: result.user.email,
@@ -447,6 +453,22 @@ router.post("/clinicians", requireAuth, requireRole("admin"), validateBody(creat
     createdAt: result.profile.createdAt,
   });
 });
+
+// Staff added without a password get an emailed link to set their own.
+const STAFF_INVITE_TTL_MS = 72 * 60 * 60 * 1000;
+
+async function sendStaffInvite(userId: string, email: string, roleLabel: string): Promise<boolean> {
+  try {
+    const { token, hashedToken } = passwordResetService.generateResetToken();
+    await prisma.passwordResetToken.create({
+      data: { userId, token: hashedToken, expiresAt: new Date(Date.now() + STAFF_INVITE_TTL_MS) },
+    });
+    return await communicationService.sendStaffInviteEmail(email, token, roleLabel);
+  } catch (err) {
+    console.error("[ADMIN] Staff invite failed:", safeError(err));
+    return false;
+  }
+}
 
 // ─── POST /api/admin/operators ────────────────────────────────────────────────
 // Onboards a van operator without direct SQL
@@ -489,7 +511,10 @@ router.post("/operators", requireAuth, requireRole("admin"), validateBody(create
     metadata: { operatorId: result.profile.id },
   });
 
+  const inviteSent = password ? false : await sendStaffInvite(result.user.id, result.user.email, "van operator");
+
   return res.status(201).json({
+    inviteSent,
     id: result.profile.id,
     userId: result.user.id,
     email: result.user.email,
