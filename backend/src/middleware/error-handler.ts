@@ -24,13 +24,21 @@ export class HttpError extends Error {
  */
 function getOrSetRequestId(req: Request, res?: Response): string {
   if (req.id) return req.id;
-  const fromHeader = req.headers["x-request-id"];
+  const fromHeader = req.headers?.["x-request-id"];
+  const fromResHeader =
+    typeof res?.getHeader === "function"
+      ? (res.getHeader("x-request-id") as string | undefined)
+      : undefined;
   const id =
     typeof fromHeader === "string" && fromHeader.trim().length > 0
       ? fromHeader.trim()
-      : (res?.getHeader("x-request-id") as string | undefined) ?? crypto.randomUUID();
+      : fromResHeader ?? crypto.randomUUID();
   req.id = id;
-  if (res && !res.getHeader("x-request-id")) {
+  if (
+    typeof res?.setHeader === "function" &&
+    typeof res?.getHeader === "function" &&
+    !res.getHeader("x-request-id")
+  ) {
     res.setHeader("x-request-id", id);
   }
   return id;
