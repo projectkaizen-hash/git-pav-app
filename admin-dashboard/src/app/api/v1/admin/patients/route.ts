@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     queryParams.set("limit", String(limit));
     if (search) queryParams.set("search", search);
 
-    const res = await pavApi.get(`/api/admin/users?${queryParams.toString()}`);
+    const res = await pavApi(`/api/admin/users?${queryParams.toString()}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return NextResponse.json(
