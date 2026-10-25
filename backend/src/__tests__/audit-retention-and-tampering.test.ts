@@ -8,6 +8,7 @@ import {
   verifyAuditIntegrity,
   applyAuditRetentionPolicy,
   isCriticalAuditEvent,
+  LEGACY_AUDIT_HASH_CUTOFF,
 } from "../lib/audit-integrity";
 import { communicationService } from "../lib/communication-service";
 
@@ -178,7 +179,19 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
       try {
         const check = await verifyAuditIntegrity({ fromId: logA.id });
         expect(check.valid).toBe(false);
-        expect(check.issues.length).toBeGreaterThanOrEqual(1);
+        // The row that chained off B is the one that breaks. That's C, unless
+        // another suite wrote a row between B and C.
+        const afterB = await prisma.auditLog.findFirstOrThrow({
+          where: {
+            OR: [
+              { timestampUtc: { gt: logB.timestampUtc } },
+              { timestampUtc: logB.timestampUtc, id: { gt: logB.id } },
+            ],
+          },
+          orderBy: [{ timestampUtc: "asc" }, { id: "asc" }],
+        });
+        expect(afterB.id <= logC.id).toBe(true);
+        expect(check.issues.some((i) => i.includes(`log ${afterB.id} `))).toBe(true);
       } finally {
         // Restore row so concurrent test suites in CI don't see a broken chain
         await prisma.auditLog.create({
@@ -236,7 +249,69 @@ describe("CS-20: Audit chain across replicas, retention, and security outcomes",
     });
   });
 
+  describe("AU-3: the old unkeyed hash", () => {
+    it("is refused on a row written after keyed hashes shipped", async () => {
+      const log = await createAuditLogWithIntegrity({ action: "legacy.hash.forgery" });
+      expect(log.timestampUtc > LEGACY_AUDIT_HASH_CUTOFF).toBe(true);
+      const predecessor = await prisma.auditLog.findFirstOrThrow({
+        where: {
+          OR: [
+            { timestampUtc: { lt: log.timestampUtc } },
+            { timestampUtc: log.timestampUtc, id: { lt: log.id } },
+          ],
+        },
+        orderBy: [{ timestampUtc: "desc" }, { id: "desc" }],
+      });
+      // What anyone without the HMAC secret can compute for a rewritten row.
+      const forged = crypto
+        .createHash("sha256")
+        .update(
+          (predecessor.integrityHash || "") +
+            JSON.stringify({
+              action: log.action,
+              actorId: log.actorId,
+              resourceId: log.resourceId,
+              timestamp: log.timestampUtc.toISOString(),
+            })
+        )
+        .digest("hex");
+
+      await prisma.auditLog.update({ where: { id: log.id }, data: { integrityHash: forged } });
+      try {
+        const check = await verifyAuditIntegrity({ fromId: log.id, limit: 1 });
+        expect(check.valid).toBe(false);
+        expect(check.issues.some((i) => i.includes(`log ${log.id} `))).toBe(true);
+      } finally {
+        await prisma.auditLog.update({ where: { id: log.id }, data: { integrityHash: log.integrityHash } });
+      }
+    });
+  });
+
+  describe("monitoring window", () => {
+    it("checks the newest rows when asked", async () => {
+      const log = await createAuditLogWithIntegrity({ action: "newest.window.entry" });
+      const newestRow = await prisma.auditLog.findFirstOrThrow({
+        where: { archived: false },
+        orderBy: [{ timestampUtc: "desc" }, { id: "desc" }],
+      });
+      expect(newestRow.id >= log.id).toBe(true);
+
+      await prisma.auditLog.update({ where: { id: newestRow.id }, data: { integrityHash: "0".repeat(64) } });
+      try {
+        const check = await verifyAuditIntegrity({ limit: 5, newest: true });
+        expect(check.issues.some((i) => i.includes(`log ${newestRow.id} `))).toBe(true);
+      } finally {
+        await prisma.auditLog.update({ where: { id: newestRow.id }, data: { integrityHash: newestRow.integrityHash } });
+      }
+    });
+  });
+
   describe("AU-6: Critical event alerts", () => {
+    it("doesn't treat a missing or expired token (401) as a critical event", () => {
+      expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 401)).toBe(false);
+      expect(isCriticalAuditEvent("GET /api/admin/users", 401)).toBe(false);
+    });
+
     it("recognizes 403 denied attempts on patient data as critical audit events", () => {
       expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 403)).toBe(true);
       expect(isCriticalAuditEvent("GET /api/patients/:id/profile", 200)).toBe(false);

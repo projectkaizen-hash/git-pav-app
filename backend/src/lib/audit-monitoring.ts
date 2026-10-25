@@ -21,7 +21,7 @@ export function startAuditMonitoring() {
   // Integrity verification every hour
   integrityCheckTimer = setInterval(async () => {
     try {
-      const result = await verifyAuditIntegrity(1000);
+      const result = await verifyAuditIntegrity({ limit: 1000, newest: true });
       if (!result.verified) {
         console.error("[AUDIT INTEGRITY] Integrity check failed:", result.issues);
         await communicationService.sendEmail({
@@ -74,7 +74,7 @@ export function startAuditMonitoring() {
 async function runInitialChecks() {
   try {
     console.log("[AUDIT MONITORING] Running initial integrity check");
-    const integrityResult = await verifyAuditIntegrity(1000);
+    const integrityResult = await verifyAuditIntegrity({ limit: 1000, newest: true });
     if (!integrityResult.verified) {
       console.error("[AUDIT MONITORING] Initial integrity check failed:", integrityResult.issues);
     } else {
@@ -115,7 +115,7 @@ export function stopAuditMonitoring() {
 
 // Manual trigger for integrity check (for health checks)
 export async function manualIntegrityCheck() {
-  return verifyAuditIntegrity(1000);
+  return verifyAuditIntegrity({ limit: 1000, newest: true });
 }
 
 // Manual trigger for retention policy (for admin operations)

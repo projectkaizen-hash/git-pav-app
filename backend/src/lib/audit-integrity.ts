@@ -201,8 +201,14 @@ export type VerifyAuditOptions =
       limit?: number;
       offset?: number;
       windowHours?: number;
+      /** Check the most recent rows instead of the oldest. */
+      newest?: boolean;
       fromId?: bigint;
     };
+
+// Rows from before keyed hashes (AU-3) shipped may carry the old unkeyed
+// SHA-256. Anything later must carry the HMAC, or the HMAC means nothing.
+export const LEGACY_AUDIT_HASH_CUTOFF = new Date("2026-10-25T00:00:00Z");
 
 // Verify audit log integrity by checking hash chain (AU-2, AU-3)
 export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
@@ -212,6 +218,7 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
   const offset = typeof options === "object" ? options.offset ?? 0 : 0;
   const windowHours = typeof options === "object" ? options.windowHours : undefined;
   const fromId = typeof options === "object" ? options.fromId : undefined;
+  const newest = typeof options === "object" ? options.newest ?? false : false;
 
   const whereClause: any = { archived: false };
   if (windowHours) {
@@ -221,9 +228,10 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
     whereClause.id = { gte: fromId };
   }
 
-  const logs = await prisma.auditLog.findMany({
+  const order = newest ? "desc" : "asc";
+  const rows = await prisma.auditLog.findMany({
     where: whereClause,
-    orderBy: [{ timestampUtc: "asc" }, { id: "asc" }],
+    orderBy: [{ timestampUtc: order }, { id: order }],
     take: limit,
     skip: offset,
     select: {
@@ -238,6 +246,8 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
       integrityHash: true,
     },
   });
+
+  const logs = newest ? rows.reverse() : rows;
 
   if (logs.length === 0) {
     return {
@@ -270,6 +280,7 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
   }
 
   const issues: string[] = [];
+  let seenKeyedHash = false;
 
   for (const log of logs) {
     if (!log.integrityHash) {
@@ -289,8 +300,11 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
 
     const expectedHmac = computeAuditIntegrityHash(previousHash, dataString);
 
-    if (log.integrityHash !== expectedHmac) {
-      // Check legacy SHA-256 for backward compatibility with pre-AU-3 rows
+    if (log.integrityHash === expectedHmac) {
+      seenKeyedHash = true;
+    } else {
+      // Old unkeyed SHA-256, accepted only for pre-AU-3 rows and never after a keyed one
+      const legacyAllowed = !seenKeyedHash && log.timestampUtc < LEGACY_AUDIT_HASH_CUTOFF;
       const legacyDataString = JSON.stringify({
         action: log.action,
         actorId: log.actorId,
@@ -302,7 +316,7 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
         .update(previousHash + legacyDataString)
         .digest("hex");
 
-      if (log.integrityHash !== legacySha256) {
+      if (!legacyAllowed || log.integrityHash !== legacySha256) {
         issues.push(`Integrity check failed for log ${log.id} at ${log.timestampUtc.toISOString()}`);
       }
     }
@@ -367,7 +381,9 @@ const CRITICAL_ACTIONS = [
 ];
 
 export function isCriticalAuditEvent(action: string, statusCode?: number): boolean {
-  if (statusCode === 403 || statusCode === 401) {
+  // A 401 is a missing or expired token, which happens all day; only a
+  // signed-in user refused access (403) is worth waking someone for.
+  if (statusCode === 403) {
     // AU-4 / AU-6: Access denied on sensitive patient, clinical, or admin endpoints
     if (
       action.includes("/patients") ||
