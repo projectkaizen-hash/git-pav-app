@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "./auth";
 import { pseudonymiseIp } from "../lib/audit-security";
 import { createAuditLogWithIntegrity, isCriticalAuditEvent, sendCriticalAuditAlert } from "../lib/audit-integrity";
+import { safeError } from "../lib/log-safety";
 
 // List of field names that may contain special-category clinical data
 const CLINICAL_DATA_FIELDS = [
@@ -134,7 +135,7 @@ export async function auditMiddleware(
       }
     } catch (err) {
       // Audit failures must never break the request
-      console.error("[AUDIT FAILURE]", err);
+      console.error("[AUDIT FAILURE]", safeError(err));
     }
   });
   next();

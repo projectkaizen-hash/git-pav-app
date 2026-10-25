@@ -1,6 +1,7 @@
 import { verifyAuditIntegrity, applyAuditRetentionPolicy, checkAuditFailures } from "./audit-integrity";
 import { communicationService } from "./communication-service";
 import { env } from "../config/env";
+import { safeError } from "./log-safety";
 
 // Audit monitoring configuration
 const AUDIT_CONFIG = {
@@ -34,7 +35,7 @@ export function startAuditMonitoring() {
         console.log(`[AUDIT INTEGRITY] Verified ${result.checkedCount} audit logs`);
       }
     } catch (error) {
-      console.error("[AUDIT INTEGRITY] Integrity check error:", error);
+      console.error("[AUDIT INTEGRITY] Integrity check error:", safeError(error));
     }
   }, AUDIT_CONFIG.integrityCheckIntervalMs);
 
@@ -44,7 +45,7 @@ export function startAuditMonitoring() {
       const result = await applyAuditRetentionPolicy(AUDIT_CONFIG.retentionDays);
       console.log(`[AUDIT RETENTION] ${result.message}`);
     } catch (error) {
-      console.error("[AUDIT RETENTION] Retention policy error:", error);
+      console.error("[AUDIT RETENTION] Retention policy error:", safeError(error));
     }
   }, AUDIT_CONFIG.retentionCheckIntervalMs);
 
@@ -62,7 +63,7 @@ export function startAuditMonitoring() {
         }).catch(() => {});
       }
     } catch (error) {
-      console.error("[AUDIT FAILURES] Failure check error:", error);
+      console.error("[AUDIT FAILURES] Failure check error:", safeError(error));
     }
   }, AUDIT_CONFIG.failureCheckIntervalMs);
 
@@ -81,7 +82,7 @@ async function runInitialChecks() {
       console.log(`[AUDIT MONITORING] Initial integrity check passed: ${integrityResult.checkedCount} logs verified`);
     }
   } catch (error) {
-    console.error("[AUDIT MONITORING] Initial integrity check error:", error);
+    console.error("[AUDIT MONITORING] Initial integrity check error:", safeError(error));
   }
 
   try {
@@ -89,7 +90,7 @@ async function runInitialChecks() {
     const failureResult = await checkAuditFailures();
     console.log(`[AUDIT MONITORING] Initial failure check: ${failureResult.failureCount} failures in 24h`);
   } catch (error) {
-    console.error("[AUDIT MONITORING] Initial failure check error:", error);
+    console.error("[AUDIT MONITORING] Initial failure check error:", safeError(error));
   }
 }
 

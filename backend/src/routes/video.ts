@@ -13,6 +13,7 @@ import { checkRedFlags, TriageData } from "../lib/triage-escalation";
 import { encryptField, decryptField } from "../lib/encryption";
 import { cancelAppointmentReminders } from "../lib/background-jobs";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 
@@ -238,7 +239,7 @@ router.post("/upload-triage-photo", requireAuth, upload.single("photo"), async (
       sha256: uploaded.sha256,
     });
   } catch (error) {
-    console.error("[TRIAGE PHOTO UPLOAD ERROR]", error);
+    console.error("[TRIAGE PHOTO UPLOAD ERROR]", safeError(error));
     return res.status(500).json({ error: "Failed to upload triage photo" });
   }
 });

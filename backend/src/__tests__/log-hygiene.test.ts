@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import type { Request, Response } from "express";
 import { errorHandler } from "../middleware/error-handler";
 import { CommunicationService } from "../lib/communication-service";
@@ -128,5 +130,34 @@ describe("communication service without a provider (deployed)", () => {
         cap.restore();
       }
     });
+  });
+});
+
+describe("console calls in server code", () => {
+  // A raw Prisma or Stripe error can quote names, emails or notes, so errors
+  // go through safeError before they reach a log (CS-11).
+  const rawErrorArg = /console\.(log|warn|error)\(.*,\s*(err|error|e|\w+Err|\w+Error)(\.message)?\)\s*;?\s*$/;
+
+  function* sourceFiles(dir: string): Generator<string> {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "__tests__") yield* sourceFiles(full);
+      } else if (entry.name.endsWith(".ts") && entry.name !== "e2e-suite.ts") {
+        yield full;
+      }
+    }
+  }
+
+  it("never log a raw error object or message", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(path.join(__dirname, ".."))) {
+      fs.readFileSync(file, "utf8")
+        .split("\n")
+        .forEach((line, i) => {
+          if (rawErrorArg.test(line)) offenders.push(`${path.relative(process.cwd(), file)}:${i + 1}`);
+        });
+    }
+    expect(offenders).toEqual([]);
   });
 });

@@ -33,6 +33,7 @@ import {
   calculateDistance,
   getPolygonCentroid,
 } from "./geo";
+import { safeError } from "./log-safety";
 
 export type CoverageBackendMode = "postgis" | "js";
 
@@ -116,7 +117,7 @@ export async function findCoveringVans(point: Point): Promise<VanCoverageMatch[]
     try {
       return await findCoveringVansPostgis(point);
     } catch (err) {
-      console.warn("[VAN COVERAGE] PostGIS query failed — falling back to JS:", err);
+      console.warn("[VAN COVERAGE] PostGIS query failed — falling back to JS:", safeError(err));
       backendCache = { mode: "js", reason: "postgis query failed", failedAt: Date.now() };
     }
   }
@@ -196,7 +197,7 @@ export async function getOnlineShiftsCoveringPoint(point: Point) {
       const coveringVanIds = new Set((await findCoveringVansPostgis(point)).map((m) => m.vanId));
       return shifts.filter((s) => coveringVanIds.has(s.vanId));
     } catch (err) {
-      console.warn("[VAN COVERAGE] PostGIS shift query failed — falling back to JS:", err);
+      console.warn("[VAN COVERAGE] PostGIS shift query failed — falling back to JS:", safeError(err));
       backendCache = { mode: "js", reason: "postgis query failed", failedAt: Date.now() };
     }
   }

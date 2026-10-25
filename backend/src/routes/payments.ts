@@ -13,6 +13,7 @@ import { sendPatientNotification } from "../lib/patient-push";
 import { applyDepositVoucher, depositDuePence } from "../lib/rewards";
 import { customerEphemeralKey, ensureStripeCustomer } from "../lib/stripe-customer";
 import { releaseVanDeposit } from "../lib/van-payments";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 const isMockStripe = env.isMockStripe;
@@ -356,7 +357,7 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
 
       if (result.count === 1) {
         await scheduleAppointmentReminderLadder(appointmentId).catch((err) => {
-          console.error("[Stripe Webhook] Failed to schedule reminders:", err);
+          console.error("[Stripe Webhook] Failed to schedule reminders:", safeError(err));
         });
       } else {
         // Not confirmed by this event. Fine if it is already confirmed / completed
@@ -420,7 +421,7 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
               data: { depositPaidPence: intent.amount_received },
             })
             .catch((err) =>
-              console.error("[Stripe Webhook] Van deposit sync failed:", err)
+              console.error("[Stripe Webhook] Van deposit sync failed:", safeError(err))
             );
         }
 
@@ -476,7 +477,7 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
               },
             })
             .catch((err) =>
-              console.error("[Stripe Webhook] Failed to update terminal van request release status:", err)
+              console.error("[Stripe Webhook] Failed to update terminal van request release status:", safeError(err))
             );
         }
       }

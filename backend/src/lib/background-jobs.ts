@@ -6,6 +6,7 @@ import { releaseVanDeposit } from "./van-payments";
 import { sendPatientNotification } from "./patient-push";
 import { awardMissedVisitPoints } from "./rewards";
 import { runRetentionSweep } from "./retention";
+import { safeError } from "./log-safety";
 
 // Interval settings
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
@@ -145,7 +146,7 @@ export async function processExpiredSlotHolds(): Promise<{ expiredCount: number 
     console.log(`[BACKGROUND JOBS] Expired ${expiredRows.length} draft holds`);
     return { expiredCount: expiredRows.length };
   } catch (error) {
-    console.error("[BACKGROUND JOBS] Error processing expired slot holds:", error);
+    console.error("[BACKGROUND JOBS] Error processing expired slot holds:", safeError(error));
     return { expiredCount: 0 };
   }
 }
@@ -301,7 +302,7 @@ export async function processDueScheduledNotifications(): Promise<{ dispatchedCo
 
     return { dispatchedCount };
   } catch (error) {
-    console.error("[BACKGROUND JOBS] Error processing scheduled notifications:", error);
+    console.error("[BACKGROUND JOBS] Error processing scheduled notifications:", safeError(error));
     return { dispatchedCount: 0 };
   }
 }
@@ -398,7 +399,7 @@ export async function scheduleAppointmentReminderLadder(appointmentId: string): 
 
     console.log(`[BACKGROUND JOBS] Scheduled reminder ladder for appointment ${appointmentId}`);
   } catch (error) {
-    console.error(`[BACKGROUND JOBS] Failed to schedule reminder ladder for ${appointmentId}:`, error);
+    console.error(`[BACKGROUND JOBS] Failed to schedule reminder ladder for ${appointmentId}:`, safeError(error));
   }
 }
 
@@ -419,7 +420,7 @@ export async function cancelAppointmentReminders(appointmentId: string): Promise
     });
     return deleted.count;
   } catch (error) {
-    console.error(`[BACKGROUND JOBS] Failed to cancel reminders for appointment ${appointmentId}:`, error);
+    console.error(`[BACKGROUND JOBS] Failed to cancel reminders for appointment ${appointmentId}:`, safeError(error));
     return 0;
   }
 }
@@ -509,7 +510,7 @@ export async function processExpiredVanRequests(): Promise<{ expiredCount: numbe
     }
     return { expiredCount };
   } catch (error) {
-    console.error("[BACKGROUND JOBS] Error expiring van requests:", error);
+    console.error("[BACKGROUND JOBS] Error expiring van requests:", safeError(error));
     return { expiredCount: 0 };
   }
 }
@@ -562,7 +563,7 @@ export async function retryFailedVanDepositReleases(): Promise<{ retriedCount: n
     }
     return { retriedCount: failed.length, succeededCount };
   } catch (error) {
-    console.error("[BACKGROUND JOBS] Error retrying failed van deposit releases:", error);
+    console.error("[BACKGROUND JOBS] Error retrying failed van deposit releases:", safeError(error));
     return { retriedCount: 0, succeededCount: 0 };
   }
 }

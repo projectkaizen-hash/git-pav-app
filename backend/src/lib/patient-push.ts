@@ -9,6 +9,7 @@
 
 import { prisma } from "./prisma";
 import { communicationService } from "./communication-service";
+import { safeError } from "./log-safety";
 
 export async function sendPatientNotification(
   patientId: string,
@@ -60,6 +61,6 @@ export async function sendPatientNotification(
       },
     });
   } catch (error) {
-    console.error("Failed to send patient notification:", error);
+    console.error("Failed to send patient notification:", safeError(error));
   }
 }

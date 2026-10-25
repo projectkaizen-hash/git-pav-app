@@ -14,6 +14,7 @@ import { releaseVanDeposit } from "../lib/van-payments";
 import { cancelAppointmentReminders } from "../lib/background-jobs";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { pseudonymiseIp } from "../lib/audit-security";
+import { safeError } from "../lib/log-safety";
 
 export { appointmentRefundPolicy } from "../lib/cancellation-policy";
 
@@ -170,7 +171,7 @@ async function handleAppointmentCancel(req: AuthRequest, res: Response) {
         );
         stripeRefundId = refund.id;
       } catch (refundErr) {
-        console.error("[Cancellations] Stripe refund failed:", refundErr);
+        console.error("[Cancellations] Stripe refund failed:", safeError(refundErr));
       }
     } else if (isMockStripe) {
       stripeRefundId = `re_mock_${Date.now()}`;

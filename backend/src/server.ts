@@ -339,7 +339,7 @@ if (require.main === module) {
     // polygon geometry when PostGIS is available, and defuse the derived-
     // geometry trigger when it is not.
     getCoverageBackend().catch((err) =>
-      console.warn("[VAN COVERAGE] Startup probe failed:", err)
+      console.warn("[VAN COVERAGE] Startup probe failed:", safeError(err))
     );
   });
 }

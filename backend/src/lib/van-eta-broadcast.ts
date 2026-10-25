@@ -21,6 +21,7 @@
 import { prisma } from "./prisma";
 import { etaSecondsToNewPatient, Point } from "./van-eta";
 import { sendPatientNotification } from "./patient-push";
+import { safeError } from "./log-safety";
 
 const DRIFT_MINUTES = parseInt(process.env.ETA_PUSH_DRIFT_MINUTES ?? "5", 10);
 const THROTTLE_MINUTES = parseInt(process.env.ETA_PUSH_THROTTLE_MINUTES ?? "10", 10);
@@ -112,7 +113,7 @@ export async function broadcastEtaUpdates(
         { lat: stop.patientLat, lng: stop.patientLng }
       );
     } catch (err) {
-      console.error("[VAN ETA PUSH] recompute failed:", err);
+      console.error("[VAN ETA PUSH] recompute failed:", safeError(err));
       outcomes[stop.id] = "no_change";
       continue;
     }
@@ -156,7 +157,7 @@ export async function broadcastEtaUpdates(
 
       outcomes[stop.id] = "pushed";
     } catch (err) {
-      console.error("[VAN ETA PUSH] push/persist failed:", err);
+      console.error("[VAN ETA PUSH] push/persist failed:", safeError(err));
       outcomes[stop.id] = "no_change";
     }
   }

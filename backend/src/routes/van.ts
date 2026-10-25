@@ -38,6 +38,7 @@ import {
 } from "../lib/van-payments";
 import { sendPatientNotification } from "../lib/patient-push";
 import { customerEphemeralKey, ensureStripeCustomer } from "../lib/stripe-customer";
+import { safeError } from "../lib/log-safety";
 
 const router = Router();
 const isMockStripe = env.isMockStripe;
@@ -119,7 +120,7 @@ async function decryptAccessDetails(accessDetails: any): Promise<any> {
     try {
       decrypted.gateCode = await clinicalRecordEncryptionService.decryptField(accessDetails.gateCode);
     } catch (error) {
-      console.error('Failed to decrypt gateCode:', error);
+      console.error('Failed to decrypt gateCode:', safeError(error));
       decrypted.gateCode = '[ENCRYPTED]';
     }
   }
@@ -128,7 +129,7 @@ async function decryptAccessDetails(accessDetails: any): Promise<any> {
     try {
       decrypted.accessNotes = await clinicalRecordEncryptionService.decryptField(accessDetails.accessNotes);
     } catch (error) {
-      console.error('Failed to decrypt accessNotes:', error);
+      console.error('Failed to decrypt accessNotes:', safeError(error));
       decrypted.accessNotes = '[ENCRYPTED]';
     }
   }
@@ -423,7 +424,7 @@ router.post("/shift/location", requireAuth, requireRole("operator"), validateBod
   });
   if (isMaterialDrift(previousLat, previousLng, lat, lng, activeStopCount)) {
     void broadcastEtaUpdates(shift.id).catch((err) =>
-      console.error("[VAN ETA PUSH] broadcast failed:", err)
+      console.error("[VAN ETA PUSH] broadcast failed:", safeError(err))
     );
   }
 
@@ -618,7 +619,7 @@ router.post("/requests/:id/accept", requireAuth, requireRole("operator"), valida
   // gates) so the acceptance notification carries a real arrival estimate.
   // EB-1: force only for the newly accepted request, not every patient on the shift.
   void broadcastEtaUpdates(shift.id, { forceRequestId: updated.id }).catch((err) =>
-    console.error("[VAN ETA PUSH] post-accept broadcast failed:", err)
+    console.error("[VAN ETA PUSH] post-accept broadcast failed:", safeError(err))
   );
 
   return res.json(updated);
@@ -636,7 +637,7 @@ async function captureVanDeposit(requestId: string, paymentIntentId: string): Pr
   try {
     intent = await stripe.paymentIntents.retrieve(paymentIntentId);
   } catch (error) {
-    console.error("Failed to retrieve PaymentIntent for capture:", error);
+    console.error("Failed to retrieve PaymentIntent for capture:", safeError(error));
     return { status: 502, body: { error: "Payment service unavailable", message: "Could not verify the deposit before acceptance. Please try again." } };
   }
 
@@ -669,7 +670,7 @@ async function captureVanDeposit(requestId: string, paymentIntentId: string): Pr
     }
     return null;
   } catch (error) {
-    console.error("Failed to capture payment:", error);
+    console.error("Failed to capture payment:", safeError(error));
     return failed;
   }
 }
@@ -850,7 +851,7 @@ router.post("/requests/:id/phase", requireAuth, requireRole("operator"), validat
   // Queue shape changed (advance, completion, or no-show) — every remaining
   // patient's ETA may have shifted. Fire-and-forget, gated by drift/throttle.
   void broadcastEtaUpdates(shift.id).catch((err) =>
-    console.error("[VAN ETA PUSH] post-phase broadcast failed:", err)
+    console.error("[VAN ETA PUSH] post-phase broadcast failed:", safeError(err))
   );
 
   return res.json(updated);
@@ -1057,7 +1058,7 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
       paymentIntentId = paymentIntent.id;
       clientSecret = paymentIntent.client_secret;
     } catch (error) {
-      console.error("Failed to create Stripe PaymentIntent:", error);
+      console.error("Failed to create Stripe PaymentIntent:", safeError(error));
       return res.status(500).json({ error: "Failed to initialize payment" });
     }
   }
@@ -1275,7 +1276,7 @@ router.post("/requests/:id/payment-retry", requireAuth, validateParams(vanReques
   try {
     intent = await stripe.paymentIntents.retrieve(request.paymentIntentId);
   } catch (error) {
-    console.error("payment-retry: failed to retrieve PaymentIntent:", error);
+    console.error("payment-retry: failed to retrieve PaymentIntent:", safeError(error));
     return res.status(502).json({ error: "Payment service unavailable. Please try again." });
   }
 
@@ -1412,7 +1413,7 @@ router.post("/requests/:id/cancel", requireAuth, validateParams(vanRequestIdPara
 
   // Cancellation shortens everyone else's chain — recompute their ETAs.
   void broadcastEtaUpdates(request.shiftId).catch((err) =>
-    console.error("[VAN ETA PUSH] post-cancel broadcast failed:", err)
+    console.error("[VAN ETA PUSH] post-cancel broadcast failed:", safeError(err))
   );
 
   return res.json(outcome.body);

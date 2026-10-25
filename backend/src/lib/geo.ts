@@ -1,3 +1,4 @@
+import { safeError } from "./log-safety";
 /**
  * Geospatial utilities for van coverage checking
  * Using Turf.js-like logic for point-in-polygon checks
@@ -35,7 +36,7 @@ export async function postcodeToCoordinates(postcode: string): Promise<Point | n
     
     return null;
   } catch (error) {
-    console.error('Postcode geocoding error:', error);
+    console.error('Postcode geocoding error:', safeError(error));
     return null;
   }
 }
