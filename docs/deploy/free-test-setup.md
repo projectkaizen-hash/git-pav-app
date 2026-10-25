@@ -45,11 +45,11 @@ Treat `ENCRYPTION_KEY` with care: if it's lost, encrypted gate codes and door no
    ```bash
    npm ci
    DATABASE_URL="<direct URI>" npx prisma migrate deploy
-   DATABASE_URL="<direct URI>" npm run prisma:seed
+   ALLOW_SEED=demo SEED_DEMO_PASSWORD="<a unique password>" DATABASE_URL="<direct URI>" npm run prisma:seed
    DATABASE_URL="<direct URI>" npm run hours:defaults
    ```
 
-   The seed creates demo accounts (`patient@`, `doctor@`, `van@`, `admin@pavdental.com`) with synthetic records.
+   The seed creates demo accounts (`patient@`, `doctor@`, `van@`, `admin@pavdental.com`) with synthetic records, all with `SEED_DEMO_PASSWORD`. Keep that password in a password manager and never write it in the repo: the API is public. The seed refuses a database that isn't on this machine unless `ALLOW_SEED=demo` is set, and it won't use the local default password there.
 5. Staff sign in with a security code sent by email (step 6), so the admin and clinician accounts need inboxes you can read. In Supabase's **Table editor → users**, change `admin@pavdental.com` and `doctor@pavdental.com` to addresses you control. Plus-addressing works, for example `you+pavadmin@gmail.com`.
 
 ## 3. Redis: Upstash
