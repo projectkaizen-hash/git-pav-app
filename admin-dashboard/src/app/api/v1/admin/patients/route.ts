@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/auth/middleware";
-import { query } from "@/lib/db/client";
+import { pavApi } from "@/lib/pav-api.server";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": process.env.WEBSITE_ORIGIN ?? "http://localhost:8080",
@@ -18,30 +18,34 @@ export async function GET(request: Request) {
     const search = searchParams.get("search");
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20", 10)));
-    const offset = (page - 1) * limit;
 
-    const conditions: string[] = [];
-    const params: unknown[] = [];
+    const queryParams = new URLSearchParams();
+    queryParams.set("role", "patient");
+    queryParams.set("page", String(page));
+    queryParams.set("limit", String(limit));
+    if (search) queryParams.set("search", search);
 
-    if (search) {
-      params.push(`%${search}%`);
-      conditions.push(
-        `(name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`,
+    const res = await pavApi.get(`/api/admin/users?${queryParams.toString()}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: err?.error || "Failed to fetch patients" },
+        { status: res.status, headers: CORS_HEADERS },
       );
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const json = (await res.json()) as { users: any[]; total: number; page: number; limit: number };
+    const patients = (json.users || []).map((u: any) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      date_of_birth: null,
+      address: u.details,
+      created_at: u.createdAt,
+    }));
 
-    const countRes = await query<{ count: string }>(`SELECT count(*) as count FROM patients ${whereClause}`, params);
-    const total = parseInt(countRes[0]?.count || "0", 10);
-
-    const dataParams = [...params, limit, offset];
-    const patients = await query(
-      `SELECT * FROM patients ${whereClause} ORDER BY created_at DESC LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
-      dataParams,
-    );
-
-    return NextResponse.json({ data: patients, total, page, limit }, { headers: CORS_HEADERS });
+    return NextResponse.json({ data: patients, total: json.total, page: json.page, limit: json.limit }, { headers: CORS_HEADERS });
   } catch (error) {
     console.error("[GET /api/v1/admin/patients]", error);
     return NextResponse.json({ error: "Failed to fetch patients" }, { status: 500, headers: CORS_HEADERS });

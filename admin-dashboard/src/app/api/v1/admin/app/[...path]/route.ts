@@ -17,6 +17,7 @@ const ALLOWED: Record<string, RegExp[]> = {
     /^vans$/,
     /^services$/,
     /^messages$/,
+    /^users$/,
   ],
   PATCH: [new RegExp(`^messages/${SEG}/read$`)],
   PUT: [

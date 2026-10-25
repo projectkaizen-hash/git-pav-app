@@ -174,6 +174,19 @@ describe("signed prescription PDFs", () => {
     const patIssue = await issue(patient.token, apptId);
     expect(patIssue.status).toBe(403);
 
+    // Clinician with non-prescribing role (e.g. Dental Hygienist) cannot issue prescriptions (CS-35)
+    const hygienistUser = await prisma.user.create({
+      data: { email: `hygienist-${tag}@example.test`, passwordHash: "x", role: "clinician" },
+    });
+    userIds.push(hygienistUser.id);
+    await prisma.clinicianProfile.create({
+      data: { userId: hygienistUser.id, fullName: "Synthetic Hygienist", gdcNumber: "987654", roleTitle: "Dental Hygienist" },
+    });
+    const hygienistToken = signAccessToken({ sub: hygienistUser.id, role: "clinician", sessionId: crypto.randomUUID() });
+    const hygienistIssue = await issue(hygienistToken, apptId);
+    expect(hygienistIssue.status).toBe(403);
+    expect(hygienistIssue.body.error).toContain("registered dentists");
+
     // Clinician with invalid GDC number cannot issue prescriptions
     const badGdcClinicianUser = await prisma.user.create({
       data: { email: `bad-gdc-${tag}@example.test`, passwordHash: "x", role: "clinician" },
