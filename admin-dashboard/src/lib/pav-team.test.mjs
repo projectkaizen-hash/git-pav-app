@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { clinicianPayload, operatorPayload, servicePayload, toPence, vanPayload } from "./pav-team.ts";
+import { clinicPayload, clinicianPayload, operatorPayload, servicePayload, toPence, vanPayload } from "./pav-team.ts";
 
 describe("toPence", () => {
   it("reads pounds with up to two decimals", () => {
@@ -75,5 +75,30 @@ describe("vanPayload", () => {
   it("upper-cases the plate", () => {
     const result = vanPayload({ name: "Van 1", registrationPlate: "ab12 cde", vehicleModel: "Synthetic van" });
     assert.equal(result.payload.registrationPlate, "AB12 CDE");
+  });
+});
+
+describe("clinicPayload", () => {
+  const form = {
+    name: "Pav Dental Central",
+    address: "10 Downing Street",
+    postcode: "sw1a 2aa",
+    city: "London",
+    phone: "020 7946 0123",
+  };
+
+  it("trims and formats postcode uppercase", () => {
+    const result = clinicPayload(form);
+    assert.equal(result.ok, true);
+    assert.equal(result.payload.postcode, "SW1A 2AA");
+    assert.equal(result.payload.name, "Pav Dental Central");
+  });
+
+  it("validates required fields", () => {
+    assert.equal(clinicPayload({ ...form, name: " " }).ok, false);
+    assert.equal(clinicPayload({ ...form, address: " " }).ok, false);
+    assert.equal(clinicPayload({ ...form, postcode: " " }).ok, false);
+    assert.equal(clinicPayload({ ...form, city: " " }).ok, false);
+    assert.equal(clinicPayload({ ...form, phone: "123" }).ok, false);
   });
 });

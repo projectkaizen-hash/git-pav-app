@@ -15,6 +15,7 @@ import { appRequest } from "@/lib/pav-schedule";
 import {
   CHANNELS,
   type Channel,
+  clinicPayload,
   clinicianPayload,
   formatPounds,
   operatorPayload,
@@ -22,6 +23,7 @@ import {
   type ServiceCategory,
   type StaffCreated,
   servicePayload,
+  type TeamClinic,
   type TeamClinician,
   type TeamService,
   type TeamVan,
@@ -46,6 +48,7 @@ export function TeamEditor() {
   const [clinicians, setClinicians] = useState<TeamClinician[]>([]);
   const [services, setServices] = useState<TeamService[]>([]);
   const [vans, setVans] = useState<TeamVan[]>([]);
+  const [clinics, setClinics] = useState<TeamClinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -67,19 +70,22 @@ export function TeamEditor() {
     channels: ["clinic"] as Channel[],
   });
   const [van, setVan] = useState({ name: "", registrationPlate: "", vehicleModel: "" });
+  const [clinic, setClinic] = useState({ name: "", address: "", postcode: "", city: "", phone: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [clinicianData, serviceData, vanData] = await Promise.all([
+      const [clinicianData, serviceData, vanData, clinicData] = await Promise.all([
         appRequest<TeamClinician[]>("clinicians"),
         appRequest<TeamService[]>("services"),
         appRequest<TeamVan[]>("vans"),
+        appRequest<TeamClinic[]>("clinics"),
       ]);
       setClinicians(clinicianData);
       setServices(serviceData);
       setVans(vanData);
+      setClinics(clinicData);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Failed to load the team");
     } finally {
@@ -137,6 +143,15 @@ export function TeamEditor() {
     void submit<TeamVan>("van", "vans", result.payload, (created) => {
       toast.success(`${created.name} added`);
       setVan({ name: "", registrationPlate: "", vehicleModel: "" });
+    });
+  };
+
+  const addClinic = () => {
+    const result = clinicPayload(clinic);
+    if (!result.ok) return toast.error(result.error);
+    void submit<TeamClinic>("clinic", "clinics", result.payload, (created) => {
+      toast.success(`${created.name} added`);
+      setClinic({ name: "", address: "", postcode: "", city: "", phone: "" });
     });
   };
 
@@ -411,6 +426,73 @@ export function TeamEditor() {
           </div>
           <Button className="self-start" onClick={addVan} disabled={busy !== null}>
             {busy === "van" ? "Adding..." : "Add van"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Clinics</CardTitle>
+          <CardDescription>Physical practice locations for in-person appointments.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {clinics.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No clinics yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm">
+              {clinics.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2">
+                  <span>
+                    {c.name}
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {c.address}, {c.city} · {c.postcode} · {c.phone}
+                    </span>
+                  </span>
+                  {c.isActive ? null : <Badge variant="outline">Inactive</Badge>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="clinic-name" label="Name">
+              <Input
+                id="clinic-name"
+                value={clinic.name}
+                onChange={(e) => setClinic({ ...clinic, name: e.target.value })}
+              />
+            </Field>
+            <Field id="clinic-address" label="Address">
+              <Input
+                id="clinic-address"
+                value={clinic.address}
+                onChange={(e) => setClinic({ ...clinic, address: e.target.value })}
+              />
+            </Field>
+            <Field id="clinic-city" label="City">
+              <Input
+                id="clinic-city"
+                value={clinic.city}
+                onChange={(e) => setClinic({ ...clinic, city: e.target.value })}
+              />
+            </Field>
+            <Field id="clinic-postcode" label="Postcode">
+              <Input
+                id="clinic-postcode"
+                value={clinic.postcode}
+                onChange={(e) => setClinic({ ...clinic, postcode: e.target.value })}
+              />
+            </Field>
+            <Field id="clinic-phone" label="Phone">
+              <Input
+                id="clinic-phone"
+                value={clinic.phone}
+                onChange={(e) => setClinic({ ...clinic, phone: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Button className="self-start" onClick={addClinic} disabled={busy !== null}>
+            {busy === "clinic" ? "Adding..." : "Add clinic"}
           </Button>
         </CardContent>
       </Card>

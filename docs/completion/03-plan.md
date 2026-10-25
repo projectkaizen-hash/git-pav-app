@@ -51,7 +51,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-16 | Done | |
 | CS-19 | Done | Remainders closed by CS-54 (not re-audited) |
 | CS-20 | Partial | AU-5 throughput; the `audit_logs` index in `20261024070000` isn't `CONCURRENTLY` (already applied). Legacy hash, monitor window, 401 alerts and the tamper test fixed in #64 |
-| CS-21 | Partial | Web refresh token in `localStorage` (lint rule against raw `fetch` added in #64) |
+| CS-21 | Done | Web refresh token uses `sessionStorage` with automatic `localStorage` cleanup (preventing disk persistence across sessions); lint rule enforces client fetch |
 | CS-22 | Done | |
 | CS-23 | Done | 🛑 Legal review of retention; Stripe Customer deletion; push tokens during the DPO wait |
 | CS-24 | Done | SAR bundles hidden from clinicians in #64 |
@@ -61,7 +61,7 @@ The 24 Oct verdicts came from the code on `main` at `6722739` (details in `05-au
 | CS-28 | Done | Time windows for `/complete` and active-appointment check |
 | CS-29 | Done | Staff inbox, per-side read state and delete audit in #64; 🛑 the notice's hours and "1 business day" promise |
 | CS-30, CS-32, CS-33 | Done | |
-| CS-31 | Partial | Team & Services screen and staff invite email in batch 2; clinic screen; 🛑 drop the dashboard `patients` table |
+| CS-31 | Partial | Team, Services & Clinics onboard screen and staff invite email built; 🛑 drop the dashboard `patients` table |
 | CS-34 | Done | Edit screen in batch 2; 🛑 whether a changed date of birth asks for consent again |
 | CS-35 | Done | 🛑 Which roles may prescribe |
 | CS-36 | Built, not signed off | 🛑 Clinical sign-off before release |

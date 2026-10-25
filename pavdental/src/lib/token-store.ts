@@ -31,7 +31,13 @@ const memoryStore = new Map<string, string>();
 async function getItem(key: string): Promise<string | null> {
   if (isWeb) {
     try {
-      return typeof window !== "undefined" ? window.localStorage.getItem(key) : memoryStore.get(key) ?? null;
+      if (typeof window !== "undefined") {
+        if (key === REFRESH_TOKEN_KEY) {
+          return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key) ?? memoryStore.get(key) ?? null;
+        }
+        return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key) ?? memoryStore.get(key) ?? null;
+      }
+      return memoryStore.get(key) ?? null;
     } catch {
       return memoryStore.get(key) ?? null;
     }
@@ -46,10 +52,18 @@ async function setItem(key: string, value: string, options?: any): Promise<void>
   memoryStore.set(key, value);
   if (isWeb) {
     try {
-      if (typeof window !== "undefined") window.localStorage.setItem(key, value);
+      if (typeof window !== "undefined") {
+        if (key === REFRESH_TOKEN_KEY) {
+          window.sessionStorage.setItem(key, value);
+          // Purge from persistent localStorage to avoid lingering credentials on shared computers
+          window.localStorage.removeItem(key);
+        } else {
+          window.localStorage.setItem(key, value);
+        }
+      }
     } catch {
-  // Not available on this platform.
-}
+      // Not available on this platform.
+    }
     return;
   }
   if (!SecureStore?.setItemAsync) return;
@@ -60,10 +74,13 @@ async function deleteItem(key: string): Promise<void> {
   memoryStore.delete(key);
   if (isWeb) {
     try {
-      if (typeof window !== "undefined") window.localStorage.removeItem(key);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(key);
+        window.localStorage.removeItem(key);
+      }
     } catch {
-  // Not available on this platform.
-}
+      // Not available on this platform.
+    }
     return;
   }
   if (!SecureStore?.deleteItemAsync) return;
