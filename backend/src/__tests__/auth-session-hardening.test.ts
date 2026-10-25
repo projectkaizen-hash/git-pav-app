@@ -262,11 +262,14 @@ describe("CS-54: Auth and Session Hardening", () => {
     });
 
     it("does not shut out the victim: legitimate user with right password receives step-up MFA challenge", async () => {
-      // Attacker hits the account with 5 wrong attempts to trigger lockout threshold
+      // Attacker hits the account from an external IP with 5 wrong attempts to trigger lockout threshold
       for (let i = 0; i < 5; i++) {
         await fetch(`${baseUrl}/api/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Forwarded-For": "198.51.100.1",
+          },
           body: JSON.stringify({ email: testUserEmail, password: "AttackerGuess!" }),
         });
       }
@@ -274,10 +277,24 @@ describe("CS-54: Auth and Session Hardening", () => {
       const lockedUser = await prisma.user.findUnique({ where: { id: testUserId } });
       expect(lockedUser?.failedLoginAttempts).toBeGreaterThanOrEqual(5);
 
-      // Victim logs in with CORRECT password: instead of being rejected, receives MFA challenge!
+      // Attacker is locked out from their IP
+      const attackerAttempt = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": "198.51.100.1",
+        },
+        body: JSON.stringify({ email: testUserEmail, password: "CorrectPassword123!" }),
+      });
+      expect(attackerAttempt.status).toBe(401);
+
+      // Victim logs in from their IP with CORRECT password: instead of being rejected, receives MFA challenge!
       const victimLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": "203.0.113.42",
+        },
         body: JSON.stringify({ email: testUserEmail, password: "CorrectPassword123!" }),
       });
 

@@ -111,12 +111,13 @@ export async function processExpiredSlotHolds(): Promise<{ expiredCount: number 
 
   try {
     // BJ-5: Atomically cancel and return only the rows that were actually updated
+    // Note: hold_expires_at is timestamp without time zone storing UTC, so compare with timezone('UTC', now())
     const expiredRows = await prisma.$queryRaw<Array<{ id: string }>>`
       UPDATE appointments
       SET status = 'cancelled'
       WHERE id IN (
         SELECT id FROM appointments
-        WHERE status = 'draft_hold' AND hold_expires_at <= ${now}
+        WHERE status = 'draft_hold' AND hold_expires_at <= timezone('UTC', now())
         LIMIT 100
         FOR UPDATE SKIP LOCKED
       )

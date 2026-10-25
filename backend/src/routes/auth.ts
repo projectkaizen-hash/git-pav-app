@@ -118,12 +118,22 @@ router.post("/login", authLimiterMiddleware, validateBody(loginSchema), async (r
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  const ipHash = pseudonymiseIp(req.ip || "unknown");
+  // Check for account lockout
+  // A locked account answers exactly like a wrong password, so the response
+  // doesn't confirm that the email has an account (AT-7).
+  if (user.lockedUntil && new Date() < user.lockedUntil) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
+  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+  const ipHash = pseudonymiseIp(clientIp);
   const userIpLockKey = `login-lock:${user.id}:${ipHash}`;
   const userIpFailKey = `login-fail:${user.id}:${ipHash}`;
 
-  const isAccountFlaggedLocked = !!(user.lockedUntil && new Date() < user.lockedUntil);
   const isUserIpLocked = await redis.get(userIpLockKey).catch(() => null);
+  if (isUserIpLocked) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
 
   const valid = await argon2.verify(user.passwordHash, password);
   if (!valid) {
@@ -136,7 +146,7 @@ router.post("/login", authLimiterMiddleware, validateBody(loginSchema), async (r
     const failedAttempts = updated.failedLoginAttempts;
     const lockoutThreshold = 5;
 
-    // Exponential backoff for this attacker's IP against this user in Redis
+    // Exponential backoff for this attacker's IP in Redis against this user
     const ipFails = await redis.incr(userIpFailKey).catch(() => 1);
     if (ipFails === 1) {
       await redis.expire(userIpFailKey, 900).catch(() => {});
@@ -144,15 +154,6 @@ router.post("/login", authLimiterMiddleware, validateBody(loginSchema), async (r
     if (ipFails >= lockoutThreshold) {
       const lockDuration = Math.min(2 ** (ipFails - lockoutThreshold) * 60, 3600);
       await redis.set(userIpLockKey, "1", "EX", lockDuration).catch(() => {});
-    }
-
-    // Set lockedUntil on the account for exponential backoff if threshold exceeded
-    if (failedAttempts >= lockoutThreshold) {
-      const lockDuration = Math.min(2 ** (failedAttempts - lockoutThreshold) * 60, 3600);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lockedUntil: new Date(Date.now() + lockDuration * 1000) },
-      });
     }
 
     return res.status(401).json({ error: "Invalid credentials" });
@@ -169,10 +170,8 @@ router.post("/login", authLimiterMiddleware, validateBody(loginSchema), async (r
   await redis.del(userIpFailKey).catch(() => {});
   await redis.del(userIpLockKey).catch(() => {});
 
-  // AT-7: If account was locked due to failed attempts from an attacker, but the legitimate
-  // user knows their password, we enforce step-up MFA so the victim is never permanently locked out
-  // while preventing unauthorized access without the secondary factor.
-  const isSuspiciousLogin = isAccountFlaggedLocked || isUserIpLocked || ((user.failedLoginAttempts || 0) >= 5);
+  // AT-7: If account had suspicious failed attempts from other IPs, enforce step-up MFA
+  const isSuspiciousLogin = (user.failedLoginAttempts || 0) >= 5;
 
   // Staff always need a second factor; patients only if they turned it on
   // (CS-08, MF-1). The session is created only once the code is checked.
