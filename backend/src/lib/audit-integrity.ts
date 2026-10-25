@@ -210,6 +210,10 @@ export type VerifyAuditOptions =
 // SHA-256. Anything later must carry the HMAC, or the HMAC means nothing.
 export const LEGACY_AUDIT_HASH_CUTOFF = new Date("2026-10-25T00:00:00Z");
 
+export function legacyAuditHashAllowed(timestampUtc: Date, afterKeyedRow: boolean): boolean {
+  return !afterKeyedRow && timestampUtc < LEGACY_AUDIT_HASH_CUTOFF;
+}
+
 // Verify audit log integrity by checking hash chain (AU-2, AU-3)
 export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
   await auditWriteQueue.catch(() => {});
@@ -304,7 +308,7 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
       seenKeyedHash = true;
     } else {
       // Old unkeyed SHA-256, accepted only for pre-AU-3 rows and never after a keyed one
-      const legacyAllowed = !seenKeyedHash && log.timestampUtc < LEGACY_AUDIT_HASH_CUTOFF;
+      const legacyAllowed = legacyAuditHashAllowed(log.timestampUtc, seenKeyedHash);
       const legacyDataString = JSON.stringify({
         action: log.action,
         actorId: log.actorId,
@@ -328,6 +332,8 @@ export async function verifyAuditIntegrity(options: VerifyAuditOptions = 1000) {
     valid: issues.length === 0,
     verified: issues.length === 0,
     checkedCount: logs.length,
+    firstId: logs[0].id.toString(),
+    lastId: logs[logs.length - 1].id.toString(),
     issues,
   };
 }
