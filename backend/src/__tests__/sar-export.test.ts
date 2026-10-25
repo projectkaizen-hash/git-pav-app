@@ -516,5 +516,30 @@ describe("CS-24: Complete GDPR Subject Access Request (SAR-1, SAR-2, OS-3)", () 
       );
       expect(otherAuthRes.status).toBe(403);
     });
+
+    it("keeps the SAR bundle from a clinician who can see the rest of the record", async () => {
+      const sar = await prisma.documentVault.findFirstOrThrow({
+        where: { patientId: patientProfileId, docType: "gdpr_sar_export" },
+      });
+      // The seeded clinician has an appointment with this patient, so a care relationship.
+      const clinician = await prisma.clinicianProfile.findFirstOrThrow();
+      const clinicianToken = signAccessToken({
+        sub: clinician.userId,
+        role: "clinician",
+        sessionId: crypto.randomUUID(),
+      });
+      const headers = { Authorization: `Bearer ${clinicianToken}` };
+
+      const list = await fetch(`${appUrl}/api/patients/${patientProfileId}/documents`, { headers });
+      expect(list.status).toBe(200);
+      const docs = (await list.json()) as Array<{ id: string; docType: string }>;
+      expect(docs.some((d) => d.docType === "gdpr_sar_export")).toBe(false);
+
+      const download = await fetch(
+        `${appUrl}/api/patients/${patientProfileId}/documents/${sar.id}/download`,
+        { headers }
+      );
+      expect(download.status).toBe(404);
+    });
   });
 });
