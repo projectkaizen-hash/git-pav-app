@@ -3,6 +3,8 @@
 export { ThemedText } from "./themed-text";
 export { AppIcon, type AppIconName } from "./app-icon";
 export { IconButton } from "./icon-button";
+export { IconTile } from "./icon-tile";
+export { navTheme, stackScreenOptions, HeaderBackButton } from "./navigation";
 export { ChipPill } from "./chip-pill";
 export { SectionHeader } from "./section-header";
 export { Toast } from "./toast";

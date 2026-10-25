@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors, radius } from "@/theme";
+import { colors, radius, sizes } from "@/theme";
 import { AppIcon, type AppIconName } from "./app-icon";
 
 interface IconButtonProps {
@@ -10,15 +10,18 @@ interface IconButtonProps {
   onPress?: () => void;
   size?: number;
   color?: string;
-  /** Filled ink circle, soft circular grey pill, or transparent press-only feedback */
+  /** Filled ink, soft grey fill (reference back/close buttons), or transparent */
   variant?: "solid" | "plain" | "soft";
+  /** Rounded square (reference default) or circle (avatars, media controls) */
+  shape?: "square" | "circle";
   disabled?: boolean;
   haptic?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * IconButton — 44pt minimum circular touch target for icon-only actions.
+ * IconButton — 40pt rounded-square icon action (44pt touch target via hitSlop),
+ * as used for back, close and profile buttons in the reference.
  * Always pass a label; icon-only buttons are invisible to screen readers otherwise.
  */
 export function IconButton({
@@ -28,11 +31,12 @@ export function IconButton({
   size = 20,
   color = colors.label,
   variant = "plain",
+  shape = "square",
   disabled = false,
   haptic = true,
   style,
 }: IconButtonProps) {
-  const diameter = Math.max(44, size + 24);
+  const diameter = Math.max(sizes.iconButton, size + 20);
 
   const handlePress = () => {
     if (disabled) return;
@@ -49,12 +53,13 @@ export function IconButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={handlePress}
-      hitSlop={8}
+      hitSlop={6}
       style={({ pressed }) => [
         styles.base,
         variant === "solid" && styles.solid,
         variant === "soft" && styles.soft,
         { width: diameter, height: diameter },
+        shape === "circle" && styles.circle,
         pressed && !disabled && styles.pressed,
         style,
       ]}
@@ -72,6 +77,11 @@ const styles = StyleSheet.create({
   base: {
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: radius.lg,
+    // @ts-ignore — iOS squircle corners
+    borderCurve: "continuous",
+  },
+  circle: {
     borderRadius: radius.full,
   },
   solid: {

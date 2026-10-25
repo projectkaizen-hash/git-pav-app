@@ -1,14 +1,10 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 
 export default function VideoLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="intake" options={{ title: "Dental Triage" }} />
       <Stack.Screen name="photos" options={{ title: "Intraoral Photos" }} />

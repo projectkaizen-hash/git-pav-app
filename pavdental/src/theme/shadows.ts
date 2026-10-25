@@ -1,11 +1,11 @@
 // ─── Box shadow strings (use boxShadow, never legacy elevation/shadow* props) ──
-// Three elevation levels are enough for the entire app.
+// The reference is flat: cards and rows carry no shadow at all. Shadows are
+// kept only for things that float above content.
 export const shadows = {
-  // Subtle card lift — use on cards sitting on systemBackground
-  card: "0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)",
-  // Raised element — action sheets, pickers, date panels
-  raised: "0 4px 12px rgba(0, 0, 0, 0.10)",
+  // Cards sitting on the canvas — intentionally none
+  card: "0 0 0 rgba(0, 0, 0, 0)",
+  // Floating controls — search pill, FAB, toasts
+  raised: "0 4px 16px rgba(0, 0, 0, 0.12)",
   // Overlay — modals, bottom sheets, floating menus
-  overlay: "0 8px 24px rgba(0, 0, 0, 0.18)",
+  overlay: "0 -2px 24px rgba(0, 0, 0, 0.12)",
 } as const;
-

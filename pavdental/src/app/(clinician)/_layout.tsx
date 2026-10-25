@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
+import { stackScreenOptions } from "@/components";
 
 export default function ClinicianLayout() {
   const user = useCurrentUser();
@@ -11,12 +12,7 @@ export default function ClinicianLayout() {
 
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="schedule" options={{ title: "Clinician Daily Schedule" }} />
       <Stack.Screen name="inbox" options={{ title: "Clinician Messages" }} />

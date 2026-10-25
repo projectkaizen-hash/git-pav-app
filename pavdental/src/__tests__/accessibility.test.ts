@@ -85,6 +85,12 @@ async function runTests() {
   for (const name of ["label", "secondaryLabel", "ink"] as const) {
     const ratio = contrastRatio(colors[name], colors.systemBackground);
     assert(ratio >= 4.5, `colors.${name} on systemBackground is ${ratio.toFixed(1)}:1 (AA needs 4.5:1)`);
+    const canvas = contrastRatio(colors[name], colors.background);
+    assert(canvas >= 4.5, `colors.${name} on the background canvas is ${canvas.toFixed(1)}:1 (AA needs 4.5:1)`);
+  }
+  for (const name of ["success", "danger", "warning", "info"] as const) {
+    const ratio = contrastRatio(colors[name], colors.systemBackground);
+    assert(ratio >= 4.5, `colors.${name} on systemBackground is ${ratio.toFixed(1)}:1 (AA needs 4.5:1)`);
   }
 
   console.log("\n✅ ALL ACCESSIBILITY & SMALL SCREEN TESTS PASSED!\n");

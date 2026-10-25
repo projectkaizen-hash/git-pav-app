@@ -1,41 +1,53 @@
-// ─── "Quiet Ink" semantic palette ─────────────────────────────────────────────
-// Static, deterministic LIGHT values (app is light-only this pass — see
-// app.json userInterfaceStyle). Monochrome ink accent: colour is reserved for
-// status semantics, never decoration. Never hardcode hexes in screens.
-
-// Brand / accent — near-black ink (#101012 on #FFFFFF = 18.9:1, WCAG AAA)
+// ─── Semantic palette — matched to the iOS reference (neo-financial-ios/) ─────
+// Static LIGHT values (app is light-only — see app.json userInterfaceStyle).
+// Hierarchy comes from fill colour, not borders or shadows: a cool grey canvas,
+// flat white cards, and a slightly darker grey fill for inputs, icon tiles and
+// secondary buttons. Colour is reserved for status. Never hardcode hexes in screens.
+//
+// Values are sampled from the reference screenshots. Where a sampled value
+// failed WCAG AA for text (secondary grey, link blue, success green) it is
+// darkened just enough to pass on both the canvas and white.
 export const colors = {
-  // Core ink (brand + primary label share one value for total consistency)
-  ink: "#101012",
-  inkSoft: "#3F3F46", // secondary emphasis on ink surfaces, pressed ink
+  // Core ink — pure black, as in the reference (21:1 on white)
+  ink: "#000000",
+  inkSoft: "#2B2F33", // pressed ink, dark secondary surfaces
   onInk: "#FFFFFF",
-  inkSubtle: "#ECECEF", // ~7% ink tint — chip/pill backgrounds
+  inkSubtle: "#E7E8E9", // grey fill — chips, secondary buttons, icon tiles
 
   // Text
-  label: "#101012",
-  secondaryLabel: "#52525B", // 7.4:1 on white
-  tertiaryLabel: "#8E8E96", // hints, placeholders, disabled
+  label: "#000000",
+  secondaryLabel: "#5E6B73", // blue-grey; 4.9:1 on canvas, 5.5:1 on white
+  tertiaryLabel: "#8A949A", // placeholders, disabled, inactive tab icons
 
-  // Backgrounds (layered, cool-neutral)
-  systemBackground: "#FFFFFF",
-  secondaryBackground: "#F6F6F7",
-  tertiaryBackground: "#EFEFF1",
+  // Surfaces
+  background: "#F1F3F3", // screen canvas
+  systemBackground: "#FFFFFF", // cards, grouped rows, sheets
+  secondaryBackground: "#F1F3F3", // subtle fill on white cards (== canvas)
+  tertiaryBackground: "#E7E8E9", // fill on the canvas: inputs, icon buttons
+  tabBar: "#F4F5F5",
 
-  // Separator / divider
-  separator: "#E7E7EA",
+  // Lines
+  separator: "#E7E8E9", // row dividers, inset to the text column
+  inputUnderline: "#818C94", // 2pt underline on filled text fields
 
   // Status semantics (the only saturated colours in the app)
-  success: "#059669",
-  successSubtle: "#D1FAE5",
-  warning: "#B45309", // AA on warningSubtle
-  warningSubtle: "#FEF3C7",
-  danger: "#DC2626",
-  dangerSubtle: "#FEE2E2",
-  info: "#2563EB",
-  infoSubtle: "#DBEAFE",
+  success: "#0C7F5C", // text-safe green
+  successFill: "#1BA47C", // switches, strength bars, check circles
+  successSubtle: "#DDF3EA",
+  warning: "#8A6100",
+  warningFill: "#E8A317",
+  warningSubtle: "#FDF1D6",
+  danger: "#B42318",
+  dangerSubtle: "#FDE6E4",
+  info: "#0062E6", // links and info accents
+  infoSubtle: "#E2EDFD",
+
+  // Toast / snackbar
+  toast: "#1C1D1F",
 
   // Always-fixed values (do not adapt to theme)
   onTint: "#FFFFFF",
   alwaysBlack: "#000000",
   alwaysWhite: "#FFFFFF",
+  scrim: "rgba(0, 0, 0, 0.4)",
 } as const;

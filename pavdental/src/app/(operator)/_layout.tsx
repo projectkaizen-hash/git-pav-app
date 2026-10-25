@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
+import { stackScreenOptions } from "@/components";
 
 export default function OperatorLayout() {
   const user = useCurrentUser();
@@ -11,12 +12,7 @@ export default function OperatorLayout() {
 
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="shift" options={{ title: "Van Dispatch Console" }} />
       <Stack.Screen name="incoming" options={{ title: "Incoming Requests" }} />

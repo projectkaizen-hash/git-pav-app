@@ -1,14 +1,10 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 
 export default function RecordsLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="odontogram" options={{ title: "Dental Odontogram" }} />
       <Stack.Screen name="plans" options={{ title: "Treatment Plans" }} />

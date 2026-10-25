@@ -10,7 +10,7 @@ interface BadgeProps {
 }
 
 const variantMap: Record<BadgeVariant, { bg: any; text: any }> = {
-  default: { bg: colors.secondaryBackground, text: colors.secondaryLabel },
+  default: { bg: colors.inkSubtle, text: colors.secondaryLabel },
   success: { bg: colors.successSubtle, text: colors.success },
   warning: { bg: colors.warningSubtle, text: colors.warning },
   danger: { bg: colors.dangerSubtle, text: colors.danger },
@@ -18,7 +18,7 @@ const variantMap: Record<BadgeVariant, { bg: any; text: any }> = {
 };
 
 /**
- * Badge — compact status indicator pill.
+ * Badge — compact status tag (reference "Off" / "On" tags: 4pt corners, 11pt).
  * Use for appointment states, booking statuses, and notification counts.
  */
 export function Badge({ label, variant = "default" }: BadgeProps) {
@@ -29,7 +29,7 @@ export function Badge({ label, variant = "default" }: BadgeProps) {
       accessibilityRole="text"
       accessibilityLabel={label}
     >
-      <ThemedText variant="caption" style={{ color: text }}>
+      <ThemedText variant="micro" style={{ color: text, fontWeight: "600" }}>
         {label}
       </ThemedText>
     </View>
@@ -39,8 +39,8 @@ export function Badge({ label, variant = "default" }: BadgeProps) {
 const styles = StyleSheet.create({
   base: {
     alignSelf: "flex-start",
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.xs,
+    borderRadius: radius.xs,
+    paddingHorizontal: 6,
     paddingVertical: 3,
   },
 });

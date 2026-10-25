@@ -1,22 +1,11 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 import { colors } from "@/theme";
 
 export default function ProfileSubLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: colors.systemBackground,
-        },
-        headerTitleStyle: {
-          color: colors.label,
-          fontWeight: "600",
-        },
-        headerTintColor: colors.ink,
-        headerShadowVisible: false,
-        headerBackTitle: "Account",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen
         name="index"

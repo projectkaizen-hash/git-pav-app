@@ -1,70 +1,83 @@
 import { TextStyle } from "react-native";
 import { colors } from "./colors";
 
-// ─── Named text styles — mirrors Apple text style ramp ────────────────────────
-// One font family, ≤4 effective sizes, ≤2 weights.
+// ─── Named text styles — matched to the iOS reference ────────────────────────
+// System font (SF Pro on iOS). Bold left-aligned screen titles, 17pt body,
+// grey sentence-case section labels, 13pt captions.
 // Dynamic Type is on by default (allowFontScaling unset = true).
 // Use ThemedText component to apply these; screens never touch fontSize directly.
 export const type = {
-  // Display / hero — non-stack contexts only (stack sets largeTitle via header)
+  // Screen titles ("When did you move in?", "Payments")
   largeTitle: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: "700",
-    lineHeight: 41,
-    letterSpacing: 0.37,
+    lineHeight: 34,
+    letterSpacing: -0.2,
     color: colors.label,
   },
-  // Section headers, modal titles
+  // Hero numbers and sheet titles ("$22.66", "Current statement")
   title: {
     fontSize: 22,
     fontWeight: "600",
     lineHeight: 28,
     color: colors.label,
   },
-  // Cards, list headers, primary labels
+  // Card titles, nav-bar titles, button labels
   headline: {
     fontSize: 17,
     fontWeight: "600",
     lineHeight: 22,
     color: colors.label,
   },
-  // Body copy, form labels
+  // Body copy and row titles
   body: {
     fontSize: 17,
     fontWeight: "400",
     lineHeight: 22,
     color: colors.label,
   },
-  // Secondary content, list subtitles
+  // Secondary content, row subtitles, screen intro copy
   subhead: {
     fontSize: 15,
     fontWeight: "400",
     lineHeight: 20,
     color: colors.secondaryLabel,
   },
-  // Timestamps, metadata, fine print
-  caption: {
-    fontSize: 12,
+  // Row subtitles under a 17pt title ("Neo World Elite Mastercard")
+  footnote: {
+    fontSize: 14,
     fontWeight: "400",
-    lineHeight: 16,
+    lineHeight: 18,
     color: colors.secondaryLabel,
   },
-  // Prices, stats, metrics — uses tabular nums for alignment
+  // Timestamps, field labels, fine print
+  caption: {
+    fontSize: 13,
+    fontWeight: "400",
+    lineHeight: 17,
+    color: colors.secondaryLabel,
+  },
+  // Prices, stats, metrics — tabular nums for alignment
   mono: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: "500",
     fontVariant: ["tabular-nums"],
     lineHeight: 22,
     color: colors.label,
   },
-  // Uppercase section eyebrows — SectionHeader, form group labels
+  // Section labels above grouped cards ("Credit cards", "Account").
+  // The reference uses grey sentence case, not uppercase eyebrows.
   overline: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    lineHeight: 16,
+    fontSize: 16,
+    fontWeight: "400",
+    lineHeight: 21,
+    color: colors.secondaryLabel,
+  },
+  // Tab bar labels and tiny badges
+  micro: {
+    fontSize: 11,
+    fontWeight: "500",
+    lineHeight: 13,
     color: colors.secondaryLabel,
   },
 } as const satisfies Record<string, TextStyle>;
-

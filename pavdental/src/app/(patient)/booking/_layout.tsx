@@ -1,14 +1,10 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 
 export default function BookingLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="service-catalog" options={{ title: "Select Treatment" }} />
       <Stack.Screen name="clinic-picker" options={{ title: "Choose Practice" }} />

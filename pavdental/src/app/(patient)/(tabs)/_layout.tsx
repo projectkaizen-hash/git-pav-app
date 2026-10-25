@@ -1,22 +1,36 @@
 import { View, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
-import { colors } from "@/theme";
-import { AppIcon, type AppIconName } from "@/components";
+import { colors, type } from "@/theme";
+import { AppIcon, ThemedText, type AppIconName } from "@/components";
 
-// ─── Patient tab shell — 5 destinations, pill-active icons ────────────────────
-// Reference pattern: active tab gets a soft pill behind the icon (works for
-// colour-blind users — state is never colour-only). Labels always visible.
+// ─── Patient tab shell — 5 destinations ───────────────────────────────────────
+// Reference tab bar: flat light grey, no top border, filled glyphs. The active
+// tab is black and its label turns semibold, so state is never colour-only.
 
 function TabIcon({ name, focused }: { name: AppIconName; focused: boolean }) {
   return (
-    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+    <View style={styles.iconWrap}>
       <AppIcon
         name={name}
-        size={18}
-        color={focused ? colors.ink : colors.secondaryLabel}
+        size={24}
+        color={focused ? colors.ink : colors.tertiaryLabel}
       />
     </View>
   );
+}
+
+function tabLabel(text: string) {
+  function TabLabel({ focused }: { focused: boolean }) {
+    return (
+      <ThemedText
+        variant="micro"
+        style={[styles.tabLabel, focused ? styles.tabLabelActive : styles.tabLabelIdle]}
+      >
+        {text}
+      </ThemedText>
+    );
+  }
+  return TabLabel;
 }
 
 export default function PatientTabsLayout() {
@@ -25,27 +39,28 @@ export default function PatientTabsLayout() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: colors.systemBackground,
+          backgroundColor: colors.background,
         },
+        headerTitleAlign: "left",
         headerTitleStyle: {
-          color: colors.label,
-          fontWeight: "700",
+          ...type.largeTitle,
         },
         headerShadowVisible: false,
+        sceneStyle: { backgroundColor: colors.background },
         tabBarStyle: {
-          backgroundColor: colors.systemBackground,
-          borderTopColor: colors.separator,
+          backgroundColor: colors.tabBar,
+          borderTopWidth: 0,
+          elevation: 0,
         },
         tabBarActiveTintColor: colors.ink,
-        tabBarInactiveTintColor: colors.secondaryLabel,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarInactiveTintColor: colors.tertiaryLabel,
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
           title: "Home",
-          tabBarLabel: "Home",
+          tabBarLabel: tabLabel("Home"),
           tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
@@ -53,7 +68,7 @@ export default function PatientTabsLayout() {
         name="appointments"
         options={{
           title: "Appointments",
-          tabBarLabel: "Bookings",
+          tabBarLabel: tabLabel("Bookings"),
           tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
         }}
       />
@@ -61,7 +76,7 @@ export default function PatientTabsLayout() {
         name="records"
         options={{
           title: "Dental Records",
-          tabBarLabel: "Records",
+          tabBarLabel: tabLabel("Records"),
           tabBarIcon: ({ focused }) => <TabIcon name="records" focused={focused} />,
         }}
       />
@@ -69,7 +84,7 @@ export default function PatientTabsLayout() {
         name="messages"
         options={{
           title: "Messages",
-          tabBarLabel: "Messages",
+          tabBarLabel: tabLabel("Messages"),
           tabBarIcon: ({ focused }) => <TabIcon name="message" focused={focused} />,
         }}
       />
@@ -77,7 +92,7 @@ export default function PatientTabsLayout() {
         name="profile"
         options={{
           title: "Profile & Settings",
-          tabBarLabel: "Profile",
+          tabBarLabel: tabLabel("Profile"),
           headerShown: false,
           tabBarIcon: ({ focused }) => <TabIcon name="profile" focused={focused} />,
         }}
@@ -89,18 +104,19 @@ export default function PatientTabsLayout() {
 const styles = StyleSheet.create({
   iconWrap: {
     alignItems: "center",
-    borderRadius: 999,
     justifyContent: "center",
     minHeight: 28,
     minWidth: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  iconWrapActive: {
-    backgroundColor: colors.inkSubtle,
   },
   tabLabel: {
-    fontSize: 11,
+    marginTop: 2,
+  },
+  tabLabelActive: {
+    color: colors.ink,
     fontWeight: "600",
+  },
+  tabLabelIdle: {
+    // One step darker than the idle icon so the label keeps AA contrast
+    color: colors.secondaryLabel,
   },
 });

@@ -1,14 +1,10 @@
 import { Stack } from "expo-router";
+import { stackScreenOptions } from "@/components";
 
 export default function VanLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerBackTitle: "Back",
-      }}
+      screenOptions={stackScreenOptions}
     >
       <Stack.Screen name="service-area" options={{ title: "Van Coverage Check" }} />
       <Stack.Screen name="not-covered" options={{ title: "Area Not Covered" }} />

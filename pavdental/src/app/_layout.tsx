@@ -6,7 +6,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { StatusBar } from "expo-status-bar";
-import { ThemeProvider, DefaultTheme } from "expo-router/react-navigation";
+import { ThemeProvider } from "expo-router/react-navigation";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { tokenStore } from "@/lib/token-store";
@@ -15,7 +15,7 @@ import { useAppLockStore } from "@/features/app-lock/app-lock-store";
 import { AppLockScreen } from "@/features/app-lock/app-lock-screen";
 import { useNotificationManager } from "@/features/notifications/notification-hooks";
 import { initErrorTracking, reportError } from "@/lib/error-tracking";
-import { ThemedText, Button, OfflineBanner } from "@/components";
+import { ThemedText, Button, OfflineBanner, navTheme } from "@/components";
 import { setupNetworkMonitoring } from "@/lib/network";
 import { colors, spacing } from "@/theme";
 
@@ -63,7 +63,7 @@ const errorStyles = StyleSheet.create({
   body: { color: colors.secondaryLabel, textAlign: "center" },
   container: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
+    backgroundColor: colors.background,
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
@@ -139,7 +139,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.pavdental">
           <QueryClientProvider client={queryClient}>
-            <ThemeProvider value={DefaultTheme}>
+            <ThemeProvider value={navTheme}>
               <StatusBar style="dark" />
               <NotificationSetup />
               <AppLockScreen />
@@ -155,7 +155,7 @@ export default function RootLayout() {
       <BottomSheetModalProvider>
         <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.pavdental">
           <QueryClientProvider client={queryClient}>
-            <ThemeProvider value={DefaultTheme}>
+            <ThemeProvider value={navTheme}>
               <StatusBar style="dark" />
               <NotificationSetup />
               <OfflineBanner />

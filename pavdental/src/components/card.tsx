@@ -15,13 +15,14 @@ interface CardProps extends ViewProps {
 const paddingMap = {
   none: 0,
   sm: spacing.sm,
-  md: spacing.md,
+  md: spacing.gutter,
   lg: spacing.lg,
 } as const;
 
 /**
  * Card — base container with rounded corners and optional elevation.
- * Refactored to support Neo Financial card styling with continuous squircle corners.
+ * Reference cards are flat white with 12pt continuous corners: no border,
+ * no shadow. Hierarchy comes from the grey canvas behind them.
  */
 export function Card({
   variant = "default",
@@ -54,29 +55,27 @@ export function Card({
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.systemBackground,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.separator,
+    borderRadius: radius.lg,
+    borderWidth: 0,
+    borderColor: "transparent",
     // @ts-ignore
     borderCurve: "continuous",
     overflow: "hidden",
   },
   dark: {
     backgroundColor: colors.ink,
-    borderColor: colors.inkSoft,
   },
   outline: {
     backgroundColor: "transparent",
+    borderWidth: 1,
     borderColor: colors.separator,
   },
   accent: {
     backgroundColor: colors.infoSubtle,
-    borderColor: colors.info,
   },
   raised: {
     // @ts-ignore — boxShadow is supported in RN 0.76+
     boxShadow: shadows.raised,
-    borderColor: "transparent",
   },
 });
 

@@ -16,9 +16,9 @@ import { AppIcon, type AppIconName } from "./app-icon";
 type ToastTone = "success" | "error" | "info";
 
 const toneMap: Record<ToastTone, { icon: AppIconName; color: string }> = {
-  success: { icon: "checkCircle", color: colors.success },
-  error: { icon: "alert", color: colors.danger },
-  info: { icon: "info", color: colors.ink },
+  success: { icon: "checkCircle", color: colors.successFill },
+  error: { icon: "alert", color: colors.dangerSubtle },
+  info: { icon: "info", color: colors.onInk },
 };
 
 interface ToastProps {
@@ -69,7 +69,7 @@ export function Toast({ message, tone = "info", duration = 3000, onDismiss }: To
         accessibilityRole="alert"
         accessibilityLabel={message}
       >
-        <AppIcon name={t.icon} size={18} color={t.color} />
+        <AppIcon name={t.icon} size={22} color={t.color} />
         <ThemedText variant="subhead" style={styles.text} numberOfLines={2}>
           {message}
         </ThemedText>
@@ -81,7 +81,7 @@ export function Toast({ message, tone = "info", duration = 3000, onDismiss }: To
             style={styles.close}
             hitSlop={8}
           >
-            <AppIcon name="close" size={14} color={colors.tertiaryLabel} />
+            <AppIcon name="close" size={16} color={colors.onInk} />
           </Pressable>
         ) : null}
       </Animated.View>
@@ -99,19 +99,22 @@ const styles = StyleSheet.create({
   },
   toast: {
     alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: radius.md,
+    backgroundColor: colors.toast,
+    borderRadius: radius.lg,
+    // @ts-ignore — iOS squircle corners
+    borderCurve: "continuous",
     boxShadow: shadows.raised,
     flexDirection: "row",
-    gap: spacing.xs,
-    left: spacing.md,
+    gap: spacing.sm,
+    left: spacing.gutter,
+    minHeight: 56,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     position: "absolute",
-    right: spacing.md,
+    right: spacing.gutter,
   },
   text: {
-    color: colors.label,
+    color: colors.onInk,
     flex: 1,
   },
   close: {

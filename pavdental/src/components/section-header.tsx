@@ -1,10 +1,9 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
-import { AppIcon } from "./app-icon";
 
 interface SectionHeaderProps {
-  /** Uppercase eyebrow label */
+  /** Sentence-case grey section label ("Credit cards") */
   title: string;
   /** Optional trailing action, e.g. "See all" */
   actionLabel?: string;
@@ -12,8 +11,8 @@ interface SectionHeaderProps {
 }
 
 /**
- * SectionHeader — overline-caps eyebrow with optional trailing action
- * (reference pattern: "Special for you · See all ›").
+ * SectionHeader — grey sentence-case label above a grouped card, with an
+ * optional blue trailing action (reference pattern: "Promotions · See all").
  */
 export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderProps) {
   return (
@@ -26,10 +25,9 @@ export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderPro
           onPress={onAction}
           style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
         >
-          <ThemedText variant="caption" style={styles.actionText}>
+          <ThemedText variant="subhead" style={styles.actionText}>
             {actionLabel}
           </ThemedText>
-          <AppIcon name="chevronRight" size={12} color={colors.ink} />
         </Pressable>
       ) : null}
     </View>
@@ -41,8 +39,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 32,
-    marginBottom: spacing.xs,
+    minHeight: 28,
+    marginBottom: spacing.xxs,
   },
   action: {
     alignItems: "center",
@@ -52,7 +50,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionText: {
-    color: colors.ink,
-    fontWeight: "600",
+    color: colors.info,
+    fontWeight: "500",
   },
 });

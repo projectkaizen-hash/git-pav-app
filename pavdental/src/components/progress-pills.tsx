@@ -5,7 +5,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { colors, motion } from "@/theme";
+import { colors, motion, radius } from "@/theme";
 
 interface ProgressPillsProps {
   /** Total steps */
@@ -57,13 +57,13 @@ const styles = StyleSheet.create({
   track: {
     flex: 1,
     height: 4,
-    borderRadius: 2,
+    borderRadius: radius.xs,
     backgroundColor: colors.inkSubtle,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    borderRadius: 2,
+    borderRadius: radius.xs,
     backgroundColor: colors.ink,
   },
 });
