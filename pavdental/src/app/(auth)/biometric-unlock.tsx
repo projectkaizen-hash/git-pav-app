@@ -6,11 +6,15 @@ import * as LocalAuthentication from "expo-local-authentication";
 import * as Haptics from "expo-haptics";
 import { ThemedText, Button, AppIcon, Card } from "@/components";
 import { colors, spacing, radius } from "@/theme";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { authApi } from "@/features/auth/auth-api";
+import { useAuthStore, useCurrentUser } from "@/features/auth/auth-store";
+import { useAppLockStore } from "@/features/app-lock/app-lock-store";
+import { getMobilePortalPath } from "@/features/auth/auth-routing";
 
 export default function BiometricUnlockScreen() {
   const router = useRouter();
   const { setBiometricUnlocked } = useAuthStore();
+  const user = useCurrentUser();
   const [hasHardware, setHasHardware] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,9 +23,7 @@ export default function BiometricUnlockScreen() {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       setHasHardware(compatible && enrolled);
-      if (compatible && enrolled) {
-        authenticate();
-      }
+      authenticate();
     }
     checkSupport();
   }, []);
@@ -30,15 +32,13 @@ export default function BiometricUnlockScreen() {
     try {
       setError(null);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Unlock Pav Dental with Face ID / Biometrics",
-        fallbackLabel: "Use Passcode",
-      });
+      const success = await useAppLockStore.getState().unlock();
 
-      if (result.success) {
+      if (success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setBiometricUnlocked(true);
-        router.replace("/(patient)/(tabs)/home");
+        const role = user?.role || "patient";
+        router.replace(getMobilePortalPath(role) as never);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
         setError("Authentication was canceled or not recognized.");
@@ -46,6 +46,13 @@ export default function BiometricUnlockScreen() {
     } catch {
       setError("Biometric authentication encountered an error.");
     }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await authApi.signOut();
+    } catch {}
+    router.replace("/(auth)/welcome");
   };
 
   return (
@@ -93,7 +100,7 @@ export default function BiometricUnlockScreen() {
             title="Sign Out"
             variant="ghost"
             size="md"
-            onPress={() => router.replace("/(auth)/sign-in")}
+            onPress={handleSignOut}
           />
         </View>
       </View>
@@ -161,4 +168,3 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-
