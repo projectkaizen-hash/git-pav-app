@@ -1,7 +1,10 @@
 import { Stack } from "expo-router";
 import { stackScreenOptions } from "@/components";
+import { useProtectedScreen } from "@/features/screen-security/screen-security";
 
 export default function RecordsLayout() {
+  // D-14: no screenshots or screen recording of medical records.
+  useProtectedScreen("patient-records");
   return (
     <Stack
       screenOptions={stackScreenOptions}

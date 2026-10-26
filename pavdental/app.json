@@ -28,8 +28,7 @@
       ],
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true,
-        "NSCameraUsageDescription": "Pav Dental needs camera access for video consultations and capturing intraoral triage photos.",
-        "NSMicrophoneUsageDescription": "Pav Dental needs microphone access for live audio during video dental consultations.",
+        "NSCameraUsageDescription": "Pav Dental uses the camera so you can take photos of your teeth to send to your dentist.",
         "NSPhotoLibraryUsageDescription": "Pav Dental needs photo library access so you can attach dental photos and clinical documents."
       }
     },

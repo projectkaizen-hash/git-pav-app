@@ -2,52 +2,37 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
 import NetInfo from "@react-native-community/netinfo";
 import { ThemedText, Button, Card, AppIcon } from "@/components";
 import { colors, spacing, radius } from "@/theme";
+
+// The call itself opens in the browser (D-01), which asks for the camera and
+// microphone there. All the app can honestly check here is the connection.
+type Connection = "checking" | "wifi" | "cellular" | "other" | "offline";
+
+const CONNECTION_LABEL: Record<Connection, string> = {
+  checking: "Checking…",
+  wifi: "Connected (Wi-Fi)",
+  cellular: "Connected (mobile data)",
+  other: "Connected",
+  offline: "Offline",
+};
 
 export default function DeviceCheckScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
-  const [cameraStatus, setCameraStatus] = useState<"checking" | "ready" | "denied">("checking");
-  const [micStatus, setMicStatus] = useState<"checking" | "ready">("checking");
-  const [networkStatus, setNetworkStatus] = useState<"checking" | "ready" | "offline">("checking");
+  const [connection, setConnection] = useState<Connection>("checking");
 
-  const runDiagnostics = async () => {
-    // 1. Camera permission check
-    try {
-      const cam = await ImagePicker.getCameraPermissionsAsync();
-      if (cam.granted) {
-        setCameraStatus("ready");
-      } else {
-        const req = await ImagePicker.requestCameraPermissionsAsync();
-        setCameraStatus(req.granted ? "ready" : "denied");
-      }
-    } catch {
-      setCameraStatus("ready");
-    }
-
-    // 2. Microphone availability
-    setMicStatus("ready");
-
-    // 3. Real network connection check
-    try {
-      const net = await NetInfo.fetch();
-      setNetworkStatus(net.isConnected ? "ready" : "offline");
-    } catch {
-      setNetworkStatus("ready");
-    }
-  };
-
-  useEffect(() => {
-    runDiagnostics();
-  }, []);
-
-  const cameraOk = cameraStatus === "ready";
-  const micOk = micStatus === "ready";
-  const networkOk = networkStatus === "ready";
+  useEffect(
+    () =>
+      NetInfo.addEventListener((state) => {
+        if (state.isConnected === null) return;
+        if (!state.isConnected) return setConnection("offline");
+        setConnection(state.type === "wifi" ? "wifi" : state.type === "cellular" ? "cellular" : "other");
+      }),
+    [],
+  );
 
   const handleJoinWaitingRoom = () => {
     router.push({
@@ -61,80 +46,55 @@ export default function DeviceCheckScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText variant="headline" style={styles.title}>
-            Hardware & network check
+            Before your video call
           </ThemedText>
           <ThemedText variant="caption" style={styles.subtitle}>
-            Ensuring your audio, video, and connection are crisp before connecting to your dentist.
+            Your call opens in your phone's browser. When it opens, allow the camera and microphone so your dentist can
+            see and hear you.
           </ThemedText>
         </View>
 
-        {/* Video Preview Box */}
-        <View style={styles.videoPreview}>
-          <AppIcon name="video" size={22} color={colors.ink} />
-          <ThemedText variant="caption" style={styles.previewNote}>
-            Front Camera Preview (Self View)
-          </ThemedText>
-        </View>
-
-        {/* Diagnostic Checklist */}
         <Card style={styles.card}>
           <View style={styles.checkItem}>
             <View style={styles.checkLeft}>
-              <AppIcon name="camera" size={18} color={colors.ink} />
-              <ThemedText variant="body">Camera Access</ThemedText>
+              <AppIcon name={connection === "offline" ? "wifiOff" : "wifi"} size={18} color={colors.ink} />
+              <ThemedText variant="body">Internet connection</ThemedText>
             </View>
-            <ThemedText variant="caption" style={styles.okText}>
-              {cameraOk ? "Ready" : "Error"}
+            <ThemedText
+              variant="caption"
+              style={connection === "offline" ? styles.badText : connection === "checking" ? styles.subtitle : styles.okText}
+            >
+              {CONNECTION_LABEL[connection]}
             </ThemedText>
           </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.checkItem}>
-            <View style={styles.checkLeft}>
-              <AppIcon name="mic" size={18} color={colors.ink} />
-              <ThemedText variant="body">Microphone</ThemedText>
-            </View>
-            <ThemedText variant="caption" style={styles.okText}>
-              {micOk ? "Detected" : "Error"}
+          {connection === "cellular" ? (
+            <ThemedText variant="caption" style={styles.subtitle}>
+              Video uses a lot of data. Wi-Fi is better if you have it.
             </ThemedText>
-          </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.checkItem}>
-            <View style={styles.checkLeft}>
-              <AppIcon name="zap" size={18} color={colors.ink} />
-              <ThemedText variant="body">Connection Speed</ThemedText>
-            </View>
-            <ThemedText variant="caption" style={styles.okText}>
-              {networkOk ? "High (HD Video)" : "Poor"}
+          ) : null}
+          {connection === "offline" ? (
+            <ThemedText variant="caption" style={styles.subtitle}>
+              Connect to Wi-Fi or mobile data to join the call.
             </ThemedText>
-          </View>
+          ) : null}
         </Card>
 
-        {/* Fallback Option */}
         <View style={styles.fallbackBox}>
           <ThemedText variant="caption" style={styles.fallbackTitle}>
-            Technical Difficulties?
+            To get the most from your call
           </ThemedText>
           <ThemedText variant="caption" style={styles.fallbackText}>
-            If your camera or mic is not working, your dentist can conduct an audio-only telephone call instead.
+            Find a quiet, well-lit spot and keep your phone charged. If the video doesn't work, message the practice
+            from the Messages tab.
           </ThemedText>
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
         <Button
           title="Enter waiting room"
           size="lg"
-          onPress={handleJoinWaitingRoom}
-        />
-        <Button
-          title="Call me by phone instead"
-          variant="secondary"
-          size="md"
+          disabled={connection === "offline"}
           onPress={handleJoinWaitingRoom}
         />
       </View>
@@ -195,26 +155,15 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontWeight: "700",
   },
-  previewNote: {
-    color: colors.secondaryLabel,
-  },
-  separator: {
-    backgroundColor: colors.separator,
-    height: StyleSheet.hairlineWidth,
+  badText: {
+    color: colors.danger,
+    fontWeight: "700",
   },
   subtitle: {
     color: colors.secondaryLabel,
   },
   title: {
     color: colors.label,
-  },
-  videoPreview: {
-    alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: radius.lg,
-    gap: spacing.xs,
-    height: 180,
-    justifyContent: "center",
   },
 });
 
