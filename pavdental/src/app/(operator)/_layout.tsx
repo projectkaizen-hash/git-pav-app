@@ -1,10 +1,17 @@
+import { useEffect } from "react";
 import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
 import { stackScreenOptions } from "@/components";
+import { stopShiftBackgroundLocation } from "@/features/van/background-location";
 
 export default function OperatorLayout() {
   const user = useCurrentUser();
+
+  // D-21: signing out ends background location sharing.
+  useEffect(() => {
+    if (user?.role !== "operator") void stopShiftBackgroundLocation();
+  }, [user?.role]);
 
   if (!isAllowedInPortal(user?.role, "operator")) {
     return <Redirect href={user ? (getMobilePortalPath(user.role) as never) : "/(auth)/welcome"} />;

@@ -74,6 +74,22 @@ const notificationsPlugin = plugins.find(
 );
 assert(notificationsPlugin !== undefined, "app.json includes 'expo-notifications' plugin (CG-1)");
 
+// Van shift location in the background (D-21), and no microphone string now
+// that video calls open in the browser (D-01, RB-07).
+const locationPlugin = plugins.find((p: unknown) => Array.isArray(p) && p[0] === "expo-location");
+const locationOptions = locationPlugin?.[1] ?? {};
+assert(
+  locationOptions.isIosBackgroundLocationEnabled === true &&
+    locationOptions.isAndroidBackgroundLocationEnabled === true &&
+    locationOptions.isAndroidForegroundServiceEnabled === true &&
+    /shift/i.test(locationOptions.locationAlwaysAndWhenInUsePermission ?? ""),
+  "expo-location allows background updates during a shift and explains why (D-21)"
+);
+assert(
+  appConfig.ios?.infoPlist?.NSMicrophoneUsageDescription === undefined,
+  "app.json asks for no microphone access (calls open in the browser)"
+);
+
 const stripePlugin = plugins.find(
   (p: any) =>
     p === "@stripe/stripe-react-native" ||

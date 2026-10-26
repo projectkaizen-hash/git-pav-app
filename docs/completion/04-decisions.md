@@ -78,7 +78,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 | D-17 | Third-party design captures (`neo-financial-ios/`) and the dashboard template pages | Remove from the current files only (no history rewrite), but keep both for now as a reference for new screens; delete before going live (25 Oct, 23:01 UTC) | Owner |
 | D-19 | Staff alert emails | Plain "new message" alert with no patient name or subject | Default (accepted) |
 | D-20 | Drop `waitlist_entries` | Yes, after a backup | Default (accepted) |
-| D-21 | Van operator location | In the background during a shift | Owner |
+| D-21 | Van operator location | In the background during a shift. Built: after "While using the app", operators are asked for "Allow all the time"; if they allow it, the van keeps sending its position every 20 seconds while the app is in the background, with Android's ongoing "Shift in progress" notification and iOS's blue location indicator. It stops at the end of the shift or on sign-out. If they decline, tracking works only while the app is open. At submission: Google Play's background location declaration (with a short video) and an App Review note explaining it. | Built (app) |
 | D-22 | Login code for van operators | Yes | Default (accepted) |
 
 ### Accounts and data the owner will supply
