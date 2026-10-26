@@ -1,16 +1,20 @@
 import { Router, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { publicProfileSelect } from "../lib/clinician-profiles";
 import { requireRole, AuthRequest } from "../middleware/auth";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
 import { appointmentsOutsideHours, dateOnly, londonDate } from "../lib/availability";
 import {
   clinicClosureSchema,
   clinicHoursSchema,
+  clinicianProfileSchema,
   clinicianRotaSchema,
   dateRangeQuerySchema,
   idDateParamsSchema,
   idParamsSchema,
   rotaOverrideSchema,
+  websiteOrderSchema,
 } from "../schemas/admin";
 
 // Back office for opening hours and the rota (CS-31). Admin only; every
@@ -99,6 +103,12 @@ router.get("/clinicians", async (_req: AuthRequest, res: Response) => {
       id: true,
       fullName: true,
       roleTitle: true,
+      gdcNumber: true,
+      specialisms: true,
+      bio: true,
+      photoUrl: true,
+      showOnWebsite: true,
+      websiteOrder: true,
       isTelehealthActive: true,
       rota: {
         select: { weekday: true, startMinute: true, endMinute: true, clinicId: true },
@@ -107,6 +117,36 @@ router.get("/clinicians", async (_req: AuthRequest, res: Response) => {
     },
   });
   return res.json(clinicians);
+});
+
+// Edits the profile patients see in the app and, when showOnWebsite is on,
+// on the website's team page.
+router.patch("/clinicians/:id/profile", validateParams(idParamsSchema), validateBody(clinicianProfileSchema), async (req: AuthRequest, res: Response) => {
+  const id = String(req.params.id);
+  const data = req.body as Prisma.ClinicianProfileUpdateInput;
+  if (!(await prisma.clinicianProfile.findUnique({ where: { id }, select: { id: true } }))) {
+    return res.status(404).json({ error: "Clinician not found" });
+  }
+  try {
+    const updated = await prisma.clinicianProfile.update({ where: { id }, data, select: publicProfileSelect });
+    return res.json(updated);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return res.status(409).json({ error: "Another clinician already has that GDC number" });
+    }
+    throw err;
+  }
+});
+
+// Sets the website order: the first id is listed first.
+router.put("/clinicians/website-order", validateBody(websiteOrderSchema), async (req: AuthRequest, res: Response) => {
+  const { clinicianIds } = req.body as { clinicianIds: string[] };
+  const found = await prisma.clinicianProfile.count({ where: { id: { in: clinicianIds } } });
+  if (found !== clinicianIds.length) return res.status(404).json({ error: "Clinician not found" });
+  await prisma.$transaction(
+    clinicianIds.map((id, websiteOrder) => prisma.clinicianProfile.update({ where: { id }, data: { websiteOrder } }))
+  );
+  return res.json({ clinicianIds });
 });
 
 // Replaces the clinician's weekly rota.

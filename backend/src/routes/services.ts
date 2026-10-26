@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { dateOnly, londonDate } from "../lib/availability";
 import { prisma } from "../lib/prisma";
+import { websiteDentists } from "../lib/clinician-profiles";
 
 const router = Router();
 
@@ -62,6 +63,13 @@ router.get("/clinicians", async (req: Request, res: Response) => {
   });
 
   return res.json(clinicians);
+});
+
+// ─── GET /api/services/dentists ───────────────────────────────────────────────
+// The website's team page: the clinicians staff chose to show, in their order.
+router.get("/dentists", async (_req: Request, res: Response) => {
+  res.set("Cache-Control", "public, max-age=300");
+  return res.json(await websiteDentists());
 });
 
 // ─── GET /api/clinics ─────────────────────────────────────────────────────────
