@@ -536,9 +536,25 @@ model PushToken {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets   PushTicket[]
 
   @@index([userId])
   @@map("push_tokens")
+}
+
+/// An Expo push ticket waiting for its delivery receipt (BE-09). The receipt
+/// says whether Apple or Google took the message; a DeviceNotRegistered
+/// receipt switches the token off. Expo keeps receipts for about a day, so
+/// older rows are dropped unchecked. Goes with its token.
+model PushTicket {
+  id        String    @id @map("ticket_id")
+  token     String
+  createdAt DateTime  @default(now()) @map("created_at")
+  pushToken PushToken @relation(fields: [token], references: [token], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([token])
+  @@map("push_tickets")
 }
 
 model NotificationPreference {

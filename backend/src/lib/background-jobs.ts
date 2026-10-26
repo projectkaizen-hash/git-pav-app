@@ -5,6 +5,7 @@ import { createAuditLogWithIntegrity } from "./audit-integrity";
 import { releaseVanDeposit } from "./van-payments";
 import { sendPatientNotification } from "./patient-push";
 import { awardMissedVisitPoints } from "./rewards";
+import { checkPushReceipts } from "./push-receipts";
 import { issueMissedReferralVouchers } from "./referrals";
 import { runRetentionSweep } from "./retention";
 import { safeError } from "./log-safety";
@@ -574,6 +575,8 @@ export async function retryFailedVanDepositReleases(): Promise<{ retriedCount: n
  */
 const RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 let retentionSweepTimer: NodeJS.Timeout | null = null;
+const PUSH_RECEIPT_INTERVAL_MS = 15 * 60 * 1000;
+let pushReceiptTimer: NodeJS.Timeout | null = null;
 
 export function startBackgroundJobs(): void {
   console.log("[BACKGROUND JOBS] Starting background workers (slot expiry, notification dispatcher & van request expiry)");
@@ -609,6 +612,12 @@ export function startBackgroundJobs(): void {
       console.error("[BACKGROUND JOBS] Retention sweep failed:", err instanceof Error ? err.name : "unknown error");
     });
   }, RETENTION_SWEEP_INTERVAL_MS);
+
+  pushReceiptTimer = setInterval(() => {
+    checkPushReceipts().catch((err) => {
+      console.error("[BACKGROUND JOBS] Push receipt check failed:", err instanceof Error ? err.name : "unknown error");
+    });
+  }, PUSH_RECEIPT_INTERVAL_MS);
 }
 
 /**
@@ -630,6 +639,10 @@ export function stopBackgroundJobs(): void {
   if (retentionSweepTimer) {
     clearInterval(retentionSweepTimer);
     retentionSweepTimer = null;
+  }
+  if (pushReceiptTimer) {
+    clearInterval(pushReceiptTimer);
+    pushReceiptTimer = null;
   }
   console.log("[BACKGROUND JOBS] Stopped background workers");
 }
