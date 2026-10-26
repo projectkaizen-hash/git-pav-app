@@ -299,7 +299,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
 | LG-01 | P0 | Privacy notice: legal review of `docs/compliance/privacy-notice-draft.md`, fix processor list (see LG-02), publish on the website (WS-01). | Legal+C | elapsed |
-| LG-02 | P0 | DPA tracker is wrong (V-04). Rewrite it to list the real processors (Render, Supabase, Upstash, Vercel, Stripe, Daily, Postmark, Twilio, Sentry, Expo push / APNs / FCM, postcodes.io, Mapbox/OSRM, Firebase/Google if kept) with status "to do"; then you accept each DPA. | C, then P | S + elapsed |
+| LG-02 | P0 | DPA tracker rewritten in `docs/compliance/dpa-tracker.md` with all 12 processors (Render, Supabase, Upstash, Vercel, Stripe, Daily, Postmark, Twilio, Sentry, Expo push / APNs / FCM, postcodes.io, Mapbox) with status "To Do" per V-04; website `/privacy` updated to match. Owner accepts each DPA at production onboarding. | `docs/compliance/dpa-tracker.md`, `website/src/routes/privacy.tsx` | C, then P | S + elapsed | **Partially done (tracker & website match; DPA acceptances pending)** |
 | LG-03 | P0 | DPIA sign-off (`docs/compliance/dpia-draft.md`). | Legal/DPO | elapsed |
 | LG-04 | P0 | ICO registration (data protection fee) for the controller. | P | days |
 | LG-05 | P0 | CQC: confirm registration covers the clinic(s), domiciliary/van visits and remote consultations; correct the release checklist (V-05). | P | elapsed |

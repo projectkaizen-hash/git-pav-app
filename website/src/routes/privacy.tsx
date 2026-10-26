@@ -14,15 +14,19 @@ function PrivacyPolicyPage() {
       <div className="pt-24 pb-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="mb-10 text-center">
-            <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 uppercase tracking-wider">
-              Legal & Compliance
+            <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 uppercase tracking-wider">
+              Working Draft • Pending Legal Review
             </span>
             <h1 className="mt-4 font-serif text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
               Patient Privacy Notice
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Last updated: 26 October 2026 • Effective date: 26 October 2026
+              Last updated: 27 October 2026 • Working Compliance Draft (LG-01/LG-02)
             </p>
+          </div>
+
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 mb-8 leading-relaxed">
+            <strong>Pre-Launch Notice:</strong> This privacy notice accurately reflects the technical architecture, sub-processors, and data handling of the Pav Dental software platform. It is currently undergoing formal legal, DPO, and clinical lead review (LG-01) prior to full launch.
           </div>
 
           <div className="prose prose-slate max-w-none space-y-8 text-slate-700 leading-relaxed">
@@ -78,15 +82,23 @@ function PrivacyPolicyPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-              <h2 className="font-serif text-xl font-semibold text-slate-900">4. Third-Party Processors & Data Sharing</h2>
+              <h2 className="font-serif text-xl font-semibold text-slate-900">4. Third-Party Technical Processors & Infrastructure</h2>
               <p className="mt-3 text-sm">
-                We never sell, rent, or trade your personal data. We work with vetted processors operating under strict data protection agreements:
+                We never sell, rent, or trade your personal data. We utilize third-party technology providers to host, secure, and deliver the service. Formal Data Processing Agreements (DPAs) and standard contractual clauses are managed as part of pre-launch compliance onboarding (tracked in our DPA Register):
               </p>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
-                <li><strong>Stripe:</strong> Secure online deposit payment handling and card vaulting.</li>
+                <li><strong>Render:</strong> Cloud application server hosting and background worker execution (API runtime).</li>
+                <li><strong>Supabase:</strong> Managed PostgreSQL database with PostGIS extensions for encrypted patient records, appointments, clinical charts, and audit logs.</li>
+                <li><strong>Upstash:</strong> Managed serverless Redis for rate limiting, short-lived session security, and queue coordination.</li>
+                <li><strong>Vercel:</strong> Static asset hosting and serverless web runtime for the marketing site and staff admin dashboard.</li>
+                <li><strong>Stripe:</strong> Payment processing, deposit pre-authorisations, and card vaulting (PCI-DSS Level 1 compliant).</li>
                 <li><strong>Daily.co:</strong> Encrypted WebRTC virtual dental consultation video streams.</li>
-                <li><strong>Twilio & Postmark:</strong> Delivering transactional verification codes and appointment notifications.</li>
-                <li><strong>Cloud Infrastructure:</strong> High-availability application servers and encrypted databases (Frankfurt & London regions) with automated backups and audit logging.</li>
+                <li><strong>Postmark:</strong> Transactional email delivery for administrative alerts (zero diagnostic or clinical information).</li>
+                <li><strong>Twilio:</strong> SMS delivery for one-time verification codes and staff two-factor authentication.</li>
+                <li><strong>Sentry:</strong> Application diagnostics and crash reporting with strict client and server-side personal data scrubbers.</li>
+                <li><strong>Expo (EAS):</strong> Mobile application compilation, binary delivery, and push notification routing via Apple APNs and Google FCM.</li>
+                <li><strong>postcodes.io:</strong> Geographic resolution of UK postcodes for clinic proximity and mobile van coverage calculation (no personal patient identifiers transmitted).</li>
+                <li><strong>Mapbox:</strong> Road network routing and estimated arrival calculations for mobile dental van visits.</li>
               </ul>
             </section>
 
