@@ -7,6 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "ios": {
         "simulator": true
       },
@@ -20,6 +21,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://staging-api.pavdental.co.uk",
         "EXPO_PUBLIC_APP_ENV": "preview"
@@ -27,6 +29,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.pavdental.co.uk",
         "EXPO_PUBLIC_APP_ENV": "production"

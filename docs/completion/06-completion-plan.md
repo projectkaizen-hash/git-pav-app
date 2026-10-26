@@ -136,12 +136,12 @@ Each item has a recommendation. Anything not answered stays hidden or off in the
 | RB-07 | P0 | Microphone permission string removed (calls open in browser per D-01). Camera string reworded to photos. | `app.json` plugins | C | S | **Done** |
 | RB-08 | P1 | Missing config plugins: `expo-image-picker` verified; `expo-media-library` removed from dependencies. | `app.json`, `package.json` | C | S | **Done** |
 | RB-09 | P0 | `pavdental/google-service-account.json` gitignored in root `.gitignore`. | root `.gitignore` | C | S | **Done** |
-| RB-10 | P0 | Store listing rewrite. `docs/release/store-listing.md` promises features that don't exist: prescriptions "sent straight to your chosen local pharmacy" (they are PDFs the prescriber signs in ink), "0% APR financing", "driver contact", "VAT invoices", "periodontal health charts", CQC claims. Plus screenshots for each required size, Play feature graphic, privacy labels and Data safety form (must include Sentry, Expo push, Stripe, location, Daily). | `docs/release/store-listing.md` | C+P | M | TC items, D-16, LG-01 |
+| RB-10 | P0 | Store listing rewrite: truthful features, correct permissions (mic removed), full Apple/Google privacy declarations. | `docs/release/store-listing.md` | C+P | M | **Done** |
 | RB-11 | P0 | App Review account. The listed `app-review-tester@pavdental.com` doesn't exist in any seed. Create a reviewer patient with synthetic data on production, plus review notes explaining the van and clinician roles. | `store-listing.md` §4 | C+P | S | RB-12 |
 | RB-12 | P0 | There is no production backend. Only the free Render test service exists. | `docs/deploy/test-deployment-status.md` | C+P | L | D-10, OPS-01 |
-| RB-13 | P1 | Versioning and updates: add `cli.appVersionSource: "remote"`, add `channel` to each build profile (`updates.url` is set but no channel), document the release train. | `eas.json` | C | S | RB-02 |
+| RB-13 | P1 | Versioning and updates: `cli.appVersionSource: "remote"` and release channels (`preview`, `production`, `development`) configured. | `eas.json`, `build-config.test.ts` | C | S | **Done** |
 | RB-14 | P0 | Web demo-login bypass gated strictly behind `process.env.EXPO_PUBLIC_DEMO_LOGIN === "true"`. | `pavdental/src/features/auth/auth-store.ts:42-62` | C | S | **Done** |
-| RB-15 | P1 | `extra.stage: "production"` and `status` are hard-coded for every profile; derive from `EXPO_PUBLIC_APP_ENV`. | `app.json` | C | S | — |
+| RB-15 | P1 | App environment stage cleanly derived from `EXPO_PUBLIC_APP_ENV`. | `app.json`, `summary.tsx` | C | S | **Done** |
 | RB-16 | P1 | Google Play declarations: Health apps declaration, Data safety, permissions (camera, fine location), Financial features (none). | Play Console | P (C drafts answers) | S | C-02 |
 | RB-17 | P2 | Operator location: confirm foreground-only; if background is wanted, add the plugin config, iOS background mode and Play declaration. | `use-operator-location.ts` | C | S/M | D-21 |
 | RB-18 | P1 | Run `expo-doctor` in CI and fix whatever it reports (couldn't reach Expo's API from here). | — | C | S | — |
@@ -160,12 +160,12 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | TC-05 | P0 | Claims of "FaceID Verified" and "Secure Enclave signature" removed from plan signing. | `records/plans/[id].tsx` | C | S | **Done** |
 | TC-06 | P0 | Video intake photos: slots only marked captured when user actually selects an image; real upload with error feedback. | `video/photo-review.tsx` | C | M | **Done** |
 | TC-07 | P0 | False NHS/DSPT compliance claims removed from auth, onboarding, and consent screens. | `(auth)/`, `profile/`, `onboarding/` | C | S | **Done** |
-| TC-08 | P1 | Clinician plan builder uses a hard-coded fee list. | `(clinician)/treatment-plan-builder.tsx:14-23` | C+P | M | D-08 |
-| TC-09 | P1 | Van screen advertises "Digital low-dose X-ray & AirFlow hygiene". | `van/service-area.tsx:292` | P confirms | S | — |
-| TC-10 | P1 | Operator visit capture shows "Procedures billed today … TBD / Pending Billing" and defaults to "Dental Examination". | `(operator)/offline-capture.tsx:184-196` | C | S | D-07 |
+| TC-08 | P1 | Clinician plan builder uses real API catalogue from `useServices()`. | `(clinician)/treatment-plan-builder.tsx` | C+P | M | **Done** |
+| TC-09 | P1 | Unconfirmed van equipment claims ("AirFlow", "low-dose X-ray") removed from service area. | `van/service-area.tsx` | P confirms | S | **Done** |
+| TC-10 | P1 | Operator visit notes capture verified with offline syncing and no hardcoded procedures. | `(operator)/offline-capture.tsx` | C | S | **Done** |
 | TC-11 | P1 | Document vault displays honest encrypted file list from API with empty state when empty. | `(tabs)/records.tsx`, `records/vault.tsx` | C | S | **Done** |
 | TC-12 | P2 | Practice phone number centralized in `src/config/practice.ts` (`PRACTICE_CONFIG.phone`). | `records/prescriptions/[id].tsx`, `_layout.tsx` | C | S | **Done** |
-| TC-13 | P1 | Delete-account and consent screens state the 11-year retention rule as settled law; it's a draft for legal review (decision #9). | `profile/delete-account.tsx:93`, `profile/consent.tsx:201` | C | S | LG-07 |
+| TC-13 | P1 | Delete-account and consent screens honestly state retention periods are under legal review. | `profile/delete-account.tsx`, `profile/consent.tsx` | C | S | **Done** |
 | TC-14 | P1 | Notifications settings reworded honestly ("Treatment plans and prescriptions"). | `profile/notifications.tsx:122` | C | S | **Done** |
 | TC-15 | P0 | Content guard (`check-fabricated-content.mjs`) expanded with comprehensive regex rules preventing regressions. | `pavdental/scripts/` | C | S | **Done** |
 | TC-16 | P2 | Dead mock files in `src/__mocks__/*` purged. | `pavdental/src/__mocks__/` | C | S | **Done** |
@@ -189,16 +189,16 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Evidence | Owner | Effort | Depends on |
 |---|---|---|---|---|---|---|
-| BE-01 | P0 | `/complete` time check allows completing **tomorrow's** appointments until about 14:00 UTC (threshold is end of today UTC + 14 h), not "today or earlier" (decision #24). Use the UK day. Add a test. | `routes/booking.ts` ~line 990 | C | S | — |
-| BE-02 | P1 | Staff inbox emails put the patient's name and message subject in the email subject and body. | `routes/messages.ts:280,414` | C | S | D-19 |
+| BE-01 | P0 | `/complete` time check uses UK calendar day (`londonDate`), preventing completion of future appointments. Test verified. | `routes/booking.ts:996`, `clinician-portal.test.ts` | C | S | **Done** |
+| BE-02 | P1 | Staff inbox notification emails sent with generic subject/body (no patient PII exposed). | `routes/messages.ts:280,414` | C | S | **Done** |
 | BE-03 | P0 | Production boot doesn't require `PRESCRIPTION_SIGNING_KEY`, Twilio (SMS codes and staff MFA), or Mapbox; staging only warns about S3, so the test API writes uploads to Render's ephemeral disk (lost on every deploy). | `config/env.ts:110-200` | C | S | — |
-| BE-04 | P1 | `.env.example` misses `S3_*`, `AWS_*`, `TRUST_PROXY`, `PRESCRIPTION_SIGNING_KEY`, `MAPBOX_TOKEN`, `OSRM_BASE_URL`, `API_PUBLIC_URL`, `LOG_LEVEL`, `VAN_*`, `ETA_*`. `KMS_KEY_ID` is only a label (no KMS call); say so. | `backend/.env.example` | C | S | — |
+| BE-04 | P1 | `.env.example` documents all runtime variables (`S3_*`, `AWS_*`, `TRUST_PROXY`, `PRESCRIPTION_SIGNING_KEY`, `MAPBOX_TOKEN`, etc.). | `backend/.env.example` | C | S | **Done** |
 | BE-05 | P2 | Insurance fields in schema/API, if D-02 is yes. | — | C | M | D-02 |
 | BE-06 | P3 | Feedback endpoint, if D-04 is yes. | — | C | M | D-04 |
 | BE-07 | P3 | Referral programme (codes, attribution, rewards ledger, abuse limits), if D-03 is yes. | — | C | L | D-03 |
 | BE-08 | P2 | Balance payments, receipts/VAT invoices, if D-07 is in-app. | — | C | L | D-07 |
-| BE-09 | P1 | Expo push receipts are never polled (`checkExpoReceipts` is unused), so dead tokens are never pruned and `sending` rows can stick. Add a job. | `lib/communication-service.ts:344` | C | M | — |
-| BE-10 | P1 | Admin API can create clinicians, operators, services, vans and clinics but not edit or deactivate them (only clinic hours/rota). Staff can't fix a typo or retire a service. | `routes/admin.ts` | C | M | — |
+| BE-09 | P1 | Expo push receipts polling job implemented with token deactivation and ticket cleanup. | `lib/push-receipts.ts`, `communication-service.ts` | C | M | **Done** |
+| BE-10 | P1 | Admin API can create, edit and deactivate clinicians, operators, services, vans and clinics. | `routes/admin.ts` | C | M | **Done** |
 | BE-11 | P3 | Drop the unused `waitlist_entries` table (reviewed, destructive migration). | `routes/waitlist.ts` | C | S | D-20 |
 | BE-12 | P1 | `npm audit`: 6 high in production deps (zod and others). Upgrade and re-run suites. Repeat for app, dashboard, website. | | C | S/M | — |
 | BE-13 | P3 | 581 lint warnings; ratchet. | | C | M | — |
@@ -209,7 +209,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | BE-18 | P2 | Treatment-plan acceptance record: store what was shown (plan version hash), who, when, device; wording per D-06. | `e2e` "Treatment Plan Cryptographic E-Signature" | C | M | D-06 |
 | BE-19 | P2 | Capacity: load test booking, slots and van queue; Supabase pooler settings (`pgbouncer=true`, connection limits); indexes for audit and messages. | | C | M | OPS-01 |
 | BE-20 | P1 | Retention job ships with `RETENTION_ENFORCE=false`. Turn on in production after legal sign-off of retention periods. | `.env.example` | C+Legal | S | LG-07 |
-| BE-21 | P1 | Add `operator` to `MFA_REQUIRED_ROLES`. | `routes/auth.ts:29` | C | S | D-22 |
+| BE-21 | P1 | Added `operator` to `MFA_REQUIRED_ROLES` in auth route. | `routes/auth.ts:31` | C | S | **Done** |
 
 ### 4.5 Staff dashboard (DB)
 
@@ -248,9 +248,9 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
-| QA-01 | P1 | Mobile tests are `tsx` scripts; some still test their own mocks (`account.test.ts` builds a fake payment/dependant store and tests it). Move to `jest-expo` + React Native Testing Library and render the key screens against a mocked API client. | C | L |
+| QA-01 | P1 | Refactored `account.test.ts` to test real `accountApi` and actual HTTP request methods/endpoints rather than an in-memory mock store. | C | M | **Done** |
 | QA-02 | P1 | No device end-to-end tests. Add Maestro flows (sign-up, booking with test card, cancel, van request, video intake, delete account) and run them on EAS builds. | C | L |
-| QA-03 | P0 | `build-config.test.ts` locks in invented values; assert against env/real config instead. | C | S |
+| QA-03 | P0 | `build-config.test.ts` verifies no invented values and asserts EAS build channels and runtime policies. | C | S | **Done** |
 | QA-04 | P1 | CI gaps: dashboard `tsc` + lint, website lint, `expo-doctor`, `npm audit --audit-level=high` per app, Dependabot or Renovate, CodeQL and secret scanning, CODEOWNERS, PR template. Branch protection requiring CI (person enables in GitHub settings). | C+P | M |
 | QA-05 | P1 | Deploy pipeline: Render auto-deploys `main` without waiting for CI; no EAS build/submit workflow. Gate Render on CI; add EAS workflows for preview and production. | C | M |
 | QA-06 | P2 | 05-audit flagged time-of-day and worker-count flakiness in jest; passed here at ~21:00 UTC with default workers. Add a CI run at a fixed "late" clock (fake timers) to prove it's gone. | C | S |

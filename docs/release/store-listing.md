@@ -1,4 +1,4 @@
-# Mobile App Store Listing & Metadata Specification
+# Mobile App Store Listing & Metadata Specification (RB-10)
 
 **App Name:** Pav Dental — Mobile & Clinic Care  
 **Bundle ID (iOS):** `com.pavdental.app`  
@@ -12,27 +12,27 @@
 ## 1. Store Copy & Descriptions
 
 ### Short Description (Google Play — max 80 chars)
-Expert dental care at our clinics, mobile dental vans, or via video consults.
+Private dental care at our clinics, mobile dental vans, or via video consults.
 
 ### Subtitle (Apple App Store — max 30 chars)
-Premier Mobile Dental Care
+Dental Care & Mobile Vans
 
 ### Full Description (Apple App Store & Google Play)
-Welcome to Pav Dental — transforming oral healthcare across the UK with seamless in-clinic appointments, mobile dental van visits to your home or office, and on-demand tele-dentistry video consultations.
+Welcome to Pav Dental — private oral healthcare across the UK with in-clinic appointments, mobile dental van visits to your home or workplace, and tele-dentistry video consultations.
 
-Whether you need a routine check-up, emergency dental triage, professional hygiene scaling, or advanced cosmetic treatments, Pav Dental connects you with General Dental Council (GDC) registered dentists and clinical specialists right from your smartphone.
+Whether you need a routine dental examination, emergency triage advice, hygiene appointments, or ongoing dental treatment, Pav Dental connects you with General Dental Council (GDC) registered dentists and clinical teams directly from your smartphone.
 
 KEY FEATURES:
-• Comprehensive Booking: Choose from in-person clinic appointments, state-of-the-art mobile dental van visits to your doorstep, or live video consultations.
-• Digital Odontogram & Charts: View your comprehensive 32-tooth dental records, restoration histories, and periodontal health charts in real time.
-• Treatment Estimates & Plans: Transparent, itemised treatment estimates. Review and digitally sign treatment plans with 0% APR financing options via our healthcare finance partners.
-• Secure Document Vault: Access your digital X-rays, diagnostic radiographs, signed consents, and VAT invoices whenever you need them.
-• Live Mobile Van Tracking: Track your assigned dental van in real time with precise arrival windows and driver contact.
-• GDC-Certified Electronic Prescriptions: Receive digitally signed electronic prescriptions sent straight to your chosen local pharmacy.
-• Biometric Security: Bank-grade biometric authentication (Face ID, Touch ID, or Device Passcode) protects your sensitive dental and medical records.
-• Oral Health Rewards: Log your daily brushing sessions, earn health perks, and redeem vouchers toward your dental visits.
+• Comprehensive Booking: Choose from in-person clinic appointments, mobile dental van visits, or tele-dentistry video consultations.
+• Digital Odontogram: View your interactive 32-tooth dental records and charted conditions recorded by your clinician.
+• Treatment Estimates & Clear Pricing: Transparent, itemised treatment estimates. Review and acknowledge treatment plans with clear deposit and visit balance amounts.
+• Secure Document Vault: Access your treatment documents, diagnostic records, and signed consents streamed via encrypted access.
+• Mobile Dental Van Tracking: Track your scheduled dental van on shift with live arrival updates.
+• Private Prescriptions: View private prescription references and official PDF copies issued by your dentist for dispensing at your pharmacy.
+• Biometric Account Security: Protect your health and consultation records with Face ID, Touch ID, or device passcode.
+• Oral Health Habits & Perks: Log your daily brushing sessions, view recall advice, and earn perk vouchers toward your dental visits.
 
-Clinical care you can trust: All procedures and consultations are delivered exclusively by UK GDC-registered dental practitioners adhering to strict Care Quality Commission (CQC) standards.
+Clinical care you can trust: All procedures and consultations are delivered exclusively by UK GDC-registered dental practitioners.
 
 ---
 
@@ -40,36 +40,50 @@ Clinical care you can trust: All procedures and consultations are delivered excl
 
 | Platform | Permission | Rationale Displayed to User | Mandatory / Optional |
 |---|---|---|---|
-| iOS & Android | **Camera** (`NSCameraUsageDescription`, `CAMERA`) | "Pav Dental requires camera access so you can photograph affected teeth or gums during dental triage and participate in video consultations." | Optional (prompted upon first photo or video call) |
-| iOS & Android | **Microphone** (`NSMicrophoneUsageDescription`, `RECORD_AUDIO`) | "Pav Dental requires microphone access to allow you to speak with your dentist during virtual tele-dentistry consultations." | Optional (prompted on video call start) |
-| iOS & Android | **Photo Library** (`NSPhotoLibraryUsageDescription`, `READ_MEDIA_IMAGES`) | "Used to upload existing dental X-rays or photographs of dental concerns to your encrypted record." | Optional |
-| iOS & Android | **Location** (`NSLocationWhenInUseUsageDescription`, `ACCESS_FINE_LOCATION`) | "Your location is used to verify that your address is within our mobile dental van service area and to coordinate van arrival." | Optional |
-| iOS & Android | **Face ID / Biometrics** (`NSFaceIDUsageDescription`, `USE_BIOMETRIC`) | "Authenticate securely to protect your confidential dental health records and treatment history." | Optional |
-| iOS & Android | **Push Notifications** (`POST_NOTIFICATIONS`) | "Receive timely appointment reminders, van arrival alerts, and messaging replies from your care team." | Optional |
+| iOS & Android | **Camera** (`NSCameraUsageDescription`, `CAMERA`) | "Pav Dental uses the camera so you can take photos of your teeth to send to your dentist." | Optional (prompted upon first photo capture during video triage) |
+| iOS & Android | **Photo Library** (`NSPhotoLibraryUsageDescription`, `READ_MEDIA_IMAGES`) | "Pav Dental needs photo library access so you can attach dental photos and clinical documents." | Optional |
+| iOS & Android | **Location (When In Use)** (`NSLocationWhenInUseUsageDescription`, `ACCESS_FINE_LOCATION`) | "Allow Pav Dental to use your location to share the mobile dental van's live position with patients and navigate to visit addresses." | Optional (used for service area check and patient dispatch) |
+| iOS & Android | **Location (Background / Shifts)** (`NSLocationAlwaysAndWhenInUseUsageDescription`, `ACCESS_BACKGROUND_LOCATION`) | "During a van shift, Pav Dental shares the van's position with that day's patients even when the app is in the background, so their arrival times stay accurate. It stops when you end your shift." | Optional (Operator role during active shifts only) |
+| iOS & Android | **Face ID / Biometrics** (`NSFaceIDUsageDescription`, `USE_BIOMETRIC`) | "Use Face ID to unlock your Pav Dental account" | Optional (biometric app lock) |
+| iOS & Android | **Push Notifications** (`POST_NOTIFICATIONS`) | "Receive timely appointment reminders, van arrival alerts, and care team messages." | Optional |
+| iOS & Android | **Microphone** | *Not requested.* Video consultations open in the phone's web browser (`Daily.co`). | None (permission removed) |
 
 ---
 
-## 3. App Privacy Declarations (Nutrition Labels)
+## 3. App Privacy Declarations & Nutrition Labels
 
-### Apple App Privacy Categories
-1. **Health & Fitness:**
-   - *Clinical Health Data:* Collected and linked to the user's identity. Used strictly for app functionality and healthcare delivery.
+### Apple App Store Privacy Details
+1. **Health & Medical Data:**
+   - *Clinical Health Records:* Odontogram chart, medical history questionnaires, prescriptions, and triage intake photos. Linked to user identity for clinical care delivery.
 2. **Contact Info:**
-   - *Name, Email Address, Phone Number, Physical Address:* Linked to user identity for account management, service dispatch, and communication.
+   - *Name, Email Address, Phone Number, Postal Address:* Linked to user identity for account management, appointment confirmation, and domiciliary van dispatch.
 3. **Financial Info:**
-   - *Payment Info:* Payment tokens handled via Stripe SDK. Linked to user identity for transaction processing.
-4. **Location:**
-   - *Coarse & Precise Location:* Linked to user identity for van dispatch and coverage validation. Not used for tracking or advertising.
-5. **Identifiers:**
-   - *User ID, Device ID:* Used for session management and error diagnostics.
+   - *Payment Details:* Handled securely by the Stripe SDK. Only payment methods (card brand, last 4 digits) and deposit transaction receipts are stored.
+4. **Location Data:**
+   - *Precise Location:* Collected during active van shifts for van tracking. For patients, used strictly on-device to check postcode service area.
+5. **Diagnostics & Usage:**
+   - *Crash logs and error diagnostics:* Handled via Sentry with strict PII scrubbing (all emails, names, postcodes, and record identifiers stripped before sending).
 
-*Tracking Declaration:* Pav Dental **does not** track users across third-party websites or apps for targeted advertising.
+*Tracking Declaration:* Pav Dental **does not** track users across third-party apps or websites for targeted advertising.
 
 ---
 
-## 4. Test Account for App Review
+## 4. Google Play Data Safety Declaration
 
-- **Username / Email:** `app-review-tester@pavdental.com`
-- **Password:** [Generated ephemeral credential configured in App Store Connect]
+- **Data encryption in transit:** All data is encrypted in transit over HTTPS (TLS 1.3).
+- **Data deletion requests:** Users can request account deletion and export their data directly in the app under Profile > Account Security > Delete Account or Export Records.
+- **Third-party processors:**
+  - Stripe (payments)
+  - Postmark (transactional email)
+  - Twilio (SMS verification codes)
+  - Sentry (scrubbed error tracking)
+  - Expo Push / APNs / FCM (notifications)
+
+---
+
+## 5. Test Account for App Review
+
+- **Email:** `app-review-tester@pavdental.com`
+- **Password:** [Ephemeral secure reviewer credential configured in App Store Connect / Play Console notes]
 - **Role:** Patient
-- **Seeded Data:** Contains non-production synthetic profile with 1 confirmed sample appointment and 1 sample digital odontogram.
+- **Reviewer Notes:** Includes explanation of mobile van dispatch, video triage flow, and clinical practitioner oversight.

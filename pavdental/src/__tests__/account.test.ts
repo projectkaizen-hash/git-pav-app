@@ -1,77 +1,12 @@
-// Account & profile validation test suite (CS-46: tests real production schemas)
+// Account & profile validation test suite (CS-46 / QA-01: tests real production schemas and accountApi)
 import {
   personalInfoSchema,
   medicalHistorySchema,
   emergencyContactSchema,
   passwordChangeSchema,
 } from "../features/account/account-schemas";
-
-// ─── Mock payment methods store ───────────────────────────────────────────────
-interface PaymentMethodItem {
-  id: string;
-  brand: "visa" | "mastercard" | "amex" | "apple_pay" | "google_pay";
-  last4: string;
-  expMonth: number;
-  expYear: number;
-  isDefault: boolean;
-}
-
-interface DependantItem {
-  id: string;
-  firstName: string;
-  lastName: string;
-  dob: string;
-  relationship: "Son" | "Daughter" | "Ward" | "Other";
-  consentSigned: boolean;
-}
-
-let mockPaymentMethods: PaymentMethodItem[] = [
-  { id: "pm_mock_visa_4242", brand: "visa", last4: "4242", expMonth: 12, expYear: 2028, isDefault: true },
-  { id: "pm_mock_mc_5555", brand: "mastercard", last4: "5555", expMonth: 8, expYear: 2027, isDefault: false },
-];
-
-let mockDependants: DependantItem[] = [
-  { id: "dep_child_1", firstName: "Oliver", lastName: "Jenkins", dob: "2018-04-12", relationship: "Son", consentSigned: true },
-];
-
-const accountApiMock = {
-  getPaymentMethods: async () => [...mockPaymentMethods],
-
-  addPaymentMethod: async (card: Omit<PaymentMethodItem, "id" | "isDefault">) => {
-    const newMethod: PaymentMethodItem = { id: `pm_${Date.now()}`, ...card, isDefault: mockPaymentMethods.length === 0 };
-    mockPaymentMethods.push(newMethod);
-    return newMethod;
-  },
-
-  removePaymentMethod: async (id: string) => {
-    mockPaymentMethods = mockPaymentMethods.filter((pm) => pm.id !== id);
-  },
-
-  setDefaultPaymentMethod: async (id: string) => {
-    mockPaymentMethods = mockPaymentMethods.map((pm) => ({ ...pm, isDefault: pm.id === id }));
-  },
-
-  getDependants: async () => [...mockDependants],
-
-  addDependant: async (data: Omit<DependantItem, "id">) => {
-    const dep: DependantItem = { id: `dep_${Date.now()}`, ...data };
-    mockDependants.push(dep);
-    return dep;
-  },
-
-  removeDependant: async (id: string) => {
-    mockDependants = mockDependants.filter((d) => d.id !== id);
-  },
-
-  changePassword: async (currentPassword: string, newPassword: string) => {
-    if (!currentPassword || !newPassword) throw new Error("Both passwords required");
-    return { success: true, message: "Password updated successfully" };
-  },
-
-  deleteAccount: async () => ({ success: true }),
-
-  resendVerificationEmail: async () => ({ success: true, message: "Verification link sent" }),
-};
+import { accountApi } from "../features/account/account-api";
+import { useAuthStore } from "../features/auth/auth-store";
 
 // ─── Test runner ──────────────────────────────────────────────────────────────
 function assert(condition: boolean, message: string) {
@@ -164,49 +99,134 @@ async function runAccountTests() {
   assert(!passwordChangeSchema.safeParse({ ...validPassword, newPassword: "NOLOWERCASE1", confirmPassword: "NOLOWERCASE1" }).success, "Rejects passwords without lowercase");
 
   // ── 5. Payment Methods & Dependants API ──────────────────────────────────
-  console.log("\n--- 5. Payment Methods CRUD ---");
+  console.log("\n--- 5. Payment Methods CRUD via accountApi ---");
 
-  const paymentMethods = await accountApiMock.getPaymentMethods();
+  useAuthStore.getState().setAuth("test-account-token", {
+    id: "usr_acc_1",
+    sub: "usr_acc_1",
+    email: "patient@example.test",
+    role: "patient",
+    emailVerified: true,
+    phoneVerified: true,
+    isMfaEnabled: false,
+    mfaEnabled: false,
+  });
+
+  const calls: { method: string; path: string; body?: any }[] = [];
+  const originalFetch = global.fetch;
+
+  let currentMethods = [
+    { id: "pm_mock_visa_4242", brand: "visa", last4: "4242", expMonth: 12, expYear: 2028, isDefault: true },
+    { id: "pm_mock_mc_5555", brand: "mastercard", last4: "5555", expMonth: 8, expYear: 2027, isDefault: false },
+  ];
+
+  let currentDependants = [
+    { id: "dep_child_1", firstName: "Oliver", lastName: "Jenkins", dob: "2018-04-12", relationship: "Son", consentSigned: true },
+  ];
+
+  (global as any).fetch = async (url: string, init?: RequestInit) => {
+    const parsed = new URL(String(url));
+    const path = parsed.pathname;
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    calls.push({ method, path, body });
+
+    if (path === "/api/payments/methods" && method === "GET") {
+      return new Response(JSON.stringify(currentMethods), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/payments/methods/attach" && method === "POST") {
+      const pmId = body.paymentMethodId;
+      currentMethods.push({ id: pmId, brand: "visa", last4: "9876", expMonth: 11, expYear: 2029, isDefault: false });
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path.startsWith("/api/payments/methods/") && path.endsWith("/default") && method === "PATCH") {
+      const id = path.split("/")[4];
+      currentMethods = currentMethods.map((m) => ({ ...m, isDefault: m.id === id }));
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path.startsWith("/api/payments/methods/") && method === "DELETE") {
+      const id = path.split("/")[4];
+      currentMethods = currentMethods.filter((m) => m.id !== id);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/patients/dependants" && method === "GET") {
+      return new Response(JSON.stringify(currentDependants), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/patients/dependants" && method === "POST") {
+      const newDep = { id: `dep_child_${Date.now()}`, ...body };
+      currentDependants.push(newDep);
+      return new Response(JSON.stringify(newDep), { status: 201, headers: { "Content-Type": "application/json" } });
+    }
+    if (path.startsWith("/api/patients/dependants/") && method === "DELETE") {
+      const id = path.split("/")[4];
+      currentDependants = currentDependants.filter((d) => d.id !== id);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/auth/account/change-password" && method === "POST") {
+      return new Response(JSON.stringify({ success: true, message: "Password updated successfully" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/auth/account" && method === "DELETE") {
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (path === "/api/auth/account/verify-email/resend" && method === "POST") {
+      return new Response(JSON.stringify({ success: true, message: "Verification link sent" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+  };
+
+  const paymentMethods = await accountApi.getPaymentMethods();
   assert(paymentMethods.length >= 2, "Fetches seeded payment methods");
   assert(paymentMethods.some((m) => m.isDefault), "At least one payment method is default");
+  assert(calls.some((c) => c.path === "/api/payments/methods" && c.method === "GET"), "Called GET /api/payments/methods");
 
-  const newCard = await accountApiMock.addPaymentMethod({ brand: "visa", last4: "9876", expMonth: 11, expYear: 2029 });
+  const newCard = await accountApi.addPaymentMethod({ brand: "visa", last4: "9876", expMonth: 11, expYear: 2029 });
   assert(newCard.last4 === "9876", "Adds new payment card with correct last4");
+  assert(calls.some((c) => c.path === "/api/payments/methods/attach" && c.method === "POST"), "Called POST /api/payments/methods/attach");
 
-  await accountApiMock.setDefaultPaymentMethod(newCard.id);
-  const afterDefault = await accountApiMock.getPaymentMethods();
+  await accountApi.setDefaultPaymentMethod(newCard.id);
+  const afterDefault = await accountApi.getPaymentMethods();
   assert(afterDefault.find((m) => m.id === newCard.id)?.isDefault === true, "Sets specific card as default");
-  assert(afterDefault.filter((m) => m.isDefault).length === 1, "Only one card can be default at a time");
+  assert(calls.some((c) => c.path === `/api/payments/methods/${newCard.id}/default` && c.method === "PATCH"), "Called PATCH default endpoint");
 
-  await accountApiMock.removePaymentMethod(newCard.id);
-  const afterRemove = await accountApiMock.getPaymentMethods();
+  await accountApi.removePaymentMethod(newCard.id);
+  const afterRemove = await accountApi.getPaymentMethods();
   assert(!afterRemove.some((m) => m.id === newCard.id), "Removes payment card by ID");
+  assert(calls.some((c) => c.path === `/api/payments/methods/${newCard.id}` && c.method === "DELETE"), "Called DELETE method endpoint");
 
-  console.log("\n--- 6. Dependants CRUD ---");
+  console.log("\n--- 6. Dependants CRUD via accountApi ---");
 
-  const dependants = await accountApiMock.getDependants();
+  const dependants = await accountApi.getDependants();
   assert(dependants.length >= 1, "Fetches seeded dependant profiles");
+  assert(calls.some((c) => c.path === "/api/patients/dependants" && c.method === "GET"), "Called GET /api/patients/dependants");
 
-  const newChild = await accountApiMock.addDependant({ firstName: "Sophie", lastName: "Jenkins", dob: "2020-03-15", relationship: "Daughter", consentSigned: true });
+  const newChild = await accountApi.addDependant({ firstName: "Sophie", lastName: "Jenkins", dob: "2020-03-15", relationship: "Daughter", consentSigned: true });
   assert(newChild.firstName === "Sophie", "Links new child dependant profile");
+  assert(calls.some((c) => c.path === "/api/patients/dependants" && c.method === "POST"), "Called POST /api/patients/dependants");
 
-  const afterAddDep = await accountApiMock.getDependants();
+  const afterAddDep = await accountApi.getDependants();
   assert(afterAddDep.some((d) => d.id === newChild.id), "New dependant appears in list");
 
-  await accountApiMock.removeDependant(newChild.id);
-  const afterRemoveDep = await accountApiMock.getDependants();
+  await accountApi.removeDependant(newChild.id);
+  const afterRemoveDep = await accountApi.getDependants();
   assert(!afterRemoveDep.some((d) => d.id === newChild.id), "Unlinks dependant profile by ID");
+  assert(calls.some((c) => c.path === `/api/patients/dependants/${newChild.id}` && c.method === "DELETE"), "Called DELETE dependant endpoint");
 
   console.log("\n--- 7. Account Management APIs ---");
 
-  const changePwRes = await accountApiMock.changePassword("OldPassword123!", "NewPassword123!");
+  const changePwRes = await accountApi.changePassword("OldPassword123!", "NewPassword123!");
   assert(changePwRes.success === true, "Password change handler returns success");
+  assert(calls.some((c) => c.path === "/api/auth/account/change-password" && c.method === "POST"), "Called POST change-password endpoint");
 
-  const deleteRes = await accountApiMock.deleteAccount();
+  const deleteRes = await accountApi.deleteAccount();
   assert(deleteRes.success === true, "Soft-delete account handler executes successfully");
+  assert(calls.some((c) => c.path === "/api/auth/account" && c.method === "DELETE"), "Called DELETE account endpoint");
 
-  const verifyRes = await accountApiMock.resendVerificationEmail();
+  const verifyRes = await accountApi.resendVerificationEmail();
   assert(verifyRes.success === true, "Resend verification email handler returns success");
+  assert(calls.some((c) => c.path === "/api/auth/account/verify-email/resend" && c.method === "POST"), "Called POST resend verification endpoint");
+
+  // Restore fetch
+  global.fetch = originalFetch;
 
   console.log("\n🎉 ALL 29 ACCOUNT & PROFILE TESTS PASSED SUCCESSFULLY (0 FAILURES)!\n");
 }

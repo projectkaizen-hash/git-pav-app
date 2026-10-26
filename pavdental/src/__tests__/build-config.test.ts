@@ -125,6 +125,11 @@ assert(
 assert(fs.existsSync(easJsonPath), "eas.json exists");
 const easConfig = JSON.parse(fs.readFileSync(easJsonPath, "utf-8"));
 
+// Versioning and updates (RB-13)
+assert(easConfig.cli?.appVersionSource === "remote", "eas.json specifies cli.appVersionSource: 'remote'");
+assert(easConfig.build?.preview?.channel === "preview", "Preview profile specifies release channel 'preview'");
+assert(easConfig.build?.production?.channel === "production", "Production profile specifies release channel 'production'");
+
 const devEnv = easConfig.build?.development?.env;
 const previewEnv = easConfig.build?.preview?.env;
 const prodEnv = easConfig.build?.production?.env;
