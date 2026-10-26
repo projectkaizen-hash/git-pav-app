@@ -15,34 +15,6 @@ const nextConfig = {
       },
     ];
   },
-  async headers() {
-    const allowedOrigins = [process.env.WEBSITE_ORIGIN ?? "http://localhost:8080", "http://localhost:3001"];
-
-    return [
-      {
-        // Apply CORS headers to every API route
-        source: "/api/:path*",
-        headers: [
-          {
-            key: "Access-Control-Allow-Origin",
-            value: allowedOrigins.join(","),
-          },
-          {
-            key: "Access-Control-Allow-Credentials",
-            value: "true",
-          },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value: "Content-Type, Authorization",
-          },
-        ],
-      },
-    ];
-  },
 };
 
 export default nextConfig;
