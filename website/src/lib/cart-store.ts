@@ -92,7 +92,7 @@ export const useCartStore = create<CartState>()(
           (it) => it.productId === product.id && (variant ? it.variantId === variant.id : !it.variantId)
         );
 
-        let nextItems = [...state.items];
+        const nextItems = [...state.items];
         if (existingIdx > -1) {
           const prev = nextItems[existingIdx];
           const newQty = prev.quantity + quantity;

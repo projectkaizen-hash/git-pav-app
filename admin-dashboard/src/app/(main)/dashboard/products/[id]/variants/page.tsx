@@ -1,6 +1,7 @@
 import { VariantsManager } from "./_components/variants-manager";
 
-export default function ProductVariantsPage({ params }: { params: { id: string } }) {
+export default async function ProductVariantsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -10,7 +11,7 @@ export default function ProductVariantsPage({ params }: { params: { id: string }
         </p>
       </div>
 
-      <VariantsManager productId={params.id} />
+      <VariantsManager productId={id} />
     </div>
   );
 }

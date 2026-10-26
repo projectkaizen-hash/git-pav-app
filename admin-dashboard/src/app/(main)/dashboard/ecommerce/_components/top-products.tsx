@@ -39,7 +39,7 @@ export function TopProducts() {
         <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
           £{totalSalesVolume.toFixed(2)} total revenue
         </CardDescription>
-        <CardAction asChild>
+        <CardAction>
           <Link href="/dashboard/products">
             <ArrowUpRight className="size-4" />
           </Link>

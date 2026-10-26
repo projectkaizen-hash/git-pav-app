@@ -8,6 +8,8 @@
     "start": "next start",
     "test": "node --experimental-strip-types --test \"src/**/*.test.mjs\"",
     "lint": "biome lint",
+    "lint:ci": "node scripts/lint-budget.mjs",
+    "typecheck": "tsc --noEmit",
     "format": "biome format --write",
     "check": "biome check",
     "check:fix": "biome check --write",

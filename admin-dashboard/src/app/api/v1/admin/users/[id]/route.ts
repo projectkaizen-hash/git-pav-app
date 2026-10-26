@@ -7,12 +7,12 @@ import { query } from "@/lib/db/client";
  * DELETE /api/v1/admin/users/[id]
  * Delete a user by ID
  */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const authErr = await requireAdmin(req);
   if (authErr) return authErr;
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     await query("DELETE FROM users WHERE id = $1", [id]);
 
@@ -27,12 +27,12 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
  * PUT /api/v1/admin/users/[id]
  * Update a user by ID
  */
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const authErr = await requireAdmin(req);
   if (authErr) return authErr;
 
   try {
-    const { id } = params;
+    const { id } = await params;
     const { name, phone, email_verified } = await req.json();
 
     const result = await query(

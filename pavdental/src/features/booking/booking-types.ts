@@ -1,46 +1,13 @@
-import type { OpeningHoursRow } from "./uk-time";
+import type { ApiCareChannel, ApiClinic, ApiClinician, ApiService } from "../api-contract.gen";
 
 // ─── Dental Service Catalogue Models ──────────────────────────────────────────
-export type CareChannel = "clinic" | "van" | "video";
-
-export interface DentalService {
-  id: string;
-  name: string;
-  category: "checkup" | "hygiene" | "emergency" | "cosmetic" | "restorative";
-  description: string;
-  durationMinutes: number;
-  pricePence: number;
-  depositPence: number;
-  prepInstructions?: string[];
-  requiresPriorConsult?: boolean;
-  supportedChannels: CareChannel[];
-}
-
-export interface ClinicLocation {
-  id: string;
-  name: string;
-  address: string;
-  postcode: string;
-  city: string;
-  phone: string;
-  imageUri?: string;
-  /** Free-text summary; openingHours is what slots are built from. */
-  operatingHours: string;
-  openingHours?: OpeningHoursRow[];
-}
-
-export interface Clinician {
-  id: string;
-  fullName: string;
-  gdcNumber: string;
-  roleTitle: string; // e.g., "Principal Dental Surgeon", "Dental Hygienist"
-  specialisms: string[];
-  /** https link or uploaded image, set on the dashboard's Dentist profiles page. */
-  photoUrl?: string | null;
-  clinicIds?: string[];
-  bio: string | null;
-  isTelehealthActive?: boolean;
-}
+// These are the API's own shapes, generated from the backend's contract
+// (api-contract.gen.ts). Don't add fields here that the API doesn't send:
+// add them to backend/src/contracts/app-api.ts and regenerate.
+export type CareChannel = ApiCareChannel;
+export type DentalService = ApiService;
+export type ClinicLocation = ApiClinic;
+export type Clinician = ApiClinician;
 
 export interface TimeSlot {
   id: string;

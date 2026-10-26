@@ -111,11 +111,10 @@ if (Array.isArray(stripePlugin)) {
   assert(stripeOptions.enableGooglePay === true, "Stripe plugin enables Google Pay");
 }
 
-// iOS Merchant ID & Entitlements
-assert(
-  appConfig.ios?.merchantId === "merchant.com.pavdental.app",
-  "app.json ios.merchantId is merchant.com.pavdental.app"
-);
+// iOS Merchant ID & Entitlements. The merchant ID is set through the Stripe
+// plugin above; `ios.merchantId` isn't an Expo config field and fails
+// expo-doctor's schema check.
+assert(appConfig.ios?.merchantId === undefined, "app.json has no ios.merchantId (the Stripe plugin sets it)");
 const inAppPayments = appConfig.ios?.entitlements?.["com.apple.developer.in-app-payments"];
 assert(
   Array.isArray(inAppPayments) && inAppPayments.includes("merchant.com.pavdental.app"),

@@ -1,4 +1,5 @@
 import { authFetch, publicFetch } from "../auth/auth-api";
+import type { ApiHoldSlotResponse, ApiSlot } from "../api-contract.gen";
 import { DentalService, ClinicLocation, Clinician, TimeSlot } from "./booking-types";
 import { ukDayLabel, ukDate, ukTime } from "./uk-time";
 
@@ -37,7 +38,7 @@ export async function fetchSlots(params: {
   ).toString();
   const res = await authFetch(`/api/booking/slots?${qs}`);
   if (!res.ok) throw new Error("Could not load slots");
-  const raw: any[] = await res.json();
+  const raw: ApiSlot[] = await res.json();
 
   // Normalise to TimeSlot shape, shown in UK time (the clinic's hours).
   return raw.map((s) => ({
@@ -54,7 +55,7 @@ export async function fetchSlots(params: {
 }
 
 // ─── Hold Slot (Redis SET NX) ─────────────────────────────────────────────────
-export async function holdSlot(slotId: string): Promise<{ holdExpiresAt: number }> {
+export async function holdSlot(slotId: string): Promise<ApiHoldSlotResponse> {
   const res = await authFetch("/api/booking/hold-slot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

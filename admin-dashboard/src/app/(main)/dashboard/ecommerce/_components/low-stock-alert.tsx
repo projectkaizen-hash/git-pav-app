@@ -68,7 +68,7 @@ export function LowStockAlert() {
           <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
             All good
           </CardDescription>
-          <CardAction asChild>
+          <CardAction>
             <Link href="/dashboard/inventory">
               <ArrowUpRight className="size-4" />
             </Link>
@@ -91,7 +91,7 @@ export function LowStockAlert() {
         <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
           {lowStockItems.length} items
         </CardDescription>
-        <CardAction asChild>
+        <CardAction>
           <Link href="/dashboard/inventory?filter=low_stock">
             <ArrowUpRight className="size-4" />
           </Link>

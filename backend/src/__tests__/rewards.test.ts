@@ -1,6 +1,6 @@
 import http from "http";
 import crypto from "crypto";
-import { awardMissedVisitPoints, DEPOSIT_VOUCHER, POINTS_PER_COMPLETED_VISIT } from "../lib/rewards";
+import { awardMissedVisitPoints, awardVisitPoints, DEPOSIT_VOUCHER, POINTS_PER_COMPLETED_VISIT } from "../lib/rewards";
 
 // CS-33 (decisions log #14): points come only from completed visits, once
 // each, and 100 points buy £5 off a later deposit, used on one booking at a
@@ -104,6 +104,27 @@ describe("rewards", () => {
     await appointment(patient.profileId, "completed", -2);
     await awardMissedVisitPoints(1000);
     expect(await pointsOf(patient.userId)).toBe(POINTS_PER_COMPLETED_VISIT);
+  });
+
+  it("credits nothing, and doesn't throw, when the visit is deleted mid-award", async () => {
+    const patient = await makePatient("vanished");
+    const id = await appointment(patient.profileId, "completed", -3);
+    // The award reads the appointment, then it is erased before the insert.
+    const read = prisma.appointment.findUnique.bind(prisma.appointment);
+    const readThenErase = async (args: Parameters<typeof read>[0]) => {
+      const row = await read(args);
+      await prisma.appointment.delete({ where: { id } });
+      return row;
+    };
+    const spy = jest
+      .spyOn(prisma.appointment, "findUnique")
+      .mockImplementationOnce(readThenErase as unknown as typeof prisma.appointment.findUnique);
+    try {
+      expect(await awardVisitPoints(id)).toBe("not_completed");
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await pointsOf(patient.userId)).toBe(0);
   });
 
   it("offers only the deposit voucher and refuses it without enough points", async () => {

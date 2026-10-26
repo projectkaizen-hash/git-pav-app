@@ -42,7 +42,7 @@ export function ShopCatalog({ products = [], isLoading = false, onQuickView, onA
   ];
 
   const filteredProducts = useMemo(() => {
-    let list = products.filter((p) => {
+    const list = products.filter((p) => {
       const matchesCat = selectedCategory === "all" || p.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesQuery =
