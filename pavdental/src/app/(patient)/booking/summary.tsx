@@ -327,7 +327,7 @@ export default function BookingSummaryScreen() {
           </View>
 
           <ThemedText variant="caption" style={styles.balanceNote}>
-            The remaining balance of {formatGbp(service.pricePence - service.depositPence)} is payable after your visit.
+            The remaining balance of {formatGbp(service.pricePence - service.depositPence)} is paid at your visit, at the practice or the van.
           </ThemedText>
         </Card>
 
