@@ -137,6 +137,16 @@ const prodEnv = easConfig.build?.production?.env;
 assert(devEnv?.EXPO_PUBLIC_API_URL !== undefined, "Development profile has API URL");
 assert(previewEnv?.EXPO_PUBLIC_API_URL !== undefined, "Preview profile has API URL");
 assert(prodEnv?.EXPO_PUBLIC_API_URL !== undefined, "Production profile has API URL");
+// D-09: the brand domain is pavdental.com; the .co.uk hosts never existed.
+// Preview builds use the free test API until a staging domain exists.
+assert(
+  previewEnv?.EXPO_PUBLIC_API_URL === "https://pavdental-api.onrender.com",
+  `Preview profile points at the test API: ${previewEnv?.EXPO_PUBLIC_API_URL}`
+);
+assert(
+  prodEnv?.EXPO_PUBLIC_API_URL === "https://api.pavdental.com",
+  `Production profile points at api.pavdental.com: ${prodEnv?.EXPO_PUBLIC_API_URL}`
+);
 
 // Stripe publishable keys per profile (CG-2). They are set with `eas env`,
 // so a committed one must at least be for the right mode and not a placeholder.

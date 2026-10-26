@@ -76,10 +76,13 @@ app.use(cors({
 // express.json() parses API requests.
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 app.use(express.json({ limit: "2mb" }));
+// A caller-supplied id is echoed and logged, so only a short, plain one is
+// kept; anything else gets a fresh id (BE-24).
+const SAFE_REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
 app.use((req, res, next) => {
   const rawId = req.headers["x-request-id"];
   const reqId =
-    typeof rawId === "string" && rawId.trim().length > 0
+    typeof rawId === "string" && SAFE_REQUEST_ID.test(rawId.trim())
       ? rawId.trim()
       : crypto.randomUUID();
   req.id = reqId;
