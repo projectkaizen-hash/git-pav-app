@@ -1,0 +1,28 @@
+appId: com.pavdental.app
+---
+# Journey J4: Mobile Van Booking & Live Tracking (QA-02)
+- launchApp
+
+# 1. Start Mobile Van Dispatch
+- tapOn: "Mobile Van"
+
+# 2. Coverage Check
+- assertVisible: "Mobile dental service area"
+- tapOn: "Enter your full UK postcode"
+- inputText: "SW1A 1AA"
+- tapOn: "Check coverage"
+
+# 3. Access & Parking Details
+- assertVisible: "Van access details"
+- tapOn: "Flat 4, 10 Downing Street"
+- tapOn: "Off-street driveway"
+- tapOn: "Standard UK 3-pin plug available"
+- tapOn: "Continue to booking"
+
+# 4. Van Hold & Request Confirmation
+- assertVisible: "Confirm mobile van booking"
+- tapOn: "Request mobile van"
+
+# 5. Live Tracking & Dispatch Status
+- assertVisible: "Van Visit"
+- assertVisible: "Track live on map"

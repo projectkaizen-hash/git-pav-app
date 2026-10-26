@@ -1,0 +1,7 @@
+# Maestro global configuration for Pav Dental EAS preview & local builds
+appId: com.pavdental.app
+name: Pav Dental Core Journey Test Suite
+tags:
+  - regression
+  - e2e
+  - core-journeys

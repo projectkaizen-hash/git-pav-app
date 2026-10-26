@@ -270,7 +270,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
 | QA-01 | P1 | Refactored `account.test.ts` to test real `accountApi` and actual HTTP request methods/endpoints rather than an in-memory mock store. | C | M | **Done** |
-| QA-02 | P1 | No device end-to-end tests. Add Maestro flows (sign-up, booking with test card, cancel, van request, video intake, delete account) and run them on EAS builds. | C | L |
+| QA-02 | P1 | No device end-to-end tests. Add Maestro flows (sign-up, booking with test card, cancel, van request, video intake, delete account) and run them on EAS builds. | **Partially done in PR #119 (flows J1–J8 created & guarded; device execution waits on EAS native builds)** | C | L |
 | QA-03 | P0 | `build-config.test.ts` verifies no invented values and asserts EAS build channels and runtime policies. | C | S | **Done** |
 | QA-04 | P1 | CI gaps: dashboard `tsc` + lint, website lint, `expo-doctor`, `npm audit --audit-level=high` per app, Dependabot or Renovate, CodeQL and secret scanning, CODEOWNERS, PR template. Branch protection requiring CI (person enables in GitHub settings). | C+P | M |
 | QA-05 | **P0** | (Raised 26 Oct, ADR-0006, gate G6.) Deploy pipeline: Render auto-deploys `main` without waiting for CI; no EAS build/submit workflow. Gate Render on CI; add EAS workflows for preview and production. | C | M |

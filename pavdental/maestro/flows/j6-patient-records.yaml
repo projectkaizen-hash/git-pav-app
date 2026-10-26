@@ -1,0 +1,27 @@
+appId: com.pavdental.app
+---
+# Journey J6: Patient Dental Records & Vault (QA-02)
+- launchApp
+
+# 1. Navigate to Records Tab
+- tapOn: "Records"
+- assertVisible: "Clinical timeline"
+
+# 2. Inspect 3D Odontogram & Charts
+- tapOn: "Clean progress"
+- assertVisible: "3D Dental arch & gauges"
+- back
+
+# 3. Document Vault
+- tapOn: "Document vault"
+- assertVisible: "All downloads are streamed securely via encrypted"
+- back
+
+# 4. Prescriptions
+- tapOn: "Prescriptions & dispensing"
+- assertVisible: "Prescriptions"
+- back
+
+# 5. Treatment Plans
+- tapOn: "Treatment estimates & plans"
+- assertVisible: "Treatment plans"

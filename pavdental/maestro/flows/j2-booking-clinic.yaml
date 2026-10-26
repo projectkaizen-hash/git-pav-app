@@ -1,0 +1,30 @@
+appId: com.pavdental.app
+---
+# Journey J2: Clinic Booking & Deposit Flow (QA-02)
+- launchApp
+
+# 1. Home Dashboard -> Service Selection
+- assertVisible: "Book an appointment"
+- tapOn: "Book an appointment"
+
+# 2. Service Catalog
+- assertVisible: "Select a service"
+- tapOn: "Routine Check-Up & Clean"
+
+# 3. Clinic Picker
+- assertVisible: "Choose location"
+- tapOn: "Pav Dental Central"
+
+# 4. Clinician & Slot Picker
+- assertVisible: "Select appointment time"
+- tapOn:
+    point: "50%,40%"
+
+# 5. Booking Review & Deposit Summary
+- assertVisible: "Review booking"
+- assertVisible: "Deposit due today"
+- tapOn: "Pay deposit & confirm"
+
+# 6. Booking Confirmed
+- assertVisible: "Booking confirmed"
+- tapOn: "Done"

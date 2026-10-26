@@ -1,0 +1,19 @@
+appId: com.pavdental.app
+---
+# Journey J3: Appointment Cancellation & Refund Flow (QA-02)
+- launchApp
+
+# 1. Navigate to Appointments Tab
+- tapOn: "Appointments"
+- assertVisible: "Upcoming"
+
+# 2. Select Appointment to Cancel
+- tapOn: "Cancel booking"
+
+# 3. Confirmation Sheet
+- assertVisible: "Cancel this appointment?"
+- assertVisible: "Your slot will be released immediately."
+- tapOn: "Cancel Appointment"
+
+# 4. Verification of Cancelled State
+- assertVisible: "Appointment cancelled"
