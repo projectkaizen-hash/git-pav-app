@@ -200,8 +200,8 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | MF-06 | P1 | Device test of deep links: `/reset-password`, `/verify-email` from real emails on iOS and Android. | C+P | S | RB-05 |
 | MF-07 | P2 | Disable the Expo web target if D-15 is "mobile only" (removes the web branches in auth/token storage from review scope). | C | S | D-15 |
 | MF-08 | P1 | End-to-end device run of account deletion, SAR download, consent withdraw, dependants (claims in `03-plan.md` CS-23..25, CS-34 were not re-audited on device). | C | M | RB-19 |
-| MF-10 | P3 | **New (AUD-18).** Opening hours are a hard-coded string in `src/config/practice.ts` while clinic hours live in the backend; read them from the clinics endpoint. | **Done in PR #118 (pending merge)** | C | S | — |
-| MF-09 | P3 | 229 lint warnings (mostly `any`); ratchet the cap down each PR. | C | M | — |
+| MF-10 | P3 | **New (AUD-18).** Opening hours are a hard-coded string in `src/config/practice.ts` while clinic hours live in the backend; read them from the clinics endpoint. | **Done in PR #118** | C | S | — |
+| MF-09 | P3 | 229 lint warnings (mostly `any`); ratchet the cap down each PR. | **Partially done in PR #120 (pending merge)** (ratcheted mobile cap to 218, backend cap to 583) | C | M | — |
 
 ### 4.4 Backend (BE)
 
@@ -274,8 +274,8 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | QA-03 | P0 | `build-config.test.ts` verifies no invented values and asserts EAS build channels and runtime policies. | C | S | **Done** |
 | QA-04 | P1 | CI gaps: dashboard `tsc` + lint, website lint, `expo-doctor`, `npm audit --audit-level=high` per app, Dependabot or Renovate, CodeQL and secret scanning, CODEOWNERS, PR template. Branch protection requiring CI (person enables in GitHub settings). | C+P | M |
 | QA-05 | **P0** | (Raised 26 Oct, ADR-0006, gate G6.) Deploy pipeline: Render auto-deploys `main` without waiting for CI; no EAS build/submit workflow. Gate Render on CI; add EAS workflows for preview and production. | C | M |
-| QA-06 | P2 | 05-audit flagged time-of-day and worker-count flakiness in jest; passed here at ~21:00 UTC with default workers. Add a CI run at a fixed "late" clock (fake timers) to prove it's gone. | C | S |
-| QA-07 | P1 | Contract drift between app and API (the insurance fields show it). `shared-types/` is imported by nothing. Generate types from the backend zod response schemas and use them in the app; add a contract test. | C | M |
+| QA-06 | P2 | 05-audit flagged time-of-day and worker-count flakiness in jest; passed here at ~21:00 UTC with default workers. Add a CI run at a fixed "late" clock (fake timers) to prove it's gone. | **Done in PR #120 (pending merge)** (added `clock-pinned.test.ts` and pinned late-clock job in `ci.yml`) | C | S |
+| QA-07 | P1 | Contract drift between app and API (the insurance fields show it). `shared-types/` is imported by nothing. Generate types from the backend zod response schemas and use them in the app; add a contract test. | **Done in PR #120 (pending merge)** (app-contract test, Zod 3/4 AST printer, and CI contract drift exit-code check) | C | M |
 | QA-08 | P1 | Penetration test against staging (scope doc exists). Paid third party. | P | 2–3 weeks elapsed |
 | QA-09 | P1 | Accessibility on devices: run `docs/completion/screen-reader-checklist.md` with VoiceOver and TalkBack; Dynamic Type / font scaling; colour contrast of the new grey palette. | C+P | M |
 
