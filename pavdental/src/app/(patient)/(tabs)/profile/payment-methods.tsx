@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert, Modal, ActivityIndicator } from "react-native";
 import * as Haptics from "expo-haptics";
 import { CardField, useStripe, CardFieldInput } from "@stripe/stripe-react-native";
-import { ThemedText, Card, Badge, Button, AppIcon, ErrorState, Skeleton } from "@/components";
+import { ThemedText, Card, Badge, Button, AppIcon, ErrorState, Skeleton, EmptyState } from "@/components";
 import {
   usePaymentMethods,
   useRemovePaymentMethodMutation,
@@ -148,50 +148,62 @@ export default function PaymentMethodsScreen() {
       </View>
 
       <View style={styles.cardsList}>
-        {paymentMethods.map((pm) => (
-          <Card key={pm.id} style={styles.paymentCard}>
-            <View style={styles.cardTop}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandIconWrap}>
-                  <AppIcon name="creditCard" size={20} color={colors.ink} />
+        {paymentMethods.length === 0 ? (
+          <EmptyState
+            heading="No payment methods saved"
+            body="Save a payment card for faster deposit checkout, or add one during your next booking."
+            actionLabel="Add payment card"
+            onAction={() => setModalVisible(true)}
+            icon="creditCard"
+          />
+        ) : (
+          paymentMethods.map((pm) => (
+            <Card key={pm.id} style={styles.paymentCard}>
+              <View style={styles.cardTop}>
+                <View style={styles.brandRow}>
+                  <View style={styles.brandIconWrap}>
+                    <AppIcon name="creditCard" size={20} color={colors.ink} />
+                  </View>
+                  <View>
+                    <ThemedText variant="headline" style={styles.cardName}>
+                      {pm.brand.toUpperCase()} •••• {pm.last4}
+                    </ThemedText>
+                    <ThemedText variant="caption" style={styles.cardExp}>
+                      Expires {String(pm.expMonth).padStart(2, "0")}/{pm.expYear}
+                    </ThemedText>
+                  </View>
                 </View>
-                <View>
-                  <ThemedText variant="headline" style={styles.cardName}>
-                    {pm.brand.toUpperCase()} •••• {pm.last4}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={styles.cardExp}>
-                    Expires {String(pm.expMonth).padStart(2, "0")}/{pm.expYear}
-                  </ThemedText>
-                </View>
+
+                {pm.isDefault ? (
+                  <Badge variant="success" label="Default" />
+                ) : (
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Make this card the default" onPress={() => handleSetDefault(pm.id)}>
+                    <ThemedText variant="caption" style={styles.setDefaultText}>
+                      Make Default
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {pm.isDefault ? (
-                <Badge variant="success" label="Default" />
-              ) : (
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Make this card the default" onPress={() => handleSetDefault(pm.id)}>
-                  <ThemedText variant="caption" style={styles.setDefaultText}>
-                    Make Default
+              <View style={styles.cardBottom}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove card" onPress={() => handleRemove(pm.id, pm.isDefault)}>
+                  <ThemedText variant="caption" style={styles.deleteText}>
+                    Remove Card
                   </ThemedText>
                 </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.cardBottom}>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove card" onPress={() => handleRemove(pm.id, pm.isDefault)}>
-                <ThemedText variant="caption" style={styles.deleteText}>
-                  Remove Card
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ))}
+              </View>
+            </Card>
+          ))
+        )}
       </View>
 
-      <Button
-        title="+ Add payment method"
-        variant="secondary"
-        onPress={() => setModalVisible(true)}
-      />
+      {paymentMethods.length > 0 ? (
+        <Button
+          title="+ Add payment method"
+          variant="secondary"
+          onPress={() => setModalVisible(true)}
+        />
+      ) : null}
 
       {/* Add Card Modal — Stripe CardField */}
       <Modal

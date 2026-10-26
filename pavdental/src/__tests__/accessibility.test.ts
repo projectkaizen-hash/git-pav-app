@@ -59,6 +59,29 @@ async function runTests() {
   const availableToolbarWidth = screenWidth - 2 * spacing.sm;
   assert(videoToolbarWidth <= availableToolbarWidth, `Video controls toolbar (${videoToolbarWidth}px) fits within 320px viewport without clipping`);
 
+  // 3d: Quick Action Grid (Home Screen: 2 columns, UX-01)
+  // At 320px viewport, available width = 320 - 2 * spacing.gutter (20px) = 280px.
+  // With flex: 1 and gap: spacing.sm (12px), each tile receives (280 - 12) / 2 = 134px.
+  // Minimum tile content width = iconWrap (38px) + padding (2 * 12px) = 62px.
+  const availableGridWidth = screenWidth - 2 * spacing.gutter;
+  const tileFlexWidth = (availableGridWidth - spacing.sm) / 2;
+  const tileMinContentWidth = 38 + 2 * spacing.sm;
+  assert(tileFlexWidth >= tileMinContentWidth, `Home quick grid tiles (${tileFlexWidth}px) comfortably accommodate content on 320px screen (${availableGridWidth}px available)`);
+
+  // 3e: Records 3-Column Metric Card (Teeth / Issues / Recall, UX-01)
+  // 3 columns with flex: 1 separated by 2 x 1px dividers: available width 280px -> 92px/col.
+  // Minimum content width per metric column = 60px.
+  const metricColFlexWidth = (availableGridWidth - 2) / 3;
+  assert(metricColFlexWidth >= 60, `Records metric 3-column card (${metricColFlexWidth.toFixed(0)}px/col) fits on 320px screen`);
+
+  // 3f: Empty State Illustration and Container Bounds (UX-01, UX-03)
+  // Empty state illustration (120px) + padding (2 * 24px = 48px) = 168px << 320px.
+  const emptyStateAvailable = screenWidth - 2 * spacing.xl;
+  assert(120 <= emptyStateAvailable, `EmptyState circular illustration (120px) fits within 320px padding bounds (${emptyStateAvailable}px available)`);
+
+  // 3g: Small Screen Usable Content Width Bounds (UX-01)
+  assert(availableGridWidth >= 280, `Gutter padding leaves 280px usable content width on 320px device`);
+
   // ─── Test 4: Semantic Color Contrast Verification ───────────────────────────
   assert(colors.ink.length > 0 && colors.systemBackground.length > 0, "Color system specifies foreground and background tokens");
   assert(colors.label.length > 0 && colors.secondaryLabel.length > 0, "Accessible hierarchical label tokens are present");

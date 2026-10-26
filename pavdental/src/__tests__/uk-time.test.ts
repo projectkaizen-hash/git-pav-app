@@ -1,5 +1,5 @@
 // Runs with tsx (see package.json test:booking). Imports the real module.
-import { formatOpeningHours, ukDate, ukDayLabel, ukTime, upcomingUkDates } from "../features/booking/uk-time";
+import { formatOpeningHours, resolvePracticeHours, ukDate, ukDayLabel, ukTime, upcomingUkDates } from "../features/booking/uk-time";
 
 let failures = 0;
 function assert(condition: boolean, message: string) {
@@ -32,5 +32,35 @@ assert(
   "Days that aren't next to each other aren't joined"
 );
 assert(formatOpeningHours([]) === "Opening hours not set", "No hours says so instead of inventing them");
+
+// MF-10 / AUD-18: Dynamic practice hours resolution from clinics API
+const customClinic = [
+  {
+    openingHours: [
+      { weekday: 1, opensMinute: 480, closesMinute: 1200 },
+      { weekday: 2, opensMinute: 480, closesMinute: 1200 },
+      { weekday: 3, opensMinute: 480, closesMinute: 1200 },
+      { weekday: 4, opensMinute: 480, closesMinute: 1200 },
+      { weekday: 5, opensMinute: 480, closesMinute: 1200 },
+    ],
+    operatingHours: "Mon–Fri 08:00–20:00",
+  },
+];
+assert(
+  resolvePracticeHours(customClinic) === "Mon–Fri 08:00–20:00",
+  "Resolves formatted clinic opening hours when clinic has openingHours array (MF-10)"
+);
+assert(
+  resolvePracticeHours([{ operatingHours: "Tue–Sat 10:00–16:00" }]) === "Tue–Sat 10:00–16:00",
+  "Falls back to operatingHours string when no structured rows present"
+);
+assert(
+  resolvePracticeHours([]) === "Mon–Fri 09:00–17:30 · Sat 09:00–13:00",
+  "Falls back to default practice hours when clinics list is empty"
+);
+assert(
+  resolvePracticeHours(undefined) === "Mon–Fri 09:00–17:30 · Sat 09:00–13:00",
+  "Falls back to default practice hours when clinics is undefined"
+);
 
 if (failures > 0) process.exit(1);

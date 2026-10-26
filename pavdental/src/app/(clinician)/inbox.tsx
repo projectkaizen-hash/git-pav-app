@@ -15,6 +15,7 @@ import {
 import { colors, spacing, radius } from "@/theme";
 import {
   useMessageThreads,
+  usePracticeHours,
   useReplyMessageThreadMutation,
   useMarkMessageThreadReadMutation,
 } from "@/features/hooks/use-dental-api";
@@ -45,6 +46,7 @@ export default function ClinicianInboxScreen() {
   const [replyText, setReplyText] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
+  const { hoursText } = usePracticeHours();
   const { data: rawThreads, isLoading, isError, refetch, isRefetching } = useMessageThreads();
   const replyMutation = useReplyMessageThreadMutation();
   const markReadMutation = useMarkMessageThreadReadMutation();
@@ -137,7 +139,7 @@ export default function ClinicianInboxScreen() {
           <AppIcon name="alert" size={14} color={colors.danger} />
         </View>
         <ThemedText variant="caption" style={styles.slaText}>
-          Non-emergency inbox. Clinic hours: Mon–Fri 09:00–17:30, Sat 09:00–13:00. Emergency cases call 999 or attend A&E. Out-of-hours advice call 111.
+          Non-emergency inbox. Clinic hours: {hoursText}. Emergency cases call 999 or attend A&E. Out-of-hours advice call 111.
         </ThemedText>
       </View>
 

@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PRACTICE_CONFIG } from "@/config/practice";
+import { resolvePracticeHours } from "../booking/uk-time";
 import {
   fetchServices,
   fetchClinics,
@@ -46,6 +48,16 @@ export function useClinics() {
     queryFn: fetchClinics,
     staleTime: 10 * 60 * 1000,
   });
+}
+
+/**
+ * Resolves live practice opening hours from the clinics endpoint (MF-10, AUD-18).
+ * Ensures editing clinic hours in the dashboard updates the mobile app dynamically.
+ */
+export function usePracticeHours(): { hoursText: string; isLoading: boolean } {
+  const { data: clinics, isLoading } = useClinics();
+  const hoursText = resolvePracticeHours(clinics, PRACTICE_CONFIG.hoursText);
+  return { hoursText, isLoading };
 }
 
 export function useClinicians(channel?: string) {

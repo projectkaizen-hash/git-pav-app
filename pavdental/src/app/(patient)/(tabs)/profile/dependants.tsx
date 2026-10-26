@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Alert, Modal, TouchableOpacity } from "react-native";
 import * as Haptics from "expo-haptics";
-import { ThemedText, Card, Badge, Button, Input } from "@/components";
+import { ThemedText, Card, Badge, Button, Input, EmptyState } from "@/components";
 import {
   useDependants,
   useAddDependantMutation,
@@ -154,65 +154,77 @@ export default function DependantsScreen() {
       </View>
 
       <View style={styles.list}>
-        {dependants.map((dep) => {
-          const age = Math.floor(
-            (Date.now() - new Date(dep.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-          );
+        {dependants.length === 0 ? (
+          <EmptyState
+            heading="No linked dependants"
+            body="Add children under 16 where you hold legal parental responsibility to manage their bookings and pediatric records."
+            actionLabel="Add child / dependant"
+            onAction={openAdd}
+            icon="profile"
+          />
+        ) : (
+          dependants.map((dep) => {
+            const age = Math.floor(
+              (Date.now() - new Date(dep.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+            );
 
-          return (
-            <Card key={dep.id} style={styles.depCard}>
-              <View style={styles.depTop}>
-                <View style={styles.avatarCircle}>
-                  <ThemedText variant="headline" style={styles.avatarInitial}>{dep.firstName[0]}</ThemedText>
-                </View>
-                <View style={styles.depInfo}>
-                  <View style={styles.nameRow}>
-                    <ThemedText variant="headline">{`${dep.firstName} ${dep.lastName}`}</ThemedText>
-                    <Badge variant="info" label={`${dep.relationship} · Age ${age}`} />
+            return (
+              <Card key={dep.id} style={styles.depCard}>
+                <View style={styles.depTop}>
+                  <View style={styles.avatarCircle}>
+                    <ThemedText variant="headline" style={styles.avatarInitial}>{dep.firstName[0]}</ThemedText>
                   </View>
-                  <ThemedText variant="caption" style={styles.dobText}>
-                    Date of Birth: {new Date(dep.dob).toLocaleDateString("en-GB")}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.depBottom}>
-                <View style={styles.consentBadge}>
-                  <ThemedText
-                    variant="caption"
-                    style={[styles.consentText, { color: dep.consentSigned ? colors.success : colors.warning }]}
-                  >
-                    {dep.consentSigned ? "Parental consent active" : "Consent pending"}
-                  </ThemedText>
+                  <View style={styles.depInfo}>
+                    <View style={styles.nameRow}>
+                      <ThemedText variant="headline">{`${dep.firstName} ${dep.lastName}`}</ThemedText>
+                      <Badge variant="info" label={`${dep.relationship} · Age ${age}`} />
+                    </View>
+                    <ThemedText variant="caption" style={styles.dobText}>
+                      Date of Birth: {new Date(dep.dob).toLocaleDateString("en-GB")}
+                    </ThemedText>
+                  </View>
                 </View>
 
-                <View style={styles.depActions}>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit ${dep.firstName}'s details`}
-                    onPress={() => openEdit(dep)}
-                  >
-                    <ThemedText variant="caption" style={styles.editText}>
-                      Edit
+                <View style={styles.depBottom}>
+                  <View style={styles.consentBadge}>
+                    <ThemedText
+                      variant="caption"
+                      style={[styles.consentText, { color: dep.consentSigned ? colors.success : colors.warning }]}
+                    >
+                      {dep.consentSigned ? "Parental consent active" : "Consent pending"}
                     </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Unlink ${dep.firstName}`} onPress={() => handleRemove(dep.id, dep.firstName)}>
-                    <ThemedText variant="caption" style={styles.unlinkText}>
-                      Unlink
-                    </ThemedText>
-                  </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.depActions}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${dep.firstName}'s details`}
+                      onPress={() => openEdit(dep)}
+                    >
+                      <ThemedText variant="caption" style={styles.editText}>
+                        Edit
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Unlink ${dep.firstName}`} onPress={() => handleRemove(dep.id, dep.firstName)}>
+                      <ThemedText variant="caption" style={styles.unlinkText}>
+                        Unlink
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })
+        )}
       </View>
 
-      <Button
-        title="+ Add child / dependant profile"
-        variant="secondary"
-        onPress={openAdd}
-      />
+      {dependants.length > 0 ? (
+        <Button
+          title="+ Add child / dependant profile"
+          variant="secondary"
+          onPress={openAdd}
+        />
+      ) : null}
 
       {/* Modal */}
       <Modal

@@ -17,6 +17,7 @@ import {
 import { colors, spacing, radius } from "@/theme";
 import {
   useMessageThreads,
+  usePracticeHours,
   useCreateMessageThreadMutation,
   useReplyMessageThreadMutation,
   useMarkMessageThreadReadMutation,
@@ -45,6 +46,7 @@ export default function MessagesScreen() {
   const [newBody, setNewBody] = useState("");
   const [newRecipientType, setNewRecipientType] = useState<"practice" | "care_team">("practice");
 
+  const { hoursText } = usePracticeHours();
   const { data: rawThreads, isLoading, isError, refetch } = useMessageThreads();
   const createMutation = useCreateMessageThreadMutation();
   const replyMutation = useReplyMessageThreadMutation();
@@ -166,7 +168,7 @@ export default function MessagesScreen() {
         <View style={styles.slaNoticeCard}>
           <AppIcon name="clock" size={14} color={colors.secondaryLabel} />
           <ThemedText variant="caption" style={styles.slaNoticeText}>
-            Practice hours: Mon–Fri 09:00–17:30, Sat 09:00–13:00. Responses typically within 1 business day.
+            Practice hours: {hoursText}. Responses typically within 1 business day.
           </ThemedText>
         </View>
 
