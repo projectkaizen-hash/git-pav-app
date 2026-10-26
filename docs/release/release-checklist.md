@@ -123,7 +123,7 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 
 | Requirement | Status | Evidence | Next action |
 |---|---|---|---|
-| Privacy notice reviewed, lists every processor | Failed | live page says DPAs exist (V-04: none yet) and omits Render, Supabase, Upstash, Vercel, Sentry, Expo/APNs/FCM, Mapbox, postcodes.io | LG-01, LG-02 |
+| Privacy notice reviewed, lists every processor | Partially done | copy updated in website/src/routes/privacy.tsx and dpa-tracker.md listing all 12 processors; unexecuted DPA claims removed; formal legal review (LG-01) pending | LG-01 |
 | Terms (booking, deposits, cancellation, complaints) | Not tested | draft pages live, not reviewed | LG-08 |
 | DPIA signed | Blocked | `docs/compliance/dpia-draft.md` | LG-03 |
 | ICO registration | Blocked | — | LG-04 |

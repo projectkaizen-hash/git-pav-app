@@ -21,7 +21,8 @@ Under Article 28 of the UK GDPR, Pav Dental (Data Controller) must have executed
 | **Postmark** | Transactional email delivery | Patient emails, administrative notifications (zero diagnosis) | EU / US | ActiveCampaign / Postmark DPA | **To Do** | Accept DPA in Postmark server settings |
 | **Twilio** | SMS authentication codes & staff 2FA | Phone numbers, 6-digit numeric OTPs | UK / EU routing | Twilio Data Protection Addendum | **To Do** | Accept DPA in Twilio Console |
 | **Sentry** | Error reporting & diagnostics | Scrubbed stack traces (PII scrubbers enabled) | Frankfurt, Germany (EU) | Sentry DPA with Data Scrubbing Addendum | **To Do** | Accept DPA in organisation settings |
-| **Expo (EAS)** | Mobile app builds & push notification delivery | Push tokens, app binary distribution | US / Global | Expo Terms & Privacy Policy | **To Do** | Review terms when configuring EAS org |
+| **Expo (EAS)** | Mobile app builds & push notification delivery (APNs / FCM) | Push tokens, app binary distribution | US / Global | Expo Terms & Privacy Policy | **To Do** | Review terms when configuring EAS org |
+| **postcodes.io** | UK postcode lookup and outcode coordinate resolution | Postcode / outcode query string (no patient identifiers or health data) | UK | Open API Terms / OS OpenData | **To Do** | Verify data minimisation (no patient PII submitted) |
 | **Mapbox** | Road network matrix & van routing ETAs | Approximate postcodes/coordinates for route calculation | Global | Mapbox Terms of Service / DPA | **To Do** | Review upon token creation |
 
 ---

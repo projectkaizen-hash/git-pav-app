@@ -14,15 +14,19 @@ function TermsPage() {
       <div className="pt-24 pb-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="mb-10 text-center">
-            <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 uppercase tracking-wider">
-              Terms & Conditions
+            <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 uppercase tracking-wider">
+              Working Draft • Pending Legal Review
             </span>
             <h1 className="mt-4 font-serif text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
               Terms of Service
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Last updated: 26 October 2026 • Effective date: 26 October 2026
+              Last updated: 27 October 2026 • Working Compliance Draft (LG-08)
             </p>
+          </div>
+
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 mb-8 leading-relaxed">
+            <strong>Pre-Launch Notice:</strong> These terms govern the booking, deposits, cancellation policy, and clinical consultations of the Pav Dental platform. They represent a working draft undergoing formal legal review (LG-08) prior to full launch.
           </div>
 
           <div className="prose prose-slate max-w-none space-y-8 text-slate-700 leading-relaxed">
