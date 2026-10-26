@@ -27,9 +27,7 @@
         "applinks:staging.pavdental.com"
       ],
       "infoPlist": {
-        "CADisableMinimumFrameDurationOnPhone": true,
-        "NSCameraUsageDescription": "Pav Dental uses the camera so you can take photos of your teeth to send to your dentist.",
-        "NSPhotoLibraryUsageDescription": "Pav Dental needs photo library access so you can attach dental photos and clinical documents."
+        "CADisableMinimumFrameDurationOnPhone": true
       }
     },
     "android": {
@@ -100,9 +98,18 @@
         {
           "locationWhenInUsePermission": "Allow Pav Dental to use your location to share the mobile dental van's live position with patients and navigate to visit addresses.",
           "locationAlwaysAndWhenInUsePermission": "During a van shift, Pav Dental shares the van's position with that day's patients even when the app is in the background, so their arrival times stay accurate. It stops when you end your shift.",
+          "locationAlwaysPermission": "During a van shift, Pav Dental shares the van's position with that day's patients even when the app is in the background, so their arrival times stay accurate. It stops when you end your shift.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pav Dental needs photo library access so you can attach dental photos and clinical documents.",
+          "cameraPermission": "Pav Dental uses the camera so you can take photos of your teeth to send to your dentist.",
+          "microphonePermission": false
         }
       ],
       [
@@ -117,10 +124,6 @@
     },
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "stage": "production",
-      "status": "Production release"
     }
   }
 }
