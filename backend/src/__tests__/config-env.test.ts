@@ -25,6 +25,7 @@ function deployed(overrides: Record<string, unknown> = {}) {
     twilioAccountSid: "unittest-twilio-sid-not-real",
     twilioAuthToken: "unittest-twilio-token-not-real",
     twilioFromPhone: "+447700900000",
+    sentryDsn: "https://mockpublickey@o123456.ingest.sentry.io/1234567",
     ...overrides,
   };
 }
@@ -148,6 +149,10 @@ describe("validateDeployedConfig", () => {
     ["twilioAccountSid", undefined, /TWILIO_ACCOUNT_SID/],
     ["twilioAuthToken", "replace_me", /TWILIO_AUTH_TOKEN/],
     ["twilioFromPhone", undefined, /TWILIO_FROM_PHONE/],
+    ["sentryDsn", undefined, /SENTRY_DSN/],
+    ["sentryDsn", "replace_me", /SENTRY_DSN/],
+    ["sentryDsn", "mock-sentry-dsn", /SENTRY_DSN/],
+    ["sentryDsn", "stub", /SENTRY_DSN/],
   ])("production rejects %s = %p", (field, value, pattern) => {
     expect(() => validateDeployedConfig("production", deployed({ [field]: value }))).toThrow(pattern);
   });
@@ -162,6 +167,7 @@ describe("validateDeployedConfig", () => {
       s3BucketName: undefined,
       prescriptionSigningKey: undefined,
       twilioAccountSid: undefined,
+      sentryDsn: undefined,
     });
     expect(() => validateDeployedConfig("staging", staging)).not.toThrow();
     expect(deployedServiceGaps(staging)).toEqual([
@@ -171,6 +177,7 @@ describe("validateDeployedConfig", () => {
       "S3_BUCKET_NAME",
       "PRESCRIPTION_SIGNING_KEY",
       "TWILIO_ACCOUNT_SID",
+      "SENTRY_DSN",
     ]);
   });
 });

@@ -102,8 +102,8 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 | Requirement | Status | Evidence | Next action |
 |---|---|---|---|
 | Logs contain no personal or health data | Verified 26 Oct (API) | `log-hygiene.test.ts`, `error-tracking.test.ts` | — |
-| API errors in Sentry | Failed | `SENTRY_DSN` optional in production | OPS-04 |
-| App crashes in Sentry with source maps | Failed | no Sentry Expo plugin | RB-08, OPS-04 |
+| API errors in Sentry | Verified (code side) | `config-env.test.ts` asserts `SENTRY_DSN` is required in production; production boot fails closed without it | Production DSN secret (C-08) |
+| App crashes in Sentry with source maps | Verified (code side) | `@sentry/react-native/expo` in `app.json` and `getSentryExpoConfig` in `metro.config.js`; `build-config.test.ts` verified | Production DSN & auth token secrets (C-08) |
 | Dashboard server errors logged | Verified 26 Oct (with fix) | `removeConsole` keeps `error`/`warn` | — |
 | Uptime alert on `/readyz` | Failed | none | OPS-04 |
 | Job-lag and webhook-failure alerts | Failed | none | OPS-04 |

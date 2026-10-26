@@ -119,7 +119,8 @@
         {
           "faceIDPermission": "Use Face ID to unlock your Pav Dental account"
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

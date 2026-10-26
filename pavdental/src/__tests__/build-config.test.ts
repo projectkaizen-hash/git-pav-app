@@ -70,9 +70,14 @@ assert(
 // Plugins
 const plugins = appConfig.plugins || [];
 const notificationsPlugin = plugins.find(
-  (p: any) => p === "expo-notifications" || (Array.isArray(p) && p[0] === "expo-notifications")
+  (p: unknown) => p === "expo-notifications" || (Array.isArray(p) && p[0] === "expo-notifications")
 );
 assert(notificationsPlugin !== undefined, "app.json includes 'expo-notifications' plugin (CG-1)");
+
+const sentryPlugin = plugins.find(
+  (p: unknown) => p === "@sentry/react-native/expo" || (Array.isArray(p) && p[0] === "@sentry/react-native/expo")
+);
+assert(sentryPlugin !== undefined, "app.json includes '@sentry/react-native/expo' plugin (RB-08)");
 
 // Van shift location in the background (D-21), and no microphone string now
 // that video calls open in the browser (D-01, RB-07).
@@ -195,4 +200,4 @@ assert(
   ".env.example documents local LAN IP configuration for physical devices"
 );
 
-console.log("\n🎉 ALL 16 CS-43 BUILD CONFIGURATION TESTS PASSED!\n");
+console.log("\n🎉 ALL 17 CS-43 / RB-08 BUILD CONFIGURATION TESTS PASSED!\n");
