@@ -70,6 +70,8 @@ curl -s -X POST https://pavdental-api.onrender.com/api/auth/login \
   - `payment_intent.amount_capturable_updated`
   - `payment_intent.payment_failed`
   - `payment_intent.canceled`
+  - `charge.refunded`
+  - `charge.dispute.created`
 - Webhook signing secret (`whsec_...`) active in Render environment.
 
 ---

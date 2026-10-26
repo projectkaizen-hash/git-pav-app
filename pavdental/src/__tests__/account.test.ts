@@ -112,7 +112,7 @@ async function runAccountTests() {
     mfaEnabled: false,
   });
 
-  const calls: { method: string; path: string; body?: any }[] = [];
+  const calls: { method: string; path: string; body?: unknown }[] = [];
   const originalFetch = global.fetch;
 
   let currentMethods = [
@@ -124,7 +124,8 @@ async function runAccountTests() {
     { id: "dep_child_1", firstName: "Oliver", lastName: "Jenkins", dob: "2018-04-12", relationship: "Son", consentSigned: true },
   ];
 
-  (global as any).fetch = async (url: string, init?: RequestInit) => {
+  type FetchFn = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  (global as typeof globalThis & { fetch: FetchFn }).fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
     const parsed = new URL(String(url));
     const path = parsed.pathname;
     const method = init?.method ?? "GET";
@@ -135,7 +136,7 @@ async function runAccountTests() {
       return new Response(JSON.stringify(currentMethods), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     if (path === "/api/payments/methods/attach" && method === "POST") {
-      const pmId = body.paymentMethodId;
+      const pmId = (body as { paymentMethodId: string }).paymentMethodId;
       currentMethods.push({ id: pmId, brand: "visa", last4: "9876", expMonth: 11, expYear: 2029, isDefault: false });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }

@@ -93,22 +93,22 @@ export const accountApi = {
   removePaymentMethod: async (id: string): Promise<void> => {
     const res = await authFetch(`/api/payments/methods/${id}`, { method: "DELETE" });
     if (res.ok || res.status === 404) return;
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error ?? "Failed to remove payment method");
+    const err: { error?: string } = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to remove payment method");
   },
 
   setDefaultPaymentMethod: async (id: string): Promise<void> => {
     const res = await authFetch(`/api/payments/methods/${id}/default`, { method: "PATCH" });
     if (res.ok) return;
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).error ?? "Failed to set default");
+    const err: { error?: string } = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to set default");
   },
 
   createSetupIntent: async (): Promise<{ clientSecret: string }> => {
     const res = await authFetch("/api/payments/setup-intent", { method: "POST" });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? "Failed to create setup intent");
+      const err: { error?: string } = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to create setup intent");
     }
     return res.json();
   },
@@ -119,8 +119,8 @@ export const accountApi = {
       body: JSON.stringify({ paymentMethodId }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? "Failed to save payment method");
+      const err: { error?: string } = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to save payment method");
     }
   },
 
@@ -138,8 +138,8 @@ export const accountApi = {
       body: JSON.stringify(dependant),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? "Failed to add dependant");
+      const err: { error?: string } = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to add dependant");
     }
     return res.json();
   },
@@ -150,8 +150,8 @@ export const accountApi = {
       body: JSON.stringify(updates),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? "Failed to update dependant");
+      const err: { error?: string } = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to update dependant");
     }
     return res.json();
   },
@@ -161,8 +161,8 @@ export const accountApi = {
       method: "DELETE",
     });
     if (!res.ok && res.status !== 404) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? "Failed to remove dependant");
+      const err: { error?: string } = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Failed to remove dependant");
     }
   },
 };
