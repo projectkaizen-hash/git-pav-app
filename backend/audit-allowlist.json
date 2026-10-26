@@ -1,11 +1,5 @@
 [
   {
-    "advisory": "GHSA-mrhx-c7xc-m3w5",
-    "package": "zod",
-    "reason": "The fix is zod 4, a major upgrade of every request schema. Request bodies are capped at 2 MB by express.json, which bounds the memory a crafted array can use. Upgrade tracked as a follow-up to QA-04.",
-    "reviewBy": "2027-01-31"
-  },
-  {
     "advisory": "GHSA-ggr8-5vv4-36mx",
     "package": "deepmerge-ts (via prisma's config loader)",
     "reason": "Only the Prisma CLI's config loader uses it, on our own prisma config, never on request data. The fix is Prisma 7, a major upgrade.",

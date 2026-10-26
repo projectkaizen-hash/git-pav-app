@@ -217,8 +217,8 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | BE-08 | P2 | Balance payments, receipts/VAT invoices, if D-07 is in-app. | — | C | L | D-07 |
 | BE-09 | P1 | Expo push receipts polling job implemented with token deactivation and ticket cleanup. | `lib/push-receipts.ts`, `communication-service.ts` | C | M | **Done** |
 | BE-10 | P1 | Admin API can create, edit and deactivate clinicians, operators, services, vans and clinics. | `routes/admin.ts` | C | M | **Done** |
-| BE-11 | P3 | Unmount retired routes (`/api/waitlist` and `/api/dspt`); drop the unused `waitlist_entries` table after backup (reviewed, destructive migration). | `routes/waitlist.ts`, `routes/dspt-audit.ts` | C | S | **Partially done in PR #115 (pending merge; routes unmounted and return 404, table drop waits on backup per D-20)** |
-| BE-12 | P1 | `npm audit`: 6 high in production deps (zod and others). Upgrade and re-run suites. Repeat for app, dashboard, website. | | C | S/M | — |
+| BE-11 | P3 | Unmount retired routes (`/api/waitlist` and `/api/dspt`); drop the unused `waitlist_entries` table after backup (reviewed, destructive migration). | `routes/waitlist.ts`, `routes/dspt-audit.ts` | C | S | **Partially done (routes unmounted and return 404 in PR #115; table drop waits on backup per D-20)** |
+| BE-12 | P1 | `npm audit`: 6 high in production deps (zod and others). Upgrade and re-run suites. Repeat for app, dashboard, website. | | C | S/M | **Done in PR #116 (pending merge)** |
 | BE-13 | P3 | 581 lint warnings; ratchet. | | C | M | — |
 | BE-14 | P1 | Key management runbook: generation, storage, rotation and backup of `ENCRYPTION_KEY`, `PRESCRIPTION_SIGNING_KEY`, JWT and HMAC secrets; the `rewrap:encrypted` script exists but no procedure. Real KMS stays optional (decision #18). | `docs/deploy/key-management-runbook.md` | C | S | **Done (merged in PR #114)** |
 | BE-15 | P1 | Stripe webhook endpoint subscriptions omit `charge.refunded` and `charge.dispute.created`, which the handler supports. Add them on test and production endpoints. | `test-deployment-status.md` §2, `routes/payments.ts` | C+P | S | **Partially done in PR #115 (pending merge; handler verified with duplicate delivery tests; dashboard endpoint config waits on C-04 live keys)** |
@@ -357,7 +357,7 @@ Effort uses the key at the top (S/M/L/XL, Claude working time). "Waits on" names
 | BE-14 key management runbook; OPS-06 fresh production secrets, demo password rotated | P1 | S | — / OPS-01 | Runbook reviewed; rotation rehearsed on staging |
 | BE-15 Stripe webhook subscriptions (`charge.refunded`, `charge.dispute.created`) | P1 | S | C-04 for live | Test-mode events reach the API and are de-duplicated |
 | BE-16 Daily token expiry check; BE-17 re-audit of CS-39..44, 53, 54 | P1–P2 | M | — | Findings fixed or recorded |
-| BE-12 zod 4 upgrade (removes the allow-listed advisory) | P1 | M | — | Allow-list without zod; all suites green |
+| BE-12 zod 4 upgrade (removes the allow-listed advisory) | P1 | M | — | **Done in PR #116 (pending merge)** (Allow-list without zod; all 64 jest suites / 494 tests + 34 e2e green) |
 
 ### Phase 3: Feature completion
 

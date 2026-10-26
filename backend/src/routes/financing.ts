@@ -7,7 +7,7 @@ import { env } from "../config/env";
 
 const router = Router();
 
-const financingIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const financingIdParamsSchema = z.object({ id: z.string().guid() }).strict();
 
 // ─── GET /api/financing ───────────────────────────────────────────────────────
 // Payment plans are arranged through the practice's finance provider. This

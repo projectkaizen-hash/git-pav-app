@@ -55,8 +55,8 @@ export const refreshSchema = z.object({
 
 // Runtime schema for AuthUser - matches shared types/api-types.ts and mobile AuthUser
 export const authUserSchema = z.object({
-  id: z.string().uuid().optional(),
-  sub: z.string().uuid(),
+  id: z.string().guid().optional(),
+  sub: z.string().guid(),
   role: z.enum(['patient', 'clinician', 'operator', 'admin']),
   email: z.string().email(),
   phone: z.string().optional(),
@@ -66,7 +66,7 @@ export const authUserSchema = z.object({
   phoneVerified: z.boolean().optional(),
   isMfaEnabled: z.boolean(),
   mfaEnabled: z.boolean().optional(),
-  profileId: z.string().uuid().optional(),
+  profileId: z.string().guid().optional(),
 });
 
 export type AuthUser = z.infer<typeof authUserSchema>;

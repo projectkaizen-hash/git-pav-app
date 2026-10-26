@@ -29,7 +29,7 @@ const createDependantSchema = z
     // Only a parent or guardian may add a child (decisions log #17).
     relationship: z.enum(["Son", "Daughter", "Ward"]),
     // The adult confirms they have parental responsibility for the child.
-    consentSigned: z.literal(true, { errorMap: () => ({ message: "Confirm you are the child's parent or guardian" }) }),
+    consentSigned: z.literal(true, { message: "Confirm you are the child's parent or guardian" }),
   })
   .strict();
 
@@ -42,7 +42,7 @@ const updateDependantSchema = z
   })
   .strict();
 
-const dependantIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const dependantIdParamsSchema = z.object({ id: z.string().guid() }).strict();
 
 async function getPatientProfileId(userId: string): Promise<string | null> {
   const profile = await prisma.patientProfile.findUnique({

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const lat = z.number().min(-90).max(90);
 const lng = z.number().min(-180).max(180);
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 
 // ─── Operator schemas ──────────────────────────────────────────────────────────
 

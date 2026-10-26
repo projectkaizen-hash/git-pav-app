@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 
 export const createPrescriptionSchema = z.object({
   appointmentId: uuid.optional(),

@@ -20,7 +20,7 @@ import { safeError } from "../lib/log-safety";
 
 const router = Router();
 
-const stopIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const stopIdParamsSchema = z.object({ id: z.string().guid() }).strict();
 
 router.post(
   "/:id/check-in",
