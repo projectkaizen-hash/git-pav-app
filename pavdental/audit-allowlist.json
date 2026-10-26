@@ -1,0 +1,14 @@
+[
+  {
+    "advisory": "GHSA-86w9-cpqp-85rv",
+    "package": "node-forge (via @expo/cli)",
+    "reason": "Only the Expo CLI uses it, on developer machines and in EAS builds. It isn't in the app bundle. Clears when Expo ships a CLI with node-forge 1.4.1 or later.",
+    "reviewBy": "2027-01-31"
+  },
+  {
+    "advisory": "GHSA-mrhx-c7xc-m3w5",
+    "package": "zod 3 (via @expo/cli)",
+    "reason": "Only the Expo CLI's copy is affected; the app itself uses zod 4.6.7. Clears when Expo updates its CLI.",
+    "reviewBy": "2027-01-31"
+  }
+]

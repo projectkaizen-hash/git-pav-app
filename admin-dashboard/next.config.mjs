@@ -4,9 +4,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   async redirects() {
     return [
       {

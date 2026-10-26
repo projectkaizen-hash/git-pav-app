@@ -9,12 +9,12 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authErr = await requireAdmin(request);
   if (authErr) return authErr;
 
   try {
-    const { id } = params;
+    const { id } = await params;
     const categories = await query(
       `SELECT c.*,
         (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) as product_count,
@@ -36,12 +36,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authErr = await requireAdmin(request);
   if (authErr) return authErr;
 
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { name, slug, parent_id, description, image_url, sort_order, is_active } = body;
 
@@ -71,12 +71,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authErr = await requireAdmin(request);
   if (authErr) return authErr;
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if category has products
     const productCount = await query("SELECT COUNT(*) as count FROM products WHERE category_id = $1", [id]);

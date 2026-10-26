@@ -1,0 +1,49 @@
+# Weekly dependency updates, one PR per app per week (minor and patch grouped),
+# plus security fixes as they're published. Expo packages are left out of the
+# app: they move together with the SDK (`npx expo install --fix`), not one by one.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: /pavdental
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: /website
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directory: /admin-dashboard
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule: { interval: weekly, day: monday }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

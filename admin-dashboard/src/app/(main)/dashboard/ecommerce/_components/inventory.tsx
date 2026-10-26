@@ -57,7 +57,7 @@ export function Inventory() {
         <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
           {availablePercent}% available
         </CardDescription>
-        <CardAction asChild>
+        <CardAction>
           <Link href="/dashboard/inventory">
             <ArrowUpRight className="size-4" />
           </Link>

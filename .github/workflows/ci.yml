@@ -70,6 +70,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Dependency audit (high and critical, see audit-allowlist.json)
+        run: node ../.github/scripts/audit-gate.mjs
+
       - name: Apply migrations
         run: |
           echo "CREATE EXTENSION IF NOT EXISTS postgis;" | npx prisma db execute --stdin --url "$DATABASE_URL"
@@ -141,8 +144,15 @@ jobs:
       - name: Content and routing tests
         run: npm run test:all
 
+      - name: Dependency audit (high and critical, see audit-allowlist.json)
+        run: node ../.github/scripts/audit-gate.mjs
+
+      # Checks native module versions against SDK 57 and the app config schema.
+      - name: Expo doctor
+        run: npx --yes expo-doctor@1.21.5
+
   admin-dashboard:
-    name: Admin dashboard — build
+    name: Admin dashboard — typecheck, lint, tests + build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -160,8 +170,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (fails when findings go up, see scripts/lint-budget.mjs)
+        run: npm run lint:ci
+
       - name: Tests
         run: npm test
+
+      - name: Dependency audit (high and critical, see audit-allowlist.json)
+        run: node ../.github/scripts/audit-gate.mjs
 
       - name: Build
         run: npm run build
@@ -169,7 +188,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   website:
-    name: Website — typecheck, tests + build
+    name: Website — typecheck, lint, tests + build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -190,8 +209,15 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # No new warnings: lower the number when you fix some.
+      - name: Lint
+        run: npm run lint -- --max-warnings=91
+
       - name: Tests
         run: npm test
+
+      - name: Dependency audit (high and critical, see audit-allowlist.json)
+        run: node ../.github/scripts/audit-gate.mjs
 
       # `npm run build` also runs db:migrate against a live database, so CI
       # runs only the Vite build step.
