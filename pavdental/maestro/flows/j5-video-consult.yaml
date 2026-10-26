@@ -1,0 +1,24 @@
+appId: com.pavdental.app
+---
+# Journey J5: Video Consultation Intake & Call (QA-02)
+- launchApp
+
+# 1. Video Consult Intake Initiation
+- tapOn: "Video consult"
+
+# 2. Symptoms & Duration Form
+- assertVisible: "What seems to be the issue?"
+- tapOn: "Toothache or sensitivity"
+- tapOn: "Past 24-48 hours"
+- tapOn: "Moderate pain"
+- tapOn: "Continue"
+
+# 3. Optional Oral Photos
+- assertVisible: "Take or upload photos"
+- tapOn: "Skip for now"
+
+# 4. Device Check & Waiting Room
+- assertVisible: "Camera & microphone check"
+- tapOn: "Join waiting room"
+- assertVisible: "Your dentist will join shortly"
+- tapOn: "Join video consultation"

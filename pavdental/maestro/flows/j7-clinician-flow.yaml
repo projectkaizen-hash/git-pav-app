@@ -1,0 +1,25 @@
+appId: com.pavdental.app
+---
+# Journey J7: Clinician Daily Schedule & Clinical Notes (QA-02)
+- launchApp
+
+# 1. Clinician Portal Navigation
+- assertVisible: "Clinician Schedule"
+- tapOn: "Today"
+
+# 2. Open Patient Appointment
+- tapOn: "Patient Record"
+- assertVisible: "Medical History"
+
+# 3. Add Clinical Note & Chart Surfaces
+- tapOn: "Add Clinical Note"
+- tapOn: "Clinical examination notes"
+- inputText: "Routine exam completed, good oral hygiene maintained."
+- tapOn: "Save clinical note"
+
+# 4. Digital Prescription
+- tapOn: "Issue Prescription"
+- tapOn: "Select medication"
+- tapOn: "Amoxicillin 500mg"
+- tapOn: "Sign and Issue Prescription"
+- assertVisible: "Prescription signed"

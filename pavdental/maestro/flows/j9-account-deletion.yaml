@@ -1,0 +1,21 @@
+appId: com.pavdental.app
+---
+# Journey J9: In-App Account Deletion & GDPR Erasure (QA-02, MF-08)
+- launchApp
+
+# 1. Profile & Settings
+- tapOn: "Profile & settings"
+- tapOn: "Security & privacy"
+
+# 2. Delete Account Option
+- tapOn: "Delete account"
+- assertVisible: "Delete your account"
+- assertVisible: "GDPR right to erasure"
+
+# 3. Confirmation Dialog
+- tapOn: "Delete My Account"
+- assertVisible: "Are you sure?"
+- tapOn: "Confirm Account Deletion"
+
+# 4. Sign-Out / Account Closed
+- assertVisible: "Dental care, designed around you"

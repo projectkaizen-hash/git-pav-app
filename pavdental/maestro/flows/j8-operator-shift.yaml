@@ -1,0 +1,29 @@
+appId: com.pavdental.app
+---
+# Journey J8: Van Operator Shift & Offline Notes (QA-02)
+- launchApp
+
+# 1. Operator Shift Initialization
+- assertVisible: "Van Operator Portal"
+- tapOn: "Start Shift"
+
+# 2. Daily Van Pre-Trip Inspection Check
+- assertVisible: "Pre-trip vehicle check"
+- tapOn: "Tire pressure & fluids checked"
+- tapOn: "Generator fuel level full"
+- tapOn: "Sterilization unit functional"
+- tapOn: "Confirm & Start Route"
+
+# 3. View Scheduled Route Stops
+- assertVisible: "Today's Route"
+- tapOn: "Stop #1"
+
+# 4. Offline Patient Stop Notes Capture (MF-05)
+- tapOn: "Capture Stop Notes"
+- inputText: "On-site arrival confirmed. Patient boarded mobile clinic smoothly."
+- tapOn: "Save notes"
+- assertVisible: "Notes saved locally (queued for background sync)"
+
+# 5. Complete Stop
+- tapOn: "Complete Stop"
+- assertVisible: "Stop Completed"

@@ -1,0 +1,41 @@
+appId: com.pavdental.app
+---
+# Journey J1: Patient Sign-Up, Sign-In, and Biometric Unlock (QA-02)
+- launchApp:
+    clearState: true
+
+# 1. Welcome Screen
+- assertVisible: "Dental care, designed around you"
+- tapOn: "Create account"
+
+# 2. Registration Form
+- assertVisible: "Join Pav Dental"
+- tapOn: "Jane"
+- inputText: "Maestro"
+- tapOn: "Doe"
+- inputText: "Tester"
+- tapOn: "jane.doe@example.co.uk"
+- inputText: "patient.maestro@example.test"
+- tapOn: "+44 7123 456789"
+- inputText: "+447700900123"
+- tapOn: "At least 8 characters"
+- inputText: "StrongPass123!"
+- tapOn: "Create account"
+
+# 3. Email Verification OTP Step
+- assertVisible: "Enter verification code"
+- inputText: "123456"
+
+# 4. Sign In Flow
+- launchApp
+- assertVisible: "Sign in"
+- tapOn: "Sign in"
+- tapOn: "jane.doe@example.co.uk"
+- inputText: "patient.maestro@example.test"
+- tapOn: "Your password"
+- inputText: "StrongPass123!"
+- tapOn: "Sign in"
+
+# 5. Biometric Unlock Prompt
+- assertVisible: "Unlock Pav Dental"
+- tapOn: "Use Passcode"
