@@ -16,7 +16,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pavdental.app",
-      "merchantId": "merchant.com.pavdental.app",
       "entitlements": {
         "com.apple.developer.in-app-payments": [
           "merchant.com.pavdental.app"
