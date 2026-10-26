@@ -85,9 +85,15 @@ assert(
     /shift/i.test(locationOptions.locationAlwaysAndWhenInUsePermission ?? ""),
   "expo-location allows background updates during a shift and explains why (D-21)"
 );
+const imagePickerPlugin = plugins.find((p: unknown) => Array.isArray(p) && p[0] === "expo-image-picker");
 assert(
-  appConfig.ios?.infoPlist?.NSMicrophoneUsageDescription === undefined,
-  "app.json asks for no microphone access (calls open in the browser)"
+  appConfig.ios?.infoPlist?.NSMicrophoneUsageDescription === undefined &&
+    imagePickerPlugin?.[1]?.microphonePermission === false,
+  "app.json asks for no microphone access (calls open in the browser), including through expo-image-picker"
+);
+assert(
+  typeof imagePickerPlugin?.[1]?.cameraPermission === "string" && typeof imagePickerPlugin?.[1]?.photosPermission === "string",
+  "expo-image-picker plugin sets the camera and photo library wording (RB-08)"
 );
 
 const stripePlugin = plugins.find(
