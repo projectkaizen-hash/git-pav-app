@@ -187,6 +187,10 @@ router.post("/appointments", requireAuth, validateBody(createAppointmentSchema),
     if (!service) {
       return { error: "Service not found", status: 404 };
     }
+    // A retired service (BE-10) stays on past bookings but takes no new ones.
+    if (!service.isActive) {
+      return { error: "This service is no longer offered", status: 409 };
+    }
 
     // Validate triage data if provided
     if (triageData) {

@@ -165,3 +165,21 @@ export function clinicPayload(form: {
   if (phone.length < 5) return { ok: false, error: "Enter a phone number" };
   return { ok: true, payload: { name, address, postcode, city, phone } };
 }
+
+/** Pence back to what staff type in the price box: "65" or "65.50". */
+export function toPoundsInput(pence: number): string {
+  return pence % 100 === 0 ? String(pence / 100) : (pence / 100).toFixed(2);
+}
+
+/**
+ * What staff see after switching a service, van or clinic on or off. Retiring
+ * keeps existing bookings, so say how many still name it.
+ */
+export function activeToggleMessage(name: string, isActive: boolean, upcomingBookings: number): string {
+  if (isActive) return `${name} is back on. Patients can book it again.`;
+  const still =
+    upcomingBookings === 0
+      ? "No upcoming bookings use it."
+      : `${upcomingBookings} upcoming ${upcomingBookings === 1 ? "booking still uses" : "bookings still use"} it; contact those patients if they need to move.`;
+  return `${name} is retired from new bookings. ${still}`;
+}

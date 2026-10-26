@@ -154,6 +154,8 @@ async function getAssignedVan(operatorId: string) {
       operatorId,
       startsAt: { lte: now },
       OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      // A retired van (BE-10) can't go out on a shift.
+      van: { isActive: true },
     },
     include: { van: { include: { servicePolygons: true } } },
     orderBy: { startsAt: "desc" },
@@ -1016,6 +1018,7 @@ router.post("/requests", requireAuth, validateBody(createVanRequestSchema), asyn
   // Validate service exists
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service) return res.status(404).json({ error: "Service not found" });
+  if (!service.isActive) return res.status(409).json({ error: "This service is no longer offered" });
 
   // The id is chosen up front so the deposit intent carries it from the
   // start; no follow-up metadata update can fail and leave "pending" (VR-11).

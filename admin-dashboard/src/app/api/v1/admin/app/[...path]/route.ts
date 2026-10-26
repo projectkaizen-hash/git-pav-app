@@ -20,7 +20,13 @@ const ALLOWED: Record<string, RegExp[]> = {
     /^users$/,
     new RegExp(`^referral-vouchers/${SEG}$`),
   ],
-  PATCH: [new RegExp(`^messages/${SEG}/read$`), new RegExp(`^clinicians/${SEG}/profile$`)],
+  PATCH: [
+    new RegExp(`^messages/${SEG}/read$`),
+    new RegExp(`^clinicians/${SEG}/profile$`),
+    new RegExp(`^services/${SEG}$`),
+    new RegExp(`^clinics/${SEG}$`),
+    new RegExp(`^vans/${SEG}$`),
+  ],
   PUT: [
     new RegExp(`^clinics/${SEG}/hours$`),
     new RegExp(`^clinicians/${SEG}/rota$`),
