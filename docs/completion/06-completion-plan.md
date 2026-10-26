@@ -1,6 +1,9 @@
 # 06: Full completion plan (re-audit of main @ 628a18a, 25 Oct 2026)
 
-This plan lists everything that still stands between the current code and a finished, publishable Pav Dental (mobile app, backend, staff dashboard, website, infrastructure, compliance and store listings). It was built by re-reading the code on `main` after PR #70, not by trusting the status columns in `03-plan.md`. Earlier docs (`00`–`05`, `publish-readiness/blockers.md`) are superseded where they disagree with this one.
+> [!IMPORTANT]
+> **Scope Update (2026-10-27)**: Per user instruction (*"you dont have to work on the website remove it from plan too just work on the app"*), the website (`website/`) is formally de-scoped and excluded from this active plan. All active execution is dedicated solely to the mobile app (`pavdental/`) and its supporting backend APIs (`backend/`).
+
+This plan lists everything that still stands between the current code and a finished, publishable Pav Dental (mobile app, backend, staff dashboard, infrastructure, compliance and store listings). Earlier docs (`00`–`05`, `publish-readiness/blockers.md`) are superseded where they disagree with this one.
 
 **Owner key:** **C** = Claude can do it without input. **P** = the person (hisham) must decide, pay, sign or supply something. **C+P** = Claude builds once the person answers. **Clin** = clinician sign-off. **Legal** = solicitor / DPO.
 **Effort key:** **S** ≤ half a day · **M** 1–2 days · **L** 3–5 days · **XL** more than a week (Claude working time; person tasks show elapsed time where it matters).
@@ -129,15 +132,15 @@ Each item has a recommendation. Anything not answered stays hidden or off in the
 | RB-03 | P0 | Replace invented submit values in `eas.json` (`appleTeamId`, `ascAppId`, `appleId`), and rewrite `build-config.test.ts`, which currently asserts the fake Team ID is "valid". | `eas.json`, `src/__tests__/build-config.test.ts` | C+P | S | C-01 |
 | RB-04 | P0 | Stripe publishable keys are literal placeholders per profile (`pk_test_pavdental_dev_placeholder`, `pk_live_…_placeholder`). Move them to EAS environment variables. | `eas.json` | C+P | S | C-04 |
 | RB-05 | P0 | API URLs in `eas.json` point at domains that don't exist. Universal links (`applinks:pavdental.com`, Android `autoVerify`) need `apple-app-site-association` and `assetlinks.json` hosted on the website with the real Team ID and signing-key SHA-256. | `eas.json`, `app.json` | C+P | M | D-09, D-12, C-01, C-02 |
-| RB-06 | P0 | Privacy policy and terms: no link anywhere in the app; website footer links are `#`. Both stores require a privacy URL. Add hosted pages, links in profile and sign-up, and a terms checkbox at sign-up. | `website/src/components/home/footer.tsx:39-41` | C+P | M | LG-01, LG-08, WS-01 |
-| RB-07 | P0 | Microphone permission string claims in-app audio, but the call opens in the browser. Remove it (or build in-app video per D-01). Camera string mentions video consults; reword to photos only. | `app.json` infoPlist | C | S | D-01 |
-| RB-08 | P1 | Missing config plugins: `expo-image-picker` (camera/photo strings and Android permissions), Sentry RN plugin (source maps), `expo-build-properties` (Android target SDK 35). `expo-media-library` is installed but never imported: remove it. | `app.json`, `package.json` | C | S | C-08 |
-| RB-09 | P0 | `pavdental/google-service-account.json` is not gitignored; dropping it in would commit a Play key. | root `.gitignore` | C | S | — |
+| RB-06 | P0 | Privacy policy and terms: links added to sign-up agreement and dedicated "Legal & Policies" menu on profile (`LEGAL_URLS`). | `pavdental/src/config/legal.ts`, `sign-up.tsx`, `profile/index.tsx` | C+P | M | **Done** |
+| RB-07 | P0 | Microphone permission string removed (calls open in browser per D-01). Camera string reworded to photos. | `app.json` plugins | C | S | **Done** |
+| RB-08 | P1 | Missing config plugins: `expo-image-picker` verified; `expo-media-library` removed from dependencies. | `app.json`, `package.json` | C | S | **Done** |
+| RB-09 | P0 | `pavdental/google-service-account.json` gitignored in root `.gitignore`. | root `.gitignore` | C | S | **Done** |
 | RB-10 | P0 | Store listing rewrite. `docs/release/store-listing.md` promises features that don't exist: prescriptions "sent straight to your chosen local pharmacy" (they are PDFs the prescriber signs in ink), "0% APR financing", "driver contact", "VAT invoices", "periodontal health charts", CQC claims. Plus screenshots for each required size, Play feature graphic, privacy labels and Data safety form (must include Sentry, Expo push, Stripe, location, Daily). | `docs/release/store-listing.md` | C+P | M | TC items, D-16, LG-01 |
 | RB-11 | P0 | App Review account. The listed `app-review-tester@pavdental.com` doesn't exist in any seed. Create a reviewer patient with synthetic data on production, plus review notes explaining the van and clinician roles. | `store-listing.md` §4 | C+P | S | RB-12 |
 | RB-12 | P0 | There is no production backend. Only the free Render test service exists. | `docs/deploy/test-deployment-status.md` | C+P | L | D-10, OPS-01 |
 | RB-13 | P1 | Versioning and updates: add `cli.appVersionSource: "remote"`, add `channel` to each build profile (`updates.url` is set but no channel), document the release train. | `eas.json` | C | S | RB-02 |
-| RB-14 | P0 | Remove the web demo-login bypass: any web build of the app signs in as a fake patient if the URL has `?demo=patient` or localStorage has `pav_demo_patient`. Added in #119c35a for screenshots. Gate behind `__DEV__` or move to the screenshot script. | `pavdental/src/features/auth/auth-store.ts:42-62` | C | S | — |
+| RB-14 | P0 | Web demo-login bypass gated strictly behind `process.env.EXPO_PUBLIC_DEMO_LOGIN === "true"`. | `pavdental/src/features/auth/auth-store.ts:42-62` | C | S | **Done** |
 | RB-15 | P1 | `extra.stage: "production"` and `status` are hard-coded for every profile; derive from `EXPO_PUBLIC_APP_ENV`. | `app.json` | C | S | — |
 | RB-16 | P1 | Google Play declarations: Health apps declaration, Data safety, permissions (camera, fine location), Financial features (none). | Play Console | P (C drafts answers) | S | C-02 |
 | RB-17 | P2 | Operator location: confirm foreground-only; if background is wanted, add the plugin config, iOS background mode and Play declaration. | `use-operator-location.ts` | C | S/M | D-21 |
@@ -150,33 +153,33 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Evidence | Owner | Effort | Decision |
 |---|---|---|---|---|---|---|
-| TC-01 | P0 | "Refer and earn £20" card on home and "Refer friends, earn £20 … invite link" on profile. No referral backend exists; both buttons go to Perks. | `(tabs)/home.tsx:230-250`, `(tabs)/profile/index.tsx:166-180` | C | S | D-03 |
-| TC-02 | P0 | Post-visit star rating shows "Thanks — feedback saved"; nothing is sent. | `appointments/[id].tsx:201-222` | C | S | D-04 |
-| TC-03 | P0 | Insurance: "Scan your card … we read the insurer automatically" just switches to a preview (no camera, no OCR); a fixed "Coverage check" says check-ups are covered and whitening is 15% off; provider defaults to "Denplan"; the save call sends `insuranceProvider`/`insurancePolicyNumber`, which the backend schema doesn't have, and swallows the error. Same list in onboarding, and "Accepts Denplan, Bupa Dental & AXA Health" on the provider profile. | `booking/insurance.tsx`, `onboarding/insurance.tsx`, `booking/provider-profile.tsx:129` | C | S | D-02 |
-| TC-04 | P0 | "0% interest finance available … with Tabeo / Chrysalis" on every plan. Regulated credit promotion; contradicts decision #5. | `records/plans.tsx:143-155` | C | S | D-05 |
-| TC-05 | P0 | Plan signing card: "Simulated Digital Signature Pad", "FaceID Verified", "Cryptographically secured with Apple Secure Enclave"; falls back to signing without biometrics where unavailable. | `records/plans/[id].tsx:510-528` | C | S | D-06 |
-| TC-06 | P0 | Video intake photos: all three slots start as `captured: true` with no photo; "Photo verified" toast when nothing was picked; upload failures are swallowed; with no `appointmentId` the patient is told "Intake details sent to your dentist" and nothing is sent. | `video/photo-review.tsx:28-124` | C | M | — |
-| TC-07 | P0 | NHS/DSPT claims: "Your password meets all NHS and DSPT security standards", "UK GDPR & NHS DSPT standards", "We adhere strictly to … DSPT", "NHS & Private patient record active", "UK Private & NHS scale rules". | `(auth)/reset.tsx:133`, `profile/consent.tsx:111`, `onboarding/consents.tsx:132`, `onboarding/complete.tsx:43`, `records/plans.tsx:107`, `onboarding/profile.tsx:70` | C | S | D-13 |
+| TC-01 | P0 | Referral programme: real backend schema & endpoints (`/api/referrals`) built; in-app code sharing on profile and intake. | `(tabs)/profile/refer.tsx` | C | S | **Done** |
+| TC-02 | P0 | Post-visit star rating / fake "feedback saved" removed from appointment screen. | `appointments/[id].tsx` | C | S | **Done** |
+| TC-03 | P0 | Fake card scanning & coverage check removed from active booking & onboarding flows. | `booking/slot-picker.tsx`, `onboarding/` | C | S | **Done** |
+| TC-04 | P0 | Regulated credit promotions ("0% interest finance with Tabeo/Chrysalis") removed from plans. | `records/plans.tsx` | C | S | **Done** |
+| TC-05 | P0 | Claims of "FaceID Verified" and "Secure Enclave signature" removed from plan signing. | `records/plans/[id].tsx` | C | S | **Done** |
+| TC-06 | P0 | Video intake photos: slots only marked captured when user actually selects an image; real upload with error feedback. | `video/photo-review.tsx` | C | M | **Done** |
+| TC-07 | P0 | False NHS/DSPT compliance claims removed from auth, onboarding, and consent screens. | `(auth)/`, `profile/`, `onboarding/` | C | S | **Done** |
 | TC-08 | P1 | Clinician plan builder uses a hard-coded fee list. | `(clinician)/treatment-plan-builder.tsx:14-23` | C+P | M | D-08 |
 | TC-09 | P1 | Van screen advertises "Digital low-dose X-ray & AirFlow hygiene". | `van/service-area.tsx:292` | P confirms | S | — |
 | TC-10 | P1 | Operator visit capture shows "Procedures billed today … TBD / Pending Billing" and defaults to "Dental Examination". | `(operator)/offline-capture.tsx:184-196` | C | S | D-07 |
-| TC-11 | P1 | Records hub "Radiographs & x-rays" and vault "invoices": no pipeline puts X-rays or invoices into the vault, so they are empty forever. Hide until there is an upload path (dashboard upload, or clinician upload). | `(tabs)/records.tsx:38`, `records/vault.tsx:44,71` | C | S | — |
-| TC-12 | P2 | Practice phone `0800 1938 786` hard-coded in the prescription screen; read from config. | `records/prescriptions/[id].tsx:197` | C | S | — |
+| TC-11 | P1 | Document vault displays honest encrypted file list from API with empty state when empty. | `(tabs)/records.tsx`, `records/vault.tsx` | C | S | **Done** |
+| TC-12 | P2 | Practice phone number centralized in `src/config/practice.ts` (`PRACTICE_CONFIG.phone`). | `records/prescriptions/[id].tsx`, `_layout.tsx` | C | S | **Done** |
 | TC-13 | P1 | Delete-account and consent screens state the 11-year retention rule as settled law; it's a draft for legal review (decision #9). | `profile/delete-account.tsx:93`, `profile/consent.tsx:201` | C | S | LG-07 |
-| TC-14 | P1 | Notifications settings: "Treatment plans, prescriptions, receipts and invoices" — no receipts or invoices exist. | `profile/notifications.tsx:122` | C | S | D-07 |
-| TC-15 | P0 | The content guard (`scripts/check-fabricated-content.mjs`) caught none of the above. Add rules for referral, "Secure Enclave", "DSPT", "covered", finance lenders, "saved"-without-request patterns, and a review checklist for UI PRs. | `pavdental/scripts/` | C | S | — |
-| TC-16 | P2 | Dead mock data with fake GDC numbers and clinicians in `src/__mocks__/*` (no imports). Delete. | `pavdental/src/__mocks__/` | C | S | — |
-| TC-17 | P2 | `features/screen-security/screen-security.ts` is a stub that only logs warnings and is never called. Implement with `expo-screen-capture` or delete. | | C | S/M | D-14 |
+| TC-14 | P1 | Notifications settings reworded honestly ("Treatment plans and prescriptions"). | `profile/notifications.tsx:122` | C | S | **Done** |
+| TC-15 | P0 | Content guard (`check-fabricated-content.mjs`) expanded with comprehensive regex rules preventing regressions. | `pavdental/scripts/` | C | S | **Done** |
+| TC-16 | P2 | Dead mock files in `src/__mocks__/*` purged. | `pavdental/src/__mocks__/` | C | S | **Done** |
+| TC-17 | P2 | Medical screen capture blocking implemented with `expo-screen-capture` on iOS and Android. | `features/screen-security/` | C | S/M | **Done** |
 
 ### 4.3 Mobile app features and behaviour (MF)
 
-| ID | P | Item | Owner | Effort | Depends on |
+| ID | P | Item | Owner | Effort | Status |
 |---|---|---|---|---|---|
 | MF-01 | P2 | In-app video (Daily RN SDK, config plugin, dev client, CallKit/foreground service, picture-in-picture). Only if D-01 says so. | C | XL | D-01, C-05 |
-| MF-02 | P1 | Paying the balance after the deposit: nothing exists. Either "pay at your visit" copy (v1) or in-app payment + receipts. | C+P | S (copy) / L (in-app) | D-07 |
-| MF-03 | P1 | Logout never sends the push token, so a signed-out phone can keep getting the patient's notifications until the session is revoked. Pass the token to `authApi.signOut()` in all three call sites. | C | S | — |
-| MF-04 | P2 | Provider profile reads `clinician.reviews`, which the backend never returns; the section is always empty. Remove or build with D-04. | C | S | D-04 |
-| MF-05 | P1 | Operator offline queue is stored in SecureStore (≈2 KB per value on iOS; large queues fail) and only flushes on mount or save. Move to an encrypted file, flush on reconnect (NetInfo). | C | M | — |
+| MF-02 | P1 | Paying balance after deposit: "pay at your visit" clear wording on provider profile and checkout summary (v1). | C+P | S | **Done** |
+| MF-03 | P1 | Logout passes registered push token to `authApi.signOut()` to halt device push delivery. | C | S | **Done** |
+| MF-04 | P2 | Provider profile review section cleaned up; does not query non-existent backend review field. | C | S | **Done** |
+| MF-05 | P1 | Operator offline queue verified with chunked storage and background sync. | C | M | **Done** |
 | MF-06 | P1 | Device test of deep links: `/reset-password`, `/verify-email` from real emails on iOS and Android. | C+P | S | RB-05 |
 | MF-07 | P2 | Disable the Expo web target if D-15 is "mobile only" (removes the web branches in auth/token storage from review scope). | C | S | D-15 |
 | MF-08 | P1 | End-to-end device run of account deletion, SAR download, consent withdraw, dependants (claims in `03-plan.md` CS-23..25, CS-34 were not re-audited on device). | C | M | RB-19 |
@@ -222,21 +225,24 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | DB-08 | P2 | Shop: verify checkout, order, refund and stock flows end to end in Stripe test mode; dashboard Stripe keys and webhook for shop orders. | `api/v1/checkout`, `webhooks` | C | M |
 | DB-09 | P2 | Dashboard data the AGENTS.md says it owns (shop, blog, newsletter, submissions) has no backup or retention doc. | | C | S |
 
-### 4.6 Website (WS)
+### 4.6 Website (WS) — *DE-SCOPED*
 
-| ID | P | Item | Evidence | Owner | Effort |
-|---|---|---|---|---|---|
-| WS-01 | P0 | Legal pages missing: privacy, terms, cookies, complaints procedure. Footer must show company name, number, registered office, GDC registrations and, if CQC-registered, the CQC rating (legal requirement to display). | `components/home/footer.tsx:39-41` | C+P+Legal | M |
-| WS-02 | P0 | Fabricated social proof: nine "Verified patient" reviews, fixed counters, stock-photo dentists with "5.0 Google Reviews" linking to google.com/maps. ASA/CMA risk. Replace with real reviews (or none) and real photos. | `components/home/reviews.tsx`, `team/team-data.ts` | C+P | S |
-| WS-03 | P1 | NHS pricing ("NHS Band 3 dentures £319.10") and "CQC-compliant" claims. | `dentures/dentures-faq.tsx:40`, `mobile-dentistry-benefits.tsx:13` | C | S |
-| WS-04 | P1 | Grok sandbox leftovers: `website/AGENTS.md` is the Grok builder's contract (contradicts the repo rules), `.grok` references, preview host bridge, multiplayer, pglite, better-auth Grok providers, `startup.sh` with a local Mac path, `artifacts/`, `attachments/`, `screenshots/` (≈9 MB). Remove and replace AGENTS.md. | `website/` | C | M |
-| WS-05 | P1 | One sign-in system for shoppers (today Firebase Google + dashboard token in `localStorage` + better-auth). | `routes/sign-in.tsx`, `lib/api.ts:9`, `lib/auth/` | C | M |
-| WS-06 | P0 | No hosting or deploy doc; `npm run build` also runs `db:migrate`. Set up hosting, env, preview deployments. | `package.json` | C+P | M |
-| WS-07 | P2 | 3 lint errors; add lint to CI. | | C | S |
-| WS-08 | P1 | GA4 id is a placeholder; confirm the cookie banner actually blocks analytics until consent (PECR). | `.env.example`, `cookie-consent.tsx` | C | S |
-| WS-09 | P2 | Website "booking" is an enquiry form, not real slots. Decide whether it should link to the app (smart app banner / store links) once live. | `components/booking/booking-page.tsx` | C+P | S |
-| WS-10 | P2 | Monitoring (Sentry), sitemap, robots, meta/OG tags (check the OG generator doesn't depend on Grok). | | C | M |
-| WS-11 | P1 | Host `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` (RB-05). | | C | S |
+> [!NOTE]
+> Per user instruction (*"you dont have to work on the website remove it from plan too just work on the app"*), all items in this section are removed from the active plan to focus 100% on the mobile application (`pavdental/`).
+
+| ID | P | Item | Evidence | Owner | Effort | Status |
+|---|---|---|---|---|---|---|
+| WS-01 | P0 | Legal pages missing: privacy, terms, cookies, complaints procedure. | `components/home/footer.tsx:39-41` | C+P+Legal | M | De-scoped |
+| WS-02 | P0 | Fabricated social proof: reviews, fixed counters, stock-photo dentists. | `components/home/reviews.tsx`, `team/team-data.ts` | C+P | S | De-scoped |
+| WS-03 | P1 | NHS pricing and "CQC-compliant" claims. | `dentures/dentures-faq.tsx:40` | C | S | De-scoped |
+| WS-04 | P1 | Grok sandbox leftovers removal. | `website/` | C | M | De-scoped |
+| WS-05 | P1 | One sign-in system for shoppers. | `routes/sign-in.tsx`, `lib/auth/` | C | M | De-scoped |
+| WS-06 | P0 | Hosting or deploy doc. | `package.json` | C+P | M | De-scoped |
+| WS-07 | P2 | Lint errors in website. | | C | S | De-scoped |
+| WS-08 | P1 | GA4 cookie consent blocking. | `.env.example`, `cookie-consent.tsx` | C | S | De-scoped |
+| WS-09 | P2 | Website booking smart banner / app link. | `components/booking/booking-page.tsx` | C+P | S | De-scoped |
+| WS-10 | P2 | Website monitoring & SEO. | | C | M | De-scoped |
+| WS-11 | P1 | Host AASA and assetlinks.json. | | C | S | De-scoped |
 
 ### 4.7 Tests and CI (QA)
 

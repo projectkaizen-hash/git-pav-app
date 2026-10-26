@@ -7,6 +7,7 @@ import { usePatientPrescriptions } from "@/features/hooks/use-dental-api";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { apiUrl, authFetch } from "@/features/auth/auth-api";
 import { normalizePrescription } from "../prescriptions";
+import { PRACTICE_CONFIG } from "@/config/practice";
 
 export default function PrescriptionDetailScreen() {
   const router = useRouter();
@@ -190,11 +191,11 @@ export default function PrescriptionDetailScreen() {
         ) : null}
 
         <Button
-          title="Call the practice"
+          title={`Call the practice (${PRACTICE_CONFIG.phone})`}
           variant="secondary"
           size="lg"
           accessibilityLabel="Call Pav Dental practice"
-          onPress={() => Linking.openURL("tel:08001938786").catch(() => {})}
+          onPress={() => Linking.openURL(PRACTICE_CONFIG.telUrl).catch(() => {})}
         />
       </ScrollView>
     </View>

@@ -1,17 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ThemedText, Card, ListRow, AppIcon, type AppIconName } from "@/components";
+import { ThemedText, Card, ListRow, AppIcon, Button, type AppIconName } from "@/components";
 import { colors, spacing, radius } from "@/theme";
+import { useCurrentUser } from "@/features/auth/auth-store";
+import { useOdontogram, useOralHealthInsights } from "@/features/hooks/use-dental-api";
 
 // ─── Records — clinical documents hub (routes unchanged) ──────────────────────
+
+type RecordsTab = "vault" | "activity" | "estimates";
 
 interface RecordLink {
   icon: AppIconName;
   title: string;
   subtitle: string;
   route: string;
+  category: RecordsTab;
 }
 
 const links: RecordLink[] = [
@@ -20,44 +25,75 @@ const links: RecordLink[] = [
     title: "Digital odontogram",
     subtitle: "Interactive 32-tooth dental chart",
     route: "/(patient)/records/odontogram",
+    category: "vault",
   },
   {
     icon: "clipboard",
     title: "Treatment estimates & plans",
     subtitle: "Review and approve digital treatment plans",
     route: "/(patient)/records/plans",
+    category: "estimates",
   },
   {
     icon: "droplet",
     title: "Prescriptions & dispensing",
     subtitle: "Prescriptions from your dentist",
     route: "/(patient)/records/prescriptions",
+    category: "vault",
   },
   {
     icon: "image",
     title: "Documents",
     subtitle: "Documents your dental team shares with you",
     route: "/(patient)/records/vault",
+    category: "vault",
   },
   {
     icon: "creditCard",
     title: "Payment plans",
     subtitle: "How to spread the cost of treatment",
     route: "/(patient)/records/financing",
+    category: "estimates",
   },
   {
     icon: "clock",
     title: "Oral health activity & insights",
     subtitle: "Weekly brushing streaks & recall timer",
     route: "/(patient)/records/insights",
+    category: "activity",
   },
 ];
-
-type RecordsTab = "vault" | "activity" | "estimates";
 
 export default function PatientRecordsScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<RecordsTab>("vault");
+  const user = useCurrentUser();
+  const userId = user?.id || "";
+
+  const { data: apiTeeth } = useOdontogram(userId);
+  const { data: insightsData } = useOralHealthInsights();
+
+  const teethArray = Array.isArray(apiTeeth) ? apiTeeth : [];
+  const hasTeeth = teethArray.length > 0;
+  const teethCount = hasTeeth ? String(teethArray.length) : "—";
+  const activeIssues = hasTeeth
+    ? String(
+        teethArray.filter((t: any) =>
+          Object.values(t.surfaces || {}).some((cond) => cond && cond !== "healthy")
+        ).length
+      )
+    : "—";
+
+  const recallDays =
+    typeof insightsData?.recallDaysRemaining === "number"
+      ? insightsData.recallDaysRemaining
+      : null;
+  const recallDisplay =
+    recallDays != null ? `${Math.max(1, Math.ceil(recallDays / 30))}M` : "—";
+
+  const displayedLinks = useMemo(() => {
+    return links.filter((l) => l.category === activeTab);
+  }, [activeTab]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -100,18 +136,21 @@ export default function PatientRecordsScreen() {
       <Card style={styles.metricsCard}>
         <View style={styles.metricColumn}>
           <ThemedText variant="largeTitle" style={styles.metricVal}>
-            32
+            {teethCount}
           </ThemedText>
           <ThemedText variant="caption" style={styles.metricLabel}>
-            Teeth Tracked
+            {hasTeeth ? "Teeth Tracked" : "Teeth Charted"}
           </ThemedText>
         </View>
 
         <View style={styles.metricDivider} />
 
         <View style={styles.metricColumn}>
-          <ThemedText variant="largeTitle" style={[styles.metricVal, { color: colors.success }]}>
-            0
+          <ThemedText
+            variant="largeTitle"
+            style={[styles.metricVal, hasTeeth && activeIssues === "0" ? { color: colors.success } : null]}
+          >
+            {activeIssues}
           </ThemedText>
           <ThemedText variant="caption" style={styles.metricLabel}>
             Active Issues
@@ -122,13 +161,38 @@ export default function PatientRecordsScreen() {
 
         <View style={styles.metricColumn}>
           <ThemedText variant="largeTitle" style={styles.metricVal}>
-            3M
+            {recallDisplay}
           </ThemedText>
           <ThemedText variant="caption" style={styles.metricLabel}>
             Next Recall
           </ThemedText>
         </View>
       </Card>
+
+      {!hasTeeth ? (
+        <Card elevation="flat" style={styles.initialCareCard}>
+          <View style={styles.initialCareContent}>
+            <View style={styles.initialCareIcon}>
+              <AppIcon name="clipboard" size={16} color={colors.ink} />
+            </View>
+            <View style={styles.initialCareText}>
+              <ThemedText variant="subhead" style={styles.initialCareTitle}>
+                Initial dental charting pending
+              </ThemedText>
+              <ThemedText variant="caption" style={styles.initialCareSub}>
+                Your digital odontogram and recall timer will populate automatically after your first check-up.
+              </ThemedText>
+            </View>
+          </View>
+          <Button
+            title="Book initial examination"
+            variant="secondary"
+            size="sm"
+            onPress={() => router.push("/(patient)/booking/service-catalog" as never)}
+            style={styles.bookExamBtn}
+          />
+        </Card>
+      ) : null}
 
       {/* Summary banner */}
       <Card style={styles.summaryCard}>
@@ -147,10 +211,14 @@ export default function PatientRecordsScreen() {
 
       <View style={styles.section}>
         <ThemedText variant="overline" style={styles.sectionOverline}>
-          Documents & records
+          {activeTab === "vault"
+            ? "Vault & Clinical Charts"
+            : activeTab === "estimates"
+            ? "Estimates & Finance"
+            : "Activity & Recall"}
         </ThemedText>
         <Card padding="none" style={styles.groupedCard}>
-          {links.map((link, i) => (
+          {displayedLinks.map((link, i) => (
             <ListRow
               key={link.title}
               title={link.title}
@@ -162,7 +230,7 @@ export default function PatientRecordsScreen() {
               }
               right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
               onPress={() => router.push(link.route as never)}
-              separator={i < links.length - 1}
+              separator={i < displayedLinks.length - 1}
             />
           ))}
         </Card>
@@ -289,5 +357,39 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     color: colors.alwaysWhite,
+  },
+  initialCareCard: {
+    backgroundColor: colors.inkSubtle,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  initialCareContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  initialCareIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  initialCareText: {
+    flex: 1,
+    gap: 2,
+  },
+  initialCareTitle: {
+    color: colors.label,
+    fontWeight: "600",
+  },
+  initialCareSub: {
+    color: colors.secondaryLabel,
+    lineHeight: 18,
+  },
+  bookExamBtn: {
+    marginTop: spacing.xxs,
   },
 });

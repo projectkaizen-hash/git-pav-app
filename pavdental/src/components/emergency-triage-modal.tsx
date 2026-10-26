@@ -8,6 +8,7 @@ import { Badge } from "./badge";
 import { Button } from "./button";
 import { AppIcon, AppIconName } from "./app-icon";
 import { colors, spacing, radius } from "@/theme";
+import { PRACTICE_CONFIG } from "@/config/practice";
 
 export interface EmergencyTriageModalProps {
   visible: boolean;
@@ -116,7 +117,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
 
   const handleCallHotline = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Linking.openURL("tel:08001938786").catch(() => {});
+    Linking.openURL(PRACTICE_CONFIG.telUrl).catch(() => {});
   };
 
   return (
@@ -284,7 +285,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
             {/* Quick Hotline Banner */}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Call practice emergency hotline at 0800 1938 786"
+              accessibilityLabel={`Call practice emergency hotline at ${PRACTICE_CONFIG.phone}`}
               onPress={handleCallHotline}
               style={styles.hotlineBanner}
             >
@@ -294,7 +295,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
                   Need urgent advice by phone?
                 </ThemedText>
                 <ThemedText variant="subhead" style={styles.hotlineNumber}>
-                  Call the practice (0800 1938 786) ›
+                  {`Call the practice (${PRACTICE_CONFIG.phone}) ›`}
                 </ThemedText>
               </View>
             </Pressable>

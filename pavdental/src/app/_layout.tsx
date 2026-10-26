@@ -20,6 +20,7 @@ import { setupNetworkMonitoring } from "@/lib/network";
 // Registers the van shift background-location task (D-21) at start-up.
 import "@/features/van/background-location";
 import { colors, spacing } from "@/theme";
+import { PRACTICE_CONFIG } from "@/config/practice";
 
 initErrorTracking();
 
@@ -54,7 +55,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Pro
     <View style={errorStyles.container}>
       <ThemedText variant="headline">Something went wrong</ThemedText>
       <ThemedText variant="body" style={errorStyles.body}>
-        Please try again. If it keeps happening, call us on 0800 1938 786.
+        Please try again. If it keeps happening, call us on {PRACTICE_CONFIG.phone}.
       </ThemedText>
       <Button title="Try again" onPress={() => retry()} />
     </View>

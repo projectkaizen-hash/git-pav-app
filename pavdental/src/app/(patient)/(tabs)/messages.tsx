@@ -190,8 +190,10 @@ export default function MessagesScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            heading="No messages found"
-            body={query ? `Nothing matches “${query}”.` : "Messages from your care team will appear here."}
+            heading={query ? "No messages found" : "Your inbox is clear"}
+            body={query ? `Nothing matches “${query}”.` : "Messages and updates from your dental care team will appear here."}
+            actionLabel={query ? undefined : "Send a message"}
+            onAction={query ? undefined : () => setIsComposing(true)}
             icon="message"
           />
         ) : (

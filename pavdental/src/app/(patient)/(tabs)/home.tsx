@@ -181,19 +181,17 @@ export default function PatientHomeScreen() {
             title={
               nextAppointment
                 ? nextAppointment.service?.name || "Dental Examination & Polish"
-                : "Routine checkup"
+                : "No upcoming visits"
             }
             subtitle={
               nextAppointment
                 ? `${new Date(nextAppointment.startTimeUtc).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${nextAppointment.clinic?.name || nextAppointment.van?.name || "Central Practice"}`
-                : showBalance
-                ? "Next routine dental recall due in 3 months"
-                : "••••"
+                : "Book a clinic visit, video consult, or mobile van in a few taps."
             }
             left={<IconTile icon="calendar" />}
             right={
               <Badge
-                label={nextAppointment ? "Confirmed" : "On track"}
+                label={nextAppointment ? "Confirmed" : "Book"}
                 variant={nextAppointment ? "success" : "default"}
               />
             }
@@ -205,13 +203,13 @@ export default function PatientHomeScreen() {
                   params: { id: nextAppointment.id },
                 });
               } else {
-                router.push("/(patient)/(tabs)/appointments" as never);
+                router.push("/(patient)/booking/service-catalog" as never);
               }
             }}
             accessibilityLabel={
               nextAppointment
                 ? `Upcoming appointment for ${nextAppointment.service?.name || "Dental Care"}`
-                : "Active oral care status"
+                : "No upcoming visits, tap to book an appointment"
             }
           />
         </Card>
