@@ -180,7 +180,17 @@ export default function PatientAppointmentsScreen() {
                   ))}
                 </View>
               </View>
-            ) : null}
+            ) : (
+              <View style={styles.group}>
+                <ThemedText variant="overline">Upcoming</ThemedText>
+                <Card style={styles.emptyUpcomingCard}>
+                  <ThemedText variant="headline">No upcoming visits</ThemedText>
+                  <ThemedText variant="subhead" style={styles.emptyUpcomingBody}>
+                    You have no upcoming appointments booked. Choose a treatment below to book your next check-up or cleaning.
+                  </ThemedText>
+                </Card>
+              </View>
+            )}
 
             {past.length > 0 ? (
               <View style={styles.group}>
@@ -245,6 +255,13 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background,
     flex: 1,
+  },
+  emptyUpcomingBody: {
+    color: colors.secondaryLabel,
+  },
+  emptyUpcomingCard: {
+    gap: spacing.xs,
+    padding: spacing.md,
   },
   dateBlock: {
     alignItems: "center",

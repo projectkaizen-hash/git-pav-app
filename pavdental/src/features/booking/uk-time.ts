@@ -60,3 +60,24 @@ export function formatOpeningHours(rows: OpeningHoursRow[]): string {
     .map((g) => `${g.first === g.last ? DAY_NAMES[g.first] : `${DAY_NAMES[g.first]}–${DAY_NAMES[g.last]}`} ${g.hours}`)
     .join(" · ");
 }
+
+/**
+ * Resolves opening hours text dynamically from clinic API response (MF-10, AUD-18).
+ * Prioritizes structured UK opening hours table, falls back to operatingHours summary,
+ * and defaults to standard practice hours when clinics have not loaded.
+ */
+export function resolvePracticeHours(
+  clinics?: Array<{ openingHours?: OpeningHoursRow[]; operatingHours?: string }>,
+  defaultHours = "Mon–Fri 09:00–17:30 · Sat 09:00–13:00"
+): string {
+  if (!clinics || clinics.length === 0) return defaultHours;
+  const clinicWithHours = clinics.find((c) => Array.isArray(c.openingHours) && c.openingHours.length > 0);
+  if (clinicWithHours?.openingHours) {
+    return formatOpeningHours(clinicWithHours.openingHours);
+  }
+  const firstWithText = clinics.find((c) => typeof c.operatingHours === "string" && c.operatingHours.trim().length > 0);
+  if (firstWithText?.operatingHours) {
+    return firstWithText.operatingHours.trim();
+  }
+  return defaultHours;
+}

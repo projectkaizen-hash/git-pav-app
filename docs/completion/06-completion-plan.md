@@ -200,7 +200,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | MF-06 | P1 | Device test of deep links: `/reset-password`, `/verify-email` from real emails on iOS and Android. | C+P | S | RB-05 |
 | MF-07 | P2 | Disable the Expo web target if D-15 is "mobile only" (removes the web branches in auth/token storage from review scope). | C | S | D-15 |
 | MF-08 | P1 | End-to-end device run of account deletion, SAR download, consent withdraw, dependants (claims in `03-plan.md` CS-23..25, CS-34 were not re-audited on device). | C | M | RB-19 |
-| MF-10 | P3 | **New (AUD-18).** Opening hours are a hard-coded string in `src/config/practice.ts` while clinic hours live in the backend; read them from the clinics endpoint. | C | S | — |
+| MF-10 | P3 | **New (AUD-18).** Opening hours are a hard-coded string in `src/config/practice.ts` while clinic hours live in the backend; read them from the clinics endpoint. | **Done in PR #118 (pending merge)** | C | S | — |
 | MF-09 | P3 | 229 lint warnings (mostly `any`); ratchet the cap down each PR. | C | M | — |
 
 ### 4.4 Backend (BE)
@@ -317,9 +317,9 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
-| UX-01 | P2 | Screens restyled in #70 should be checked at 320 pt width and with large text (screenshots exist in `completion/screenshots/`; re-shoot after TC fixes). | C | M |
-| UX-02 | P2 | Copy pass: sentence case and plain English across new screens (`toLabel()`), remove leftover marketing tone ("Premier", "state-of-the-art"). | C | S |
-| UX-03 | P2 | Empty states for brand-new patients on every tab (no appointments, no records, no messages). | C | S |
+| UX-01 | P2 | Screens restyled in #70 should be checked at 320 pt width and with large text (screenshots exist in `completion/screenshots/`; re-shoot after TC fixes). | **Done in PR #118 (pending merge)** | C | M |
+| UX-02 | P2 | Copy pass: sentence case and plain English across new screens (`toLabel()`), remove leftover marketing tone ("Premier", "state-of-the-art"). | | C | S |
+| UX-03 | P2 | Empty states for brand-new patients on every tab (no appointments, no records, no messages). | **Done in PR #118 (pending merge)** | C | S |
 | UX-04 | P3 | Haptics and motion respect "Reduce Motion". | C | S |
 
 ### 4.11 Repo hygiene and docs (RH)
