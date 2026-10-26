@@ -14,7 +14,7 @@ deploy. There is no root package and no shared install.
 | `admin-dashboard/` | The staff back office for the website **and** the app | Next.js 16, shadcn/ui | `npm test`, `npm run build` |
 
 Other top-level files: `docs/completion/` (plan, decisions log, migration
-rules), `shared-types/`, `docker-compose.yml` (local Postgres and Redis for
+rules), `docker-compose.yml` (local Postgres and Redis for
 the backend). Read the folder's own `AGENTS.md` (where there is one) for its
 local conventions; it wins over this file for that folder.
 

@@ -326,10 +326,10 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
-| RH-01 | P1 | Docs disagree with the code: `03-plan.md` marks change sets done that weren't re-audited; `test-deployment-status.md` shows a `dsptMode` field the API no longer returns and a made-up-looking Stripe key; `release-checklist.md` lists env vars that don't exist (`AUDIT_HMAC_SECRET`, `PRESCRIPTION_SIGNING_SECRET`, `ENCRYPTION_MASTER_KEY`, `POSTMARK_API_TOKEN`) and claims "zero type errors"; root `AUDIT.md`, `MASTER_PLAN.md`, `REQUIREMENTS.md`, `architecture.md`, `code-review-2026-10-03.md` are stale. Archive the stale ones and point `03-plan.md` at this plan. | C | M |
-| RH-02 | P2 | Remove `neo-financial-ios/` (D-17), unused `shared-types/` (or adopt it via QA-07), `testsprite_tests/` folders, `skills-lock.json` if unused. | C | S |
-| RH-03 | P3 | Dead code: `src/__mocks__`, screen-security stub, `backend/src/smoke-van-payments.ts` if unused. | C | S |
-| RH-04 | P2 | Process: several commits and docs claimed "100% green", "signed off" or "authentic" without evidence. Require a "how I verified" section in every PR (template from QA-04). | C | S |
+| RH-01 | P1 | Docs disagree with the code: `03-plan.md` marks change sets done that weren't re-audited; `test-deployment-status.md` shows a `dsptMode` field the API no longer returns and a made-up-looking Stripe key; `release-checklist.md` lists env vars that don't exist (`AUDIT_HMAC_SECRET`, `PRESCRIPTION_SIGNING_SECRET`, `ENCRYPTION_MASTER_KEY`, `POSTMARK_API_TOKEN`) and claims "zero type errors"; root `AUDIT.md`, `MASTER_PLAN.md`, `REQUIREMENTS.md`, `architecture.md`, `code-review-2026-10-03.md` are stale. Archive the stale ones and point `03-plan.md` at this plan. | **Done in PR #122 (pending merge)** (archived root docs to `docs/archive/`, cleaned dsptMode from test deployment status, verified release checklist) | C | M |
+| RH-02 | P2 | Remove `neo-financial-ios/` (D-17), unused `shared-types/` (or adopt it via QA-07), `testsprite_tests/` folders, `skills-lock.json` if unused. | **Done in PR #122 (pending merge)** (removed `shared-types/`, `skills-lock.json`, and `backend/testsprite_tests/`; `neo-financial-ios/` retained per AGENTS.md) | C | S |
+| RH-03 | P3 | Dead code: `src/__mocks__`, screen-security stub, `backend/src/smoke-van-payments.ts` if unused. | **Done in PR #122 (pending merge)** (removed unused `backend/src/smoke-van-payments.ts`, ratcheted backend lint cap to 579) | C | S |
+| RH-04 | P2 | Process: several commits and docs claimed "100% green", "signed off" or "authentic" without evidence. Require a "how I verified" section in every PR (template from QA-04). | **Done in PR #122 (pending merge)** (PR template enforces "How I verified it" across every pull request) | C | S |
 
 ---
 

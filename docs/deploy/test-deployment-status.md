@@ -37,7 +37,6 @@ curl -s https://pavdental-api.onrender.com/health
     "database": "ok",
     "redis": "ok"
   },
-  "dsptMode": "active",
   "requestId": "979b9524-ad22-465a-8f13-3b7ef04aefb5"
 }
 ```
