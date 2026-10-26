@@ -88,6 +88,7 @@ export function validateDeployedConfig(envName: NodeEnv, values: {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioFromPhone?: string;
+  sentryDsn?: string;
   allowDevDefaults?: boolean;
 }) {
   if (values.allowDevDefaults && (envName === "production" || envName === "staging")) {
@@ -192,6 +193,7 @@ export function deployedServiceGaps(values: {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioFromPhone?: string;
+  sentryDsn?: string;
 }): string[] {
   const placeholder = (value?: string) => !value || /^(mock|stub)|replace_?with|replace_me/i.test(value);
   const gaps: string[] = [];
@@ -211,6 +213,8 @@ export function deployedServiceGaps(values: {
   if (placeholder(values.twilioAccountSid)) gaps.push("TWILIO_ACCOUNT_SID");
   if (placeholder(values.twilioAuthToken)) gaps.push("TWILIO_AUTH_TOKEN");
   if (placeholder(values.twilioFromPhone)) gaps.push("TWILIO_FROM_PHONE");
+  // OPS-04: Sentry error tracking DSN required in production
+  if (placeholder(values.sentryDsn)) gaps.push("SENTRY_DSN");
   return gaps;
 }
 
@@ -232,6 +236,7 @@ function printConfigurationSummary(values: {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioFromPhone?: string;
+  sentryDsn?: string;
 }) {
   console.log("╔═══════════════════════════════════════════════════════════════╗");
   console.log("║          Pav Dental API - Configuration Summary                ║");
@@ -289,6 +294,7 @@ const values = {
   twilioAccountSid: readOptional("TWILIO_ACCOUNT_SID"),
   twilioAuthToken: readOptional("TWILIO_AUTH_TOKEN"),
   twilioFromPhone: readOptional("TWILIO_FROM_PHONE"),
+  sentryDsn: readOptional("SENTRY_DSN"),
   allowDevDefaults,
 };
 
