@@ -98,6 +98,16 @@ jobs:
       - name: Unit tests (jest)
         run: PORT=3000 npx jest
 
+      # QA-06: Clock-pinned late evening test (fake timers) proving time-of-day stability
+      - name: Clock-pinned late evening test (QA-06)
+        run: PORT=3000 npx jest src/__tests__/clock-pinned.test.ts
+
+      # QA-07: Verify mobile API contract is up to date with zero drift
+      - name: App API contract drift check (QA-07)
+        run: |
+          npm run contract:app
+          git diff --exit-code ../pavdental/src/features/api-contract.gen.ts
+
       # postcodes.io and Daily are stubbed so the suite never depends on a
       # third-party network call (test/stubs/external-fetch.mjs).
       - name: E2E suite (mock Stripe, stubbed postcodes and Daily)
