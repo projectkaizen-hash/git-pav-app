@@ -17,6 +17,8 @@ import { useNotificationManager } from "@/features/notifications/notification-ho
 import { initErrorTracking, reportError } from "@/lib/error-tracking";
 import { ThemedText, Button, OfflineBanner, navTheme } from "@/components";
 import { setupNetworkMonitoring } from "@/lib/network";
+// Registers the van shift background-location task (D-21) at start-up.
+import "@/features/van/background-location";
 import { colors, spacing } from "@/theme";
 
 initErrorTracking();

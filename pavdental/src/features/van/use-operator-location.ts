@@ -9,10 +9,17 @@
 // Permission is requested once per hook lifetime; a denial is reported
 // through `error` and pinging is simply disabled (dispatch still works, but
 // patient ETAs degrade to the van's last known position).
+//
+// D-21: once the foreground permission is granted it also asks for
+// background location and, if allowed, starts background updates
+// (background-location.ts), which then send the pings instead of the timer
+// here. Background updates outlive this hook: they stop when the shift ends
+// (enabled turns false) or the operator signs out, not when a screen closes.
 
 import { useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
 import { sendLocationPing } from "./van-api";
+import { startShiftBackgroundLocation, stopShiftBackgroundLocation } from "./background-location";
 
 export type OperatorFix = { lat: number; lng: number };
 
@@ -29,9 +36,17 @@ export function useOperatorLocation(options: { enabled: boolean }) {
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestFixRef = useRef<OperatorFix | null>(null);
+  const wasEnabledRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
+    // Only a shift that was on and has now ended stops background updates;
+    // a screen mounting before the shift has loaded doesn't.
+    if (!enabled) {
+      if (wasEnabledRef.current) void stopShiftBackgroundLocation();
+      wasEnabledRef.current = false;
+      return;
+    }
+    wasEnabledRef.current = true;
 
     let cancelled = false;
 
@@ -84,6 +99,15 @@ export function useOperatorLocation(options: { enabled: boolean }) {
           return;
         }
         watchRef.current = subscription;
+
+        // Background updates send their own pings; otherwise ping from here.
+        let background = false;
+        try {
+          background = await startShiftBackgroundLocation();
+        } catch {
+          // Not available (for example Expo Go): foreground pings only.
+        }
+        if (cancelled || background) return;
 
         // Periodic server ping with the latest fix (independent of the watch
         // callbacks so a stationary van still reports liveness).
