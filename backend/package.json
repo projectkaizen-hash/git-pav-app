@@ -19,7 +19,7 @@
     "phi:backfill": "tsx scripts/backfill-phi-encryption.ts",
     "contract:app": "tsx scripts/gen-app-contract.ts",
     "messages:backfill-read": "tsx scripts/backfill-thread-read-state.ts",
-    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"prisma/**/*.ts\" --max-warnings=583",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"prisma/**/*.ts\" --max-warnings=579",
     "test": "tsx src/e2e-suite.ts",
     "test:auth": "jest src/__tests__/auth-integration.test.ts",
     "test:all": "npm run test && npm run test:auth"
