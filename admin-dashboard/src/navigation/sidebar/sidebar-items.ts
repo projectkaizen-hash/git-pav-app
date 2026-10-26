@@ -6,10 +6,12 @@ import {
   Folder,
   Forklift,
   Gift,
+  History,
   Inbox,
   type LucideIcon,
   Mail,
   MessagesSquare,
+  Smartphone,
   ReceiptText,
   ShoppingBag,
   Stethoscope,
@@ -65,9 +67,15 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         id: "pav-bookings",
-        title: "Bookings",
+        title: "Website Bookings",
         url: "/dashboard/bookings",
         icon: Calendar,
+      },
+      {
+        id: "pav-app-appointments",
+        title: "App Appointments",
+        url: "/dashboard/app-appointments",
+        icon: Smartphone,
       },
       {
         id: "pav-opening-hours",
@@ -128,6 +136,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Erasure Requests",
         url: "/dashboard/erasure-requests",
         icon: UserX,
+      },
+      {
+        id: "pav-audit-log",
+        title: "Audit Log",
+        url: "/dashboard/audit-log",
+        icon: History,
       },
       {
         id: "pav-users",
