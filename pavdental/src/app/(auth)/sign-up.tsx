@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText, Input, Button, IconButton, AppIcon } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
+import { LEGAL_URLS } from "@/config/legal";
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -242,6 +243,29 @@ export default function SignUpScreen() {
           </View>
 
           <View style={styles.actions}>
+            <View style={styles.legalNotice}>
+              <ThemedText variant="caption" style={styles.legalText}>
+                By creating an account, you agree to our{" "}
+                <ThemedText
+                  variant="caption"
+                  style={styles.legalLink}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => {})}
+                >
+                  Terms of Service
+                </ThemedText>{" "}
+                and acknowledge our{" "}
+                <ThemedText
+                  variant="caption"
+                  style={styles.legalLink}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(LEGAL_URLS.privacy).catch(() => {})}
+                >
+                  Privacy Notice
+                </ThemedText>.
+              </ThemedText>
+            </View>
+
             <Button
               title="Create account"
               size="lg"
@@ -353,6 +377,20 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.label,
+  },
+  legalNotice: {
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  legalText: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: colors.info,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
 

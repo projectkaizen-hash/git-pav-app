@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -16,6 +16,7 @@ import {
 import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
+import { LEGAL_URLS } from "@/config/legal";
 
 // ─── Profile hub — the single settings surface (absorbed the old Account tab) ──
 // Identity on top, grouped disclosure below (progressive-disclosure pattern).
@@ -24,7 +25,8 @@ interface MenuRow {
   title: string;
   subtitle?: string;
   icon: AppIconName;
-  route: string;
+  route?: string;
+  url?: string;
 }
 
 const groups: { heading: string; rows: MenuRow[] }[] = [
@@ -98,6 +100,31 @@ const groups: { heading: string; rows: MenuRow[] }[] = [
       },
     ],
   },
+  {
+    heading: "Legal & Policies",
+    rows: [
+      {
+        title: "Privacy Notice",
+        icon: "shieldCheck",
+        url: LEGAL_URLS.privacy,
+      },
+      {
+        title: "Terms of Service",
+        icon: "fileText",
+        url: LEGAL_URLS.terms,
+      },
+      {
+        title: "Complaints Procedure",
+        icon: "help",
+        url: LEGAL_URLS.complaints,
+      },
+      {
+        title: "Cookie Policy",
+        icon: "globe",
+        url: LEGAL_URLS.cookies,
+      },
+    ],
+  },
 ];
 
 export default function ProfileScreen() {
@@ -124,15 +151,28 @@ export default function ProfileScreen() {
       <Card padding="none">
         {rows.map((row, i) => (
           <ListRow
-            key={row.route}
+            key={row.route || row.url || row.title}
             title={row.title}
+            subtitle={row.subtitle}
             left={
               <View style={styles.rowIcon}>
                 <AppIcon name={row.icon} size={18} color={colors.ink} />
               </View>
             }
-            right={<AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />}
-            onPress={() => router.push(row.route as never)}
+            right={
+              row.url ? (
+                <AppIcon name="externalLink" size={16} color={colors.tertiaryLabel} />
+              ) : (
+                <AppIcon name="chevronRight" size={16} color={colors.tertiaryLabel} />
+              )
+            }
+            onPress={() => {
+              if (row.url) {
+                Linking.openURL(row.url).catch(() => {});
+              } else if (row.route) {
+                router.push(row.route as never);
+              }
+            }}
             separator={i < rows.length - 1}
           />
         ))}
