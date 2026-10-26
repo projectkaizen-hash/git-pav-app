@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Image } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText, Card, Button, AppIcon, ChipPill } from "@/components";
@@ -8,24 +8,11 @@ import { useClinicians } from "@/features/hooks/use-dental-api";
 import { useBookingStore } from "@/features/booking/booking-store";
 import { Clinician } from "@/features/booking/booking-types";
 
-// ─── Provider / Clinic profile (Zocdoc provider page pattern) ─────────────────
-// Bio + credentials, patient reviews, gallery and insurance accepted. Reached
-// from the clinician picker; "Book with…" hands the clinician to the draft.
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <View style={styles.starsRow} accessibilityLabel={`${rating} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <AppIcon
-          key={n}
-          name="star"
-          size={14}
-          color={n <= Math.round(rating) ? colors.ink : colors.separator}
-        />
-      ))}
-    </View>
-  );
-}
+// ─── Clinician profile ────────────────────────────────────────────────────────
+// Photo, role, GDC number, bio and specialisms, all edited by staff on the
+// dashboard's Dentist profiles page. No star rating or reviews: the practice
+// doesn't collect them (D-04). Reached from the clinician picker; "Book
+// with…" hands the clinician to the draft.
 
 export default function ProviderProfileScreen() {
   const router = useRouter();
@@ -36,8 +23,6 @@ export default function ProviderProfileScreen() {
   const { data: apiClinicians } = useClinicians();
   const clinicians = (apiClinicians ?? []) as Clinician[];
   const clinician = (id ? clinicians.find((c) => c.id === id) : clinicians[0]) ?? null;
-  const reviews: Array<{ id: string; author: string; rating: number; comment: string; dateIso: string }> =
-    ((clinician as any)?.reviews as any[]) ?? [];
 
   if (!clinician) {
     return (
@@ -49,10 +34,7 @@ export default function ProviderProfileScreen() {
     );
   }
 
-  const avgRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-      : 5.0;
+  const shortName = clinician.fullName.replace(/^Dr\.?\s+/i, "");
 
   const handleBook = () => {
     setClinician(clinician);
@@ -73,108 +55,63 @@ export default function ProviderProfileScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Identity */}
         <View style={styles.identity}>
-          <View style={styles.avatar}>
-            <ThemedText variant="title" style={styles.avatarText}>
-              {clinician.fullName.replace("Dr ", "").charAt(0)}
-            </ThemedText>
-          </View>
+          {clinician.photoUrl ? (
+            <Image
+              source={{ uri: clinician.photoUrl }}
+              style={styles.avatar}
+              accessibilityLabel={`Photo of ${clinician.fullName}`}
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <ThemedText variant="title" style={styles.avatarText}>
+                {shortName.charAt(0)}
+              </ThemedText>
+            </View>
+          )}
           <View style={styles.identityInfo}>
             <ThemedText variant="title">{clinician.fullName}</ThemedText>
             <ThemedText variant="caption" style={styles.muted}>
-              {clinician.roleTitle} · GDC #{clinician.gdcNumber}
+              {clinician.roleTitle} · GDC {clinician.gdcNumber}
             </ThemedText>
-            <View style={styles.ratingRow}>
-              <Stars rating={avgRating} />
-              <ThemedText variant="caption" style={styles.muted}>
-                {avgRating.toFixed(1)} · {reviews.length} reviews
-              </ThemedText>
-            </View>
           </View>
         </View>
 
         {/* Bio */}
-        <Card style={styles.card}>
-          <ThemedText variant="overline">About</ThemedText>
-          <ThemedText variant="body" style={styles.bioText}>
-            {clinician.bio}
-          </ThemedText>
-          <View style={styles.chipWrap}>
-            {clinician.specialisms.map((spec) => (
-              <ChipPill key={spec} label={spec} />
-            ))}
-          </View>
-        </Card>
-
-        {/* Gallery (prototype tiles) */}
-        <View style={styles.section}>
-          <ThemedText variant="overline">The practice</ThemedText>
-          <View style={styles.galleryRow}>
-            {["camera", "image", "grid"].map((icon, i) => (
-              <View key={i} style={styles.galleryTile}>
-                <AppIcon
-                  name={icon as "camera" | "image" | "grid"}
-                  size={20}
-                  color={colors.tertiaryLabel}
-                />
+        {clinician.bio || clinician.specialisms.length > 0 ? (
+          <Card style={styles.card}>
+            <ThemedText variant="overline">About</ThemedText>
+            {clinician.bio ? (
+              <ThemedText variant="body" style={styles.bioText}>
+                {clinician.bio}
+              </ThemedText>
+            ) : null}
+            {clinician.specialisms.length > 0 ? (
+              <View style={styles.chipWrap}>
+                {clinician.specialisms.map((spec) => (
+                  <ChipPill key={spec} label={spec} />
+                ))}
               </View>
-            ))}
-          </View>
-        </View>
+            ) : null}
+          </Card>
+        ) : null}
 
-        {/* Insurance accepted */}
+        {/* Payment (D-07) */}
         <Card elevation="flat" style={styles.card}>
-          <View style={styles.insuranceRow}>
-            <AppIcon name="shield" size={16} color={colors.ink} />
-            <ThemedText variant="body" style={styles.insuranceText}>
-              Ask the practice about payment options
+          <View style={styles.paymentRow}>
+            <AppIcon name="creditCard" size={16} color={colors.ink} />
+            <ThemedText variant="body" style={styles.paymentText}>
+              Paying for your visit
             </ThemedText>
           </View>
           <ThemedText variant="caption" style={styles.muted}>
-            Bring your policy to your first visit — we verify claims before treatment.
+            Some treatments need a deposit when you book. You pay the rest at your visit.
           </ThemedText>
         </Card>
-
-        {/* Reviews */}
-        <View style={styles.section}>
-          <ThemedText variant="overline">Patient reviews</ThemedText>
-          {reviews.length === 0 ? (
-            <Card elevation="flat" style={styles.reviewCard}>
-              <ThemedText variant="caption" style={styles.muted}>
-                Verified patient reviews will appear here after completed consultations.
-              </ThemedText>
-            </Card>
-          ) : (
-            reviews.map((review) => (
-              <Card key={review.id} elevation="flat" style={styles.reviewCard}>
-                <View style={styles.reviewTop}>
-                  <ThemedText variant="subhead" style={styles.reviewAuthor}>
-                    {review.author}
-                  </ThemedText>
-                  <Stars rating={review.rating} />
-                </View>
-                <ThemedText variant="body" style={styles.reviewComment}>
-                  {review.comment}
-                </ThemedText>
-                <ThemedText variant="caption" style={styles.muted}>
-                  {new Date(review.dateIso).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </ThemedText>
-              </Card>
-            ))
-          )}
-        </View>
       </ScrollView>
 
       {/* Sticky book CTA */}
       <View style={[styles.footerBar, { paddingBottom: Math.max(spacing.md, insets.bottom) }]}>
-        <Button
-          title={`Book with ${clinician.fullName.replace("Dr ", "")}`}
-          size="lg"
-          onPress={handleBook}
-        />
+        <Button title={`Book with ${shortName}`} size="lg" onPress={handleBook} />
       </View>
     </View>
   );
@@ -227,18 +164,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
-  galleryRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  galleryTile: {
-    alignItems: "center",
-    backgroundColor: colors.systemBackground,
-    borderRadius: radius.lg,
-    flex: 1,
-    height: 84,
-    justifyContent: "center",
-  },
   identity: {
     alignItems: "center",
     flexDirection: "row",
@@ -248,47 +173,16 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  insuranceRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  insuranceText: {
-    color: colors.label,
-    fontWeight: "600",
-  },
   muted: {
     color: colors.secondaryLabel,
   },
-  ratingRow: {
+  paymentRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.xs,
-    marginTop: 2,
   },
-  reviewAuthor: {
+  paymentText: {
     color: colors.label,
-    fontWeight: "700",
-  },
-  reviewCard: {
-    backgroundColor: colors.systemBackground,
-    gap: spacing.xxs,
-    padding: spacing.md,
-  },
-  reviewComment: {
-    color: colors.label,
-    lineHeight: 20,
-  },
-  reviewTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  section: {
-    gap: spacing.xs,
-  },
-  starsRow: {
-    flexDirection: "row",
-    gap: 2,
+    fontWeight: "600",
   },
 });

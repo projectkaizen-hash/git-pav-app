@@ -26,6 +26,12 @@ const RULES = [
   { name: "finance promotion", re: /\b(Tabeo|Chrysalis)\b|0% (interest|APR)/i },
   { name: "insurance coverage claim", re: /— covered|member discount|Accepts (Denplan|Bupa|AXA)/i },
   { name: "feedback that goes nowhere", re: /feedback saved/i },
+  // MF-04, D-04: no ratings or reviews are collected, so none can be shown.
+  { name: "star rating or review count", re: /\b\d\.\d\s*·\s*\{?[^}]*\}?\s*reviews|Patient reviews|avgRating/i },
+  // TC-09: van equipment the practice hasn't confirmed.
+  { name: "unconfirmed van equipment", re: /low-dose X-ray|AirFlow|surgical suite/i },
+  // TC-08, D-08: prices come from the services list, not the app.
+  { name: "hardcoded procedure price list", re: /COMMON_PROCEDURES/ },
   {
     name: "claim that care was given",
     re: /Veneers Installation|clinical notes & charting|Dental examination & gum check|invoice has been sent/i,

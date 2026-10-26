@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedText, Card, Badge, AppIcon, ProgressPills, QueryState, IconButton } from "@/components";
 import { colors, spacing, radius } from "@/theme";
@@ -94,21 +94,27 @@ export default function ClinicianPickerScreen() {
               >
                 <Card style={styles.card}>
                   <View style={styles.docRow}>
-                    <View style={styles.avatar}>
-                      <ThemedText variant="headline" style={styles.avatarText}>
-                        {doc.fullName[3] || "D"}
-                      </ThemedText>
-                    </View>
+                    {doc.photoUrl ? (
+                      <Image source={{ uri: doc.photoUrl }} style={styles.avatar} accessibilityIgnoresInvertColors />
+                    ) : (
+                      <View style={styles.avatar}>
+                        <ThemedText variant="headline" style={styles.avatarText}>
+                          {doc.fullName.replace(/^Dr\.?\s+/i, "").charAt(0) || "D"}
+                        </ThemedText>
+                      </View>
+                    )}
                     <View style={styles.docInfo}>
                       <ThemedText variant="headline" style={styles.name}>
                         {doc.fullName}
                       </ThemedText>
                       <ThemedText variant="caption" style={styles.role}>
-                        {doc.roleTitle} · GDC: #{doc.gdcNumber}
+                        {doc.roleTitle} · GDC {doc.gdcNumber}
                       </ThemedText>
-                      <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
-                        {doc.bio}
-                      </ThemedText>
+                      {doc.bio ? (
+                        <ThemedText variant="caption" style={styles.bio} numberOfLines={2}>
+                          {doc.bio}
+                        </ThemedText>
+                      ) : null}
                     </View>
                   </View>
 

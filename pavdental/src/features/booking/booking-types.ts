@@ -35,9 +35,11 @@ export interface Clinician {
   gdcNumber: string;
   roleTitle: string; // e.g., "Principal Dental Surgeon", "Dental Hygienist"
   specialisms: string[];
-  photoUri?: string;
-  clinicIds: string[];
-  bio: string;
+  /** https link or uploaded image, set on the dashboard's Dentist profiles page. */
+  photoUrl?: string | null;
+  clinicIds?: string[];
+  bio: string | null;
+  isTelehealthActive?: boolean;
 }
 
 export interface TimeSlot {
