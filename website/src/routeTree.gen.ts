@@ -16,7 +16,9 @@ import { Route as BlogsRouteImport } from './routes/blogs'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as ComplaintsRouteImport } from './routes/complaints'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as CosmeticRouteImport } from './routes/cosmetic'
 import { Route as CustomGrillzRouteImport } from './routes/custom-grillz'
 import { Route as DenturesRouteImport } from './routes/dentures'
@@ -27,11 +29,13 @@ import { Route as MouthguardsRouteImport } from './routes/mouthguards'
 import { Route as OralHygieneRouteImport } from './routes/oral-hygiene'
 import { Route as PetitionRouteImport } from './routes/petition'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RootCanalRouteImport } from './routes/root-canal'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as TeamRouteImport } from './routes/team'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ToothExtractionRouteImport } from './routes/tooth-extraction'
 import { Route as VacanciesRouteImport } from './routes/vacancies'
 import { Route as VirtualDentistryRouteImport } from './routes/virtual-dentistry'
@@ -76,9 +80,19 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComplaintsRoute = ComplaintsRouteImport.update({
+  id: '/complaints',
+  path: '/complaints',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CosmeticRoute = CosmeticRouteImport.update({
@@ -131,6 +145,11 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RootCanalRoute = RootCanalRouteImport.update({
   id: '/root-canal',
   path: '/root-canal',
@@ -154,6 +173,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const TeamRoute = TeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToothExtractionRoute = ToothExtractionRouteImport.update({
@@ -205,7 +229,9 @@ export interface FileRoutesByFullPath {
   '/booking': typeof BookingRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/complaints': typeof ComplaintsRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/cosmetic': typeof CosmeticRoute
   '/custom-grillz': typeof CustomGrillzRoute
   '/dentures': typeof DenturesRoute
@@ -216,11 +242,13 @@ export interface FileRoutesByFullPath {
   '/oral-hygiene': typeof OralHygieneRoute
   '/petition': typeof PetitionRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/root-canal': typeof RootCanalRoute
   '/shop': typeof ShopRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/tooth-extraction': typeof ToothExtractionRoute
   '/vacancies': typeof VacanciesRoute
   '/virtual-dentistry': typeof VirtualDentistryRoute
@@ -238,7 +266,9 @@ export interface FileRoutesByTo {
   '/booking': typeof BookingRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/complaints': typeof ComplaintsRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/cosmetic': typeof CosmeticRoute
   '/custom-grillz': typeof CustomGrillzRoute
   '/dentures': typeof DenturesRoute
@@ -249,11 +279,13 @@ export interface FileRoutesByTo {
   '/oral-hygiene': typeof OralHygieneRoute
   '/petition': typeof PetitionRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/root-canal': typeof RootCanalRoute
   '/shop': typeof ShopRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/tooth-extraction': typeof ToothExtractionRoute
   '/vacancies': typeof VacanciesRoute
   '/virtual-dentistry': typeof VirtualDentistryRoute
@@ -272,7 +304,9 @@ export interface FileRoutesById {
   '/booking': typeof BookingRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/complaints': typeof ComplaintsRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/cosmetic': typeof CosmeticRoute
   '/custom-grillz': typeof CustomGrillzRoute
   '/dentures': typeof DenturesRoute
@@ -283,11 +317,13 @@ export interface FileRoutesById {
   '/oral-hygiene': typeof OralHygieneRoute
   '/petition': typeof PetitionRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/root-canal': typeof RootCanalRoute
   '/shop': typeof ShopRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/tooth-extraction': typeof ToothExtractionRoute
   '/vacancies': typeof VacanciesRoute
   '/virtual-dentistry': typeof VirtualDentistryRoute
@@ -307,7 +343,9 @@ export interface FileRouteTypes {
     | '/booking'
     | '/cart'
     | '/checkout'
+    | '/complaints'
     | '/contact'
+    | '/cookies'
     | '/cosmetic'
     | '/custom-grillz'
     | '/dentures'
@@ -318,11 +356,13 @@ export interface FileRouteTypes {
     | '/oral-hygiene'
     | '/petition'
     | '/pricing'
+    | '/privacy'
     | '/root-canal'
     | '/shop'
     | '/sign-in'
     | '/sign-up'
     | '/team'
+    | '/terms'
     | '/tooth-extraction'
     | '/vacancies'
     | '/virtual-dentistry'
@@ -340,7 +380,9 @@ export interface FileRouteTypes {
     | '/booking'
     | '/cart'
     | '/checkout'
+    | '/complaints'
     | '/contact'
+    | '/cookies'
     | '/cosmetic'
     | '/custom-grillz'
     | '/dentures'
@@ -351,11 +393,13 @@ export interface FileRouteTypes {
     | '/oral-hygiene'
     | '/petition'
     | '/pricing'
+    | '/privacy'
     | '/root-canal'
     | '/shop'
     | '/sign-in'
     | '/sign-up'
     | '/team'
+    | '/terms'
     | '/tooth-extraction'
     | '/vacancies'
     | '/virtual-dentistry'
@@ -373,7 +417,9 @@ export interface FileRouteTypes {
     | '/booking'
     | '/cart'
     | '/checkout'
+    | '/complaints'
     | '/contact'
+    | '/cookies'
     | '/cosmetic'
     | '/custom-grillz'
     | '/dentures'
@@ -384,11 +430,13 @@ export interface FileRouteTypes {
     | '/oral-hygiene'
     | '/petition'
     | '/pricing'
+    | '/privacy'
     | '/root-canal'
     | '/shop'
     | '/sign-in'
     | '/sign-up'
     | '/team'
+    | '/terms'
     | '/tooth-extraction'
     | '/vacancies'
     | '/virtual-dentistry'
@@ -407,7 +455,9 @@ export interface RootRouteChildren {
   BookingRoute: typeof BookingRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  ComplaintsRoute: typeof ComplaintsRoute
   ContactRoute: typeof ContactRoute
+  CookiesRoute: typeof CookiesRoute
   CosmeticRoute: typeof CosmeticRoute
   CustomGrillzRoute: typeof CustomGrillzRoute
   DenturesRoute: typeof DenturesRoute
@@ -418,11 +468,13 @@ export interface RootRouteChildren {
   OralHygieneRoute: typeof OralHygieneRoute
   PetitionRoute: typeof PetitionRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   RootCanalRoute: typeof RootCanalRoute
   ShopRoute: typeof ShopRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   TeamRoute: typeof TeamRoute
+  TermsRoute: typeof TermsRoute
   ToothExtractionRoute: typeof ToothExtractionRoute
   VacanciesRoute: typeof VacanciesRoute
   VirtualDentistryRoute: typeof VirtualDentistryRoute
@@ -484,11 +536,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/complaints': {
+      id: '/complaints'
+      path: '/complaints'
+      fullPath: '/complaints'
+      preLoaderRoute: typeof ComplaintsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cosmetic': {
@@ -561,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/root-canal': {
       id: '/root-canal'
       path: '/root-canal'
@@ -594,6 +667,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tooth-extraction': {
@@ -663,7 +743,9 @@ const rootRouteChildren: RootRouteChildren = {
   BookingRoute: BookingRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  ComplaintsRoute: ComplaintsRoute,
   ContactRoute: ContactRoute,
+  CookiesRoute: CookiesRoute,
   CosmeticRoute: CosmeticRoute,
   CustomGrillzRoute: CustomGrillzRoute,
   DenturesRoute: DenturesRoute,
@@ -674,11 +756,13 @@ const rootRouteChildren: RootRouteChildren = {
   OralHygieneRoute: OralHygieneRoute,
   PetitionRoute: PetitionRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   RootCanalRoute: RootCanalRoute,
   ShopRoute: ShopRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   TeamRoute: TeamRoute,
+  TermsRoute: TermsRoute,
   ToothExtractionRoute: ToothExtractionRoute,
   VacanciesRoute: VacanciesRoute,
   VirtualDentistryRoute: VirtualDentistryRoute,

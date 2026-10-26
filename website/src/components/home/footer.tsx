@@ -36,9 +36,10 @@ const socialLinks = [
 ];
 
 const legalLinks = [
-  { name: "Terms and Conditions", href: "#" },
-  { name: "Privacy Policy", href: "#" },
-  { name: "Cookie Policy", href: "#" },
+  { name: "Terms and Conditions", href: "/terms" },
+  { name: "Privacy Policy", href: "/privacy" },
+  { name: "Cookie Policy", href: "/cookies" },
+  { name: "Complaints Procedure", href: "/complaints" },
 ];
 
 export function Footer() {
@@ -94,8 +95,13 @@ export function Footer() {
 
         {/* Bottom Section */}
         <div className="mt-8 flex flex-col justify-between gap-4 border-t border-white/20 py-8 text-xs font-medium text-white/80 md:flex-row md:items-center md:text-left">
-          <p className="order-2 lg:order-1">© 2026 PavDental. All rights reserved.</p>
-          <ul className="order-1 flex flex-col gap-2 md:order-2 md:flex-row">
+          <div className="order-2 lg:order-1 space-y-1">
+            <p>© 2026 Pav Dental. All rights reserved.</p>
+            <p className="text-white/60">
+              786 Leeds Road, Bradford, BD3 9TY. Dental professionals regulated by the General Dental Council (GDC). Clinical Lead: Dr Hassan Bhojani (GDC #262970).
+            </p>
+          </div>
+          <ul className="order-1 flex flex-wrap gap-x-4 gap-y-2 md:order-2">
             {legalLinks.map((link, idx) => (
               <li key={idx} className="hover:text-white">
                 <a href={link.href}>{link.name}</a>

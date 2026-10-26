@@ -19,8 +19,13 @@ const INTERVAL_MS = 20_000; // same cadence as the foreground pings
 // Defined when this module loads (it's imported from the root layout), so the
 // OS can find the task when it wakes the app in the background.
 if (Platform.OS !== "web") {
-  TaskManager.defineTask<{ locations: Location.LocationObject[] }>(SHIFT_LOCATION_TASK, async ({ data, error }) => {
-    if (error || !data?.locations?.length) return;
+  TaskManager.defineTask(
+    SHIFT_LOCATION_TASK,
+    async ({
+      data,
+      error,
+    }: TaskManager.TaskManagerTaskBody<{ locations: Location.LocationObject[] }>) => {
+      if (error || !data?.locations?.length) return;
     // Signed out, or someone else signed in: stop rather than send.
     if (useAuthStore.getState().user?.role !== "operator") {
       await stopShiftBackgroundLocation();
