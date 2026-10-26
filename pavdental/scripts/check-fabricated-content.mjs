@@ -25,6 +25,8 @@ const RULES = [
   { name: "NHS or DSPT compliance claim", re: /\bDSPT\b|NHS (&|and) Private|NHS scale/i },
   { name: "finance promotion", re: /\b(Tabeo|Chrysalis)\b|0% (interest|APR)/i },
   { name: "insurance coverage claim", re: /— covered|member discount|Accepts (Denplan|Bupa|AXA)/i },
+  // D-02: no insurers are accepted, so nothing scans a policy or checks cover.
+  { name: "insurance scan or eligibility claim", re: /scan your (policy|insurance)|claimed automatically|check what's covered|Insurance & eligibility/i },
   { name: "feedback that goes nowhere", re: /feedback saved/i },
   // MF-04, D-04: no ratings or reviews are collected, so none can be shown.
   { name: "star rating or review count", re: /\b\d\.\d\s*·\s*\{?[^}]*\}?\s*reviews|Patient reviews|avgRating/i },

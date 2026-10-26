@@ -10,7 +10,6 @@ export default function OnboardingLayout() {
     >
       <Stack.Screen name="profile" />
       <Stack.Screen name="address" />
-      <Stack.Screen name="insurance" />
       <Stack.Screen name="medical-history" />
       <Stack.Screen name="consents" />
       <Stack.Screen name="complete" />

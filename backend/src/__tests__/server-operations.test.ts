@@ -52,6 +52,15 @@ describe("CS-44 Server Operations", () => {
       }
     });
 
+    it("replaces an inbound x-request-id that is too long or has unsafe characters", async () => {
+      for (const badId of ["a".repeat(129), "id with spaces", "<script>", "../../etc"]) {
+        const res = await fetch(`${baseUrl}/livez`, { headers: { "x-request-id": badId } });
+        const echoed = res.headers.get("x-request-id");
+        expect(echoed).not.toBe(badId);
+        expect(echoed).toMatch(/^[0-9a-f-]{36}$/);
+      }
+    });
+
     it("echoes matching request ID on 404 Not Found responses", async () => {
       const customId = "not-found-trace-id-999";
       const res = await fetch(`${baseUrl}/api/unmatched-route-for-testing`, {

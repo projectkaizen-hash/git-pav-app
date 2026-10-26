@@ -2,7 +2,9 @@
 const nextConfig = {
   reactCompiler: true,
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    // Keep errors and warnings: server-side console.error is how failures
+    // reach Vercel's logs (and Sentry's console integration).
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   async redirects() {
     return [

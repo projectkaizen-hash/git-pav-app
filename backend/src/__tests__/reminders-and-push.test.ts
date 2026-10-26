@@ -7,6 +7,7 @@ import {
   isInQuietHours,
   getNextQuietHoursEnd,
   cancelAppointmentReminders,
+  NOTIFICATION_CLAIM_LEASE_MS,
 } from "../lib/background-jobs";
 import { sendPatientNotification } from "../lib/patient-push";
 import { communicationService } from "../lib/communication-service";
@@ -236,6 +237,95 @@ describe("CS-19: Reminders and Push That Behave", () => {
       expect(updated.every((n) => n.status === "sent")).toBe(true);
 
       pushSpy.mockRestore();
+    });
+  });
+
+  describe("BE-22: a claim left behind by a dead dispatcher is retried", () => {
+    it("sends a reminder stuck in 'sending' past the lease, and leaves a fresh claim alone", async () => {
+      const now = Date.now();
+      const stale = await prisma.scheduledNotification.create({
+        data: {
+          userId: testUser.id,
+          title: "Lease expired",
+          body: "Claimed by a dispatcher that died",
+          scheduledFor: new Date(now - 30 * 60 * 1000),
+          status: "sending",
+          claimedAt: new Date(now - NOTIFICATION_CLAIM_LEASE_MS - 60 * 1000),
+        },
+      });
+      const legacy = await prisma.scheduledNotification.create({
+        data: {
+          userId: testUser.id,
+          title: "Claimed before claimed_at existed",
+          body: "No timestamp",
+          scheduledFor: new Date(now - 30 * 60 * 1000),
+          status: "sending",
+        },
+      });
+      const inFlight = await prisma.scheduledNotification.create({
+        data: {
+          userId: testUser.id,
+          title: "Lease still running",
+          body: "Another dispatcher is sending this",
+          scheduledFor: new Date(now - 2 * 60 * 1000),
+          status: "sending",
+          claimedAt: new Date(now - 60 * 1000),
+        },
+      });
+
+      const pushSpy = jest
+        .spyOn(communicationService, "sendExpoPushNotifications")
+        .mockResolvedValue({ sentCount: 1, failedCount: 0, tickets: [{ status: "ok", id: "t1" }] });
+
+      await processDueScheduledNotifications();
+
+      const [staleAfter, legacyAfter, inFlightAfter] = await Promise.all(
+        [stale, legacy, inFlight].map((n) => prisma.scheduledNotification.findUnique({ where: { id: n.id } }))
+      );
+      expect(staleAfter?.status).toBe("sent");
+      expect(legacyAfter?.status).toBe("sent");
+      expect(inFlightAfter?.status).toBe("sending");
+      expect(inFlightAfter?.claimedAt?.getTime()).toBe(inFlight.claimedAt?.getTime());
+
+      pushSpy.mockRestore();
+      await prisma.scheduledNotification.deleteMany({
+        where: { id: { in: [stale.id, legacy.id, inFlight.id] } },
+      });
+    });
+
+    it("stamps claimed_at when it claims a row", async () => {
+      const reminder = await prisma.scheduledNotification.create({
+        data: {
+          userId: testUser.id,
+          title: "Claim stamp",
+          body: "Body",
+          scheduledFor: new Date(Date.now() - 5000),
+          status: "pending",
+        },
+      });
+      // Hold the dispatcher inside the push call to observe the claimed row.
+      let observed: { status: string; claimedAt: Date | null } | null = null;
+      const pushSpy = jest
+        .spyOn(communicationService, "sendExpoPushNotifications")
+        .mockImplementation(async (messages) => {
+          if (messages.some((m) => m.title === "Claim stamp")) {
+            const row = await prisma.scheduledNotification.findUnique({ where: { id: reminder.id } });
+            observed = row ? { status: row.status, claimedAt: row.claimedAt } : null;
+          }
+          return { sentCount: 1, failedCount: 0, tickets: [{ status: "ok", id: "t2" }] };
+        });
+      const token = `ExponentPushToken[BE22_${Date.now()}]`;
+      await prisma.pushToken.create({ data: { userId: testUser.id, token, platform: "ios", active: true } });
+
+      await processDueScheduledNotifications();
+
+      expect(observed).not.toBeNull();
+      expect(observed!.status).toBe("sending");
+      expect(observed!.claimedAt).toBeInstanceOf(Date);
+
+      pushSpy.mockRestore();
+      await prisma.pushToken.delete({ where: { token } });
+      await prisma.scheduledNotification.delete({ where: { id: reminder.id } });
     });
   });
 

@@ -14,6 +14,9 @@ import { safeError } from "./log-safety";
 const SLOT_EXPIRY_INTERVAL_MS = 60 * 1000; // 1 minute
 const NOTIFICATION_DISPATCH_INTERVAL_MS = 60 * 1000; // 1 minute
 const VAN_REQUEST_EXPIRY_INTERVAL_MS = 30 * 1000; // 30 seconds
+// A claimed reminder batch (up to 50, each push call capped at 10 s) finishes
+// well inside this; a claim older than it belongs to a dispatcher that died.
+export const NOTIFICATION_CLAIM_LEASE_MS = 15 * 60 * 1000; // 15 minutes
 
 let slotExpiryTimer: NodeJS.Timeout | null = null;
 let notificationDispatchTimer: NodeJS.Timeout | null = null;
@@ -160,10 +163,22 @@ export async function processDueScheduledNotifications(): Promise<{ dispatchedCo
   const now = new Date();
 
   try {
+    // BE-22: a dispatcher that died between claiming a row and finishing it
+    // (deploy, crash, sleep) leaves it in 'sending'. Once the lease has run
+    // out, put it back so it is retried. Rows claimed before claimed_at
+    // existed have no timestamp and are treated as expired.
+    const leaseCutoff = new Date(now.getTime() - NOTIFICATION_CLAIM_LEASE_MS);
+    await prisma.$executeRaw`
+      UPDATE scheduled_notifications
+      SET status = 'pending', claimed_at = NULL
+      WHERE status = 'sending'
+        AND (claimed_at IS NULL OR claimed_at < ${leaseCutoff})
+    `;
+
     // BJ-3: Multi-replica atomic claim step using FOR UPDATE SKIP LOCKED
     const claimedRows = await prisma.$queryRaw<Array<{ id: string }>>`
       UPDATE scheduled_notifications
-      SET status = 'sending'
+      SET status = 'sending', claimed_at = ${now}
       WHERE id IN (
         SELECT id
         FROM scheduled_notifications

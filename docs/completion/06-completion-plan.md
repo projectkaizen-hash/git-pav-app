@@ -1,4 +1,7 @@
-# 06: Full completion plan (re-audit of main @ 628a18a, 25 Oct 2026)
+# 06: Full completion plan (re-audit of main @ 628a18a, 25 Oct 2026; revised 26 Oct 2026 against main @ aa0133b)
+
+> [!NOTE]
+> **Revision of 26 Oct 2026 (evening).** A production-readiness audit ([`07-architecture-audit.md`](07-architecture-audit.md), research in [`08-research-references.md`](08-research-references.md), decisions in [`../adr/`](../adr/), gates in [`../release/release-checklist.md`](../release/release-checklist.md)) re-checked every "Done" status and added what a live launch needs beyond the app itself. What changed in this plan, and why, is in **section 0**; the work is now ordered in the **eight delivery phases of section 5**. This file stays the single plan.
 
 > [!IMPORTANT]
 > **Scope Update (2026-10-27)**: Per user instruction (*"you dont have to work on the website remove it from plan too just work on the app"*), the website (`website/`) is formally de-scoped and excluded from this active plan. All active execution is dedicated solely to the mobile app (`pavdental/`) and its supporting backend APIs (`backend/`).
@@ -11,28 +14,39 @@ This plan lists everything that still stands between the current code and a fini
 
 ---
 
+## 0. What changed on 26 Oct and why
+
+| Change | Items | Why |
+|---|---|---|
+| **Reopened** (marked Done on 26 Oct, but the code says otherwise) | RB-06, RB-08, RB-13, TC-03 | Legal pages are live but unreviewed and say DPAs exist; Sentry plugin missing; release channels do nothing without `expo-updates`; two insurance screens with false claims were still deep-linkable (AUD-02, AUD-07, AUD-12, AUD-09) |
+| **Confirmed Done** after checking code | RB-07, RB-14, TC-01, TC-04, TC-05, TC-07, TC-09, TC-17, DB-01, DB-02, BE-21 | See `07` section 4 |
+| **Fixed in the 26 Oct PR** | TC-03 (rest), RB-05 (app side), new BE-22, BE-24, OPS-09, part of OPS-04 | Orphan insurance screens removed and guarded; build profiles point at real/decided hosts; stuck reminders retried; request id bounded; Node 22; dashboard keeps error logs |
+| **Added** | OPS-09, OPS-10, BE-22, BE-23, BE-24, RB-20, MF-10 | New findings AUD-04, AUD-06, AUD-05, AUD-13, AUD-17, AUD-12, AUD-18 |
+| **Raised in priority** | OPS-01 / RB-12 (now the first item of phase 1), OPS-04 (P1 → P0), OPS-05 (P1 → P0), QA-05 (P1 → P0) | No always-on environment means reminders and expiry jobs don't run (observed asleep on 26 Oct); monitoring, a tested restore and CI-gated deploys are release gates G4–G6 |
+| **Superseded** | Section 2's PRs A–D and section 5's milestones M0–M5 | A–D are done or folded into phases; the milestones are replaced by the eight phases, which add operations, QA and launch work the milestones didn't cover |
+| **Unchanged** | All owner decisions (D-01..D-22), credentials rule (C-01..C-11 only at production), website de-scope, D-17 timing | Still valid; nothing found contradicts them |
+
+---
+
 ## 1. Where things actually stand
 
-What I ran on a fresh checkout (local Postgres 16 + PostGIS, Redis), mirroring `.github/workflows/ci.yml`:
+Re-run on 26 Oct 2026 on a fresh checkout of `aa0133b` (local Postgres 16 + PostGIS 3, Redis 7, Node 22.22), mirroring `.github/workflows/ci.yml`. Logs are summarised in [`09-execution-summary.md`](09-execution-summary.md).
 
-| Check | Result |
-|---|---|
-| Backend `tsc`, migrations (37), drift check, seed | Pass |
-| Backend jest | **58 suites / 465 tests pass** |
-| Backend e2e | **34/34 pass** |
-| Backend lint | 0 errors, **581 warnings** (cap is 585, so it only stops growth) |
-| Backend `npm audit --omit=dev` | **6 high** (zod and others) |
-| Mobile `tsc`, `test:all`, content guard | Pass |
-| Mobile lint | 0 errors, 229 warnings |
-| Dashboard `npm test` | 22/22 pass |
-| Dashboard `tsc --noEmit` | **5 errors**, hidden because `next.config.mjs` sets `ignoreBuildErrors: true`; one of them is a real runtime bug (DB-01) |
-| Dashboard lint (biome) | **152 errors**, not run in CI |
-| Website typecheck, tests (55) | Pass |
-| Website lint | **3 errors**, not run in CI |
-| GitHub CI on `main` (run 200) | Green |
-| `expo-doctor` | Could not reach Expo's API from here; must run in CI or locally |
+| Check | Result on `aa0133b` | After the 26 Oct fixes |
+|---|---|---|
+| Backend `tsc`, migrations, drift check, seed | Pass (40 migrations) | Pass (41) |
+| Backend jest | **63 suites / 485 tests pass** | see `09` |
+| Backend e2e | **34/34 pass**; also 34/34 with `connection_limit=1` | see `09` |
+| Backend lint | 0 errors, 585 warnings (cap 585) | unchanged |
+| Backend dependency gate | Pass, 2 allow-listed highs (zod 3, deepmerge-ts via Prisma CLI) | unchanged |
+| Mobile `tsc`, lint (219/220), `test:all`, content guard, dependency gate | Pass | Pass (guard now also catches insurance-scan wording) |
+| Dashboard typecheck, lint budget (152 errors / 208 warnings), 29 tests, dependency gate | Pass | Pass, 30 tests |
+| `expo-doctor`, CodeQL, Docker build | CI only (not reachable here) | CI on the PR |
+| Test API (`pavdental-api.onrender.com/readyz`) | **503 "Application loading"**: free instance asleep | — |
 
-**Summary.** The backend is in good shape: the security and money fixes from CS-48 to CS-50 hold up and the suites are real. The gaps are now mostly in four places:
+The earlier table (25 Oct, `628a18a`) is in git history.
+
+**Summary (25 Oct, still true unless noted).** The backend is in good shape: the security and money fixes from CS-48 to CS-50 hold up and the suites are real. The gaps are now mostly in four places:
 
 1. **Store readiness.** The icon and splash are still the Expo template, the Apple/Stripe/API values in `eas.json` are invented placeholders, there is no production backend, no privacy policy URL, and no store assets.
 2. **Truthfulness regressions from the UI restyle (#70).** The restyle reintroduced screens that claim things that never happen: a "Refer and earn £20" programme with no backend, a rating that says "feedback saved" and saves nothing, a fake insurance "scan" and "coverage check", a 0% finance offer naming Tabeo/Chrysalis, "FaceID verified / Apple Secure Enclave" signature claims, and NHS/DSPT compliance claims. Apple rejects apps for this (guideline 2.3.1 / 5.1.1), and some of it is a regulatory risk (finance promotions, NHS claims).
@@ -42,6 +56,8 @@ What I ran on a fresh checkout (local Postgres 16 + PostGIS, Redis), mirroring `
 ---
 
 ## 2. Start immediately (Claude, no input needed)
+
+> Superseded on 26 Oct by the phases in section 5. Kept for history: PRs A–D below were delivered or folded into the phases.
 
 These are safe, reversible and don't depend on any decision. Suggested as four small PRs:
 
@@ -131,20 +147,21 @@ Each item has a recommendation. Anything not answered stays hidden or off in the
 | RB-02 | P0 | Confirm or recreate the EAS project (`eas init`), set `owner`, add `EXPO_TOKEN`. | `app.json` extra.eas.projectId | P then C | S | V-06, C-03 |
 | RB-03 | P0 | Replace invented submit values in `eas.json` (`appleTeamId`, `ascAppId`, `appleId`), and rewrite `build-config.test.ts`, which currently asserts the fake Team ID is "valid". | `eas.json`, `src/__tests__/build-config.test.ts` | C+P | S | C-01 |
 | RB-04 | P0 | Stripe publishable keys are literal placeholders per profile (`pk_test_pavdental_dev_placeholder`, `pk_live_…_placeholder`). Move them to EAS environment variables. | `eas.json` | C+P | S | C-04 |
-| RB-05 | P0 | API URLs in `eas.json` point at domains that don't exist. Universal links (`applinks:pavdental.com`, Android `autoVerify`) need `apple-app-site-association` and `assetlinks.json` hosted on the website with the real Team ID and signing-key SHA-256. | `eas.json`, `app.json` | C+P | M | D-09, D-12, C-01, C-02 |
-| RB-06 | P0 | Privacy policy and terms: links added to sign-up agreement and dedicated "Legal & Policies" menu on profile (`LEGAL_URLS`). | `pavdental/src/config/legal.ts`, `sign-up.tsx`, `profile/index.tsx` | C+P | M | **Done** |
+| RB-05 | P0 | **App side done 26 Oct:** preview builds use the test API, production uses `api.pavdental.com` (D-09), asserted in `build-config.test.ts`. Still open: DNS for `api.pavdental.com` and universal links. Originally: API URLs in `eas.json` point at domains that don't exist. Universal links (`applinks:pavdental.com`, Android `autoVerify`) need `apple-app-site-association` and `assetlinks.json` hosted on the website with the real Team ID and signing-key SHA-256. | `eas.json`, `app.json` | C+P | M | D-09, D-12, C-01, C-02 |
+| RB-06 | P0 | Privacy policy and terms: links added to sign-up and profile (`LEGAL_URLS`). **Reopened 26 Oct (AUD-02):** the linked pages are unreviewed drafts that say processors work "under strict data protection agreements" (none accepted yet, V-04) and omit Render, Supabase, Upstash, Vercel, Sentry, Expo/APNs/FCM, Mapbox, postcodes.io. | `pavdental/src/config/legal.ts`; website `/privacy`, `/terms` | C+P+Legal | M | **Partially done** → LG-01, LG-02 |
 | RB-07 | P0 | Microphone permission string removed (calls open in browser per D-01). Camera string reworded to photos. | `app.json` plugins | C | S | **Done** |
-| RB-08 | P1 | Missing config plugins: `expo-image-picker` verified; `expo-media-library` removed from dependencies. | `app.json`, `package.json` | C | S | **Done** |
+| RB-08 | P1 | Config plugins: `expo-image-picker` verified; `expo-media-library` removed. **Reopened 26 Oct (AUD-07):** the Sentry plugin `@sentry/react-native/expo` and `getSentryExpoConfig` in Metro (source maps) from the original item are still missing. | `app.json`, `metro.config.js` | C | S | **Partially done** |
 | RB-09 | P0 | `pavdental/google-service-account.json` gitignored in root `.gitignore`. | root `.gitignore` | C | S | **Done** |
 | RB-10 | P0 | Store listing rewrite: truthful features, correct permissions (mic removed), full Apple/Google privacy declarations. | `docs/release/store-listing.md` | C+P | M | **Done** |
 | RB-11 | P0 | App Review account. The listed `app-review-tester@pavdental.com` doesn't exist in any seed. Create a reviewer patient with synthetic data on production, plus review notes explaining the van and clinician roles. | `store-listing.md` §4 | C+P | S | RB-12 |
 | RB-12 | P0 | There is no production backend. Only the free Render test service exists. | `docs/deploy/test-deployment-status.md` | C+P | L | D-10, OPS-01 |
-| RB-13 | P1 | Versioning and updates: `cli.appVersionSource: "remote"` and release channels (`preview`, `production`, `development`) configured. | `eas.json`, `build-config.test.ts` | C | S | **Done** |
+| RB-13 | P1 | Versioning: `cli.appVersionSource: "remote"` done. **Reopened 26 Oct (AUD-12):** the release channels do nothing because `expo-updates` isn't installed; see RB-20. | `eas.json` | C | S | **Partially done** |
 | RB-14 | P0 | Web demo-login bypass gated strictly behind `process.env.EXPO_PUBLIC_DEMO_LOGIN === "true"`. | `pavdental/src/features/auth/auth-store.ts:42-62` | C | S | **Done** |
 | RB-15 | P1 | App environment stage cleanly derived from `EXPO_PUBLIC_APP_ENV`. | `app.json`, `summary.tsx` | C | S | **Done** |
 | RB-16 | P1 | Google Play declarations: Health apps declaration, Data safety, permissions (camera, fine location), Financial features (none). | Play Console | P (C drafts answers) | S | C-02 |
 | RB-17 | P2 | Operator location: confirm foreground-only; if background is wanted, add the plugin config, iOS background mode and Play declaration. | `use-operator-location.ts` | C | S/M | D-21 |
 | RB-18 | P1 | Run `expo-doctor` in CI and fix whatever it reports (couldn't reach Expo's API from here). | — | C | S | — |
+| RB-20 | P1 | **New (AUD-12, ADR-0005).** Install `expo-updates` before the first store build so JS-only fixes can be shipped and rolled back through the preview then production channels; or record a decision to rely on store releases only. Acceptance: a preview build receives an update and rolls back. | `package.json`, `app.json` | C+P | S | ADR-0005 |
 | RB-19 | P1 | First internal builds: EAS `preview` build to TestFlight internal and Play internal track, smoke-test on real devices (push, Apple Pay/Google Pay, camera, location, deep links, biometric lock). | — | C+P | M | RB-01..05, RB-12 |
 
 ### 4.2 Things the app says that aren't true (TC)
@@ -155,7 +172,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 |---|---|---|---|---|---|---|
 | TC-01 | P0 | Referral programme: real backend schema & endpoints (`/api/referrals`) built; in-app code sharing on profile and intake. | `(tabs)/profile/refer.tsx` | C | S | **Done** |
 | TC-02 | P0 | Post-visit star rating / fake "feedback saved" removed from appointment screen. | `appointments/[id].tsx` | C | S | **Done** |
-| TC-03 | P0 | Fake card scanning & coverage check removed from active booking & onboarding flows. | `booking/slot-picker.tsx`, `onboarding/` | C | S | **Done** |
+| TC-03 | P0 | Fake card scanning & coverage check removed from the flows; **26 Oct:** the two orphaned, deep-linkable insurance screens (`booking/insurance.tsx`, `onboarding/insurance.tsx`, "Scan your policy so covered treatments are claimed automatically") deleted and the wording added to the content guard (AUD-09). | `booking/`, `onboarding/`, `scripts/check-fabricated-content.mjs` | C | S | **Done (26 Oct PR)** |
 | TC-04 | P0 | Regulated credit promotions ("0% interest finance with Tabeo/Chrysalis") removed from plans. | `records/plans.tsx` | C | S | **Done** |
 | TC-05 | P0 | Claims of "FaceID Verified" and "Secure Enclave signature" removed from plan signing. | `records/plans/[id].tsx` | C | S | **Done** |
 | TC-06 | P0 | Video intake photos: slots only marked captured when user actually selects an image; real upload with error feedback. | `video/photo-review.tsx` | C | M | **Done** |
@@ -183,6 +200,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | MF-06 | P1 | Device test of deep links: `/reset-password`, `/verify-email` from real emails on iOS and Android. | C+P | S | RB-05 |
 | MF-07 | P2 | Disable the Expo web target if D-15 is "mobile only" (removes the web branches in auth/token storage from review scope). | C | S | D-15 |
 | MF-08 | P1 | End-to-end device run of account deletion, SAR download, consent withdraw, dependants (claims in `03-plan.md` CS-23..25, CS-34 were not re-audited on device). | C | M | RB-19 |
+| MF-10 | P3 | **New (AUD-18).** Opening hours are a hard-coded string in `src/config/practice.ts` while clinic hours live in the backend; read them from the clinics endpoint. | C | S | — |
 | MF-09 | P3 | 229 lint warnings (mostly `any`); ratchet the cap down each PR. | C | M | — |
 
 ### 4.4 Backend (BE)
@@ -191,7 +209,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 |---|---|---|---|---|---|---|
 | BE-01 | P0 | `/complete` time check uses UK calendar day (`londonDate`), preventing completion of future appointments. Test verified. | `routes/booking.ts:996`, `clinician-portal.test.ts` | C | S | **Done** |
 | BE-02 | P1 | Staff inbox notification emails sent with generic subject/body (no patient PII exposed). | `routes/messages.ts:280,414` | C | S | **Done** |
-| BE-03 | P0 | Production boot doesn't require `PRESCRIPTION_SIGNING_KEY`, Twilio (SMS codes and staff MFA), or Mapbox; staging only warns about S3, so the test API writes uploads to Render's ephemeral disk (lost on every deploy). | `config/env.ts:110-200` | C | S | — |
+| BE-03 | P0 | **Mostly done (checked 26 Oct):** production now requires the prescription key, Twilio, Postmark, Daily, S3 and an https `APP_URL`, and staging refuses local storage (`object-storage.ts:63`). Left: Sentry DSN (moved to OPS-04) and Mapbox (optional by design). Originally: production boot doesn't require `PRESCRIPTION_SIGNING_KEY`, Twilio (SMS codes and staff MFA), or Mapbox; staging only warns about S3, so the test API writes uploads to Render's ephemeral disk (lost on every deploy). | `config/env.ts:110-200` | C | S | — |
 | BE-04 | P1 | `.env.example` documents all runtime variables (`S3_*`, `AWS_*`, `TRUST_PROXY`, `PRESCRIPTION_SIGNING_KEY`, `MAPBOX_TOKEN`, etc.). | `backend/.env.example` | C | S | **Done** |
 | BE-05 | P2 | Insurance fields in schema/API, if D-02 is yes. | — | C | M | D-02 |
 | BE-06 | P3 | Feedback endpoint, if D-04 is yes. | — | C | M | D-04 |
@@ -210,13 +228,16 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | BE-19 | P2 | Capacity: load test booking, slots and van queue; Supabase pooler settings (`pgbouncer=true`, connection limits); indexes for audit and messages. | | C | M | OPS-01 |
 | BE-20 | P1 | Retention job ships with `RETENTION_ENFORCE=false`. Turn on in production after legal sign-off of retention periods. | `.env.example` | C+Legal | S | LG-07 |
 | BE-21 | P1 | Added `operator` to `MFA_REQUIRED_ROLES` in auth route. | `routes/auth.ts:31` | C | S | **Done** |
+| BE-22 | P0 | **New (AUD-05), done 26 Oct PR.** Reminders claimed as `sending` by a dispatcher that died were never retried. Added `claimed_at` (additive migration `20261026200000_scheduled_notification_lease`) and a 15-minute lease; tests prove a stale or legacy claim is sent and a fresh one is left alone, and fail on the old code. | `lib/background-jobs.ts`, `reminders-and-push.test.ts` | C | S | **Done (26 Oct PR)** |
+| BE-23 | P2 | **New (AUD-13, ADR-0002).** Before running a second API instance, put each background job behind `pg_try_advisory_xact_lock`; verify retention sweep, push receipts and rewards catch-up with two concurrent runners. | `lib/background-jobs.ts` | C | S | before scaling out |
+| BE-24 | P3 | **New (AUD-17), done 26 Oct PR.** Client `x-request-id` only kept if it matches `[A-Za-z0-9._-]{1,128}`; otherwise a fresh id. Test in `server-operations.test.ts`. | `server.ts` | C | S | **Done (26 Oct PR)** |
 
 ### 4.5 Staff dashboard (DB)
 
 | ID | P | Item | Evidence | Owner | Effort |
 |---|---|---|---|---|---|
-| DB-01 | P0 | Patients directory is broken: it calls `pavApi.get(...)`, but `pavApi` is a function with no `.get`, so every request throws and returns 500. Added in #69. | `admin-dashboard/src/app/api/v1/admin/patients/route.ts:28` | C | S |
-| DB-02 | P0 | `typescript.ignoreBuildErrors: true` hides type errors (5 today, including DB-01). Fix them, remove the flag, add `tsc --noEmit` to CI. | `next.config.mjs` | C | S |
+| DB-01 | P0 | **Done (checked 26 Oct):** `pavApi(...)` call. Originally: Patients directory is broken: it calls `pavApi.get(...)`, but `pavApi` is a function with no `.get`, so every request throws and returns 500. Added in #69. | `admin-dashboard/src/app/api/v1/admin/patients/route.ts:28` | C | S |
+| DB-02 | P0 | **Done (checked 26 Oct):** flag removed, typecheck in CI. Originally: `typescript.ignoreBuildErrors: true` hides type errors (5 today, including DB-01). Fix them, remove the flag, add `tsc --noEmit` to CI. | `next.config.mjs` | C | S |
 | DB-03 | P1 | Biome lint: 152 errors; add lint to CI. | | C | M |
 | DB-04 | P1 | Template demo pages are still reachable by URL and `/dashboard` redirects to the template "default" page with made-up metrics: academy, analytics, calendar, chat, coming-soon, crm, default, ecommerce, file-manager, finance, infrastructure, invoice, kanban, (legacy), logistics, mail, patient-monitoring, productivity, profile, roles, tasks, plus v1/v2 auth pages. Delete them before launch (the owner keeps them as a reference for new screens until then, D-17); build a real home (today's appointments, unread inbox, erasure requests due, failed payments). | `src/app/(main)/dashboard/*`, `next.config.mjs` redirect | C | M |
 | DB-05 | P1 | Missing staff screens for app data whose endpoints already exist: app appointments (list, status override, cancel with refund), audit-log viewer, vans and live shifts, edit services/clinicians/operators (needs BE-10), prescriptions register, consent and SAR records. | `routes/admin.ts`; proxy allow-list in `api/v1/admin/app/[...path]/route.ts` | C | L |
@@ -252,7 +273,7 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | QA-02 | P1 | No device end-to-end tests. Add Maestro flows (sign-up, booking with test card, cancel, van request, video intake, delete account) and run them on EAS builds. | C | L |
 | QA-03 | P0 | `build-config.test.ts` verifies no invented values and asserts EAS build channels and runtime policies. | C | S | **Done** |
 | QA-04 | P1 | CI gaps: dashboard `tsc` + lint, website lint, `expo-doctor`, `npm audit --audit-level=high` per app, Dependabot or Renovate, CodeQL and secret scanning, CODEOWNERS, PR template. Branch protection requiring CI (person enables in GitHub settings). | C+P | M |
-| QA-05 | P1 | Deploy pipeline: Render auto-deploys `main` without waiting for CI; no EAS build/submit workflow. Gate Render on CI; add EAS workflows for preview and production. | C | M |
+| QA-05 | **P0** | (Raised 26 Oct, ADR-0006, gate G6.) Deploy pipeline: Render auto-deploys `main` without waiting for CI; no EAS build/submit workflow. Gate Render on CI; add EAS workflows for preview and production. | C | M |
 | QA-06 | P2 | 05-audit flagged time-of-day and worker-count flakiness in jest; passed here at ~21:00 UTC with default workers. Add a CI run at a fixed "late" clock (fake timers) to prove it's gone. | C | S |
 | QA-07 | P1 | Contract drift between app and API (the insurance fields show it). `shared-types/` is imported by nothing. Generate types from the backend zod response schemas and use them in the app; add a contract test. | C | M |
 | QA-08 | P1 | Penetration test against staging (scope doc exists). Paid third party. | P | 2–3 weeks elapsed |
@@ -265,10 +286,12 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | OPS-01 | P0 | Production stack per D-10: paid always-on API (background jobs need it), Postgres with PostGIS and point-in-time recovery, Redis with persistence, encrypted object storage, custom domains with TLS, separate secrets from staging. | C+P | L |
 | OPS-02 | P1 | Staging: the free Render service sleeps, so reminders, hold expiry and audit monitoring don't run reliably; S3 not configured (uploads lost on deploy). Either a cheap always-on plan or a cron pinger + bucket. | C+P | S |
 | OPS-03 | P0 | DNS and email: API, website, dashboard hostnames; SPF/DKIM/DMARC for Postmark; Twilio sender. | P (C writes the records) | S |
-| OPS-04 | P1 | Monitoring and alerting: Sentry DSNs in every app with release tracking and source maps; uptime checks on `/readyz`; alerts for audit-integrity failures, webhook failures, push receipt errors, job lag; log drain with retention. | C+P | M |
-| OPS-05 | P1 | Backups: runbook exists but no restore drill has been done; Supabase free has no PITR. Do one timed restore into a scratch DB and record it. | C | S |
+| OPS-04 | **P0** | (Raised 26 Oct, AUD-07, gate G5. Dashboard part done in the 26 Oct PR: production builds keep `console.error`/`warn`. Still open: require `SENTRY_DSN` in production, app plugin (RB-08), uptime check.) Monitoring and alerting: Sentry DSNs in every app with release tracking and source maps; uptime checks on `/readyz`; alerts for audit-integrity failures, webhook failures, push receipt errors, job lag; log drain with retention. | C+P | M |
+| OPS-05 | **P0** | (Raised 26 Oct, AUD-11, gate G4: rewrite the runbook for Supabase + bucket, it still describes AWS; RPO 5 min / RTO 4 h per ADR-0003; verify the audit chain on the restored copy.) Backups: runbook exists but no restore drill has been done; Supabase free has no PITR. Do one timed restore into a scratch DB and record it. | C | S |
 | OPS-06 | P1 | Secrets hygiene: rotate the seeded demo password (see `cs48/rotate-demo-password.md`), set production secrets fresh, document rotation (BE-14). | P+C | S |
 | OPS-07 | P2 | Release command: confirm Render runs `npx prisma migrate deploy` before start; zero-downtime migration rules from `docs/completion/migrations.md`. | C | S |
+| OPS-09 | P1 | **New (AUD-04, ADR-0004).** Backend image and CI were on Node 20 (end of life 30 Apr 2026). **Moved to Node 22 in the 26 Oct PR** (full backend suite passes on 22). Still to do: all apps to Node 24 before 30 Apr 2027. | C | S |
+| OPS-10 | P0 | **New (AUD-06, ADR-0006).** Owner: protect `main` (PRs + required checks + review), set Render auto-deploy to "After CI Checks Pass". Claude: `render.yaml` / pre-deploy `npx prisma migrate deploy` on the direct URL once on a paid plan; rehearse one rollback on staging. Acceptance: a red CI run produces no deploy. | P then C | S |
 | OPS-08 | P2 | Incident runbook and on-call contact; status page or in-app banner for outages. | C+P | S |
 
 ### 4.9 Legal, clinical and compliance (LG)
@@ -310,34 +333,110 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 ---
 
-## 5. Order of work and milestones
+## 5. Delivery phases (replaces the M0–M5 milestones, 26 Oct)
 
-| Milestone | Contents | Claude effort | Waiting on you |
-|---|---|---|---|
-| **M0 Honest and unbroken** (now) | PRs A–D from section 2 | ~4 days | Nothing |
-| **M1 Decisions in** | D-01 to D-22, V-01 to V-07 answered; build the chosen variants (TC/BE/MF follow-ups) | 3–6 days depending on answers | Your answers |
-| **M2 Production stack** | OPS-01..07, RB-12, BE-03, BE-14, BE-15, WS-06, DB-07 | ~5 days | D-09, D-10, C-04..C-11, C-13 |
-| **M3 Store-ready build** | RB-01..19, QA-02, QA-09, MF-06, MF-08, internal TestFlight / Play internal | ~5 days | C-01..C-03, C-12 |
-| **M4 Compliance gate** | LG-01..14, WS-01, WS-02, RB-10, QA-08 | ~3 days of drafting | Legal, clinician, pen test (2–4 weeks elapsed) |
-| **M5 Complete product** | DB-04, DB-05, BE-10, QA-01, QA-07, MF-05, remaining P2/P3 | ~2 weeks | — |
-| **Submit** | Store submission with reviewer account | — | M3 + M4 done |
+Effort uses the key at the top (S/M/L/XL, Claude working time). "Waits on" names the person's input; anything without it can start now. Each phase closes when its exit criteria hold, and the release gates G1–G9 live in [`../release/release-checklist.md`](../release/release-checklist.md).
 
-Critical path to the stores: **legal/compliance sign-offs (M4) and the Apple/Google organisation accounts (C-01, C-02, D-U-N-S can take 1–2 weeks)**. Start those now in parallel with M0.
+### Phase 1: Immediate blockers (security, data loss, broken core flows, release blockers)
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| BE-22 stuck reminders, TC-03 orphan screens, RB-05 app hosts, OPS-09 Node 22, BE-24 | P0 | S | — | **Done in the 26 Oct PR**; suites green |
+| OPS-01 / RB-12 production stack (ADR-0003) | P0 | L | C-10 billing (owner said: at production time) | `/readyz` 200 for 7 days from an external check; reminders observed overnight |
+| OPS-10 + QA-05 CI-gated deploys, branch protection, pre-deploy migrations | P0 | S | Owner changes two settings | A red CI run produces no deploy; PRs can't merge red |
+| RB-06 / LG-01 / LG-02 correct the live privacy page now (remove "strict data protection agreements" and backup/region claims, list every processor) | P0 | S | — (copy edit on the website's legal pages; legal review follows) | Page matches `dpa-tracker.md`; reviewed text replaces it under LG-01 |
+| LG-07 / V-01 clinical sign-off; LG-06 / D-18 regulatory view on triage | P0 | elapsed | Dr Bhojani; adviser | Written sign-off linked in `04-decisions.md` |
+
+### Phase 2: Foundation (configuration, data integrity, auth, core reliability)
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| OPS-05 restore drill + runbook rewrite for Supabase and the bucket | P0 | S | OPS-01 | Timed drill recorded; audit chain verifies on the copy; within RTO 4 h |
+| OPS-04 monitoring: `SENTRY_DSN` required in production, Sentry Expo plugin + Metro (RB-08), uptime check, job-lag and webhook-failure alerts | P0 | M | C-08 at production | Forced errors visible with readable stacks; alert reaches a phone |
+| DB pool sizing (AUD-10): `connection_limit=5` on the always-on API; direct URL for migrations | P1 | S | OPS-01 | Load test shows no pool timeouts |
+| BE-14 key management runbook; OPS-06 fresh production secrets, demo password rotated | P1 | S | — / OPS-01 | Runbook reviewed; rotation rehearsed on staging |
+| BE-15 Stripe webhook subscriptions (`charge.refunded`, `charge.dispute.created`) | P1 | S | C-04 for live | Test-mode events reach the API and are de-duplicated |
+| BE-16 Daily token expiry check; BE-17 re-audit of CS-39..44, 53, 54 | P1–P2 | M | — | Findings fixed or recorded |
+| BE-12 zod 4 upgrade (removes the allow-listed advisory) | P1 | M | — | Allow-list without zod; all suites green |
+
+### Phase 3: Feature completion
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| DB-05 staff screens for app data (appointments, audit log, vans/shifts, prescriptions register, consent/SAR records) | P1 | L | — | Staff can do each task without database access |
+| DB-04 real dashboard home; remove template pages before launch (D-17) | P1 | M | D-17 timing | `/dashboard` shows real data; template routes 404 |
+| DB-06 CORS single-origin fix; DB-07 real staff accounts | P1 | S | C-13 for staff list | CORS test; codes reach real staff |
+| BE-18 treatment-plan acknowledgement record (D-06) | P2 | M | — | Stored with plan version hash, who, when, device |
+| MF-10 hours from the API; BE-11 remove waitlist and DSPT routes, then table after backup (D-20) | P2–P3 | S | backup (OPS-05) | Routes 404; e2e green |
+| RB-01 icon/splash, RB-20 EAS Update (ADR-0005) | P0 / P1 | S | C-12 logo; owner OK on ADR-0005 | Real icon on device; preview build takes and rolls back an update |
+
+### Phase 4: Quality assurance
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| QA-02 Maestro flows for journeys J1–J8 on EAS preview builds | P1 | L | RB-19 builds (needs C-03) | Flows pass on iOS and Android in CI or EAS |
+| MF-06, MF-08 deep links, deletion, SAR, consent, dependants on device | P1 | M | RB-05 DNS, RB-19 | Each row in checklist §2–3 Verified |
+| QA-09 VoiceOver/TalkBack, large text, 320 pt (UX-01) | P1 | M | RB-19 | Screen-reader checklist complete |
+| QA-06 clock-pinned jest run | P2 | S | — | CI job at a fixed late time passes |
+
+### Phase 5: Production infrastructure
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| OPS-03 DNS, SPF/DKIM/DMARC, Twilio sender | P0 | S | C-06, C-07, C-11 | Mail-tester score ≥ 9; SMS delivered |
+| RB-02..RB-04, RB-11, RB-16, RB-19 EAS project, store ids, keys, reviewer account, Play declarations, first internal builds | P0–P1 | M | C-01..C-04 (at production time) | TestFlight and Play internal builds installed and smoke-tested |
+| OPS-07 confirm pre-deploy migrations on the paid plan | P2 | S | OPS-10 | Deploy log shows `migrate deploy` before start |
+
+### Phase 6: Hardening
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| BE-19 load test against ADR-0003 targets (p95 < 500 ms reads at 50 rps, 20 concurrent bookings) | P1 | M | OPS-01 | Report in `docs/deploy/` |
+| QA-08 external pen test (OWASP API Top 10, MASVS-L1) and fixes | P1 | 2–3 weeks elapsed | budget | No open Critical/High (gate G2) |
+| BE-13, MF-09, DB-03 lint ratchets | P3 | M | — | Caps lowered in each PR that touches a package |
+
+### Phase 7: Launch preparation
+
+| Item | Pri | Effort | Waits on | Exit / acceptance |
+|---|---|---|---|---|
+| LG-01..LG-05, LG-08, LG-13 legal set (privacy, terms, DPAs, DPIA, ICO, CQC, age rules) | P0 | elapsed | solicitor/DPO, owner | Gate G7 open |
+| OPS-08 incident runbook, phone-booking fallback, post-launch watch rota | P1 | S | owner | Runbook in `docs/deploy/` |
+| Production soak: 7 days with synthetic data (gate G8) | P0 | elapsed | phases 1–5 | Reminders, holds, push receipts observed; no Sentry errors unexplained |
+| RB-10 store listing final, screenshots, privacy labels; submit (gate G9) | P0 | M | C-01, C-02 | Both stores approve |
+
+### Phase 8: Post-launch
+
+MF-01 in-app video (D-01), BE-23 job leadership then a second API instance, BE-05..BE-08 if their decisions change, OPS-09 Node 24, Prisma 7 and Express 5 upgrades, UX-02..UX-04 polish, RH-02/RH-03 clean-up (including `neo-financial-ios/` per D-17).
+
+### Next ten tasks (in order)
+
+1. Merge the 26 Oct PR (docs + fixes).
+2. Owner: protect `main` and set Render to deploy after CI (OPS-10, two settings, ~10 minutes).
+3. Correct the live privacy page's processor list and remove the claims that aren't true yet (RB-06/LG-02).
+4. Require `SENTRY_DSN` in production and add the Sentry Expo plugin + Metro config (OPS-04, RB-08).
+5. Rewrite the backup runbook for Supabase + bucket so the drill is ready the day production exists (OPS-05).
+6. DB-05 staff screens for appointments and the audit log.
+7. BE-12 zod 4 upgrade.
+8. BE-15/BE-16 Stripe event subscriptions and Daily token expiry check.
+9. RB-20 EAS Update, if the owner accepts ADR-0005.
+10. QA-02 Maestro flows, ready to run on the first EAS preview build.
 
 ## 6. Count
 
-| Area | Items | P0 |
+25 Oct baseline: 125 items, 38 P0. 26 Oct revision adds 7 items (OPS-09, OPS-10, BE-22, BE-23, BE-24, RB-20, MF-10) and raises OPS-04, OPS-05 and QA-05 to P0, giving **132 items**. The website's 11 items stay listed but de-scoped.
+
+| Area | Items | P0 (26 Oct) |
 |---|---|---|
-| Store/release (RB) | 19 | 12 |
+| Store/release (RB) | 20 | 12 |
 | False claims (TC) | 17 | 8 |
-| Mobile (MF) | 9 | 0 |
-| Backend (BE) | 21 | 2 |
+| Mobile (MF) | 10 | 0 |
+| Backend (BE) | 24 | 3 |
 | Dashboard (DB) | 9 | 2 |
-| Website (WS) | 11 | 3 |
-| Tests/CI (QA) | 9 | 1 |
-| Infra (OPS) | 8 | 2 |
+| Website (WS, de-scoped) | 11 | 3 |
+| Tests/CI (QA) | 9 | 2 |
+| Infra (OPS) | 10 | 5 |
 | Legal/clinical (LG) | 14 | 8 |
 | UX | 4 | 0 |
 | Hygiene (RH) | 4 | 0 |
-| **Total** | **125** | **38** |
+| **Total** | **132** | **43** |
 | Decisions / verifications / credentials | 22 / 7 / 15 | |

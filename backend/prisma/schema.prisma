@@ -640,6 +640,9 @@ model ScheduledNotification {
   lastError    String?   @map("last_error")
   createdAt    DateTime  @default(now()) @map("created_at")
   sentAt       DateTime? @map("sent_at")
+  // When a dispatcher claimed the row ('sending'). A claim older than the
+  // lease is treated as abandoned and goes back to 'pending' (BE-22).
+  claimedAt    DateTime? @map("claimed_at")
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status, scheduledFor])
