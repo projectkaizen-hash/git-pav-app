@@ -61,7 +61,7 @@
     "framer-motion": "^13.2.0",
     "jose": "6.2.9",
     "kysely": "^0.28.5",
-    "lucide-react": "^0.510.0",
+    "lucide-react": "^1.61.0",
     "motion": "^13.2.0",
     "pg": "^8.16.3",
     "react": "^19.2.0",
