@@ -64,7 +64,7 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 | No double booking or double charge under races | Verified 26 Oct | `booking-races.test.ts`, `van-races.test.ts`, `payment-integrity.test.ts` | — |
 | Reminders survive a restart mid-dispatch | Verified 26 Oct (with fix) | `reminders-and-push.test.ts` lease cases | — |
 | Point-in-time recovery on production DB | Blocked | — | OPS-01 |
-| Restore drill (timed, audit chain verified after) | Not tested | runbook still describes AWS | OPS-05 |
+| Restore drill (timed, audit chain verified after) | Not tested | runbook rewritten for Supabase PITR in PR #114; drill waits on production stack (OPS-01) | OPS-05 |
 | Bucket encryption and versioning | Not tested | — | OPS-01 |
 | Retention enforced after legal sign-off | Blocked | `RETENTION_ENFORCE=false` | BE-20 after LG-07 |
 
