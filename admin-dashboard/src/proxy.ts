@@ -2,18 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { verifyStaffToken } from "@/lib/auth/jwt";
-
-const ALLOWED_ORIGINS = [process.env.WEBSITE_ORIGIN ?? "http://localhost:8080", "http://localhost:3001"];
-
-function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
-}
+import { getCorsHeaders } from "@/lib/cors";
 
 /**
  * Global edge proxy for the Admin Dashboard.
@@ -34,14 +23,14 @@ export async function proxy(req: NextRequest) {
   if (req.method === "OPTIONS" && pathname.startsWith("/api")) {
     return new NextResponse(null, {
       status: 204,
-      headers: corsHeaders(origin),
+      headers: getCorsHeaders(origin),
     });
   }
 
   // Attach CORS headers to all API responses
   if (pathname.startsWith("/api")) {
     const response = NextResponse.next();
-    const headers = corsHeaders(origin);
+    const headers = getCorsHeaders(origin);
     Object.entries(headers).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
