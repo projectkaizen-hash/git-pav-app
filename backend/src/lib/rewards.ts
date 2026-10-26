@@ -61,20 +61,28 @@ export async function awardVisitPoints(appointmentId: string): Promise<VisitPoin
   const points = POINTS_PER_COMPLETED_VISIT;
 
   // ON CONFLICT DO NOTHING on the unique appointment id: a repeat, or a race
-  // with the sweep, inserts nothing and so credits nothing.
-  const inserted = await prisma.$transaction(async (tx) => {
-    const { count } = await tx.rewardPointsAward.createMany({
-      data: [{ userId, appointmentId, points }],
-      skipDuplicates: true,
+  // with the sweep, inserts nothing and so credits nothing. An appointment
+  // deleted since it was read above (an erasure, say) fails the foreign key:
+  // there is nothing left to credit, and the sweep carries on with the rest.
+  const inserted = await prisma
+    .$transaction(async (tx) => {
+      const { count } = await tx.rewardPointsAward.createMany({
+        data: [{ userId, appointmentId, points }],
+        skipDuplicates: true,
+      });
+      if (count === 0) return false;
+      await tx.oralHealthMetric.upsert({
+        where: { userId },
+        create: { userId, pointsBalance: points },
+        update: { pointsBalance: { increment: points } },
+      });
+      return true;
+    })
+    .catch((err: unknown) => {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") return null;
+      throw err;
     });
-    if (count === 0) return false;
-    await tx.oralHealthMetric.upsert({
-      where: { userId },
-      create: { userId, pointsBalance: points },
-      update: { pointsBalance: { increment: points } },
-    });
-    return true;
-  });
+  if (inserted === null) return "not_completed";
   if (!inserted) return "already_awarded";
 
   await createAuditLogWithIntegrity({
