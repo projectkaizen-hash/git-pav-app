@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { ThemedText } from "./themed-text";
 import { Card } from "./card";
 import { Badge } from "./badge";
@@ -99,24 +99,24 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
   const selected = SYMPTOMS.find((s) => s.id === selectedId) || SYMPTOMS[0];
 
   const handleSelectSymptom = (id: SymptomType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    safeHaptics.impactAsync("light").catch(() => {});
     setSelectedId(id);
   };
 
   const handleBookEmergency = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    safeHaptics.impactAsync("medium").catch(() => {});
     onClose();
     router.push("/(patient)/booking/service-catalog" as never);
   };
 
   const handleStartVideo = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    safeHaptics.impactAsync("light").catch(() => {});
     onClose();
     router.push("/(patient)/video/intake" as never);
   };
 
   const handleCallHotline = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    safeHaptics.impactAsync("light").catch(() => {});
     Linking.openURL(PRACTICE_CONFIG.telUrl).catch(() => {});
   };
 
@@ -222,7 +222,7 @@ export function EmergencyTriageModal({ visible, onClose }: EmergencyTriageModalP
                       accessibilityLabel={`Pain level ${score}`}
                       accessibilityState={{ selected: isSelected }}
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        safeHaptics.impactAsync("light").catch(() => {});
                         setPainLevel(score);
                       }}
                       style={[

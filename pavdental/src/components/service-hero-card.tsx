@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Pressable, StyleProp, ViewStyle } from "react-native";
 import { Image, ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, radius, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
@@ -29,17 +29,17 @@ export function ServiceHeroCard({
   style,
 }: ServiceHeroCardProps) {
   const handleChat = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    safeHaptics.impactAsync("light").catch(() => {});
     onPressChat?.();
   };
 
   const handleAction = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    safeHaptics.impactAsync("medium").catch(() => {});
     onPressAction?.();
   };
 
   const handleInfo = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    safeHaptics.impactAsync("light").catch(() => {});
     onPressInfo?.();
   };
 

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View, StyleProp, ViewStyle } from "react-native";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, spacing, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 
@@ -51,7 +51,7 @@ export function ChipPill({ label, tone = "neutral", selected, onPress, style }: 
       accessibilityState={{ selected: !!selected }}
       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        safeHaptics.impactAsync("light").catch(() => {});
         onPress();
       }}
       style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] }]}

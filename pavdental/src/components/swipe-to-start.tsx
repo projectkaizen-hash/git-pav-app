@@ -7,7 +7,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, radius } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
@@ -28,7 +28,7 @@ export function SwipeToStart({
   const maxSlide = Math.max(0, containerWidth - buttonWidth - 8);
 
   const triggerComplete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    safeHaptics.notificationAsync("success").catch(() => {});
     onComplete();
   };
 
@@ -75,7 +75,7 @@ export function SwipeToStart({
             accessibilityLabel={label}
             onPress={() => {
               // Tap fallback
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              safeHaptics.impactAsync("medium").catch(() => {});
               onComplete();
             }}
             style={styles.thumbInner}
