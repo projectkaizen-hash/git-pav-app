@@ -122,6 +122,33 @@ describe("video consultation rooms", () => {
     expect(token?.body.properties).toMatchObject({ room_name: `pav-${appointmentId}`, is_owner: true, eject_at_token_exp: true });
   });
 
+  it("enforces short token expiry and eject_at_token_exp on meeting tokens for clinician and patient (BE-16)", async () => {
+    const { appointmentId, patientToken, clinicianToken } = await setup("expiry");
+    const appt = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
+    const expectedExp = Math.floor(appt.endTimeUtc.getTime() / 1000) + 30 * 60;
+    dailyCalls.length = 0;
+
+    // 1. Clinician token
+    const clinRes = await post("/api/video/rooms", clinicianToken, { appointmentId });
+    expect(clinRes.status).toBe(201);
+    const clinTokenCall = dailyCalls.find((c) => c.path === "/meeting-tokens");
+    expect(clinTokenCall).toBeDefined();
+    expect(clinTokenCall?.body.properties.eject_at_token_exp).toBe(true);
+    expect(clinTokenCall?.body.properties.exp).toBe(expectedExp);
+    expect(new Date(clinRes.body.expiresAt).getTime()).toBe(expectedExp * 1000);
+
+    // 2. Admit patient and get patient token
+    await post("/api/video/admit-patient", clinicianToken, { appointmentId });
+    dailyCalls.length = 0;
+    const patRes = await post("/api/video/rooms", patientToken, { appointmentId });
+    expect(patRes.status).toBe(201);
+    const patTokenCall = dailyCalls.find((c) => c.path === "/meeting-tokens");
+    expect(patTokenCall).toBeDefined();
+    expect(patTokenCall?.body.properties.eject_at_token_exp).toBe(true);
+    expect(patTokenCall?.body.properties.exp).toBe(expectedExp);
+    expect(new Date(patRes.body.expiresAt).getTime()).toBe(expectedExp * 1000);
+  });
+
   it("keeps the patient out until the clinician admits them, then reuses the same room", async () => {
     const { appointmentId, patientToken, clinicianToken } = await setup("admit");
 

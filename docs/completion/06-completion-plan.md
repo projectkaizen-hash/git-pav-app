@@ -217,13 +217,13 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 | BE-08 | P2 | Balance payments, receipts/VAT invoices, if D-07 is in-app. | — | C | L | D-07 |
 | BE-09 | P1 | Expo push receipts polling job implemented with token deactivation and ticket cleanup. | `lib/push-receipts.ts`, `communication-service.ts` | C | M | **Done** |
 | BE-10 | P1 | Admin API can create, edit and deactivate clinicians, operators, services, vans and clinics. | `routes/admin.ts` | C | M | **Done** |
-| BE-11 | P3 | Drop the unused `waitlist_entries` table (reviewed, destructive migration). | `routes/waitlist.ts` | C | S | D-20 |
+| BE-11 | P3 | Unmount retired routes (`/api/waitlist` and `/api/dspt`); drop the unused `waitlist_entries` table after backup (reviewed, destructive migration). | `routes/waitlist.ts`, `routes/dspt-audit.ts` | C | S | **Partially done in PR #115 (pending merge; routes unmounted and return 404, table drop waits on backup per D-20)** |
 | BE-12 | P1 | `npm audit`: 6 high in production deps (zod and others). Upgrade and re-run suites. Repeat for app, dashboard, website. | | C | S/M | — |
 | BE-13 | P3 | 581 lint warnings; ratchet. | | C | M | — |
-| BE-14 | P1 | Key management runbook: generation, storage, rotation and backup of `ENCRYPTION_KEY`, `PRESCRIPTION_SIGNING_KEY`, JWT and HMAC secrets; the `rewrap:encrypted` script exists but no procedure. Real KMS stays optional (decision #18). | `docs/deploy/key-management-runbook.md` | C | S | **Done in PR #114 (pending merge)** |
-| BE-15 | P1 | Stripe webhook endpoint subscriptions omit `charge.refunded` and `charge.dispute.created`, which the handler supports. Add them on test and production endpoints. | `test-deployment-status.md` §2 | C+P | S | C-04 |
-| BE-16 | P2 | Daily meeting tokens: confirm short expiry and `eject_at_token_exp`; token travels in the browser URL. | `routes/video.ts` | C | S | — |
-| BE-17 | P1 | Re-audit change sets marked "not re-audited": CS-39 to CS-44, CS-53, CS-54, and the app side of CS-25 to CS-27. | `03-plan.md` | C | M | — |
+| BE-14 | P1 | Key management runbook: generation, storage, rotation and backup of `ENCRYPTION_KEY`, `PRESCRIPTION_SIGNING_KEY`, JWT and HMAC secrets; the `rewrap:encrypted` script exists but no procedure. Real KMS stays optional (decision #18). | `docs/deploy/key-management-runbook.md` | C | S | **Done (merged in PR #114)** |
+| BE-15 | P1 | Stripe webhook endpoint subscriptions omit `charge.refunded` and `charge.dispute.created`, which the handler supports. Add them on test and production endpoints. | `test-deployment-status.md` §2, `routes/payments.ts` | C+P | S | **Partially done in PR #115 (pending merge; handler verified with duplicate delivery tests; dashboard endpoint config waits on C-04 live keys)** |
+| BE-16 | P2 | Daily meeting tokens: confirm short expiry and `eject_at_token_exp`; token travels in the browser URL. | `routes/video.ts`, `video-rooms.test.ts` | C | S | **Done in PR #115 (pending merge)** |
+| BE-17 | P1 | Re-audit change sets marked "not re-audited": CS-39 to CS-44, CS-53, CS-54, and the app side of CS-25 to CS-27. | `docs/completion/10-reaudit-findings.md` | C | M | **Done in PR #115 (pending merge)** |
 | BE-18 | P2 | Treatment-plan acceptance record: store what was shown (plan version hash), who, when, device; wording per D-06. | `e2e` "Treatment Plan Cryptographic E-Signature" | C | M | D-06 |
 | BE-19 | P2 | Capacity: load test booking, slots and van queue; Supabase pooler settings (`pgbouncer=true`, connection limits); indexes for audit and messages. | | C | M | OPS-01 |
 | BE-20 | P1 | Retention job ships with `RETENTION_ENFORCE=false`. Turn on in production after legal sign-off of retention periods. | `.env.example` | C+Legal | S | LG-07 |

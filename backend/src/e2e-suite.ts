@@ -273,7 +273,7 @@ async function runE2ESuite() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        expoPushToken: "ExponentPushToken[mock_e2e_device_token]",
+        expoPushToken: `ExponentPushToken[mock_e2e_device_token_${Date.now()}]`,
       }),
     });
     assert(pushRes.status === 201 || pushRes.status === 200, `Push token registration failed (${pushRes.status}): ${await pushRes.text()}`);
@@ -301,7 +301,7 @@ async function runE2ESuite() {
     assert(cancelRes.status === 200, "Cancellation refund failed");
     console.log(`✓ PASSED: Cancellation Evaluator (${cancelData.refundPercentage}% Deposit Refund Issued)`);
 
-    // Step 13: NHS DSPT Automated Compliance Auditor & Audit Logs
+    // Step 13: Retired DSPT Route (404) & Audit Log Integrity Check (BE-11)
     let adminUser = await prisma.user.findFirst({ where: { role: "admin" } });
     if (!adminUser) {
       adminUser = await prisma.user.create({
@@ -321,7 +321,7 @@ async function runE2ESuite() {
     const dsptRes = await fetch(`${baseUrl}/api/dspt/dspt-report`, {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-    assert(dsptRes.status === 200, `DSPT report failed (${dsptRes.status})`);
+    assert(dsptRes.status === 404, `Retired DSPT report should return 404 (${dsptRes.status})`);
 
     const auditIntegrityStep13Res = await fetch(`${baseUrl}/api/audit/integrity`, {
       headers: { Authorization: `Bearer ${adminToken}` },
@@ -332,7 +332,7 @@ async function runE2ESuite() {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
     assert(auditLogsRes.status === 200, `Audit logs failed (${auditLogsRes.status})`);
-    console.log("✓ PASSED: NHS DSPT Compliance Self-Assessment Auditor");
+    console.log("✓ PASSED: DSPT Route Unmounted (404) & Audit Log Integrity Verified");
 
     // ─── Van Dispatch Flow (Steps 14–19) ─────────────────────────────────
     // Fixtures: operator profile + van assignment. Stale shifts from earlier
@@ -670,23 +670,23 @@ async function runE2ESuite() {
     assert(hasDataProcessing, "Granted consent not visible via /consents/current");
     console.log("✓ PASSED: Onboarding Consent Grant Persisted & Retrievable");
 
-    // Step 27: The waitlist is removed (CS-32): joining is refused and nothing is stored
+    // Step 27: The waitlist route is unmounted (BE-11, CS-32, D-20): answers 404 and nothing is stored
     const wlRes = await fetch(`${baseUrl}/api/waitlist/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ serviceId: testService.id, preferredDate: "2026-10-25" }),
     });
-    assert(wlRes.status === 410, `Waitlist join should be retired, got ${wlRes.status}`);
+    assert(wlRes.status === 404, `Waitlist join should be 404, got ${wlRes.status}`);
     const wlCount = await prisma.waitlistEntry.count({ where: { userId } });
     assert(wlCount === 0, "Retired waitlist must not store entries");
-    console.log("✓ PASSED: Waitlist join retired (410, nothing stored)");
+    console.log("✓ PASSED: Waitlist join unmounted (404, nothing stored)");
 
-    // Step 28: Listing the retired waitlist also answers 410
+    // Step 28: Listing the retired waitlist also answers 404
     const wlListRes = await fetch(`${baseUrl}/api/waitlist`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    assert(wlListRes.status === 410, `Waitlist list should be retired, got ${wlListRes.status}`);
-    console.log("✓ PASSED: Waitlist list retired (410)");
+    assert(wlListRes.status === 404, `Waitlist list should be 404, got ${wlListRes.status}`);
+    console.log("✓ PASSED: Waitlist list unmounted (404)");
 
     // Step 29: Clinical Messaging CRUD (GET / POST / REPLY / READ)
     const msgListRes = await fetch(`${baseUrl}/api/messages`, {

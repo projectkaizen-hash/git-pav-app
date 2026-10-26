@@ -24,8 +24,6 @@ import prescriptionRoutes from "./routes/prescriptions";
 import prescriptionFileRoutes from "./routes/prescription-files";
 import notificationRoutes from "./routes/notifications";
 import cancellationRoutes from "./routes/cancellations";
-import waitlistRoutes from "./routes/waitlist";
-import dsptAuditRoutes from "./routes/dspt-audit";
 import adminRoutes from "./routes/admin";
 import adminScheduleRoutes from "./routes/admin-schedule";
 import adminErasureRoutes from "./routes/admin-erasure";
@@ -213,8 +211,6 @@ app.use("/api/prescriptions", requireAuth, auditMiddleware, prescriptionRoutes);
 // Short-lived signed links to prescription PDFs (no bearer token; see the route).
 app.use("/api/prescription-files", prescriptionFileRoutes);
 app.use("/api/notifications", requireAuth, auditMiddleware, notificationRoutes);
-app.use("/api/waitlist", requireAuth, auditMiddleware, waitlistRoutes);
-app.use("/api/dspt", requireAuth, auditMiddleware, dsptAuditRoutes);
 // The dashboard's staff inbox (CS-29): the same message routes, as an admin, who sees every thread.
 app.use("/api/admin/messages", requireAuth, requireRole("admin"), auditMiddleware, messageRoutes);
 app.use("/api/admin", requireAuth, auditMiddleware, adminRoutes, adminScheduleRoutes, adminReferralRoutes, adminErasureRoutes);
