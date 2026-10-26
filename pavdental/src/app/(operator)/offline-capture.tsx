@@ -1,50 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { ThemedText, Input, Button, Badge } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
-import { authFetch } from "@/features/auth/auth-api";
-
-export const OFFLINE_VAN_NOTES_QUEUE_KEY = "pav_offline_van_notes_queue";
-
-interface QueuedVanNote {
-  stopId: string;
-  notes: string;
-  queuedAt: string;
-}
-
-async function readOfflineNotesQueue(): Promise<QueuedVanNote[]> {
-  try {
-    const raw =
-      Platform.OS === "web"
-        ? typeof window !== "undefined"
-          ? window.localStorage.getItem(OFFLINE_VAN_NOTES_QUEUE_KEY)
-          : null
-        : await SecureStore.getItemAsync(OFFLINE_VAN_NOTES_QUEUE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeOfflineNotesQueue(queue: QueuedVanNote[]): Promise<void> {
-  try {
-    const serialized = JSON.stringify(queue);
-    if (Platform.OS === "web") {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(OFFLINE_VAN_NOTES_QUEUE_KEY, serialized);
-      }
-    } else {
-      await SecureStore.setItemAsync(OFFLINE_VAN_NOTES_QUEUE_KEY, serialized);
-    }
-  } catch {
-    // Ignore storage write error
-  }
-}
+import { flushOfflineNotes, queueOfflineNote, sendVisitNote } from "@/features/van/offline-notes";
 
 export default function OfflineCaptureScreen() {
   const router = useRouter();
@@ -65,33 +25,13 @@ export default function OfflineCaptureScreen() {
   const [isSavedOffline, setIsSavedOffline] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
 
-  const flushOfflineQueue = useCallback(async () => {
-    const queue = await readOfflineNotesQueue();
-    if (queue.length === 0) {
-      setQueuedCount(0);
-      return;
-    }
-    const remaining: QueuedVanNote[] = [];
-    for (const item of queue) {
-      try {
-        const res = await authFetch(`/api/van/requests/${item.stopId}/phase`, {
-          method: "POST",
-          body: JSON.stringify({ phase: "completed", notes: item.notes }),
-        });
-        if (!res.ok) {
-          remaining.push(item);
-        }
-      } catch {
-        remaining.push(item);
-      }
-    }
-    await writeOfflineNotesQueue(remaining);
-    setQueuedCount(remaining.length);
+  const refreshQueued = useCallback(async () => {
+    setQueuedCount(await flushOfflineNotes());
   }, []);
 
   useEffect(() => {
-    flushOfflineQueue();
-  }, [flushOfflineQueue]);
+    void refreshQueued();
+  }, [refreshQueued]);
 
   const handleSaveAndSync = async () => {
     if (!clinicalNotes.trim()) {
@@ -105,36 +45,42 @@ export default function OfflineCaptureScreen() {
     }
 
     setIsSyncing(true);
+    const notes = clinicalNotes.trim();
+    let res: Response | null = null;
     try {
-      const phaseRes = await authFetch(`/api/van/requests/${params.stopId}/phase`, {
-        method: "POST",
-        body: JSON.stringify({ phase: "completed", notes: clinicalNotes }),
-      });
-
-      if (!phaseRes.ok) {
-        const err = await phaseRes.json().catch(() => ({}));
-        throw new Error((err as any).message || (err as any).error || "Could not complete the visit");
-      }
-
-      await flushOfflineQueue();
-      setIsSavedOffline(true);
-      router.replace("/(operator)/route" as any);
+      res = await sendVisitNote({ stopId: params.stopId, notes });
     } catch {
-      const existing = await readOfflineNotesQueue();
-      const updated: QueuedVanNote[] = [
-        ...existing.filter((item) => item.stopId !== params.stopId),
-        {
-          stopId: params.stopId,
-          notes: clinicalNotes.trim(),
-          queuedAt: new Date().toISOString(),
-        },
-      ];
-      await writeOfflineNotesQueue(updated);
-      setQueuedCount(updated.length);
+      // No connection: queued below.
+    }
+    try {
+      if (res?.ok) {
+        void refreshQueued();
+        setIsSavedOffline(true);
+        router.replace("/(operator)/route" as any);
+        return;
+      }
+      // The server answered but refused (for example the visit was already
+      // completed or cancelled): say so instead of queueing it.
+      if (res && res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 408 && res.status !== 429) {
+        const err = await res.json().catch(() => ({}));
+        Alert.alert(
+          "Couldn't complete the visit",
+          (err as any).message || (err as any).error || "The visit couldn't be completed. Check the stop and try again."
+        );
+        return;
+      }
+      if (!currentUser) return;
+      const count = await queueOfflineNote({
+        stopId: params.stopId,
+        notes,
+        queuedAt: new Date().toISOString(),
+        userId: currentUser.id,
+      });
+      setQueuedCount(count);
       setIsSavedOffline(true);
       Alert.alert(
-        "Saved to Offline Queue",
-        "Unable to reach the server right now. Your clinical notes have been encrypted and queued locally (`pav_offline_van_notes_queue`) and will sync automatically when connectivity returns.",
+        "Saved on this phone",
+        "We couldn't reach the server. Your note is stored securely on this phone and will be sent automatically when you're back online.",
         [{ text: "OK", onPress: () => router.replace("/(operator)/route" as any) }]
       );
     } finally {
@@ -151,12 +97,12 @@ export default function OfflineCaptureScreen() {
             <View style={styles.onlineDot} />
             <ThemedText variant="caption" style={styles.syncText}>
               {queuedCount > 0
-                ? `${queuedCount} note(s) queued offline · Will auto-sync`
-                : "Notes sync automatically when you are online"}
+                ? `${queuedCount} ${queuedCount === 1 ? "note" : "notes"} waiting to send · sends when you're online`
+                : "Notes are sent as soon as you save them"}
             </ThemedText>
           </View>
           <Badge
-            label={queuedCount > 0 ? `${queuedCount} Queued` : "Cloud Connected"}
+            label={queuedCount > 0 ? `${queuedCount} waiting` : "All sent"}
             variant={queuedCount > 0 ? "warning" : "success"}
           />
         </View>
@@ -185,7 +131,7 @@ export default function OfflineCaptureScreen() {
         {isSavedOffline ? (
           <View style={styles.successBanner}>
             <ThemedText variant="caption" style={styles.successText}>
-              ✓ Clinical note saved successfully! Returning to route...
+              ✓ Note saved. Returning to your route…
             </ThemedText>
           </View>
         ) : null}

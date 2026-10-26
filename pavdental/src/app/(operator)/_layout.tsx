@@ -4,9 +4,12 @@ import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
 import { stackScreenOptions } from "@/components";
 import { stopShiftBackgroundLocation } from "@/features/van/background-location";
+import { useOfflineNotesSync } from "@/features/van/offline-notes";
 
 export default function OperatorLayout() {
   const user = useCurrentUser();
+  // MF-05: send visit notes saved offline as soon as the phone is back online.
+  useOfflineNotesSync();
 
   // D-21: signing out ends background location sharing.
   useEffect(() => {
