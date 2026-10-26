@@ -320,6 +320,17 @@ describe("CS-17 Webhook Completeness", () => {
     const res = await sendWebhook(event);
     expect(res.status).toBe(200);
 
+    // BE-15: Duplicate charge.refunded delivery is safely deduplicated
+    const duplicateRes = await sendWebhook(event);
+    expect(duplicateRes.status).toBe(200);
+    const dupBody = (await duplicateRes.json()) as Record<string, unknown>;
+    expect(dupBody).toEqual({ received: true, duplicate: true });
+
+    const refundAuditLogs = await prisma.auditLog.findMany({
+      where: { action: "stripe.charge.refunded", resourceId: appt.id },
+    });
+    expect(refundAuditLogs).toHaveLength(1);
+
     const updatedAppt = await prisma.appointment.findUniqueOrThrow({
       where: { id: appt.id },
     });
@@ -404,10 +415,18 @@ describe("CS-17 Webhook Completeness", () => {
     const res = await sendWebhook(event);
     expect(res.status).toBe(200);
 
-    // Audit log should be written
-    const audit = await prisma.auditLog.findFirst({
+    // BE-15: Duplicate charge.dispute.created delivery is safely deduplicated
+    const duplicateRes = await sendWebhook(event);
+    expect(duplicateRes.status).toBe(200);
+    const dupBody = (await duplicateRes.json()) as Record<string, unknown>;
+    expect(dupBody).toEqual({ received: true, duplicate: true });
+
+    // Audit log should be written exactly once
+    const disputeAudits = await prisma.auditLog.findMany({
       where: { action: "stripe.charge.dispute.created", resourceId: appt.id },
     });
+    expect(disputeAudits).toHaveLength(1);
+    const audit = disputeAudits[0];
     expect(audit).not.toBeNull();
     const meta = audit?.metadata as any;
     expect(meta.disputeId).toBe(disputeId);

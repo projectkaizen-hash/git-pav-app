@@ -3,12 +3,13 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma";
 import { signAccessToken } from "../lib/jwt";
 
-describe("CS-32: Waitlist removal (WL-1, Decision #13)", () => {
+describe("BE-11: Waitlist and DSPT route unmounting (D-20)", () => {
   let server: http.Server;
   let baseUrl: string;
 
   const tag = crypto.randomUUID().slice(0, 8);
   let patientToken = "";
+  let adminToken = "";
   let patientId = "";
 
   beforeAll(async () => {
@@ -24,6 +25,11 @@ describe("CS-32: Waitlist removal (WL-1, Decision #13)", () => {
     });
     patientId = patient.id;
     patientToken = signAccessToken({ sub: patient.id, role: "patient", sessionId: crypto.randomUUID() });
+
+    const admin = await prisma.user.create({
+      data: { email: `dspt-admin-${tag}@example.test`, passwordHash: "x", role: "admin" },
+    });
+    adminToken = signAccessToken({ sub: admin.id, role: "admin", sessionId: crypto.randomUUID() });
   });
 
   afterAll(async () => {
@@ -32,23 +38,13 @@ describe("CS-32: Waitlist removal (WL-1, Decision #13)", () => {
     }
   });
 
-  it("requires authentication for waitlist endpoints", async () => {
-    const res = await fetch(`${baseUrl}/api/waitlist`);
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 410 Gone with informative message on GET /api/waitlist", async () => {
-    const res = await fetch(`${baseUrl}/api/waitlist`, {
+  it("returns 404 Not Found on GET and POST /api/waitlist", async () => {
+    const getRes = await fetch(`${baseUrl}/api/waitlist`, {
       headers: { Authorization: `Bearer ${patientToken}` },
     });
-    expect(res.status).toBe(410);
-    const body = (await res.json()) as any;
-    expect(body.error).toContain("waitlist is no longer available");
-  });
+    expect(getRes.status).toBe(404);
 
-  it("returns 410 Gone on POST /api/waitlist and does not persist any entry", async () => {
-    const preCount = await prisma.waitlistEntry.count({ where: { userId: patientId } });
-    const res = await fetch(`${baseUrl}/api/waitlist`, {
+    const postRes = await fetch(`${baseUrl}/api/waitlist`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${patientToken}`,
@@ -56,22 +52,37 @@ describe("CS-32: Waitlist removal (WL-1, Decision #13)", () => {
       },
       body: JSON.stringify({ preferredDate: "2026-11-01", serviceId: "srv_checkup" }),
     });
-    expect(res.status).toBe(410);
-    const postCount = await prisma.waitlistEntry.count({ where: { userId: patientId } });
-    expect(postCount).toBe(preCount);
+    expect(postRes.status).toBe(404);
   });
 
-  it("returns 410 Gone on arbitrary subpaths (e.g. /api/waitlist/join, /api/waitlist/123)", async () => {
+  it("returns 404 Not Found on arbitrary waitlist subpaths", async () => {
     const res1 = await fetch(`${baseUrl}/api/waitlist/join`, {
       method: "POST",
       headers: { Authorization: `Bearer ${patientToken}` },
     });
-    expect(res1.status).toBe(410);
+    expect(res1.status).toBe(404);
 
     const res2 = await fetch(`${baseUrl}/api/waitlist/some-id`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${patientToken}` },
     });
-    expect(res2.status).toBe(410);
+    expect(res2.status).toBe(404);
+  });
+
+  it("returns 404 Not Found on /api/dspt and /api/dspt/dspt-report", async () => {
+    const res1 = await fetch(`${baseUrl}/api/dspt`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res1.status).toBe(404);
+
+    const res2 = await fetch(`${baseUrl}/api/dspt/dspt-report`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res2.status).toBe(404);
+  });
+
+  it("preserves the waitlist_entries table in the database (D-20)", async () => {
+    const count = await prisma.waitlistEntry.count({ where: { userId: patientId } });
+    expect(count).toBe(0);
   });
 });
