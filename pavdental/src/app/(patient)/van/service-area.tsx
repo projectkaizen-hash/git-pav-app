@@ -283,13 +283,7 @@ export default function VanServiceAreaScreen() {
                 <View style={styles.featRow}>
                   <AppIcon name="check" size={13} color={colors.ink} />
                   <ThemedText variant="caption" style={styles.featItem}>
-                    Full GDC clinical surgical suite on board
-                  </ThemedText>
-                </View>
-                <View style={styles.featRow}>
-                  <AppIcon name="check" size={13} color={colors.ink} />
-                  <ThemedText variant="caption" style={styles.featItem}>
-                    Digital low-dose X-ray & AirFlow hygiene
+                    Treatment by a GDC-registered dentist
                   </ThemedText>
                 </View>
                 <View style={styles.featRow}>

@@ -140,7 +140,7 @@ export default function PatientRecordsScreen() {
             Clinical timeline
           </ThemedText>
           <ThemedText variant="caption" style={styles.summarySub}>
-            Your examinations, prescriptions and X-rays from van, video and practice visits.
+            Your examinations, treatment plans and prescriptions from van, video and practice visits.
           </ThemedText>
         </View>
       </Card>

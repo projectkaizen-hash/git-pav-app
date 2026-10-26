@@ -94,7 +94,7 @@ export default function VanAccessDetailsScreen() {
             Van parking & property access
           </ThemedText>
           <ThemedText variant="subhead" style={styles.subtitle}>
-            Our clinical surgical suite is a Mercedes Sprinter (7.4m length). Please provide arrival and parking details.
+            The dental van is a large van and needs space to park close to you. Tell us how to reach you and where it can park.
           </ThemedText>
         </View>
 

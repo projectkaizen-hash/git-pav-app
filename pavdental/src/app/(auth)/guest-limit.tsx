@@ -31,8 +31,8 @@ export default function GuestLimitScreen() {
         <View style={styles.benefits}>
           {[
             "Track appointments across clinic, van & video",
-            "Instant receipts and treatment documents",
-            "Re-book your last visit in two taps",
+            "Your treatment plans and prescriptions in one place",
+            "Rebook a past treatment from your appointments",
           ].map((line) => (
             <View key={line} style={styles.benefitRow}>
               <AppIcon name="check" size={15} color={colors.ink} />

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText, Card, Button, EmptyState } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { createTreatmentPlan } from "@/features/records/records-api";
+import { useServices } from "@/features/hooks/use-dental-api";
 
 interface PlanItem {
   code: string;
@@ -12,16 +13,8 @@ interface PlanItem {
   toothNumber?: number;
 }
 
-const COMMON_PROCEDURES = [
-  { code: "EXAM01", description: "Comprehensive Dental Examination", costPence: 6500 },
-  { code: "HYG01", description: "Scale & Polish (Hygiene Session)", costPence: 7500 },
-  { code: "XRAY02", description: "Intraoral Bitewing Radiographs (x2)", costPence: 3500 },
-  { code: "FIL01", description: "Composite Restoration (1 surface)", costPence: 12000 },
-  { code: "FIL02", description: "Composite Restoration (2 surfaces)", costPence: 16000 },
-  { code: "CRWN01", description: "Zirconia / Porcelain Crown", costPence: 65000 },
-  { code: "ENDO01", description: "Root Canal Therapy (Molar)", costPence: 55000 },
-  { code: "EXT01", description: "Simple Dental Extraction", costPence: 14000 },
-];
+// D-08: prices come from the practice's own services list, which the owner
+// sets on the dashboard (Team & Services). Anything else is a custom item.
 
 export default function TreatmentPlanBuilderScreen() {
   const router = useRouter();
@@ -32,6 +25,7 @@ export default function TreatmentPlanBuilderScreen() {
   }>();
 
   const patientId = params.patientId || "";
+  const { data: services, isLoading: servicesLoading, isError: servicesError } = useServices();
   const [title, setTitle] = useState("Comprehensive Dental Treatment Plan");
   const [items, setItems] = useState<PlanItem[]>([]);
   const [selectedTooth, setSelectedTooth] = useState<string>("");
@@ -183,15 +177,23 @@ export default function TreatmentPlanBuilderScreen() {
               </View>
 
               <View style={styles.procGrid}>
-                {COMMON_PROCEDURES.map((p) => (
-                  <Button
-                    key={p.code}
-                    title={`+ ${p.description} (£${(p.costPence / 100).toFixed(0)})`}
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => addItem(p)}
-                  />
-                ))}
+                {servicesLoading ? (
+                  <ThemedText variant="caption">Loading the practice's price list…</ThemedText>
+                ) : servicesError || !services?.length ? (
+                  <ThemedText variant="caption">
+                    The practice's price list couldn't be loaded. Add items below with their price.
+                  </ThemedText>
+                ) : (
+                  services.map((svc) => (
+                    <Button
+                      key={svc.id}
+                      title={`+ ${svc.name} (£${(svc.pricePence / 100).toFixed(2).replace(/\.00$/, "")})`}
+                      size="sm"
+                      variant="secondary"
+                      onPress={() => addItem({ code: svc.id, description: svc.name, costPence: svc.pricePence })}
+                    />
+                  ))
+                )}
               </View>
             </Card>
 
