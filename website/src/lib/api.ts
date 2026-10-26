@@ -73,6 +73,17 @@ export interface Product {
   total_stock?: number;
 }
 
+/** A dentist staff chose to show on the team page (edited on the dashboard). */
+export interface PublicDentist {
+  id: string;
+  fullName: string;
+  gdcNumber: string;
+  roleTitle: string | null;
+  specialisms: string[];
+  bio: string | null;
+  photoUrl: string | null;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -253,6 +264,9 @@ export const api = {
         body: JSON.stringify(data),
       }),
     getOrder: (id: string) => apiFetch<any>(`/api/v1/orders/${id}`),
+  },
+  dentists: {
+    list: () => apiFetch<PublicDentist[]>("/api/v1/dentists"),
   },
   blogs: {
     list: () => apiFetch<BlogPost[]>("/api/v1/blogs"),

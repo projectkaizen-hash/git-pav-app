@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { DOCTORS, Doctor } from "./team-data";
+import type { Doctor } from "./team-data";
+import { useDoctors } from "./use-doctors";
 import { TeamCarousel } from "./team-carousel";
 import { DoctorProfile } from "./doctor-profile";
 
 export function TeamPage() {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const { doctors, loading } = useDoctors();
 
   const handleSelectDoctor = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
@@ -33,6 +35,10 @@ export function TeamPage() {
               onBack={handleBackToCarousel}
             />
           </motion.div>
+        ) : doctors.length === 0 ? (
+          <div key="empty" className="mx-auto max-w-xl px-6 py-32 text-center text-muted">
+            {loading ? "Loading our team…" : "Our team page is being updated. Please check back soon."}
+          </div>
         ) : (
           <motion.div
             key="carousel"
@@ -42,7 +48,7 @@ export function TeamPage() {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           >
             <TeamCarousel
-              doctors={DOCTORS}
+              doctors={doctors}
               onSelect={handleSelectDoctor}
             />
           </motion.div>

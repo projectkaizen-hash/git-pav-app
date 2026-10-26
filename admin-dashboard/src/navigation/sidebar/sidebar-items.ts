@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   ReceiptText,
   ShoppingBag,
+  Stethoscope,
   Tag,
   User,
   UserPlus,
@@ -85,6 +86,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Team & Services",
         url: "/dashboard/team",
         icon: UserPlus,
+      },
+      {
+        id: "pav-dentist-profiles",
+        title: "Dentist Profiles",
+        url: "/dashboard/dentist-profiles",
+        icon: Stethoscope,
       },
       {
         id: "pav-inbox",

@@ -98,6 +98,28 @@ export const createClinicianSchema = z.object({
   isTelehealthActive: z.boolean().default(true),
 }).strict();
 
+// The public profile staff edit for the app and the website's team page.
+// Photos are an https link or a small uploaded image (the dashboard sends a
+// data URI when no image host is set up).
+const profilePhoto = z.union([
+  z.string().url().max(2000).refine((u) => u.startsWith("https://"), "Photo link must start with https://"),
+  z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, "Photo must be a PNG, JPEG or WebP image"),
+]);
+
+export const clinicianProfileSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  gdcNumber: z.string().trim().regex(/^\d{6}$/, "GDC number must be exactly 6 digits").optional(),
+  roleTitle: z.string().trim().min(2).max(100).optional(),
+  specialisms: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
+  bio: z.string().trim().max(1500).nullable().optional(),
+  photoUrl: profilePhoto.nullable().optional(),
+  showOnWebsite: z.boolean().optional(),
+}).strict();
+
+export const websiteOrderSchema = z.object({
+  clinicianIds: z.array(uuid).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Each clinician once"),
+}).strict();
+
 export const createOperatorSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8).max(128).optional(),

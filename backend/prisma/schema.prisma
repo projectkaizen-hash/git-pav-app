@@ -180,6 +180,9 @@ model ClinicianProfile {
   bio                String?
   photoUrl           String?                 @map("photo_url")
   isTelehealthActive Boolean                 @default(true) @map("is_telehealth_active")
+  /// Listed on the website's team page, in websiteOrder (lowest first).
+  showOnWebsite      Boolean                 @default(false) @map("show_on_website")
+  websiteOrder       Int                     @default(0) @map("website_order")
   createdAt          DateTime                @default(now()) @map("created_at")
   updatedAt          DateTime                @updatedAt @map("updated_at")
   appointments       Appointment[]
@@ -192,6 +195,7 @@ model ClinicianProfile {
   assignedThreads    MessageThread[]         @relation("ClinicianAssignedThreads")
 
   @@index([isTelehealthActive])
+  @@index([showOnWebsite, websiteOrder])
   @@map("clinician_profiles")
 }
 

@@ -1,5 +1,7 @@
-// Only facts the practice has confirmed go here (V-03). Leave a field out
-// rather than guess it: the profile hides anything that isn't set.
+// The team page lists the dentists staff switch on in the dashboard's Dentist
+// profiles page (the same profiles the app shows). DOCTORS below is only the
+// fallback for when that list can't be loaded. Leave a field out rather than
+// guess it: the profile hides anything that isn't set.
 export interface Doctor {
   id: string;
   name: string;
@@ -50,3 +52,32 @@ export const DOCTORS: Doctor[] = [
     bio: "Dr Cosimo Meucci is Pav Dental’s visiting implantologist, providing patients with advanced dental implant care and surgical expertise. With extensive experience in implant placement, bone grafting, and full-mouth rehabilitation, Dr Meucci combines surgical precision with a patient-focused approach to achieve long-lasting, natural results.",
   },
 ];
+
+/** Shape of a dentist from the dashboard's public list. */
+export interface DentistRow {
+  id: string;
+  fullName: string;
+  gdcNumber: string;
+  roleTitle: string | null;
+  specialisms: string[];
+  bio: string | null;
+  photoUrl: string | null;
+}
+
+/** "Dr Hassan Bhojani" → first "Hassan", last "Bhojani". */
+export function toDoctor(row: DentistRow): Doctor {
+  const parts = row.fullName.trim().replace(/^Dr\.?\s+/i, "").split(/\s+/);
+  const firstName = parts[0] ?? "";
+  const lastName = parts.slice(1).join(" ");
+  return {
+    id: row.id,
+    name: row.fullName.trim(),
+    firstName,
+    lastName,
+    role: row.roleTitle?.trim() || "Dentist",
+    gdcNumber: row.gdcNumber,
+    tags: row.specialisms.map((s) => s.toUpperCase()),
+    photo: row.photoUrl || PHOTO_PENDING,
+    bio: row.bio ?? "",
+  };
+}
