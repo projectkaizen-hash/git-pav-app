@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { ThemedText, Card, ListRow, AppIcon, Button, type AppIconName } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { useCurrentUser } from "@/features/auth/auth-store";
@@ -112,7 +112,7 @@ export default function PatientRecordsScreen() {
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: isActive }}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                safeHaptics.impactAsync("light").catch(() => {});
                 setActiveTab(tab.key as RecordsTab);
               }}
               style={styles.segmentTab}

@@ -5,7 +5,7 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, spacing, sizes } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
@@ -75,7 +75,7 @@ export function ListRow({
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        safeHaptics.impactAsync("light").catch(() => {});
         onPress();
       }}
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}

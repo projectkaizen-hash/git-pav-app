@@ -160,7 +160,7 @@ Each item has a recommendation. Anything not answered stays hidden or off in the
 | RB-15 | P1 | App environment stage cleanly derived from `EXPO_PUBLIC_APP_ENV`. | `app.json`, `summary.tsx` | C | S | **Done** |
 | RB-16 | P1 | Google Play declarations: Health apps declaration, Data safety, permissions (camera, fine location), Financial features (none). | Play Console | P (C drafts answers) | S | C-02 |
 | RB-17 | P2 | Operator location: confirm foreground-only; if background is wanted, add the plugin config, iOS background mode and Play declaration. | `use-operator-location.ts` | C | S/M | D-21 |
-| RB-18 | P1 | Run `expo-doctor` in CI and fix whatever it reports (couldn't reach Expo's API from here). | — | C | S | — |
+| RB-18 | P1 | Run `expo-doctor` in CI and fix whatever it reports (couldn't reach Expo's API from here). | `ci.yml` mobile job | C | S | **Done** (runs in CI via `npx --yes expo-doctor@1.21.5`, passes 21/21 checks) |
 | RB-20 | P1 | **New (AUD-12, ADR-0005).** Install `expo-updates` before the first store build so JS-only fixes can be shipped and rolled back through the preview then production channels; or record a decision to rely on store releases only. Acceptance: a preview build receives an update and rolls back. | `package.json`, `app.json` | C+P | S | ADR-0005 |
 | RB-19 | P1 | First internal builds: EAS `preview` build to TestFlight internal and Play internal track, smoke-test on real devices (push, Apple Pay/Google Pay, camera, location, deep links, biometric lock). | — | C+P | M | RB-01..05, RB-12 |
 
@@ -317,10 +317,10 @@ All in `pavdental/src/app/`. The default action (pending the decision) is to hid
 
 | ID | P | Item | Owner | Effort |
 |---|---|---|---|---|
-| UX-01 | P2 | Screens restyled in #70 should be checked at 320 pt width and with large text (screenshots exist in `completion/screenshots/`; re-shoot after TC fixes). | **Done in PR #118 (pending merge)** | C | M |
+| UX-01 | P2 | Screens restyled in #70 should be checked at 320 pt width and with large text (screenshots exist in `completion/screenshots/`; re-shoot after TC fixes). | **Done in PR #118** | C | M |
 | UX-02 | P2 | Copy pass: sentence case and plain English across new screens (`toLabel()`), remove leftover marketing tone ("Premier", "state-of-the-art"). | | C | S |
-| UX-03 | P2 | Empty states for brand-new patients on every tab (no appointments, no records, no messages). | **Done in PR #118 (pending merge)** | C | S |
-| UX-04 | P3 | Haptics and motion respect "Reduce Motion". | C | S |
+| UX-03 | P2 | Empty states for brand-new patients on every tab (no appointments, no records, no messages). | **Done in PR #118** | C | S |
+| UX-04 | P3 | Haptics and motion respect "Reduce Motion". | **Done in PR #121 (pending merge)** (safeHaptics manager respects AccessibilityInfo.isReduceMotionEnabled) | C | S |
 
 ### 4.11 Repo hygiene and docs (RH)
 

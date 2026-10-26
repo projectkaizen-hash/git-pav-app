@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, radius, sizes } from "@/theme";
 import { AppIcon, type AppIconName } from "./app-icon";
 
@@ -41,7 +41,7 @@ export function IconButton({
   const handlePress = () => {
     if (disabled) return;
     if (haptic) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      safeHaptics.impactAsync("light").catch(() => {});
     }
     onPress?.();
   };

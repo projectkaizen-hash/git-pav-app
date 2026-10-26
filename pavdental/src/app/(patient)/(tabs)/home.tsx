@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import {
   ThemedText,
   Card,
@@ -124,7 +124,7 @@ export default function PatientHomeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Rewards & Perks"
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            safeHaptics.impactAsync("light").catch(() => {});
             router.push("/(patient)/perks" as never);
           }}
           style={({ pressed }) => [styles.pointsPill, pressed && styles.pressed]}
@@ -246,7 +246,7 @@ export default function PatientHomeScreen() {
               accessibilityLabel={cat.label}
               accessibilityState={{ selected: isActive }}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                safeHaptics.impactAsync("light").catch(() => {});
                 setSelectedCategory(cat.key);
               }}
               style={({ pressed }) => [
@@ -369,7 +369,7 @@ export default function PatientHomeScreen() {
         accessibilityRole="button"
         accessibilityLabel="Emergency dental triage"
         onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          safeHaptics.impactAsync("medium").catch(() => {});
           setShowEmergencyModal(true);
         }}
         style={({ pressed }) => [pressed && { opacity: 0.85 }]}

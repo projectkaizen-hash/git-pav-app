@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import {
   ThemedText,
   Card,
@@ -89,7 +89,7 @@ export default function MessagesScreen() {
     const body = replyText.trim();
     try {
       await replyMutation.mutateAsync({ threadId: replyTo.id, body });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      safeHaptics.notificationAsync("success").catch(() => {});
       setToast("Reply sent to your care team");
       setReplyTo(null);
       setReplyText("");
@@ -106,7 +106,7 @@ export default function MessagesScreen() {
         body: newBody.trim(),
         recipientType: newRecipientType,
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      safeHaptics.notificationAsync("success").catch(() => {});
       setToast(
         newRecipientType === "care_team"
           ? "Message sent to your care team"
@@ -143,7 +143,7 @@ export default function MessagesScreen() {
           accessibilityRole="button"
           accessibilityLabel="Check urgent dental symptoms"
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            safeHaptics.impactAsync("medium").catch(() => {});
             setShowTriage(true);
           }}
           style={({ pressed }) => [styles.triageBanner, pressed && { opacity: 0.9 }]}

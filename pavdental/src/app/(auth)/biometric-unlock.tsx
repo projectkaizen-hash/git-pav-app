@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { ThemedText, Button, AppIcon, Card } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import { authApi } from "@/features/auth/auth-api";
@@ -31,16 +31,16 @@ export default function BiometricUnlockScreen() {
   const authenticate = async () => {
     try {
       setError(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      safeHaptics.impactAsync("light").catch(() => {});
       const success = await useAppLockStore.getState().unlock();
 
       if (success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        safeHaptics.notificationAsync("success").catch(() => {});
         setBiometricUnlocked(true);
         const role = user?.role || "patient";
         router.replace(getMobilePortalPath(role) as never);
       } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        safeHaptics.notificationAsync("warning").catch(() => {});
         setError("Authentication was canceled or not recognized.");
       }
     } catch {

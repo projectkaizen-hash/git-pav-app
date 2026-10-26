@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import {
   ThemedText,
   Input,
@@ -101,7 +101,7 @@ export default function ServiceCatalogScreen() {
             accessibilityRole="button"
             accessibilityLabel="Search treatments"
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              safeHaptics.impactAsync("light").catch(() => {});
               setShowSearch((prev) => !prev);
             }}
             style={styles.searchIconBtn}
@@ -137,7 +137,7 @@ export default function ServiceCatalogScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  safeHaptics.impactAsync("light").catch(() => {});
                   setSelectedCategory(cat.value);
                 }}
                 style={[

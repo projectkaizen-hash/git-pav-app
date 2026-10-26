@@ -5,7 +5,7 @@ import {
   ViewStyle,
   View,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { safeHaptics } from "@/lib/haptics";
 import { colors, spacing, radius, sizes } from "@/theme";
 import { ThemedText } from "./themed-text";
 import { AppIcon } from "./app-icon";
@@ -110,7 +110,7 @@ export function Button({
   const handlePress = () => {
     if (isDisabled) return;
     if (haptic) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      safeHaptics.impactAsync("light").catch(() => {});
     }
     onPress?.();
   };
