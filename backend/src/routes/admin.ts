@@ -175,10 +175,14 @@ router.get("/appointments", requireAuth, requireRole("admin"), validateQuery(adm
   const where: Prisma.AppointmentWhereInput = {};
   if (status) where.status = status;
   if (channel) where.channel = channel;
-  if (from || to) {
+  // The schema has already made these strings; the typeof checks say so to
+  // the reader (and to CodeQL) where the values are used.
+  const fromDay = typeof from === "string" ? from : undefined;
+  const toDay = typeof to === "string" ? to : undefined;
+  if (fromDay || toDay) {
     where.startTimeUtc = {
-      ...(from ? { gte: londonTimeToUtc(from, 0) } : {}),
-      ...(to ? { lt: londonTimeToUtc(to, 1440) } : {}),
+      ...(fromDay ? { gte: londonTimeToUtc(fromDay, 0) } : {}),
+      ...(toDay ? { lt: londonTimeToUtc(toDay, 1440) } : {}),
     };
   }
 
