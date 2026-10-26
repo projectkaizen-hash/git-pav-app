@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 const resourceId = z.string().trim().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const bookingChannel = z.enum(["clinic", "van", "video"]);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
   const date = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }, "Invalid calendar date");
 const isoDateTime = z.string().datetime({ offset: true });
-const compactJsonObject = z.record(z.unknown()).refine(
+const compactJsonObject = z.record(z.string(), z.unknown()).refine(
   (value) => JSON.stringify(value).length <= 16_384,
   "Object is too large"
 );

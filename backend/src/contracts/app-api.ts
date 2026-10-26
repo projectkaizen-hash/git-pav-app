@@ -30,7 +30,7 @@ export const serviceSchema = z.object({
 });
 
 export const clinicSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   address: z.string(),
   postcode: z.string(),
@@ -46,7 +46,7 @@ export const clinicSchema = z.object({
 });
 
 export const clinicianSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   fullName: z.string(),
   gdcNumber: z.string(),
   roleTitle: z.string(),

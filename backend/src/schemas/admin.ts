@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const role = z.enum(["patient", "clinician", "operator", "admin"]);
 const appointmentStatus = z.enum(["draft_hold", "confirmed", "in_progress", "completed", "cancelled", "no_show"]);
 const channel = z.enum(["clinic", "van", "video"]);
@@ -48,7 +48,7 @@ const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
 }, "Invalid calendar date");
 
 const block = <T extends z.ZodRawShape>(shape: T, start: string, end: string) =>
-  z.object(shape).strict().refine((b: any) => b[start] < b[end], `${start} must be before ${end}`);
+  z.object(shape).strict().refine((b: Record<string, unknown>) => (b[start] as number) < (b[end] as number), `${start} must be before ${end}`);
 
 export const clinicHoursSchema = z.object({
   hours: z
@@ -168,12 +168,21 @@ export const createServiceSchema = z.object({
 // BE-10: staff fix details or retire a clinic, van or service. Only the
 // fields sent change; at least one must be sent. Retiring (isActive false)
 // hides it from new bookings and keeps its history.
+function partialWithoutDefaults<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
+  const shape = schema.shape;
+  const newShape: Record<string, z.ZodTypeAny> = {};
+  for (const [k, v] of Object.entries(shape)) {
+    const unwrapped = v instanceof z.ZodDefault ? v.removeDefault() : v;
+    newShape[k] = (unwrapped as z.ZodTypeAny).optional();
+  }
+  return z.object(newShape).strict();
+}
+
 const nonEmpty = (value: Record<string, unknown>) => Object.keys(value).length > 0;
 const atLeastOneField = { message: "Send at least one field to change" };
-export const updateClinicSchema = createClinicSchema.partial().refine(nonEmpty, atLeastOneField);
-export const updateVanSchema = createVanSchema.partial().refine(nonEmpty, atLeastOneField);
-export const updateServiceSchema = createServiceSchema
-  .partial()
+export const updateClinicSchema = partialWithoutDefaults(createClinicSchema).refine(nonEmpty, atLeastOneField);
+export const updateVanSchema = partialWithoutDefaults(createVanSchema).refine(nonEmpty, atLeastOneField);
+export const updateServiceSchema = partialWithoutDefaults(createServiceSchema)
   .extend({ supportedChannels: z.array(z.enum(["clinic", "van", "video"])).min(1).optional() })
   .refine(nonEmpty, atLeastOneField);
 /** Service ids are slugs, not uuids (seeded "srv_checkup", or "srv_" plus 8 hex characters). */
@@ -181,7 +190,7 @@ export const serviceIdParamsSchema = z.object({ id: z.string().regex(/^[A-Za-z0-
 
 export const assignVanPolygonSchema = z.object({
   sectorName: z.string().trim().min(2).max(100),
-  polygonGeoJson: z.record(z.unknown()).optional(),
+  polygonGeoJson: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 export const assignVanOperatorSchema = z.object({

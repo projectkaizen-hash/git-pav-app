@@ -73,7 +73,7 @@ async function visibleThreadsWhere(req: AuthRequest): Promise<Prisma.MessageThre
   return { patientUserId: sub };
 }
 
-const threadIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const threadIdParamsSchema = z.object({ id: z.string().guid() }).strict();
 // Newest threads first, a page at a time (CS-09).
 const listThreadsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -86,7 +86,7 @@ const createThreadSchema = z
     subject: z.string().trim().min(1).max(255),
     body: z.string().trim().min(1).max(4000),
     recipientType: z.enum(["practice", "care_team", "clinician"]).optional(),
-    recipientClinicianId: z.string().uuid().optional(),
+    recipientClinicianId: z.string().guid().optional(),
     recipientName: z.string().trim().min(1).max(150).optional(),
   })
   .strict();

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const postcode = z.string().trim().transform(val => {
   // Normalize postcode format: ensure space in the right place
   const cleaned = val.toUpperCase().replace(/\s/g, '');

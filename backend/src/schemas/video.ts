@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 
 // A room always belongs to one video appointment.
 export const createVideoRoomSchema = z.object({

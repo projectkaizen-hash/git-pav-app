@@ -25,16 +25,18 @@ export const lawfulBasisTypes = z.enum([
   "legitimate_interests",
 ]);
 
+const ipAddress = z.union([z.ipv4(), z.ipv6()]);
+
 export const grantConsentSchema = z.object({
   consentType: consentTypes,
   lawfulBasis: lawfulBasisTypes,
-  ipAddress: z.string().ip().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  ipAddress: ipAddress.optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 export const withdrawConsentSchema = z.object({
   consentType: consentTypes,
-  ipAddress: z.string().ip().optional(),
+  ipAddress: ipAddress.optional(),
 }).strict();
 
 export const consentHistoryQuerySchema = z.object({
@@ -50,10 +52,10 @@ export const consentHistoryQuerySchema = z.object({
 export const dataAccessRequestSchema = z.object({
   reason: z.string().trim().min(1).max(500).optional(),
   format: z.enum(["json", "csv"]).optional(),
-  ipAddress: z.string().ip().optional(),
+  ipAddress: ipAddress.optional(),
 }).strict();
 
 export const dataDeletionRequestSchema = z.object({
   reason: z.string().trim().min(1).max(500).optional(),
-  ipAddress: z.string().ip().optional(),
+  ipAddress: ipAddress.optional(),
 }).strict();

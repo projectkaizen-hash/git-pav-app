@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const name = z.string().trim().min(1).max(100);
 const phone = z.string().trim().min(7).max(32);
 const postcode = z.string().trim().regex(/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/);
@@ -20,7 +20,7 @@ export const updatePatientProfileSchema = z.object({
   phoneOtp: z.string().trim().min(4).max(10).optional(),
   emergencyContactName: name.optional(),
   emergencyContactPhone: phone.optional(),
-  medicalHistory: z.record(z.unknown()).optional(),
+  medicalHistory: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 export const requestPhoneChangeSchema = z.object({

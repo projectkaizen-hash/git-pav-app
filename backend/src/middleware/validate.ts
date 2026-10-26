@@ -20,7 +20,7 @@ function validate<T>(location: "body" | "query" | "params", schema: ZodType<T>):
     if (!result.success) {
       return res.status(400).json({
         error: `Invalid request ${location}`,
-        issues: result.error.errors.map((e) => ({
+        issues: result.error.issues.map((e) => ({
           path: e.path.join("."),
           message: e.message,
         })),
