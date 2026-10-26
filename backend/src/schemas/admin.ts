@@ -12,9 +12,14 @@ export const adminUsersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 }).strict();
 
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+
 export const adminAppointmentsQuerySchema = z.object({
   status: appointmentStatus.optional(),
   channel: channel.optional(),
+  /** UK calendar days, both included. */
+  from: isoDay.optional(),
+  to: isoDay.optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 }).strict();
@@ -26,6 +31,9 @@ export const updateAppointmentStatusSchema = z.object({
 }).strict();
 
 export const adminAuditLogsQuerySchema = z.object({
+  /** Matches the start of the action name, e.g. "admin." or "admin.appointment". */
+  action: z.string().trim().regex(/^[a-z_.]{1,80}$/).optional(),
+  resourceId: z.string().trim().min(1).max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 }).strict();

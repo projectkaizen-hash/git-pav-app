@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/middleware";
 import { pavApi } from "@/lib/pav-api.server";
 
-// Passes the dashboard's opening hours, rota, erasure, team, dentist profile, inbox and referral voucher screens through to
+// Passes the dashboard's opening hours, rota, erasure, team, dentist profile, inbox, referral voucher, app
+// appointment and audit log screens through to
 // the app backend's /api/admin endpoints, as the signed-in staff member. Only the
 // routes below are forwarded; anything else is a 404.
 const SEG = "[A-Za-z0-9_-]{1,64}";
@@ -19,6 +20,8 @@ const ALLOWED: Record<string, RegExp[]> = {
     /^messages$/,
     /^users$/,
     new RegExp(`^referral-vouchers/${SEG}$`),
+    /^appointments$/,
+    /^audit-logs$/,
   ],
   PATCH: [
     new RegExp(`^messages/${SEG}/read$`),
@@ -26,6 +29,7 @@ const ALLOWED: Record<string, RegExp[]> = {
     new RegExp(`^services/${SEG}$`),
     new RegExp(`^clinics/${SEG}$`),
     new RegExp(`^vans/${SEG}$`),
+    new RegExp(`^appointments/${SEG}/status$`),
   ],
   PUT: [
     new RegExp(`^clinics/${SEG}/hours$`),

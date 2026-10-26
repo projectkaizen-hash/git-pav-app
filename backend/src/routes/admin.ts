@@ -1,11 +1,12 @@
 import crypto from "crypto";
 import argon2 from "argon2";
 import Stripe from "stripe";
-import { Prisma } from "@prisma/client";
+import { AppointmentStatus, CareChannel, Prisma } from "@prisma/client";
 import { Router, Response } from "express";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
 import { awardVisitPoints } from "../lib/rewards";
+import { londonTimeToUtc } from "../lib/availability";
 import { cancelAppointmentReminders } from "../lib/background-jobs";
 import { createAuditLogWithIntegrity } from "../lib/audit-integrity";
 import { passwordResetService } from "../lib/otp-service";
@@ -147,35 +148,75 @@ router.get("/users", requireAuth, requireRole("admin"), validateQuery(adminUsers
   return res.json({ users: formattedUsers, total, page, limit });
 });
 
+// Status changes staff may make by hand (CS-49).
+const ALLOWED_ADMIN_STATUS_TRANSITIONS: Record<string, string[]> = {
+  draft_hold: ["cancelled"],
+  confirmed: ["in_progress", "completed", "no_show", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  no_show: [],
+  completed: [],
+  cancelled: [],
+};
+
 // ─── GET /api/admin/appointments ──────────────────────────────────────────────
-// List all appointments across clinic, van, and video channels
+// List all appointments across clinic, van, and video channels, with the names
+// staff need to recognise a visit and the status changes allowed from here.
 router.get("/appointments", requireAuth, requireRole("admin"), validateQuery(adminAppointmentsQuerySchema), async (req: AuthRequest, res: Response) => {
-  const { status, channel, page, limit } = req.query as unknown as { status?: string; channel?: string; page: number; limit: number };
+  const { status, channel, from, to, page, limit } = req.query as unknown as {
+    status?: AppointmentStatus;
+    channel?: CareChannel;
+    from?: string;
+    to?: string;
+    page: number;
+    limit: number;
+  };
   const skip = (page - 1) * limit;
 
-  const whereClause: any = {};
-  if (status) whereClause.status = status;
-  if (channel) whereClause.channel = channel;
+  const where: Prisma.AppointmentWhereInput = {};
+  if (status) where.status = status;
+  if (channel) where.channel = channel;
+  if (from || to) {
+    where.startTimeUtc = {
+      ...(from ? { gte: londonTimeToUtc(from, 0) } : {}),
+      ...(to ? { lt: londonTimeToUtc(to, 1440) } : {}),
+    };
+  }
 
   const [appointments, total] = await Promise.all([
     prisma.appointment.findMany({
-      where: whereClause,
+      where,
       orderBy: { startTimeUtc: "desc" },
       take: limit,
       skip,
+      include: {
+        patient: { select: { firstName: true, lastName: true, erasedAt: true } },
+        dependant: { select: { firstName: true } },
+        clinician: { select: { fullName: true } },
+        service: { select: { name: true } },
+        clinic: { select: { name: true } },
+        van: { select: { name: true } },
+      },
     }),
-    prisma.appointment.count({ where: whereClause }),
+    prisma.appointment.count({ where }),
   ]);
 
   const formatted = appointments.map((a) => ({
     id: a.id,
     patientId: a.patientId,
+    patientName: a.patient.erasedAt ? "Erased patient" : `${a.patient.firstName} ${a.patient.lastName}`.trim(),
+    dependantName: a.dependant?.firstName ?? null,
     clinicianId: a.clinicianId,
+    clinicianName: a.clinician?.fullName ?? null,
     serviceId: a.serviceId,
+    serviceName: a.service.name,
     channel: a.channel,
+    placeName: a.clinic?.name ?? a.van?.name ?? null,
     startTimeUtc: a.startTimeUtc,
     endTimeUtc: a.endTimeUtc,
     status: a.status,
+    allowedStatuses: ALLOWED_ADMIN_STATUS_TRANSITIONS[a.status] ?? [],
+    totalPricePence: a.totalPricePence,
+    depositPaidPence: a.depositPaidPence,
     totalPriceGbp: (a.totalPricePence / 100).toFixed(2),
     depositPaidGbp: (a.depositPaidPence / 100).toFixed(2),
     stripePaymentId: a.stripePaymentId,
@@ -186,15 +227,6 @@ router.get("/appointments", requireAuth, requireRole("admin"), validateQuery(adm
 
 // ─── PATCH /api/admin/appointments/:id/status ─────────────────────────────────
 // Admin status override (CS-49: allowed transitions only, cancels through refund path, audit from and to)
-const ALLOWED_ADMIN_STATUS_TRANSITIONS: Record<string, string[]> = {
-  draft_hold: ["cancelled"],
-  confirmed: ["in_progress", "completed", "no_show", "cancelled"],
-  in_progress: ["completed", "cancelled"],
-  no_show: [],
-  completed: [],
-  cancelled: [],
-};
-
 router.patch("/appointments/:id/status", requireAuth, requireRole("admin"), validateParams(appointmentIdParamsSchema), validateBody(updateAppointmentStatusSchema), async (req: AuthRequest, res: Response) => {
   const appointmentId = String(req.params.id);
   const { status } = req.body;
@@ -683,22 +715,37 @@ router.patch("/services/:id", requireAuth, requireRole("admin"), validateParams(
 });
 
 // ─── GET /api/admin/audit-logs ────────────────────────────────────────────────
+// Newest first. Filter by the start of the action name or by the record it is
+// about. Hashes and session ids stay out: staff need who, what and when.
 router.get("/audit-logs", requireAuth, requireRole("admin"), validateQuery(adminAuditLogsQuerySchema), async (req: AuthRequest, res: Response) => {
-  const { page, limit } = req.query as unknown as { page: number; limit: number };
+  const { action, resourceId, page, limit } = req.query as unknown as { action?: string; resourceId?: string; page: number; limit: number };
   const skip = (page - 1) * limit;
+  const where: Prisma.AuditLogWhereInput = {
+    ...(action ? { action: { startsWith: action } } : {}),
+    ...(resourceId ? { resourceId } : {}),
+  };
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
-      orderBy: { timestampUtc: "desc" },
+      where,
+      orderBy: [{ timestampUtc: "desc" }, { id: "desc" }],
       take: limit,
       skip,
+      include: { actor: { select: { email: true, role: true } } },
     }),
-    prisma.auditLog.count(),
+    prisma.auditLog.count({ where }),
   ]);
 
   const formattedLogs = logs.map((log) => ({
-    ...log,
     id: log.id.toString(),
+    action: log.action,
+    actorId: log.actorId,
+    actorEmail: log.actor?.email ?? null,
+    actorRole: log.actor?.role ?? null,
+    resourceId: log.resourceId,
+    metadata: log.metadata,
+    timestampUtc: log.timestampUtc,
+    archived: log.archived,
   }));
 
   return res.json({ logs: formattedLogs, total, page, limit });
