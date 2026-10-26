@@ -71,7 +71,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 | D-11 | Website shop accounts | Guest checkout plus optional email login; remove Google sign-in | Default (accepted) |
 | D-12 | Website hosting | Vercel | Default (accepted) |
 | D-13 | NHS work | None: private only; remove NHS and DSPT claims | Default (accepted) |
-| D-14 | Block screenshots of medical records | Yes | Default (accepted) |
+| D-14 | Block screenshots of medical records | Yes. Screenshots and screen recording are blocked on the patient's records and medical history and on every clinician screen; iOS blurs them in the app switcher, Android hides them in recent apps. Native builds only. | Built (app) |
 | D-15 | App on the web | No, mobile only | Default (accepted) |
 | D-16 | Minimum age | 16+; under-16s added by a guardian | Default (accepted) |
 | D-18 | Medical device status of triage | Get regulatory advice; until then triage shows general safety advice only | Default (accepted) |
@@ -83,7 +83,7 @@ The owner's answers to the questions in section 3 of `06-completion-plan.md`, se
 
 ### Accounts and data the owner will supply
 
-C-01 to C-11 (Apple, Google Play, Expo, Stripe live, Daily, Postmark, Twilio, Sentry, Mapbox, hosting billing, DNS): owner will set them up. C-12 logo and colours: owner will send. C-13 practice data: owner will send a file (current site: https://www.pavdental.com/). C-14 company details: Pav Dental, 786 Leeds Road, Bradford, BD3 9TY; company number, ICO and CQC numbers still to come. C-15 analytics: Google Analytics 4, ID G-KZVKDLY449, confirmed 25 Oct. Website only, loaded after cookie consent; not in the app.
+C-01 to C-11 (Apple, Google Play, Expo, Stripe live, Daily, Postmark, Twilio, Sentry, Mapbox, hosting billing, DNS): owner will set them up when going to production (26 Oct: don't chase them before then). C-12 logo and colours: owner will send. C-13 practice data: owner will send a file (current site: https://www.pavdental.com/). C-14 company details: Pav Dental, 786 Leeds Road, Bradford, BD3 9TY; company number, ICO and CQC numbers still to come. C-15 analytics: Google Analytics 4, ID G-KZVKDLY449, confirmed 25 Oct. Website only, loaded after cookie consent; not in the app.
 
 ### Earlier entries this changes
 

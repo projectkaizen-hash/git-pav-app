@@ -2,8 +2,11 @@ import { Redirect, Stack } from "expo-router";
 import { useCurrentUser } from "@/features/auth/auth-store";
 import { getMobilePortalPath, isAllowedInPortal } from "@/features/auth/auth-routing";
 import { stackScreenOptions } from "@/components";
+import { useProtectedScreen } from "@/features/screen-security/screen-security";
 
 export default function ClinicianLayout() {
+  // D-14: every clinician screen shows patient records.
+  useProtectedScreen("clinician");
   const user = useCurrentUser();
 
   if (!isAllowedInPortal(user?.role, "clinician")) {

@@ -7,8 +7,10 @@ import { useCurrentUser } from "@/features/auth/auth-store";
 import { usePatientProfile, useUpdateProfileMutation } from "@/features/hooks/use-dental-api";
 import { MedicalHistoryForm, MedicalHistoryFormData } from "@/components/forms/MedicalHistoryForm";
 import { colors, spacing, radius } from "@/theme";
+import { useProtectedScreen } from "@/features/screen-security/screen-security";
 
 export default function MedicalHistoryScreen() {
+  useProtectedScreen("medical-history");
   const router = useRouter();
   const user = useCurrentUser();
   const userId = user?.id || "";
