@@ -9,20 +9,16 @@ import { useClinicians } from "@/features/hooks/use-dental-api";
 
 export default function ClinicianPickerScreen() {
   const router = useRouter();
-  const { setClinician, clinic } = useBookingStore();
+  const { setClinician } = useBookingStore();
 
   const { data: apiClinicians, isLoading, isError, refetch } = useClinicians();
-  const clinicians = (apiClinicians ?? []) as Clinician[];
+  const clinicians: Clinician[] = apiClinicians ?? [];
 
   const handleSelectClinician = (clinician: Clinician | null) => {
     setClinician(clinician);
     router.push("/(patient)/booking/slot-picker" as any);
   };
 
-  const eligibleClinicians = clinicians.filter((doc) => {
-    if (!clinic) return true;
-    return doc.clinicIds ? doc.clinicIds.includes(clinic.id) : true;
-  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -75,7 +71,9 @@ export default function ClinicianPickerScreen() {
       <QueryState
         isLoading={isLoading}
         isError={isError}
-        data={apiClinicians === undefined ? undefined : eligibleClinicians}
+        // Everyone is listed; the time picker then offers only the times they
+        // work at the chosen clinic (slots come from each clinician's rota).
+        data={apiClinicians === undefined ? undefined : clinicians}
         onRetry={() => refetch()}
         errorMessage="We couldn't load the clinicians. You can still choose Any Practitioner above, or try again."
         emptyHeading="No specific clinicians listed"
