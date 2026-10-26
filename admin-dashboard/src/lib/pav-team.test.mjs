@@ -2,7 +2,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { clinicPayload, clinicianPayload, operatorPayload, servicePayload, toPence, vanPayload } from "./pav-team.ts";
+import {
+  activeToggleMessage,
+  clinicPayload,
+  clinicianPayload,
+  operatorPayload,
+  servicePayload,
+  toPence,
+  toPoundsInput,
+  vanPayload,
+} from "./pav-team.ts";
 
 describe("toPence", () => {
   it("reads pounds with up to two decimals", () => {
@@ -100,5 +109,22 @@ describe("clinicPayload", () => {
     assert.equal(clinicPayload({ ...form, postcode: " " }).ok, false);
     assert.equal(clinicPayload({ ...form, city: " " }).ok, false);
     assert.equal(clinicPayload({ ...form, phone: "123" }).ok, false);
+  });
+});
+
+describe("toPoundsInput", () => {
+  it("round-trips with toPence", () => {
+    for (const pence of [0, 6500, 6550, 6505, 1]) assert.equal(toPence(toPoundsInput(pence)), pence);
+    assert.equal(toPoundsInput(6500), "65");
+    assert.equal(toPoundsInput(6550), "65.50");
+  });
+});
+
+describe("activeToggleMessage", () => {
+  it("says how many upcoming bookings still use a retired item", () => {
+    assert.match(activeToggleMessage("Check-up", false, 0), /No upcoming bookings/);
+    assert.match(activeToggleMessage("Check-up", false, 1), /1 upcoming booking still uses it/);
+    assert.match(activeToggleMessage("Check-up", false, 3), /3 upcoming bookings still use it/);
+    assert.match(activeToggleMessage("Check-up", true, 3), /back on/);
   });
 });

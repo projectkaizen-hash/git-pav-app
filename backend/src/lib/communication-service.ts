@@ -305,6 +305,17 @@ export class CommunicationService {
         const tickets = resJson.data || [];
         allTickets.push(...tickets);
 
+        // Expo only accepts a message here; its receipt, fetched later by
+        // checkPushReceipts, says whether Apple or Google delivered it (BE-09).
+        const accepted = chunk.flatMap((message, j) =>
+          tickets[j]?.status === "ok" && typeof tickets[j].id === "string" ? [{ id: tickets[j].id as string, token: message.to }] : []
+        );
+        if (accepted.length > 0) {
+          await prisma.pushTicket
+            .createMany({ data: accepted, skipDuplicates: true })
+            .catch((err) => console.error("[CommunicationService] Failed to store push tickets:", safeError(err)));
+        }
+
         for (let j = 0; j < chunk.length; j++) {
           const ticket = tickets[j];
           if (!ticket || ticket.status === "error") {
@@ -345,8 +356,14 @@ export class CommunicationService {
     okCount: number;
     errorCount: number;
     deactivatedTokens: string[];
+    /** Tickets that have a receipt now; the rest aren't ready or weren't reached. */
+    settledTicketIds: string[];
+    /** Receipt error codes and how often each came back (no tokens or content). */
+    errorsByCode: Record<string, number>;
   }> {
-    if (ticketIds.length === 0) return { okCount: 0, errorCount: 0, deactivatedTokens: [] };
+    const settledTicketIds: string[] = [];
+    const errorsByCode: Record<string, number> = {};
+    if (ticketIds.length === 0) return { okCount: 0, errorCount: 0, deactivatedTokens: [], settledTicketIds, errorsByCode };
 
     const CHUNK_SIZE = 300;
     let okCount = 0;
@@ -378,11 +395,14 @@ export class CommunicationService {
         for (const ticketId of chunk) {
           const receipt = receipts[ticketId];
           if (!receipt) continue;
+          settledTicketIds.push(ticketId);
 
           if (receipt.status === "ok") {
             okCount++;
           } else if (receipt.status === "error") {
             errorCount++;
+            const code = typeof receipt.details?.error === "string" ? receipt.details.error : "Unknown";
+            errorsByCode[code] = (errorsByCode[code] ?? 0) + 1;
             if (receipt.details?.error === "DeviceNotRegistered") {
               const token = tokenByTicketId[ticketId];
               if (token) {
@@ -403,7 +423,7 @@ export class CommunicationService {
       }
     }
 
-    return { okCount, errorCount, deactivatedTokens };
+    return { okCount, errorCount, deactivatedTokens, settledTicketIds, errorsByCode };
   }
 }
 

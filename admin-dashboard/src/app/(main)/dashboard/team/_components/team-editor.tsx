@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { appRequest } from "@/lib/pav-schedule";
 import {
+  activeToggleMessage,
   CHANNELS,
   type Channel,
   clinicPayload,
@@ -27,6 +28,7 @@ import {
   type TeamClinician,
   type TeamService,
   type TeamVan,
+  toPoundsInput,
   vanPayload,
 } from "@/lib/pav-team";
 
@@ -35,6 +37,49 @@ function Field({ id, label, children }: { id: string; label: string; children: R
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/** Edit and Retire (or Bring back) on a service, van or clinic row. */
+function RowActions(props: { onEdit: () => void; onToggle: () => void; isActive: boolean; disabled: boolean }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {props.isActive ? null : <Badge variant="outline">Retired</Badge>}
+      <Button variant="ghost" size="sm" onClick={props.onEdit} disabled={props.disabled}>
+        Edit
+      </Button>
+      <Button variant="ghost" size="sm" onClick={props.onToggle} disabled={props.disabled}>
+        {props.isActive ? "Retire" : "Bring back"}
+      </Button>
+    </span>
+  );
+}
+
+/** Add, or Save and Cancel while a row's details are in the form. */
+function FormButtons(props: {
+  editing: boolean;
+  busy: boolean;
+  disabled: boolean;
+  addLabel: string;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (!props.editing) {
+    return (
+      <Button className="self-start" onClick={props.onSave} disabled={props.disabled}>
+        {props.busy ? "Adding..." : props.addLabel}
+      </Button>
+    );
+  }
+  return (
+    <div className="flex gap-2">
+      <Button onClick={props.onSave} disabled={props.disabled}>
+        {props.busy ? "Saving..." : "Save changes"}
+      </Button>
+      <Button variant="outline" onClick={props.onCancel} disabled={props.disabled}>
+        Cancel
+      </Button>
     </div>
   );
 }
@@ -71,6 +116,12 @@ export function TeamEditor() {
   });
   const [van, setVan] = useState({ name: "", registrationPlate: "", vehicleModel: "" });
   const [clinic, setClinic] = useState({ name: "", address: "", postcode: "", city: "", phone: "" });
+  // The id of the service, van or clinic whose details are in the form (BE-10).
+  const [editing, setEditing] = useState<{ service: string | null; van: string | null; clinic: string | null }>({
+    service: null,
+    van: null,
+    clinic: null,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,10 +148,16 @@ export function TeamEditor() {
     void load();
   }, [load]);
 
-  async function submit<T>(key: string, path: string, payload: unknown, onDone: (created: T) => void) {
+  async function submit<T>(
+    key: string,
+    path: string,
+    payload: unknown,
+    onDone: (created: T) => void,
+    method: "POST" | "PATCH" = "POST",
+  ) {
     setBusy(key);
     try {
-      const created = await appRequest<T>(path, { method: "POST", body: JSON.stringify(payload) });
+      const created = await appRequest<T>(path, { method, body: JSON.stringify(payload) });
       onDone(created);
       await load();
     } catch (error) {
@@ -128,32 +185,88 @@ export function TeamEditor() {
     });
   };
 
-  const addService = () => {
+  const blankService = {
+    name: "",
+    category: "checkup" as ServiceCategory,
+    durationMinutes: "30",
+    price: "",
+    deposit: "",
+    channels: ["clinic"] as Channel[],
+  };
+  const saveService = () => {
     const result = servicePayload(service);
     if (!result.ok) return toast.error(result.error);
-    void submit<TeamService>("service", "services", result.payload, (created) => {
-      toast.success(`${created.name} added`);
-      setService({ name: "", category: "checkup", durationMinutes: "30", price: "", deposit: "", channels: ["clinic"] });
+    const id = editing.service;
+    void submit<TeamService>(
+      "service",
+      id ? `services/${id}` : "services",
+      result.payload,
+      (saved) => {
+        toast.success(id ? `${saved.name} saved. Bookings already made keep their price.` : `${saved.name} added`);
+        setService(blankService);
+        setEditing((e) => ({ ...e, service: null }));
+      },
+      id ? "PATCH" : "POST",
+    );
+  };
+  const editService = (s: TeamService) => {
+    setService({
+      name: s.name,
+      category: (SERVICE_CATEGORIES as readonly string[]).includes(s.category)
+        ? (s.category as ServiceCategory)
+        : "checkup",
+      durationMinutes: String(s.durationMinutes),
+      price: toPoundsInput(s.pricePence),
+      deposit: s.depositPence > 0 ? toPoundsInput(s.depositPence) : "",
+      channels: s.supportedChannels.filter((c): c is Channel => (CHANNELS as readonly string[]).includes(c)),
     });
+    setEditing((e) => ({ ...e, service: s.id }));
   };
 
-  const addVan = () => {
+  const saveVan = () => {
     const result = vanPayload(van);
     if (!result.ok) return toast.error(result.error);
-    void submit<TeamVan>("van", "vans", result.payload, (created) => {
-      toast.success(`${created.name} added`);
-      setVan({ name: "", registrationPlate: "", vehicleModel: "" });
-    });
+    const id = editing.van;
+    void submit<TeamVan>(
+      "van",
+      id ? `vans/${id}` : "vans",
+      result.payload,
+      (saved) => {
+        toast.success(id ? `${saved.name} saved` : `${saved.name} added`);
+        setVan({ name: "", registrationPlate: "", vehicleModel: "" });
+        setEditing((e) => ({ ...e, van: null }));
+      },
+      id ? "PATCH" : "POST",
+    );
   };
 
-  const addClinic = () => {
+  const saveClinic = () => {
     const result = clinicPayload(clinic);
     if (!result.ok) return toast.error(result.error);
-    void submit<TeamClinic>("clinic", "clinics", result.payload, (created) => {
-      toast.success(`${created.name} added`);
-      setClinic({ name: "", address: "", postcode: "", city: "", phone: "" });
-    });
+    const id = editing.clinic;
+    void submit<TeamClinic>(
+      "clinic",
+      id ? `clinics/${id}` : "clinics",
+      result.payload,
+      (saved) => {
+        toast.success(id ? `${saved.name} saved` : `${saved.name} added`);
+        setClinic({ name: "", address: "", postcode: "", city: "", phone: "" });
+        setEditing((e) => ({ ...e, clinic: null }));
+      },
+      id ? "PATCH" : "POST",
+    );
   };
+
+  // Retire (or bring back) a service, van or clinic. Its past and booked
+  // appointments stay as they are.
+  const toggleActive = (kind: "services" | "vans" | "clinics", item: { id: string; name: string; isActive: boolean }) =>
+    void submit<{ upcomingBookings?: number }>(
+      `${kind}-${item.id}`,
+      `${kind}/${item.id}`,
+      { isActive: !item.isActive },
+      (saved) => toast.success(activeToggleMessage(item.name, !item.isActive, saved.upcomingBookings ?? 0)),
+      "PATCH",
+    );
 
   const toggleChannel = (channel: Channel, on: boolean) =>
     setService((s) => ({
@@ -312,7 +425,12 @@ export function TeamEditor() {
                       {s.depositPence > 0 ? `, ${formatPounds(s.depositPence)} deposit` : ""}
                     </span>
                   </span>
-                  {s.isActive ? null : <Badge variant="outline">Inactive</Badge>}
+                  <RowActions
+                    disabled={busy !== null}
+                    isActive={s.isActive}
+                    onEdit={() => editService(s)}
+                    onToggle={() => toggleActive("services", s)}
+                  />
                 </li>
               ))}
             </ul>
@@ -375,9 +493,17 @@ export function TeamEditor() {
               </div>
             ))}
           </div>
-          <Button className="self-start" onClick={addService} disabled={busy !== null}>
-            {busy === "service" ? "Adding..." : "Add service"}
-          </Button>
+          <FormButtons
+            editing={editing.service !== null}
+            busy={busy === "service"}
+            disabled={busy !== null}
+            addLabel="Add service"
+            onSave={saveService}
+            onCancel={() => {
+              setService(blankService);
+              setEditing((e) => ({ ...e, service: null }));
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -400,7 +526,15 @@ export function TeamEditor() {
                       · {v.registrationPlate} · {v.vehicleModel}
                     </span>
                   </span>
-                  {v.isActive ? null : <Badge variant="outline">Inactive</Badge>}
+                  <RowActions
+                    disabled={busy !== null}
+                    isActive={v.isActive}
+                    onEdit={() => {
+                      setVan({ name: v.name, registrationPlate: v.registrationPlate, vehicleModel: v.vehicleModel });
+                      setEditing((e) => ({ ...e, van: v.id }));
+                    }}
+                    onToggle={() => toggleActive("vans", v)}
+                  />
                 </li>
               ))}
             </ul>
@@ -424,9 +558,17 @@ export function TeamEditor() {
               />
             </Field>
           </div>
-          <Button className="self-start" onClick={addVan} disabled={busy !== null}>
-            {busy === "van" ? "Adding..." : "Add van"}
-          </Button>
+          <FormButtons
+            editing={editing.van !== null}
+            busy={busy === "van"}
+            disabled={busy !== null}
+            addLabel="Add van"
+            onSave={saveVan}
+            onCancel={() => {
+              setVan({ name: "", registrationPlate: "", vehicleModel: "" });
+              setEditing((e) => ({ ...e, van: null }));
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -449,7 +591,21 @@ export function TeamEditor() {
                       · {c.address}, {c.city} · {c.postcode} · {c.phone}
                     </span>
                   </span>
-                  {c.isActive ? null : <Badge variant="outline">Inactive</Badge>}
+                  <RowActions
+                    disabled={busy !== null}
+                    isActive={c.isActive}
+                    onEdit={() => {
+                      setClinic({
+                        name: c.name,
+                        address: c.address,
+                        postcode: c.postcode,
+                        city: c.city,
+                        phone: c.phone,
+                      });
+                      setEditing((e) => ({ ...e, clinic: c.id }));
+                    }}
+                    onToggle={() => toggleActive("clinics", c)}
+                  />
                 </li>
               ))}
             </ul>
@@ -491,9 +647,17 @@ export function TeamEditor() {
               />
             </Field>
           </div>
-          <Button className="self-start" onClick={addClinic} disabled={busy !== null}>
-            {busy === "clinic" ? "Adding..." : "Add clinic"}
-          </Button>
+          <FormButtons
+            editing={editing.clinic !== null}
+            busy={busy === "clinic"}
+            disabled={busy !== null}
+            addLabel="Add clinic"
+            onSave={saveClinic}
+            onCancel={() => {
+              setClinic({ name: "", address: "", postcode: "", city: "", phone: "" });
+              setEditing((e) => ({ ...e, clinic: null }));
+            }}
+          />
         </CardContent>
       </Card>
     </div>

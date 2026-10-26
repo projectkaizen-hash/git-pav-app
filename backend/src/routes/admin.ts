@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import argon2 from "argon2";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import { Router, Response } from "express";
 import { env } from "../config/env";
 import { prisma } from "../lib/prisma";
@@ -27,6 +28,10 @@ import {
   assignVanPolygonSchema,
   assignVanOperatorSchema,
   idParamsSchema,
+  serviceIdParamsSchema,
+  updateClinicSchema,
+  updateServiceSchema,
+  updateVanSchema,
 } from "../schemas/admin";
 
 const router = Router();
@@ -308,6 +313,48 @@ router.post("/vans", requireAuth, requireRole("admin"), validateBody(createVanSc
   return res.status(201).json(van);
 });
 
+/** Upcoming bookings that still name this clinic, van or service, so staff know who to contact. */
+const upcomingBookings = (where: Prisma.AppointmentWhereInput) =>
+  prisma.appointment.count({
+    where: { ...where, startTimeUtc: { gte: new Date() }, status: { in: ["draft_hold", "confirmed"] } },
+  });
+
+async function auditEdit(req: AuthRequest, action: string, resourceId: string, fields: string[]) {
+  await createAuditLogWithIntegrity({
+    action,
+    actorId: req.user!.sub,
+    resourceId,
+    sessionId: req.user!.sessionId,
+    ipHash: pseudonymiseIp(req.ip || ""),
+    metadata: { fields },
+  });
+}
+
+// ─── PATCH /api/admin/vans/:id ────────────────────────────────────────────────
+// BE-10: fix a van's details or retire it. A van out on a shift can't be
+// retired until the shift ends.
+router.patch("/vans/:id", requireAuth, requireRole("admin"), validateParams(idParamsSchema), validateBody(updateVanSchema), async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
+  const existing = await prisma.van.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) return res.status(404).json({ error: "Van not found" });
+
+  if (req.body.isActive === false) {
+    const openShift = await prisma.vanShift.findFirst({ where: { vanId: id, endedAt: null }, select: { id: true } });
+    if (openShift) return res.status(409).json({ error: "This van is on a shift. End the shift before retiring the van." });
+  }
+
+  try {
+    const van = await prisma.van.update({ where: { id }, data: req.body });
+    await auditEdit(req, "admin.van_updated", id, Object.keys(req.body));
+    return res.json({ ...van, upcomingBookings: await upcomingBookings({ vanId: id }) });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return res.status(409).json({ error: "Another van already has this registration plate" });
+    }
+    throw err;
+  }
+});
+
 // ─── POST /api/admin/vans/:id/polygons ────────────────────────────────────────
 router.post("/vans/:id/polygons", requireAuth, requireRole("admin"), validateParams(idParamsSchema), validateBody(assignVanPolygonSchema), async (req: AuthRequest, res: Response) => {
   const vanId = String(req.params.id);
@@ -552,6 +599,19 @@ router.post("/clinics", requireAuth, requireRole("admin"), validateBody(createCl
   return res.status(201).json(clinic);
 });
 
+// ─── PATCH /api/admin/clinics/:id ─────────────────────────────────────────────
+// BE-10: fix a clinic's details or retire it. Opening hours and closures are
+// edited on their own endpoints (admin-schedule.ts).
+router.patch("/clinics/:id", requireAuth, requireRole("admin"), validateParams(idParamsSchema), validateBody(updateClinicSchema), async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
+  const existing = await prisma.clinic.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) return res.status(404).json({ error: "Clinic not found" });
+
+  const clinic = await prisma.clinic.update({ where: { id }, data: req.body });
+  await auditEdit(req, "admin.clinic_updated", id, Object.keys(req.body));
+  return res.json({ ...clinic, upcomingBookings: await upcomingBookings({ clinicId: id }) });
+});
+
 // ─── Services ─────────────────────────────────────────────────────────────────
 router.get("/services", requireAuth, requireRole("admin"), async (_req: AuthRequest, res: Response) => {
   const services = await prisma.service.findMany({
@@ -601,6 +661,25 @@ router.post("/services", requireAuth, requireRole("admin"), validateBody(createS
   });
 
   return res.status(201).json(service);
+});
+
+// ─── PATCH /api/admin/services/:id ────────────────────────────────────────────
+// BE-10: fix a service or retire it. A new price or deposit applies to new
+// bookings only: each booking keeps the price it was made at.
+router.patch("/services/:id", requireAuth, requireRole("admin"), validateParams(serviceIdParamsSchema), validateBody(updateServiceSchema), async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
+  const existing = await prisma.service.findUnique({ where: { id }, select: { pricePence: true, depositPence: true } });
+  if (!existing) return res.status(404).json({ error: "Service not found" });
+
+  const pricePence = req.body.pricePence ?? existing.pricePence;
+  const depositPence = req.body.depositPence ?? existing.depositPence;
+  if (depositPence > pricePence) {
+    return res.status(400).json({ error: "The deposit can't be more than the price" });
+  }
+
+  const service = await prisma.service.update({ where: { id }, data: req.body });
+  await auditEdit(req, "admin.service_updated", id, Object.keys(req.body));
+  return res.json({ ...service, upcomingBookings: await upcomingBookings({ serviceId: id }) });
 });
 
 // ─── GET /api/admin/audit-logs ────────────────────────────────────────────────

@@ -157,6 +157,20 @@ export const createServiceSchema = z.object({
   isActive: z.boolean().default(true),
 }).strict();
 
+// BE-10: staff fix details or retire a clinic, van or service. Only the
+// fields sent change; at least one must be sent. Retiring (isActive false)
+// hides it from new bookings and keeps its history.
+const nonEmpty = (value: Record<string, unknown>) => Object.keys(value).length > 0;
+const atLeastOneField = { message: "Send at least one field to change" };
+export const updateClinicSchema = createClinicSchema.partial().refine(nonEmpty, atLeastOneField);
+export const updateVanSchema = createVanSchema.partial().refine(nonEmpty, atLeastOneField);
+export const updateServiceSchema = createServiceSchema
+  .partial()
+  .extend({ supportedChannels: z.array(z.enum(["clinic", "van", "video"])).min(1).optional() })
+  .refine(nonEmpty, atLeastOneField);
+/** Service ids are slugs, not uuids (seeded "srv_checkup", or "srv_" plus 8 hex characters). */
+export const serviceIdParamsSchema = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) }).strict();
+
 export const assignVanPolygonSchema = z.object({
   sectorName: z.string().trim().min(2).max(100),
   polygonGeoJson: z.record(z.unknown()).optional(),
