@@ -1,4 +1,3 @@
-import { prisma } from "../lib/prisma";
 import {
   withJobAdvisoryLock,
   JOB_LOCK_IDS,
