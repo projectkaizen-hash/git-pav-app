@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import * as LocalAuthentication from "expo-local-authentication";
+import { safeHaptics } from "@/lib/haptics";
 import { ThemedText, Card, Badge, Button, AppIcon, ConfirmSheet, Toast, ErrorState } from "@/components";
 import { colors, spacing, radius } from "@/theme";
 import {
@@ -150,7 +150,7 @@ export default function TreatmentPlanDetailScreen() {
       // Graceful fallback when LocalAuthentication hardware API is unavailable (e.g. Web)
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    safeHaptics.notificationAsync("success").catch(() => {});
     const signerName = user?.firstName
       ? `${user.firstName} ${user.lastName || ""}`.trim()
       : user?.email || "Authenticated Patient";
@@ -186,7 +186,7 @@ export default function TreatmentPlanDetailScreen() {
       setDecision("accepted");
       setShowSignSheet(false);
       setToast({
-        message: "Plan legally signed & accepted — treatment unlocked!",
+        message: "Plan acknowledged — you've confirmed you've read this plan. Consent to treatment will be taken in person at your visit.",
         tone: "success",
       });
     } catch (err: any) {
@@ -493,7 +493,7 @@ export default function TreatmentPlanDetailScreen() {
                   accessibilityLabel="I have read this treatment plan"
                   accessibilityState={{ checked: consentChecked }}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    safeHaptics.impactAsync("light").catch(() => {});
                     setConsentChecked(!consentChecked);
                   }}
                   style={styles.checkboxRow}

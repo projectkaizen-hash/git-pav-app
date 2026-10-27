@@ -771,7 +771,7 @@ async function runE2ESuite() {
     );
     console.log(`✓ PASSED: Rewards & Oral Health Telemetry Persisted (Redeemed ${redeemData.voucherCode}, Balance: ${redeemData.pointsBalance} pts)`);
 
-    // Step 32: Treatment Plan Cryptographic E-Signature
+    // Step 32: Treatment Plan Cryptographic E-Signature (BE-18, D-06 Acknowledgement)
     const clinicianRow = await prisma.clinicianProfile.findFirst();
     if (clinicianRow) {
       const planRow = await prisma.treatmentPlan.create({
@@ -790,7 +790,11 @@ async function runE2ESuite() {
       });
       const signPlanRes = await fetch(`${baseUrl}/api/patients/${userId}/plans/${planRow.id}/sign`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "PavDental-E2E/1.0 (iOS 18.2; TestRunner)",
+        },
         body: JSON.stringify({
           signerName: "Alexander Wright",
           signatureData: "FaceID:Alexander Wright",
@@ -798,8 +802,28 @@ async function runE2ESuite() {
         }),
       });
       const signPlanData = (await signPlanRes.json()) as any;
-      assert(signPlanRes.status === 200 && signPlanData.signatureHash, `Plan sign failed: ${JSON.stringify(signPlanData)}`);
-      console.log(`✓ PASSED: Treatment Plan Cryptographic E-Signature (${signPlanData.signatureHash})`);
+      assert(
+        signPlanRes.status === 200 &&
+          signPlanData.signatureHash &&
+          signPlanData.planVersionHash &&
+          signPlanData.device === "PavDental-E2E/1.0 (iOS 18.2; TestRunner)",
+        `Plan sign failed: ${JSON.stringify(signPlanData)}`
+      );
+
+      // Verify vault document title & docType per BE-18 / D-06
+      const vaultDoc = await prisma.documentVault.findFirst({
+        where: { patientId: account.patientProfile.id, fileKey: { contains: planRow.id } },
+      });
+      assert(
+        Boolean(
+          vaultDoc &&
+            vaultDoc.title === "Treatment Plan Acknowledgement — E2E Restorative Crown Plan" &&
+            vaultDoc.docType === "treatment_plan_acknowledgement"
+        ),
+        `Expected acknowledgement document in vault, got: ${JSON.stringify(vaultDoc)}`
+      );
+
+      console.log(`✓ PASSED: Treatment Plan Cryptographic E-Signature (${signPlanData.signatureHash}, version: ${signPlanData.planVersionHash})`);
     }
 
     // Step 33: GDPR Subject Access Request (SAR) Real Encrypted Export + Signed URL

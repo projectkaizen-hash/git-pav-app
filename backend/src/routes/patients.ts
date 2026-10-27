@@ -466,22 +466,45 @@ router.post(
       return res.status(409).json({ error: "This plan has already been answered", code: "PLAN_NOT_OPEN" });
     }
 
+    const device = String(req.headers["user-agent"] || "unknown").slice(0, 500);
     const signedAt = new Date();
+
+    // Canonical representation of what was shown to the patient (plan version hash per BE-18)
+    const planVersionPayload = JSON.stringify({
+      planId: plan.id,
+      title: plan.title,
+      totalCostPence: plan.totalCostPence,
+      items: plan.items.map((it) => ({
+        code: it.code,
+        description: it.description,
+        toothNumber: it.toothNumber,
+        costPence: it.costPence,
+      })),
+      createdAtIso: plan.createdAt.toISOString(),
+    });
+    const planVersionHash = crypto.createHash("sha256").update(planVersionPayload).digest("hex");
+
     const canonicalPayload = JSON.stringify({
       planId: plan.id,
       patientId: profile.id,
       signerName,
+      device,
+      planVersionHash,
       totalCostPence: plan.totalCostPence,
       items: plan.items.map((it) => ({ code: it.code, costPence: it.costPence, toothNumber: it.toothNumber })),
       signedAtIso: signedAt.toISOString(),
+      acknowledgementText: "I've read this plan; consent to treatment is taken in person",
     });
 
     const signatureHash = crypto.createHash("sha256").update(canonicalPayload).digest("hex");
     const storedSignature = JSON.stringify({
       signerName,
       signatureHash,
-      signatureData: signatureData || `SIGNED:${signerName}`,
+      planVersionHash,
+      device,
+      signatureData: signatureData || `ACKNOWLEDGED:${signerName}`,
       signedAtIso: signedAt.toISOString(),
+      acknowledgementText: "I've read this plan; consent to treatment is taken in person",
     });
 
     // Conditional on the status, so two answers sent at once can't both apply.
@@ -506,13 +529,14 @@ router.post(
     const uploadedCert = await objectStorage.upload(certKey, canonicalPayload, "application/json", {
       planId: plan.id,
       signatureHash,
+      planVersionHash,
     });
 
     await prisma.documentVault.create({
       data: {
         patientId: profile.id,
-        docType: "treatment_plan_consent",
-        title: `Signed Treatment Plan — ${plan.title}`,
+        docType: "treatment_plan_acknowledgement",
+        title: `Treatment Plan Acknowledgement — ${plan.title}`,
         fileKey: uploadedCert.key,
         fileSizeBytes: String(uploadedCert.size),
       },
@@ -526,6 +550,8 @@ router.post(
       ipHash: pseudonymiseIp(req.ip || ""),
       metadata: {
         signatureHash,
+        planVersionHash,
+        device,
         totalCostPence: plan.totalCostPence,
       },
     });
@@ -533,8 +559,10 @@ router.post(
     return res.json({
       ...updatedPlan,
       signatureHash: `SHA256:${signatureHash.slice(0, 16)}`,
+      planVersionHash: `SHA256:${planVersionHash.slice(0, 16)}`,
       signerName,
       signedAt: signedAt.toISOString(),
+      device,
     });
   }
 );
