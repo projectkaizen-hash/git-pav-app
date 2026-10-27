@@ -1,6 +1,6 @@
 # Pav Dental: production-readiness checklist and release gates
 
-Rewritten on 26 Oct 2026 from the audit in [`../completion/07-architecture-audit.md`](../completion/07-architecture-audit.md). The previous version listed environment variables that don't exist, promised an "EAS Update rollback" the app can't do, and marked items passed without evidence; it is replaced, not amended.
+Rewritten on 26 Oct 2026 from the audit in [`../completion/07-architecture-audit.md`](../completion/07-architecture-audit.md). The previous version listed environment variables that don't exist, promised an "EAS Update rollback" the app can't do, and marked items passed without evidence; it is replaced, not amended. Re-checked on 27 Oct 2026 after PRs #112–#122 merged: test counts and the resolved zod advisory are updated below.
 
 **Scope.** The mobile app (`pavdental/`), the API (`backend/`) and the staff dashboard screens for app data (`admin-dashboard/`). The website is de-scoped except for the legal pages the app links to.
 
@@ -20,7 +20,7 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 | **G2 No open Critical/High security findings** | Pen test done (QA-08), its Critical/High fixed and retested; no unreviewed high/critical advisories | Blocked: pen test not booked |
 | **G3 Essential journeys work on real devices** | Section 2 rows Verified on an EAS build, iOS and Android | Not tested |
 | **G4 Data safety** | Production PITR on; restore drill done within the last 90 days and within RTO; bucket versioning on | Blocked: no production stack (OPS-01) |
-| **G5 Operable** | Errors from API, app and dashboard reach Sentry with readable stacks; uptime alert on `/readyz` reaches a person; job-lag alert; incident runbook | Failed: Sentry optional, no source maps, no uptime check |
+| **G5 Operable** | Errors from API, app and dashboard reach Sentry with readable stacks; uptime alert on `/readyz` reaches a person; job-lag alert; incident runbook | Failed: Sentry is wired in code (backend fails closed without `SENTRY_DSN`, app has the Expo plugin and source maps), but no production DSN secret is set and there is no uptime or job-lag alert |
 | **G6 Safe release path** | Branch protection; Render deploys only after CI; pre-deploy migrations; rollback rehearsed once | Failed: Render deploys every push; manual migrations |
 | **G7 Legal and clinical** | Privacy notice and terms reviewed and published; DPAs accepted; DPIA signed; ICO fee paid; CQC scope confirmed; clinical sign-off of triage, prescribing and patient-facing clinical wording; D-18 advice | Blocked: legal and clinical review (LG-01..08) |
 | **G8 Production soak** | Production stack running 7 days with synthetic data; reminders, hold expiry and push receipts observed working overnight; load test met targets | Blocked: G4 |
@@ -40,7 +40,7 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 | J6 | Records: treatment plans, prescriptions PDF, documents, messages | Not tested on device | `prescription-pdf.test.ts`, `messaging-routing.test.ts` | Device run; screenshot blocking on records |
 | J7 | Clinician day: schedule, notes, odontogram, treatment plan, prescription | Not tested on device | `clinician-*.test.ts` | Device run with a clinician account (MFA) |
 | J8 | Operator shift incl. offline notes and sync | Not tested on device | app offline queue tests in `test:all` | Device run in airplane mode |
-| J9 | Staff: rota, services, clinics, vans, dentist profiles, inbox, erasure queue in the dashboard | Not tested end to end | dashboard tests (29) | Staff walkthrough on staging |
+| J9 | Staff: rota, services, clinics, vans, dentist profiles, inbox, erasure queue in the dashboard | Not tested end to end | dashboard tests (44) | Staff walkthrough on staging |
 
 ## 3. Authentication, authorisation and account lifecycle
 
@@ -72,7 +72,7 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 
 | Requirement | Status | Evidence | Next action |
 |---|---|---|---|
-| No unreviewed high/critical advisories | Verified 26 Oct | audit gate: backend 2 allow-listed, app 2 allow-listed, dashboard 0 | zod 4 (BE-12) |
+| No unreviewed high/critical advisories | Verified 27 Oct | audit gate: backend 1 allow-listed (deepmerge-ts, Prisma CLI), app 2 allow-listed (node-forge and zod, both Expo CLI), dashboard 0 | — |
 | Static analysis | Verified in CI config | `.github/workflows/codeql.yml` | Check results on the release commit |
 | Secrets not in git | Verified (spot check) | `.gitignore` covers `.env*`, `google-service-account.json` | Enable GitHub secret scanning (owner) |
 | Supported runtime | Verified 26 Oct (with fix) | Node 22 in Dockerfile and CI (ADR-0004) | Node 24 by Apr 2027 (OPS-09) |
@@ -82,10 +82,10 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 
 | Requirement | Status | Evidence | Next action |
 |---|---|---|---|
-| Backend unit/integration | Verified 26 Oct | 63 suites, 485 tests pass | — |
+| Backend unit/integration | Verified 27 Oct (with a known flake) | 65 suites / 502 tests; 64/65 suites pass in parallel because of the pre-existing `sar-export` flake (`sar-export` passes 7/7 when run alone) | Investigate the `sar-export` parallel flake |
 | Backend end-to-end | Verified 26 Oct | 34/34; also passes with `connection_limit=1` | — |
 | App typecheck, lint, content and routing tests | Verified 26 Oct | `npm run test:all` | — |
-| Dashboard typecheck, lint budget, tests | Verified 26 Oct | 29 tests pass | — |
+| Dashboard typecheck, lint budget, tests | Verified 27 Oct | 44 tests pass (`npm test`) | — |
 | Device end-to-end (Maestro) | Not tested | — | QA-02 |
 | Load test (targets in ADR-0003) | Not tested | — | BE-19 |
 
@@ -148,6 +148,6 @@ Release to real patients needs **every gate open**. A gate can only be waived by
 | Risk | Why it is acceptable now | Revisit |
 |---|---|---|
 | Single API instance | Load is small; RTO 4 h; patients can phone | After launch, with job leadership (BE-23) |
-| zod 3 advisory (allow-listed) | Bodies capped at 2 MB | BE-12 |
+| deepmerge-ts advisory (allow-listed) | Only the Prisma CLI's config loader uses it, on our own config, never on request data | Prisma 7 upgrade |
 | API (Frankfurt) and DB (London) in different regions | Owner choice (#19); latency to be measured | BE-19 |
 | Video calls open in the browser | D-01 | MF-01 |

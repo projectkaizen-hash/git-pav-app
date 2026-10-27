@@ -1,6 +1,6 @@
 # Pav Dental: architecture
 
-> Checked against `main` @ `aa0133b` on 26 Oct 2026 (replaces the 26 Sep version). Sections marked **Current** describe code that exists and runs in CI; sections marked **Proposed** describe the production set-up the plan is working towards (ADRs in [`docs/adr/`](docs/adr/)). Findings and their evidence are in [`docs/completion/07-architecture-audit.md`](docs/completion/07-architecture-audit.md); the work list is [`docs/completion/06-completion-plan.md`](docs/completion/06-completion-plan.md).
+> Checked against `main` @ `ff31b90` on 27 Oct 2026 (replaces the 26 Sep version). Sections marked **Current** describe code that exists and runs in CI; sections marked **Proposed** describe the production set-up the plan is working towards (ADRs in [`docs/adr/`](docs/adr/)). Findings and their evidence are in [`docs/completion/07-architecture-audit.md`](docs/completion/07-architecture-audit.md); the work list is [`docs/completion/06-completion-plan.md`](docs/completion/06-completion-plan.md).
 
 ## 1. Requirements in brief
 
@@ -43,7 +43,7 @@ The API is the only owner of patient and clinical data (ADR-0001). The dashboard
 
 | Component | Folder | Responsibility | Stack |
 |---|---|---|---|
-| API | `backend/` | Auth, booking, payments, van dispatch, video rooms, records, prescriptions, consent, messaging, audit, background jobs | Node 20 → 22 (ADR-0004), Express 4, Prisma 6, zod 3, argon2, Stripe 17, ioredis |
+| API | `backend/` | Auth, booking, payments, van dispatch, video rooms, records, prescriptions, consent, messaging, audit, background jobs | Node 22 (ADR-0004), Express 4, Prisma 6, zod 4, argon2, Stripe, ioredis |
 | Mobile app | `pavdental/` | Patient, clinician and operator portals (route groups `(patient)`, `(clinician)`, `(operator)`, `(auth)`, `onboarding`) | Expo SDK 57, React Native 0.86, Expo Router, TanStack Query, Zustand, Stripe RN, Sentry RN |
 | Staff dashboard | `admin-dashboard/` | Back office for app data (through the API) and website content (own DB) | Next.js 16, shadcn/ui |
 | Website | `website/` | Marketing site and shop; hosts the privacy/terms pages the app links to | TanStack Start, Vite |
@@ -52,7 +52,7 @@ Inside the API, `routes/` hold HTTP handlers, `middleware/` holds auth, role and
 
 ## 4. Data model (Current, main entities)
 
-49 Prisma models, 40 migrations, drift-checked in CI.
+49 Prisma models, 41 migrations, drift-checked in CI.
 
 ```mermaid
 erDiagram
@@ -230,10 +230,10 @@ Sensitive flows to watch when changing code: medical history and notes (encrypte
 docker compose up -d        # Postgres (PostGIS) + Redis
 cd backend
 npm ci && npx prisma generate
-npx prisma migrate deploy   # 40 migrations
+npx prisma migrate deploy   # 41 migrations
 npm run prisma:seed         # synthetic clinics, clinicians, services, van
 npm run dev
-npx jest                    # unit and integration (63 suites)
+npx jest                    # unit and integration (65 suites)
 npm test                    # e2e (34 flows, mock Stripe, stubbed postcodes/Daily)
 
 cd ../pavdental
