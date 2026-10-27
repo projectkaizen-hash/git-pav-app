@@ -171,4 +171,49 @@ describe("care-team access matrix", () => {
     const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "treatment_plan.signed", resourceId: planId } });
     expect(JSON.stringify(audit.metadata)).not.toContain("Synthetic Owner");
   });
+
+  it("BE-18 (D-06): records what was shown (plan version hash), who, when, device, and truthful copy", async () => {
+    const { id: planId } = await plan(owner.profileId, carer.profileId);
+    const userAgent = "PavDentalApp/2.4 (iOS 18.2; iPhone16,2)";
+    const res = await fetch(`${baseUrl}/api/patients/${owner.profileId}/plans/${planId}/sign`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${owner.token}`,
+        "Content-Type": "application/json",
+        "User-Agent": userAgent,
+      },
+      body: JSON.stringify({ signerName: "Synthetic Owner", consentConfirmed: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      signatureHash: string;
+      planVersionHash: string;
+      signerName: string;
+      device: string;
+      signedAt: string;
+    };
+    expect(body.signatureHash).toMatch(/^SHA256:[a-f0-9]{16}$/);
+    expect(body.planVersionHash).toMatch(/^SHA256:[a-f0-9]{16}$/);
+    expect(body.device).toBe(userAgent);
+
+    const updated = await prisma.treatmentPlan.findUniqueOrThrow({ where: { id: planId } });
+    const sig = JSON.parse(updated.patientSignature || "{}");
+    expect(sig.signerName).toBe("Synthetic Owner");
+    expect(sig.device).toBe(userAgent);
+    expect(sig.planVersionHash).toBeDefined();
+    expect(sig.acknowledgementText).toBe("I've read this plan; consent to treatment is taken in person");
+
+    const vaultDoc = await prisma.documentVault.findFirst({
+      where: { patientId: owner.profileId, fileKey: { contains: planId } },
+    });
+    expect(vaultDoc).not.toBeNull();
+    expect(vaultDoc?.title).toBe("Treatment Plan Acknowledgement — Synthetic plan");
+    expect(vaultDoc?.docType).toBe("treatment_plan_acknowledgement");
+
+    const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "treatment_plan.signed", resourceId: planId } });
+    const meta = audit.metadata as Record<string, unknown>;
+    expect(meta.planVersionHash).toBeDefined();
+    expect(meta.device).toBe(userAgent);
+    expect(JSON.stringify(audit.metadata)).not.toContain("Synthetic Owner");
+  });
 });

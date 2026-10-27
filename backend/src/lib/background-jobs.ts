@@ -18,6 +18,81 @@ const VAN_REQUEST_EXPIRY_INTERVAL_MS = 30 * 1000; // 30 seconds
 // well inside this; a claim older than it belongs to a dispatcher that died.
 export const NOTIFICATION_CLAIM_LEASE_MS = 15 * 60 * 1000; // 15 minutes
 
+/**
+ * BE-23 (AUD-13, ADR-0002): Background job leadership using Postgres advisory locks.
+ * Ensures recurring jobs coordinate safely across multiple API instances.
+ */
+export const JOB_LOCK_IDS = {
+  SLOT_EXPIRY: 21001,
+  NOTIFICATION_DISPATCH: 21002,
+  VAN_REQUEST_EXPIRY: 21003,
+  VAN_DEPOSIT_RETRY: 21004,
+  RETENTION_SWEEP: 21005,
+  PUSH_RECEIPTS: 21006,
+  VISIT_POINTS: 21007,
+  REFERRAL_VOUCHERS: 21008,
+} as const;
+
+export type JobLockId = (typeof JOB_LOCK_IDS)[keyof typeof JOB_LOCK_IDS];
+
+export interface JobLockResult<T> {
+  acquired: boolean;
+  result?: T;
+}
+
+/**
+ * Executes `fn` within a Postgres transaction holding a transaction-scoped advisory lock.
+ * If another instance currently holds the lock for `lockId`, returns `{ acquired: false }`
+ * immediately without running `fn`.
+ * The lock is released automatically when the transaction completes or rolls back.
+ */
+export async function withJobAdvisoryLock<T>(
+  lockId: number,
+  fn: () => Promise<T>,
+  options?: { timeoutMs?: number }
+): Promise<JobLockResult<T>> {
+  const timeout = options?.timeoutMs ?? 30000;
+  return await prisma.$transaction(
+    async (tx) => {
+      const rows = await tx.$queryRawUnsafe<{ locked: boolean }[]>(
+        "SELECT pg_try_advisory_xact_lock($1) AS locked",
+        lockId
+      );
+      const acquired = Boolean(rows[0]?.locked);
+      if (!acquired) {
+        return { acquired: false };
+      }
+      const result = await fn();
+      return { acquired: true, result };
+    },
+    { timeout, maxWait: 5000 }
+  );
+}
+
+export const runRetentionSweepWithLock = () =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.RETENTION_SWEEP, () => runRetentionSweep());
+
+export const checkPushReceiptsWithLock = (now?: Date) =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.PUSH_RECEIPTS, () => checkPushReceipts(now));
+
+export const awardMissedVisitPointsWithLock = (limit?: number) =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.VISIT_POINTS, () => awardMissedVisitPoints(limit));
+
+export const issueMissedReferralVouchersWithLock = (limit?: number) =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.REFERRAL_VOUCHERS, () => issueMissedReferralVouchers(limit));
+
+export const processExpiredSlotHoldsWithLock = () =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.SLOT_EXPIRY, () => processExpiredSlotHolds());
+
+export const processDueScheduledNotificationsWithLock = () =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.NOTIFICATION_DISPATCH, () => processDueScheduledNotifications());
+
+export const processExpiredVanRequestsWithLock = () =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.VAN_REQUEST_EXPIRY, () => processExpiredVanRequests());
+
+export const retryFailedVanDepositReleasesWithLock = () =>
+  withJobAdvisoryLock(JOB_LOCK_IDS.VAN_DEPOSIT_RETRY, () => retryFailedVanDepositReleases());
+
 let slotExpiryTimer: NodeJS.Timeout | null = null;
 let notificationDispatchTimer: NodeJS.Timeout | null = null;
 let vanRequestExpiryTimer: NodeJS.Timeout | null = null;
@@ -594,42 +669,42 @@ const PUSH_RECEIPT_INTERVAL_MS = 15 * 60 * 1000;
 let pushReceiptTimer: NodeJS.Timeout | null = null;
 
 export function startBackgroundJobs(): void {
-  console.log("[BACKGROUND JOBS] Starting background workers (slot expiry, notification dispatcher & van request expiry)");
+  console.log("[BACKGROUND JOBS] Starting background workers with distributed advisory lock coordination");
 
   // Run immediately on boot
-  processExpiredSlotHolds().catch(() => {});
-  processDueScheduledNotifications().catch(() => {});
-  processExpiredVanRequests().catch(() => {});
-  retryFailedVanDepositReleases().catch(() => {});
+  processExpiredSlotHoldsWithLock().catch(() => {});
+  processDueScheduledNotificationsWithLock().catch(() => {});
+  processExpiredVanRequestsWithLock().catch(() => {});
+  retryFailedVanDepositReleasesWithLock().catch(() => {});
 
   // Recurring timers
   slotExpiryTimer = setInterval(() => {
-    processExpiredSlotHolds().catch(() => {});
-    awardMissedVisitPoints().catch((err) => {
+    processExpiredSlotHoldsWithLock().catch(() => {});
+    awardMissedVisitPointsWithLock().catch((err) => {
       console.error("[BACKGROUND JOBS] Visit points catch-up failed:", err instanceof Error ? err.name : "unknown error");
     });
-    issueMissedReferralVouchers().catch((err) => {
+    issueMissedReferralVouchersWithLock().catch((err) => {
       console.error("[BACKGROUND JOBS] Referral voucher catch-up failed:", err instanceof Error ? err.name : "unknown error");
     });
   }, SLOT_EXPIRY_INTERVAL_MS);
 
   notificationDispatchTimer = setInterval(() => {
-    processDueScheduledNotifications().catch(() => {});
+    processDueScheduledNotificationsWithLock().catch(() => {});
   }, NOTIFICATION_DISPATCH_INTERVAL_MS);
 
   vanRequestExpiryTimer = setInterval(() => {
-    processExpiredVanRequests().catch(() => {});
-    retryFailedVanDepositReleases().catch(() => {});
+    processExpiredVanRequestsWithLock().catch(() => {});
+    retryFailedVanDepositReleasesWithLock().catch(() => {});
   }, VAN_REQUEST_EXPIRY_INTERVAL_MS);
 
   retentionSweepTimer = setInterval(() => {
-    runRetentionSweep().catch((err) => {
+    runRetentionSweepWithLock().catch((err) => {
       console.error("[BACKGROUND JOBS] Retention sweep failed:", err instanceof Error ? err.name : "unknown error");
     });
   }, RETENTION_SWEEP_INTERVAL_MS);
 
   pushReceiptTimer = setInterval(() => {
-    checkPushReceipts().catch((err) => {
+    checkPushReceiptsWithLock().catch((err) => {
       console.error("[BACKGROUND JOBS] Push receipt check failed:", err instanceof Error ? err.name : "unknown error");
     });
   }, PUSH_RECEIPT_INTERVAL_MS);
